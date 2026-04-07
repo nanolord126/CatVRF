@@ -1,18 +1,34 @@
 <?php declare(strict_types=1);
 
+/**
+ * HandlePsychologicalBookingCreated — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/handlepsychologicalbookingcreated
+ */
+
+
 namespace App\Domains\Medical\Psychology\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HandlePsychologicalBookingCreated extends Model
+use Psr\Log\LoggerInterface;
+final class HandlePsychologicalBookingCreated
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(PsychologicalBookingCreated $event): void
         {
-            Log::channel('audit')->info('Listener: PsychologicalBookingCreated triggered', [
+            $this->logger->info('Listener: PsychologicalBookingCreated triggered', [
                 'booking_id' => $event->booking->id,
                 'correlation_id' => $event->correlationId,
             ]);
@@ -23,4 +39,27 @@ final class HandlePsychologicalBookingCreated extends Model
                 $event->correlationId
             )->delay($event->booking->scheduled_at->subHours(2));
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

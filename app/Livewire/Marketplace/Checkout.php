@@ -7,11 +7,11 @@ use Livewire\Component;
 
 final class Checkout extends Component
 {
-    public array $cart = [];
-    public int $totalPrice = 0;
-    public string $deliveryType = 'standard';
-    public int $deliveryPrice = 0;
-    public string $paymentMethod = 'card';
+    private array $cart = [];
+    private int $totalPrice = 0;
+    private string $deliveryType = 'standard';
+    private int $deliveryPrice = 0;
+    private string $paymentMethod = 'card';
 
     public function mount(): void
     {
@@ -23,7 +23,6 @@ final class Checkout extends Component
     {
         $subtotal = collect($this->cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
         $this->deliveryPrice = match ($this->deliveryType) {
-            'express' => 50000,
             'same_day' => 100000,
             default => 0,
         };

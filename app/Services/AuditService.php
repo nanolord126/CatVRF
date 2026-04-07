@@ -2,45 +2,126 @@
 
 namespace App\Services;
 
+
+
+use Illuminate\Http\Request;
+use Illuminate\Auth\AuthManager;
+use App\Jobs\AuditLogJob;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
 
 /**
  * Audit Logging Service
- * Production 2026 CANON
+ * Production 2026 CANON — CatVRF 2026
  *
- * Centralized audit logging for all operations
- * - Logs to audit channel
- * - Includes correlation_id for tracing
- * - Records user, tenant, operation, changes
+ * Централизованное логирование всех мутаций.
+ * - Все записи через $this->logger->channel('audit') + DB (audit_logs)
+ * - correlation_id обязателен в каждом вызове
+ * - Асинхронная запись в БД через AuditLogJob
  *
- * @author CatVRF Team
- * @version 2026.03.24
+ * Новый канонический API (constructor injection):
+ *   $this->audit->record('action', Model::class, $id, $old, $new, $correlationId);
+ *   $this->audit->logModelEvent('created', $model);
+ *
+ * Legacy static API (@deprecated, только для обратной совместимости):
+ *   AuditService::log('operation', $data, $correlationId);
  */
 final class AuditService
 {
+    public function __construct(
+        private readonly Request $request,
+        private readonly AuthManager $authManager,
+        private readonly \Illuminate\Contracts\Queue\Queue $queue,
+        private readonly LogManager $logger,
+    ) {}
+
+    // ─────────────────────────────────────────────────────────────
+    // CANONICAL INSTANCE METHODS (use these in new code)
+    // ─────────────────────────────────────────────────────────────
+
     /**
-     * Log an operation
-     *
-     * @param string $operation Operation name (e.g., 'appointment.create')
-     * @param array $data Operation data
-     * @param string $correlationId Tracing ID
-     * @param array $metadata Additional metadata
-     * @return void
+     * Записать аудит-событие асинхронно (канонический метод).
+     * Вызывать ПОСЛЕ успешной транзакции.
+     */
+    public function record(
+        string  $action,
+        string  $subjectType,
+        ?int    $subjectId,
+        array   $oldValues    = [],
+        array   $newValues    = [],
+        ?string $correlationId = null,
+    ): void {
+        $cid = $correlationId ?? Str::uuid()->toString();
+
+        AuditLogJob::dispatch([
+            'tenant_id'           => function_exists('tenant') && tenant() ? tenant()->id : null,
+            'business_group_id'   => $this->request->get('business_group_id'),
+            'user_id'             => $this->authManager->id(),
+            'action'              => $action,
+            'subject_type'        => $subjectType,
+            'subject_id'          => $subjectId,
+            'old_values'          => $oldValues,
+            'new_values'          => $newValues,
+            'ip_address'          => $this->request->ip(),
+            'device_fingerprint'  => hash('sha256', $this->request->ip() . $this->request->userAgent()),
+            'correlation_id'      => $cid,
+        ])->onQueue('audit-logs');
+
+        $this->logger->channel('audit')->info($action, [
+            'subject_type'   => $subjectType,
+            'subject_id'     => $subjectId,
+            'correlation_id' => $cid,
+            'user_id'        => $this->authManager->id(),
+            'tenant_id'      => function_exists('tenant') && tenant() ? tenant()->id : null,
+        ]);
+    }
+
+    /**
+     * Удобная обёртка для событий моделей (created / updated / deleted).
+     * Вызывается из Model::booted() после успешного сохранения.
+     */
+    public function logModelEvent(
+        string  $event,
+        Model   $model,
+        array   $old          = [],
+        ?string $correlationId = null,
+    ): void {
+        $new = match ($event) {
+            default   => $model->getChanges() ?: $model->toArray(),
+        };
+
+        $this->record(
+            action:        $event,
+            subjectType:   get_class($model),
+            subjectId:     $model->getKey(),
+            oldValues:     $old,
+            newValues:     $new,
+            correlationId: $correlationId,
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // LEGACY STATIC API — @deprecated, используйте instance-методы
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * @deprecated Use constructor-injected AuditService::record() instead.
      */
     public static function log(string $operation, array $data, string $correlationId, array $metadata = []): void
     {
         $context = array_merge([
             'correlation_id' => $correlationId,
             'operation' => $operation,
-            'user_id' => Auth::id(),
+            'user_id' => $this->authManager->id(),
             'tenant_id' => tenant()->id ?? null,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
+            'ip_address' => $this->request->ip(),
+            'user_agent' => $this->request->userAgent(),
             'timestamp' => now(),
         ], $metadata, $data);
 
-        Log::channel('audit')->info($operation, $context);
+        $this->logger->channel('audit')->info($operation, $context);
     }
 
     /**
@@ -60,12 +141,12 @@ final class AuditService
             'error' => $exception->getMessage(),
             'code' => $exception->getCode(),
             'trace' => $exception->getTraceAsString(),
-            'user_id' => Auth::id(),
+            'user_id' => $this->authManager->id(),
             'tenant_id' => tenant()->id ?? null,
             'timestamp' => now(),
         ], $context);
 
-        Log::channel('audit')->error($operation . ' failed', $errorContext);
+        $this->logger->channel('audit')->error($operation . ' failed', $errorContext);
     }
 
     /**

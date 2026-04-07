@@ -2,14 +2,24 @@
 
 namespace App\Services\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\EventPlanning\EventPackage;
+use Exception;
+use Illuminate\Support\Collection;
 
-final class PackageManagementService extends Model
+
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class PackageManagementService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a new corporate or private event package.
          */
@@ -24,7 +34,7 @@ final class PackageManagementService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Audit Log Start (Canon 2026: Logic trace)
-            Log::channel('audit')->info('[PackageService] Creating new package', [
+            $this->logger->channel('audit')->info('[PackageService] Creating new package', [
                 'correlation_id' => $correlationId,
                 'name' => $name,
                 'max_guests' => $maxGuests,
@@ -33,7 +43,8 @@ final class PackageManagementService extends Model
 
             try {
                 // 2. Transaction Scope (Canon 2026: DB Mutation)
-                return DB::transaction(function () use ($name, $description, $fixedPrice, $maxGuests, $servicesIds, $correlationId) {
+                $this->fraud->check(new \stdClass());
+                return $this->db->transaction(function () use ($name, $description, $fixedPrice, $maxGuests, $servicesIds, $correlationId) {
                     // 3. Create core package
                     $package = EventPackage::create([
                         'uuid' => (string) Str::uuid(),
@@ -49,7 +60,7 @@ final class PackageManagementService extends Model
 
                     // 4. Verification Step (Logical consistency)
                     if ($fixedPrice <= 0) {
-                        throw new Exception('[Validation] Package price must be positive.');
+                        throw new \InvalidArgumentException('[Validation] Package price must be positive.');
                     }
 
                     if ($maxGuests > 1000) {
@@ -58,7 +69,7 @@ final class PackageManagementService extends Model
                     }
 
                     // 5. Success Log Audit
-                    Log::channel('audit')->info('[PackageService] Package successfully created', [
+                    $this->logger->channel('audit')->info('[PackageService] Package successfully created', [
                         'correlation_id' => $correlationId,
                         'package_uuid' => $package->uuid,
                         'price' => $fixedPrice,
@@ -69,8 +80,15 @@ final class PackageManagementService extends Model
                 });
 
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 6. Error handling (Canon 2026: Logging of errors)
-                Log::channel('audit')->error('[PackageService] Package creation failed', [
+                $this->logger->channel('audit')->error('[PackageService] Package creation failed', [
                     'correlation_id' => $correlationId,
                     'name' => $name,
                     'error' => $e->getMessage(),

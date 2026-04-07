@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Psychology;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PsychologistResource extends Model
+final class PsychologistResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Psychologist::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-group';

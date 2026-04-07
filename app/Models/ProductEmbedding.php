@@ -2,19 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ProductEmbedding extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use BelongsToTenant;
+    use HasFactory, TenantScoped;
 
         protected $table = 'product_embeddings';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'embeddable_type',
             'embeddable_id',
             'embedding',

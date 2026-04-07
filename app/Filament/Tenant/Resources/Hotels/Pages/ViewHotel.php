@@ -3,32 +3,50 @@
 namespace App\Filament\Tenant\Resources\Hotels\Pages;
 
 use App\Filament\Tenant\Resources\Hotels\HotelsResource;
+use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
+/**
+ * ViewHotel — страница просмотра записи отеля.
+ *
+ * Filament v3 Page: tenant-scoped, correlation_id tracing, audit logging.
+ * Без constructor injection — используем app() для получения сервисов.
+ *
+ * @package App\Filament\Tenant\Resources\Hotels\Pages
+ */
 final class ViewHotel extends ViewRecord
 {
     protected static string $resource = HotelsResource::class;
 
-    protected function afterLoad(): void
+    /**
+     * Действия в заголовке страницы просмотра.
+     *
+     * @return array<\Filament\Actions\Action>
+     */
+    protected function getHeaderActions(): array
     {
-        Log::channel('audit')->info('Hotels record viewed', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
-            'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
-        ]);
+        return [
+            EditAction::make()
+                ->label('Редактировать')
+                ->icon('heroicon-m-pencil-square'),
+        ];
     }
 
-    public function render()
+    /**
+     * Действия после загрузки записи.
+     *
+     * Логирует просмотр записи с correlation_id для аудита.
+     */
+    protected function afterLoad(): void
     {
-        Log::channel('audit')->debug('ViewHotel page rendered', [
+        app(LoggerInterface::class)->info('Hotel record viewed', [
             'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
+            'uuid' => $this->record->uuid ?? null,
+            'correlation_id' => $this->record->correlation_id ?? null,
+            'user_id' => filament()->auth()->id(),
+            'tenant_id' => filament()->getTenant()?->id,
+            'timestamp' => now()->toIso8601String(),
         ]);
-
-        return parent::render();
     }
 }

@@ -1,20 +1,55 @@
 <?php declare(strict_types=1);
 
+/**
+ * CacheWarmerRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/cachewarmerrequest
+ * @see https://catvrf.ru/docs/cachewarmerrequest
+ * @see https://catvrf.ru/docs/cachewarmerrequest
+ */
+
+
 namespace App\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CacheWarmerRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class CacheWarmerRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests
+ */
+final class CacheWarmerRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
-            return auth()->check() && auth()->user()->isAdmin();
+            return $this->guard->check() && $this->guard->user()->isAdmin();
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [
@@ -24,6 +59,11 @@ final class CacheWarmerRequest extends Model
             ];
         }
 
+        /**
+         * Handle messages operation.
+         *
+         * @throws \DomainException
+         */
         public function messages(): array
         {
             return [

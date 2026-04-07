@@ -2,14 +2,14 @@
 
 namespace App\Domains\RealEstate\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIPropertyMatcherService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIPropertyMatcherService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Подобрать недвижимость на основе текстовых предпочтений или описания "мечты"
          *
@@ -20,7 +20,7 @@ final class AIPropertyMatcherService extends Model
          */
         public function matchByDream(string $userDream, int $userId, string $correlationId): Collection
         {
-            Log::channel('audit')->info('AI matching by dream start', [
+            $this->logger->info('AI matching by dream start', [
                 'user_id' => $userId,
                 'dream' => $userDream,
                 'correlation_id' => $correlationId

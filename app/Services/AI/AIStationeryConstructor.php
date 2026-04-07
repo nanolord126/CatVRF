@@ -2,20 +2,28 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIStationeryConstructor extends Model
+use Illuminate\Http\Request;
+use App\Models\Stationery\StationeryGiftSet;
+use App\Models\Stationery\StationeryProduct;
+use App\Services\RecommendationService;
+use Illuminate\Support\Collection;
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AIStationeryConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private RecommendationService $recommendation,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private RecommendationService $recommendation,
+        private readonly LogManager $logger,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Matches gift sets and products to specific criteria: occasion, age, budget.
@@ -27,10 +35,10 @@ final class AIStationeryConstructor extends Model
          */
         public function getRecommendations(string $occasion, array $constraints): Collection
         {
-            Log::channel('recommend')->info('AI Stationery Matching started', [
+            $this->logger->channel('recommend')->info('AI Stationery Matching started', [
                 'occasion' => $occasion,
                 'budget' => $constraints['budget_cents'] ?? 'unlimited',
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             $query = StationeryGiftSet::where('theme', $occasion)
@@ -48,9 +56,9 @@ final class AIStationeryConstructor extends Model
                 $predefinedSets = $this->composeDynamicSet($occasion, $constraints);
             }
 
-            Log::channel('recommend')->info('AI Stationery Matching completed', [
+            $this->logger->channel('recommend')->info('AI Stationery Matching completed', [
                 'matches_found' => $predefinedSets->count(),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             return $predefinedSets;
@@ -83,7 +91,7 @@ final class AIStationeryConstructor extends Model
                     'name' => 'Selected AI Kit for ' . $theme,
                     'products' => $products,
                     'total_price' => $products->sum('price_cents'),
-                    'correlation_id' => $this->correlationId
+                    'correlation_id' => $this->correlationId()
                 ]
             ]);
         }
@@ -98,10 +106,10 @@ final class AIStationeryConstructor extends Model
             // Simulated ML prediction score [0.0 - 1.0]
             $score = (float) (random_int(650, 980) / 1000);
 
-            Log::channel('audit')->info('AI Popularity Score generated', [
+            $this->logger->channel('audit')->info('AI Popularity Score generated', [
                 'product_id' => $productId,
                 'score' => $score,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             return $score;

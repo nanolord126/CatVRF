@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class SurgeZone extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'logistics_surge_zones';
@@ -42,14 +41,14 @@ final class SurgeZone extends Model
             'correlation_id' => 'string',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant('id')) {
-                    $model->tenant_id = (int) tenant('id');
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()?->id) {
+                    $model->tenant_id = (int) tenant()?->id;
                 }
                 if (empty($model->is_active)) {
                     $model->is_active = true;
@@ -57,8 +56,8 @@ final class SurgeZone extends Model
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -109,7 +108,6 @@ final class SurgeZone extends Model
         public function getReasonLabel(): string
         {
             return match($this->reason) {
-                'raining' => 'Дождь/Плохая погода',
                 'peak_hour' => 'Час пик',
                 'holiday' => 'Праздничный день',
                 'extreme_demand' => 'Экстремально высокий спрос',

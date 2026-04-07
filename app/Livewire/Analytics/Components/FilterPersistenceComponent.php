@@ -2,34 +2,59 @@
 
 namespace App\Livewire\Analytics\Components;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class FilterPersistenceComponent extends Model
+/**
+ * Class FilterPersistenceComponent
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Analytics\Components
+ */
+final class FilterPersistenceComponent extends Component
 {
-    use HasFactory;
+    private string $storageKey = 'analytics_filters';
+        private array $filters = [];
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $storageKey = 'analytics_filters';
-        public array $filters = [];
-
+        /**
+         * Handle saveFilter operation.
+         *
+         * @throws \DomainException
+         */
         public function saveFilter(string $key, mixed $value): void
         {
             $this->filters[$key] = $value;
             $this->dispatch('filter-saved', key: $key, value: $value);
         }
 
+        /**
+         * Handle loadFilters operation.
+         *
+         * @throws \DomainException
+         */
         public function loadFilters(): array
         {
             return $this->filters;
         }
 
+        /**
+         * Handle clearFilters operation.
+         *
+         * @throws \DomainException
+         */
         public function clearFilters(): void
         {
             $this->filters = [];
             $this->dispatch('filters-cleared');
         }
 
+        /**
+         * Handle render operation.
+         *
+         * @throws \DomainException
+         */
         public function render()
         {
             return view('livewire.analytics.components.filter-persistence-component');

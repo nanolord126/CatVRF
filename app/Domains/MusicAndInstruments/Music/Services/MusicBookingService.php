@@ -2,22 +2,24 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicBookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MusicBookingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a studio booking.
          */
         public function bookStudio(int $studioId, Carbon $startsAt, Carbon $endsAt, int $userId): MusicBooking
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($studioId, $startsAt, $endsAt, $userId) {
+            return $this->db->transaction(function () use ($studioId, $startsAt, $endsAt, $userId) {
                 $studio = MusicStudio::lockForUpdate()->findOrFail($studioId);
                 $correlationId = (string) Str::uuid();
 
@@ -32,7 +34,7 @@ final class MusicBookingService extends Model
                     ->exists();
 
                 if ($isBooked) {
-                    throw new \Exception('Studio is already booked for this period.');
+                    throw new \DomainException('Studio is already booked for this period.');
                 }
 
                 $durationMinutes = $startsAt->diffInMinutes($endsAt);
@@ -49,7 +51,7 @@ final class MusicBookingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Music studio booked', [
+                $this->logger->info('Music studio booked', [
                     'booking_id' => $booking->id,
                     'studio_id' => $studioId,
                     'total_price' => $totalPriceCents,
@@ -80,14 +82,14 @@ final class MusicBookingService extends Model
             $booking = MusicBooking::where('user_id', $userId)->findOrFail($bookingId);
 
             if ($booking->status === 'cancelled') {
-                throw new \Exception('Booking is already cancelled.');
+                throw new \DomainException('Booking is already cancelled.');
             }
 
             $booking->update([
                 'status' => 'cancelled',
             ]);
 
-            Log::channel('audit')->info('Music booking cancelled', [
+            $this->logger->info('Music booking cancelled', [
                 'booking_id' => $booking->id,
                 'user_id' => $userId,
                 'correlation_id' => $booking->correlation_id,

@@ -2,18 +2,19 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AnalyticsService extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AnalyticsService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControl,
+            private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
-        ) {}
+            private readonly LogManager $logger,
+    ) {}
 
         /**
          * Возвращает ключевые метрики для тенанта.
@@ -29,10 +30,10 @@ final class AnalyticsService extends Model
         ): array {
             try {
                 if (!$this->rateLimiter->allowTenant($tenantId, 'analytics:metrics', 100, 60)) {
-                    throw new Exception('Rate limit exceeded for analytics', 429);
+                    throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(message: 'Rate limit exceeded for analytics');
                 }
 
-                Log::channel('audit')->info('Analytics metrics requested', [
+                $this->logger->channel('audit')->info('Analytics metrics requested', [
                     'tenant_id' => $tenantId,
                     'period' => $period,
                 ]);
@@ -42,7 +43,7 @@ final class AnalyticsService extends Model
 
                 return $metrics;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Analytics metrics request failed', [
+                $this->logger->channel('audit')->error('Analytics metrics request failed', [
                     'tenant_id' => $tenantId,
                     'period' => $period,
                     'error' => $e->getMessage(),
@@ -75,7 +76,7 @@ final class AnalyticsService extends Model
 
             try {
                 if (!$this->rateLimiter->allowTenant($tenantId, 'analytics:event', 1000, 60)) {
-                    throw new Exception('Rate limit exceeded for event tracking', 429);
+                    throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(message: 'Rate limit exceeded for event tracking');
                 }
 
                 // Отправка события в ClickHouse (асинхронно через queue)
@@ -90,7 +91,7 @@ final class AnalyticsService extends Model
 
                 // BigDataAggregator::queue($event);
 
-                Log::channel('audit')->info('Analytics event tracked', [
+                $this->logger->channel('audit')->info('Analytics event tracked', [
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'event_type' => $eventType,
@@ -99,7 +100,7 @@ final class AnalyticsService extends Model
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Analytics event tracking failed', [
+                $this->logger->channel('audit')->error('Analytics event tracking failed', [
                     'user_id' => $userId,
                     'event_type' => $eventType,
                     'error' => $e->getMessage(),
@@ -125,10 +126,10 @@ final class AnalyticsService extends Model
         ): array {
             try {
                 if (!$this->rateLimiter->allowTenant($tenantId, 'analytics:heatmap', 50, 60)) {
-                    throw new Exception('Rate limit exceeded for heatmap', 429);
+                    throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(message: 'Rate limit exceeded for heatmap');
                 }
 
-                Log::channel('audit')->info('Heatmap requested', [
+                $this->logger->channel('audit')->info('Heatmap requested', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                 ]);
@@ -138,7 +139,7 @@ final class AnalyticsService extends Model
 
                 return $heatmap;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Heatmap request failed', [
+                $this->logger->channel('audit')->error('Heatmap request failed', [
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

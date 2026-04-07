@@ -2,26 +2,29 @@
 
 namespace App\Http\Controllers\Api\Electronics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ElectronicsApiController extends Model
+final class ElectronicsApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ElectronicsService $service,
             private readonly ElectronicsAIConstructorService $aiService,
             private readonly FraudControlService $fraud,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * List gadgets with B2C/B2B dynamic pricing logic.
          */
         public function index(Request $request): JsonResponse
         {
             $correlationId = (string) Str::uuid();
-            Log::channel('audit')->info('LAYER-6: Electronics API Index', [
+            $this->logger->channel('audit')->info('LAYER-6: Electronics API Index', [
                 'user' => $request->user()?->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -30,18 +33,18 @@ final class ElectronicsApiController extends Model
                 $products = ElectronicsProduct::where('availability_status', 'in_stock')
                     ->when($isB2B, fn($q) => $q->where('is_b2b_available', true))
                     ->paginate(15);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $products,
                 ]);
             } catch (Throwable $e) {
-                Log::error('LAYER-6: ERROR index electronics', [
+                $this->logger->error('LAYER-6: ERROR index electronics', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Unable to fetch gadgets',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -77,18 +80,18 @@ final class ElectronicsApiController extends Model
                 );
                 // 3. Execution via Domain Service
                 $product = $this->service->createProduct($dto);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'id' => $product->id,
                     'correlation_id' => $correlationId,
                     'msg' => 'Product listed successfully'
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('LAYER-6: ERROR store electronics', [
+                $this->logger->channel('audit')->error('LAYER-6: ERROR store electronics', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Data inconsistent: ' . $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], 422);
@@ -109,9 +112,9 @@ final class ElectronicsApiController extends Model
                     correlationId: $correlationId
                 );
                 $result = $this->aiService->suggestCompatibility($dto);
-                return response()->json($result);
+                return $this->response->json($result);
             } catch (Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'AI Service Busy: ' . $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], 503);
@@ -130,20 +133,20 @@ final class ElectronicsApiController extends Model
                     'is_b2b' => 'boolean',
                 ]);
                 $dto = new OrderProcessDto(
-                    userId: (int) auth()->id(),
+                    userId: (int) $this->guard->id(),
                     productId: (int) $validated['product_id'],
                     quantity: (int) $validated['quantity'],
                     isB2B: $validated['is_b2b'] ?? false,
                     correlationId: $correlationId
                 );
                 $order = $this->service->processOrder($dto);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Order payment failed: ' . $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], 400);

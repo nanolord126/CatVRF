@@ -2,16 +2,18 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ServiceWarrantyController extends Model
+
+use App\Services\FraudControlService;
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ServiceWarrantyController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly WarrantyService $warrantyService
+        private readonly FraudControlService $fraud,
+            private readonly WarrantyService $warrantyService, private readonly LoggerInterface $logger
         ) {}
 
         public function index(Request $request): JsonResponse
@@ -27,18 +29,18 @@ final class ServiceWarrantyController extends Model
                     ->orderBy('created_at', 'desc')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $warranties,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Service warranty index failed', [
+                $this->logger->error('Service warranty index failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve service warranties',
                     'correlation_id' => $correlationId,
@@ -48,6 +50,8 @@ final class ServiceWarrantyController extends Model
 
         public function store(Request $request): JsonResponse
         {
+        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+
             $correlationId = Str::uuid()->toString();
 
             $validated = $request->validate([
@@ -66,23 +70,23 @@ final class ServiceWarrantyController extends Model
             try {
                 $warranty = $this->warrantyService->createServiceWarranty($validated);
 
-                Log::channel('audit')->info('Service warranty created', [
+                $this->logger->info('Service warranty created', [
                     'correlation_id' => $correlationId,
                     'warranty_id' => $warranty->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $warranty->load(['serviceOrder', 'client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Service warranty creation failed', [
+                $this->logger->error('Service warranty creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create service warranty',
                     'correlation_id' => $correlationId,
@@ -92,7 +96,7 @@ final class ServiceWarrantyController extends Model
 
         public function show(ServiceWarranty $warranty): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $warranty->load(['serviceOrder', 'client', 'vehicle']),
             ]);
@@ -116,23 +120,23 @@ final class ServiceWarrantyController extends Model
                     $validated['notes'] ?? null
                 );
 
-                Log::channel('audit')->info('Service warranty claim submitted', [
+                $this->logger->info('Service warranty claim submitted', [
                     'correlation_id' => $correlationId,
                     'warranty_id' => $warranty->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['serviceOrder', 'client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Service warranty claim failed', [
+                $this->logger->error('Service warranty claim failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -154,18 +158,18 @@ final class ServiceWarrantyController extends Model
                     $validated['notes'] ?? null
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['serviceOrder', 'client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Service warranty approval failed', [
+                $this->logger->error('Service warranty approval failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to approve warranty claim',
                     'correlation_id' => $correlationId,
@@ -187,18 +191,18 @@ final class ServiceWarrantyController extends Model
                     $validated['notes']
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['serviceOrder', 'client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Service warranty rejection failed', [
+                $this->logger->error('Service warranty rejection failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to reject warranty claim',
                     'correlation_id' => $correlationId,

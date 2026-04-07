@@ -36,57 +36,57 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     /**
      * UUID для трейсинга через систему
      */
-    protected string $correlationId;
+    private string $correlationId;
 
     /**
      * Tenant ID для изоляции данных
      */
-    protected int $tenantId;
+    private int $tenantId;
 
     /**
      * User ID получателя
      */
-    protected int $userId;
+    private int $userId;
 
     /**
      * Тип уведомления (payment, order, appointment, etc)
      */
-    protected string $type = 'generic';
+    private string $type = 'generic';
 
     /**
      * Приоритет доставки (high, normal, low)
      */
-    protected string $priority = 'normal';
+    private string $priority = 'normal';
 
     /**
      * Каналы доставки (mail, sms, push, database, web)
      */
-    protected array $channels = ['database'];
+    private array $channels = ['database'];
 
     /**
      * Данные для шаблонов
      */
-    protected array $data = [];
+    private array $data = [];
 
     /**
      * Время жизни уведомления (сек)
      */
-    protected ?int $ttl = null;
+    private ?int $ttl = null;
 
     /**
      * Попытки отправки
      */
-    protected int $maxAttempts = 3;
+    private int $maxAttempts = 3;
 
     /**
      * Задержка между попытками (сек)
      */
-    protected int $backoffDelay = 300;
+    private int $backoffDelay = 300;
 
     /**
      * Проверка дозволения уведомления (opt-out)
      */
-    protected bool $checkPreferences = true;
+    private bool $checkPreferences = true;
 
     /**
      * Конструктор
@@ -158,9 +158,9 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     /**
      * Установить каналы доставки
      */
-    public function via(...$channels): self
+    public function setChannels(string ...$channels): self
     {
-        $this->channels = is_array($channels[0]) ? $channels[0] : $channels;
+        $this->channels = $channels;
         return $this;
     }
 

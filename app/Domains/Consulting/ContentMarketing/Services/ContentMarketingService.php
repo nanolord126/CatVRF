@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\ContentMarketing\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\ContentMarketing\Models\StrategyProject;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class ContentMarketingService extends Model
+final readonly class ContentMarketingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createProject(int $strategistId,$projectType,$strategyHours,$dueDate,string $correlationId=""):StrategyProject{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("content:strat:".auth()->id(),9))throw new \RuntimeException("Too many",429);RateLimiter::hit("content:strat:".auth()->id(),3600);
-    return DB::transaction(function()use($strategistId,$projectType,$strategyHours,$dueDate,$correlationId){$s=ContentStrategist::findOrFail($strategistId);$total=(int)($s->price_kopecks_per_hour*$strategyHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'content_marketing','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$p=StrategyProject::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'strategist_id'=>$strategistId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','project_type'=>$projectType,'strategy_hours'=>$strategyHours,'due_date'=>$dueDate,'tags'=>['marketing'=>true]]);Log::channel('audit')->info('Content strategy project created',['project_id'=>$p->id,'correlation_id'=>$correlationId]);return $p;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): StrategyProject {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'content_marketing:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): StrategyProject {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'content_marketing_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = StrategyProject::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['contentmarketing' => true],
+            ]);
+
+            $this->logger->info('ContentMarketingService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeProject(int $projectId,string $correlationId=""):StrategyProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=StrategyProject::findOrFail($projectId);if($p->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$p->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$p->payout_kopecks,'marketing_payout',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Content strategy project completed',['project_id'=>$p->id]);return $p;});}
-    public function cancelProject(int $projectId,string $correlationId=""):StrategyProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=StrategyProject::findOrFail($projectId);if($p->status==='completed')throw new \RuntimeException("Cannot cancel",400);$p->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($p->payment_status==='completed')$this->wallet->credit(tenant()->id,$p->total_kopecks,'marketing_refund',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Content strategy project cancelled',['project_id'=>$p->id]);return $p;});}
-    public function getProject(int $projectId):StrategyProject{return StrategyProject::findOrFail($projectId);}
-    public function getUserProjects(int $clientId){return StrategyProject::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): StrategyProject
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): StrategyProject {
+            $project = StrategyProject::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('ContentMarketingService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): StrategyProject
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): StrategyProject {
+            $project = StrategyProject::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('ContentMarketingService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): StrategyProject
+    {
+        return StrategyProject::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return StrategyProject::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

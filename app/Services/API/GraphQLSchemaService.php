@@ -2,14 +2,19 @@
 
 namespace App\Services\API;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GraphQLSchemaService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class GraphQLSchemaService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Получает полную GraphQL схему
          *
@@ -258,9 +263,10 @@ final class GraphQLSchemaService extends Model
                 $errors[] = 'Suspicious query pattern detected';
             }
 
-            Log::channel('api')->debug('Query validation', [
+            $this->logger->channel('api')->debug('Query validation', [
                 'query' => substr($query, 0, 100),
                 'errors' => $errors,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [

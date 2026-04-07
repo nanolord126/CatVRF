@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api\Hobby;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class HobbyApiController extends Model
+final class HobbyApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly AIHobbyConstructor $aiConstructor
-        ) {}
+            private readonly AIHobbyConstructor $aiConstructor,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * GET /api/hobby/catalog
          * List all active DIY materials and tools.
@@ -27,14 +30,14 @@ final class HobbyApiController extends Model
                     ->when($request->query('min_price'), fn($q) => $q->where('price_b2c', '>=', (int)$request->query('min_price')))
                     ->latest()
                     ->paginate(15);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $products,
                     'correlation_id' => $cid
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Hobby Catalog Error', ['e' => $e->getMessage(), 'cid' => $cid]);
-                return response()->json(['error' => 'Catalog failure'], 500);
+                $this->logger->channel('audit')->error('Hobby Catalog Error', ['e' => $e->getMessage(), 'cid' => $cid]);
+                return $this->response->json(['error' => 'Catalog failure'], 500);
             }
         }
         /**
@@ -53,15 +56,15 @@ final class HobbyApiController extends Model
                 $dto = HobbyAIRequestDto::fromRequest($request);
                 $dto->correlationId = $cid;
                 $suggestions = $this->aiConstructor->matchKitsToUser($dto);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'matched_kits' => $suggestions,
                     'count' => $suggestions->count(),
                     'correlation_id' => $cid
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Hobby AI Match Error', ['e' => $e->getMessage(), 'cid' => $cid]);
-                return response()->json(['error' => 'AI logic failure'], 503);
+                $this->logger->channel('audit')->error('Hobby AI Match Error', ['e' => $e->getMessage(), 'cid' => $cid]);
+                return $this->response->json(['error' => 'AI logic failure'], 503);
             }
         }
         /**
@@ -74,15 +77,15 @@ final class HobbyApiController extends Model
             try {
                 $kit = HobbyKit::with(['store', 'tutorials'])->findOrFail($id);
                 // AI Prediction surrogate
-                $prediction = $this->aiConstructor->predictFeasibility(auth()->id() ?? 0, $id);
-                return response()->json([
+                $prediction = $this->aiConstructor->predictFeasibility($this->guard->id() ?? 0, $id);
+                return $this->response->json([
                     'success' => true,
                     'kit' => $kit,
                     'ai_prediction' => $prediction,
                     'correlation_id' => $cid
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['error' => 'Kit not found'], 404);
+                return $this->response->json(['error' => 'Kit not found'], 404);
             }
         }
 }

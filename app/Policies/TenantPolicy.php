@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class TenantPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Platform admin can do anything
          */
@@ -18,7 +19,7 @@ final class TenantPolicy extends Model
             if ($user->isPlatformAdmin()) {
                 return true;
             }
-            return null;
+            return false;
         }
 
         /**
@@ -28,7 +29,7 @@ final class TenantPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($tenant->tenant_id) && $user->tenant_id !== $tenant->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $tenant->tenant_id,
@@ -47,7 +48,7 @@ final class TenantPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -65,7 +66,7 @@ final class TenantPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

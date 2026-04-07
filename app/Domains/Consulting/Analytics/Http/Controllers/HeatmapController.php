@@ -2,14 +2,15 @@
 
 namespace App\Domains\Consulting\Analytics\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HeatmapController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final readonly class HeatmapController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a new HeatmapController instance.
          *
@@ -20,9 +21,8 @@ final class HeatmapController extends Model
         public function __construct(
             private readonly HeatmapGeneratorService $heatmapGenerator,
             private readonly HeatmapExportService $exportService,
-            private readonly ScreenshotService $screenshotService
-        ) {
-        }
+            private readonly ScreenshotService $screenshotService, private readonly LoggerInterface $logger
+        ) {}
 
         /**
          * Get geo-heatmap data with optional filtering.
@@ -75,7 +75,7 @@ final class HeatmapController extends Model
                 // Verify tenant authorization
                 $this->authorizeForTenant($validated['tenant_id']);
 
-                Log::channel('audit')->info('Geo-heatmap data requested', [
+                $this->logger->info('Geo-heatmap data requested', [
                     'tenant_id' => $validated['tenant_id'],
                     'vertical' => $validated['vertical'] ?? null,
                     'activity_type' => $validated['activity_type'] ?? null,
@@ -92,7 +92,7 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'points' => $heatmapData['points'] ?? [],
                     'stats' => $heatmapData['stats'] ?? [],
                     'cache_info' => $heatmapData['cache_info'] ?? [],
@@ -100,25 +100,25 @@ final class HeatmapController extends Model
                 ]);
 
             } catch (ValidationException $e) {
-                Log::channel('audit')->warning('Geo-heatmap validation failed', [
+                $this->logger->warning('Geo-heatmap validation failed', [
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Validation failed',
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Geo-heatmap generation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo-heatmap generation failed', [
                     'error_message' => $e->getMessage(),
                     'error_trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Heatmap generation failed',
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -171,7 +171,7 @@ final class HeatmapController extends Model
 
                 $this->authorizeForTenant($validated['tenant_id']);
 
-                Log::channel('audit')->info('Click-heatmap data requested', [
+                $this->logger->info('Click-heatmap data requested', [
                     'tenant_id' => $validated['tenant_id'],
                     'page_url' => $validated['page_url'],
                     'device_type' => $validated['device_type'] ?? null,
@@ -187,7 +187,7 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'clicks' => $heatmapData['clicks'] ?? [],
                     'stats' => $heatmapData['stats'] ?? [],
                     'cache_info' => $heatmapData['cache_info'] ?? [],
@@ -195,24 +195,24 @@ final class HeatmapController extends Model
                 ]);
 
             } catch (ValidationException $e) {
-                Log::channel('audit')->warning('Click-heatmap validation failed', [
+                $this->logger->warning('Click-heatmap validation failed', [
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Validation failed',
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Click-heatmap generation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Click-heatmap generation failed', [
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Heatmap generation failed',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -259,7 +259,7 @@ final class HeatmapController extends Model
 
                 $this->authorizeForTenant($validated['tenant_id']);
 
-                Log::channel('audit')->info('Page screenshot requested', [
+                $this->logger->info('Page screenshot requested', [
                     'tenant_id' => $validated['tenant_id'],
                     'page_url' => $validated['page_url'],
                     'correlation_id' => $correlationId,
@@ -271,25 +271,25 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'screenshot' => $screenshot,
                     'correlation_id' => $correlationId,
                 ]);
 
             } catch (ValidationException $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Validation failed',
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Screenshot capture failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Screenshot capture failed', [
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Screenshot capture failed',
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -322,7 +322,7 @@ final class HeatmapController extends Model
 
                 $this->authorizeForTenant($validated['tenant_id']);
 
-                Log::channel('audit')->info('Geo-heatmap PNG export requested', [
+                $this->logger->info('Geo-heatmap PNG export requested', [
                     'tenant_id' => $validated['tenant_id'],
                     'html_length' => \strlen($validated['heatmap_html']),
                     'correlation_id' => $correlationId,
@@ -335,18 +335,18 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'export' => $export,
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Geo-heatmap PNG export failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo-heatmap PNG export failed', [
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Export failed',
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -387,13 +387,13 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'export' => $export,
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'PDF export failed',
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -430,13 +430,13 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'export' => $export,
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Export failed',
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -476,13 +476,13 @@ final class HeatmapController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'export' => $export,
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'PDF export failed',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -502,11 +502,12 @@ final class HeatmapController extends Model
         private function authorizeForTenant(int $tenantId): void
         {
             // Verify tenant isolation
-            $userTenantId = \filament()->getTenant()->id;
+            $userTenantId = \tenant()->id;
             if ($userTenantId !== $tenantId) {
-                Log::channel('audit')->warning('Unauthorized tenant access attempt', [
+                $this->logger->warning('Unauthorized tenant access attempt', [
                     'user_tenant_id' => $userTenantId,
                     'requested_tenant_id' => $tenantId,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 $this->authorize('view-analytics');
@@ -520,6 +521,6 @@ final class HeatmapController extends Model
          */
         private function generateTraceId(): string
         {
-            return \now()->timestamp . '-' . Str::random(8);
+            return \Carbon::now()->timestamp . '-' . Str::random(8);
         }
 }

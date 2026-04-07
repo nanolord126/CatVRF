@@ -2,18 +2,19 @@
 
 namespace App\Domains\Pharmacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class B2BService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Закупка партии лекарств у поставщика (B2B).
@@ -22,12 +23,12 @@ final class B2BService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            if (RateLimiter::tooManyAttempts("pharmacy:b2b:".$pharmacyId, 10)) {
+            if ($this->rateLimiter->tooManyAttempts("pharmacy:b2b:".$pharmacyId, 10)) {
                 throw new \RuntimeException("B2B purchase frequency limit exceeded.", 429);
             }
-            RateLimiter::hit("pharmacy:b2b:".$pharmacyId, 3600);
+            $this->rateLimiter->hit("pharmacy:b2b:".$pharmacyId, 3600);
 
-            return DB::transaction(function () use ($pharmacyId, $supplierId, $items, $correlationId) {
+            return $this->db->transaction(function () use ($pharmacyId, $supplierId, $items, $correlationId) {
                 $pharmacy = Pharmacy::findOrFail($pharmacyId);
                 $supplier = PharmacySupplier::findOrFail($supplierId);
 
@@ -37,11 +38,7 @@ final class B2BService extends Model
                 }
 
                 // 2. Fraud Check (ПОД/ФТ)
-                $this->fraud->check([
-                    "user_id" => $pharmacyId,
-                    "operation_type" => "pharmacy_b2b_purchase",
-                    "correlation_id" => $correlationId
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 $totalPrice = 0;
                 foreach ($items as $item) {
@@ -68,12 +65,9 @@ final class B2BService extends Model
                 $this->wallet->hold(
                     $pharmacy->owner_id,
                     $totalPrice,
-                    "pharmacy_b2b_hold",
-                    "B2B Order #{$order->uuid}",
-                    $correlationId
-                );
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::HOLD, $correlationId, null, null, null);
 
-                Log::channel("audit")->info("Pharmacy B2B: order initiated", [
+                $this->logger->info("Pharmacy B2B: order initiated", [
                     "order_uuid" => $order->uuid,
                     "pharmacy" => $pharmacyId,
                     "supplier" => $supplierId
@@ -91,7 +85,7 @@ final class B2BService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = B2BOrder::with(["pharmacy", "supplier"])->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $receivedCodes, $correlationId) {
+            $this->db->transaction(function () use ($order, $receivedCodes, $correlationId) {
                 // Имитация интеграции с ГИС МТ (Честный ЗНАК)
                 foreach ($receivedCodes as $code) {
                     if (!Str::startsWith($code, "01") || strlen($code) < 20) {
@@ -103,11 +97,7 @@ final class B2BService extends Model
 
                 // Разморозка и выплата
                 $this->wallet->releaseHold($order->pharmacy->owner_id, $order->total_amount, $correlationId);
-                $this->wallet->credit($order->supplier->owner_id, $payout, "pharmacy_b2b_payout", "Payment for B2B Order #{$order->uuid}", $correlationId);
-
-                $order->update(["status" => "completed", "completed_at" => now()]);
-
-                Log::channel("audit")->info("Pharmacy B2B: execution completed with GIS MT verification", [
+                $this->wallet->credit($order->supplier->owner_id, $payout, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     "order_id" => $orderId,
                     "codes_count" => count($receivedCodes)
                 ]);

@@ -2,20 +2,19 @@
 
 namespace App\Domains\Auto\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CarWashReminderJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class CarWashReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
         private readonly string $type; // '24h' or '2h'
 
-        public function __construct(string $type = '24h')
+        public function __construct(string $type = '24h', private readonly LoggerInterface $logger)
         {
             $this->correlationId = Str::uuid()->toString();
             $this->type = $type;
@@ -24,15 +23,15 @@ final class CarWashReminderJob extends Model
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Car wash reminder job started', [
+            $this->logger->info('Car wash reminder job started', [
                 'correlation_id' => $this->correlationId,
                 'type' => $this->type,
             ]);
 
             try {
                 $targetTime = $this->type === '24h'
-                    ? now()->addHours(24)
-                    : now()->addHours(2);
+                    ? Carbon::now()->addHours(24)
+                    : Carbon::now()->addHours(2);
 
                 $bookings = CarWashBooking::where('status', 'confirmed')
                     ->whereBetween('scheduled_at', [
@@ -41,7 +40,7 @@ final class CarWashReminderJob extends Model
                     ])
                     ->whereDoesntHave('reminders', function ($query) {
                         $query->where('type', $this->type)
-                            ->where('sent_at', '>=', now()->subHours(1));
+                            ->where('sent_at', '>=', Carbon::now()->subHours(1));
                     })
                     ->with('user')
                     ->get();
@@ -50,13 +49,13 @@ final class CarWashReminderJob extends Model
                     $booking->user->notify(new CarWashReminderNotification($booking, $this->type));
                 }
 
-                Log::channel('audit')->info('Car wash reminders sent', [
+                $this->logger->info('Car wash reminders sent', [
                     'correlation_id' => $this->correlationId,
                     'type' => $this->type,
                     'sent_count' => $bookings->count(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car wash reminder job failed', [
+                $this->logger->error('Car wash reminder job failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

@@ -2,20 +2,18 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\FlowerOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\FlowerOrderResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListFlowerOrders extends Model
+final class ListFlowerOrders extends ListRecords
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FlowerOrderResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\CreateAction::make(),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

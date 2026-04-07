@@ -1,234 +1,179 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyMaster;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautySalon;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
-final class MasterResource extends Model
+final class MasterResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = BeautyMaster::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static ?string $model = Master::class;
-        protected static ?string $navigationIcon = 'heroicon-o-user-group';
-        protected static ?string $navigationLabel = 'Мастера';
-        protected static ?string $navigationGroup = 'Beauty & Wellness';
+    protected static ?string $navigationIcon   = 'heroicon-o-user';
+    protected static ?string $navigationGroup  = 'Beauty';
+    protected static ?string $navigationLabel  = 'Мастера';
+    protected static ?string $modelLabel       = 'Мастер';
+    protected static ?string $pluralModelLabel = 'Мастера';
+    protected static ?int    $navigationSort   = 20;
 
-        public static function form(Form $form): Form
-        {
-            return $form
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Hidden::make('uuid')
+                ->default(fn () => Str::uuid()->toString()),
+            Hidden::make('correlation_id')
+                ->default(fn () => Str::uuid()->toString()),
+
+            Section::make('Основная информация')
+                ->columns(2)
                 ->schema([
-                    Forms\Components\Section::make('Основная информация')
-                        ->description('Персональные данные мастера')
-                        ->schema([
-                            Forms\Components\TextInput::make('uuid')
-                                ->default(fn () => (string) Str::uuid())
-                                ->disabled()
-                                ->dehydrated()
-                                ->required(),
-                            Forms\Components\TextInput::make('full_name')
-                                ->label('ФИО')
-                                ->required()
-                                ->maxLength(255)
-                                ->placeholder('Введите ФИО мастера'),
-                            Forms\Components\Select::make('salon_id')
-                                ->label('Основной салон')
-                                ->relationship(
-                                    'salon',
-                                    'name',
-                                    fn (Builder $query) => $query->where('tenant_id', tenant('id'))
-                                )
-                                ->required()
-                                ->preload(),
-                            Forms\Components\TextInput::make('phone')
-                                ->label('Телефон')
-                                ->tel()
-                                ->nullable(),
-                            Forms\Components\TextInput::make('email')
-                                ->label('Email')
-                                ->email()
-                                ->nullable(),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Специализация и квалификация')
-                        ->description('Навыки и опыт мастера')
-                        ->schema([
-                            Forms\Components\TagsInput::make('specialization')
-                                ->label('Специализация (навыки)')
-                                ->placeholder('Добавьте навыки через запятую')
-                                ->required()
-                                ->helperText('Например: стрижка, окрашивание, укладка'),
-                            Forms\Components\TextInput::make('experience_years')
-                                ->label('Стаж работы (лет)')
-                                ->numeric()
-                                ->required()
-                                ->minValue(0)
-                                ->maxValue(70),
-                            Forms\Components\RichEditor::make('bio')
-                                ->label('Биография')
-                                ->columnSpanFull()
-                                ->placeholder('Расскажите о себе и своём опыте'),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Расписание')
-                        ->description('Время работы мастера')
-                        ->schema([
-                            Forms\Components\TextInput::make('schedule')
-                                ->label('Основное расписание')
-                                ->placeholder('Пн-Пт: 10:00-20:00, Сб: 10:00-18:00')
-                                ->nullable(),
-                            Forms\Components\TextInput::make('break_time')
-                                ->label('Время обеда')
-                                ->placeholder('13:00-14:00')
-                                ->nullable(),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Услуги')
-                        ->description('Список услуг, которые предоставляет мастер')
-                        ->schema([
-                            Forms\Components\Repeater::make('services')
-                                ->label('Услуги')
-                                ->relationship('services')
-                                ->schema([
-                                    Forms\Components\TextInput::make('name')
-                                        ->label('Название услуги')
-                                        ->required(),
-                                    Forms\Components\TextInput::make('price')
-                                        ->label('Цена (руб)')
-                                        ->numeric()
-                                        ->required(),
-                                    Forms\Components\TextInput::make('duration_minutes')
-                                        ->label('Длительность (мин)')
-                                        ->numeric()
-                                        ->required(),
-                                ])
-                                ->columns(3)
-                                ->collapsible()
-                                ->collapsed(),
-                        ]),
-
-                    Forms\Components\Section::make('Портфолио')
-                        ->description('Фото работ и примеры')
-                        ->schema([
-                            Forms\Components\FileUpload::make('portfolio_images')
-                                ->label('Фото работ')
-                                ->multiple()
-                                ->directory('masters/portfolio')
-                                ->visibility('public'),
-                        ]),
-
-                    Forms\Components\Section::make('Статус')
-                        ->description('Настройки активности')
-                        ->schema([
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Мастер активен')
-                                ->default(true),
-                            Forms\Components\Toggle::make('is_verified')
-                                ->label('Верифицирован')
-                                ->default(false),
-                            Forms\Components\TextInput::make('rating')
-                                ->label('Рейтинг')
-                                ->numeric()
-                                ->disabled()
-                                ->default(0),
-                        ])->columns(3),
-
-                    Forms\Components\Hidden::make('tenant_id')
-                        ->default(fn () => tenant('id')),
-                    Forms\Components\Hidden::make('correlation_id')
-                        ->default(fn () => (string) Str::uuid()),
-                ]);
-        }
-
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    Tables\Columns\TextColumn::make('full_name')
-                        ->label('ФИО')
-                        ->searchable()
-                        ->sortable()
-                        ->weight('bold'),
-                    Tables\Columns\TextColumn::make('salon.name')
+                    Select::make('salon_id')
                         ->label('Салон')
+                        ->options(function () {
+                            return BeautySalon::query()
+                                ->where('tenant_id', filament()->getTenant()?->id)
+                                ->where('is_active', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->required()
                         ->searchable()
-                        ->sortable(),
-                    Tables\Columns\TextColumn::make('specialization')
+                        ->columnSpan(2),
+                    TextInput::make('name')
+                        ->label('ФИО мастера')
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpan(2),
+                    TextInput::make('specialization')
                         ->label('Специализация')
-                        ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)
-                        ->limit(40),
-                    Tables\Columns\TextColumn::make('experience_years')
-                        ->label('Стаж (лет)')
-                        ->sortable()
-                        ->alignCenter(),
-                    Tables\Columns\BadgeColumn::make('rating')
+                        ->required()
+                        ->maxLength(255)
+                        ->placeholder('Например: парикмахер, мастер маникюра'),
+                    TextInput::make('experience_years')
+                        ->label('Опыт работы (лет)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(50)
+                        ->default(0),
+                    TextInput::make('phone')
+                        ->label('Телефон')
+                        ->tel()
+                        ->maxLength(20),
+                    TextInput::make('email')
+                        ->label('Email')
+                        ->email()
+                        ->maxLength(255),
+                ]),
+
+            Section::make('Настройки')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('rating')
                         ->label('Рейтинг')
-                        ->numeric(1)
-                        ->sortable()
-                        ->color(fn ($state) => match (true) {
-                            $state >= 4.5 => 'success',
-                            $state >= 3.5 => 'info',
-                            default => 'warning',
-                        }),
-                    Tables\Columns\TextColumn::make('review_count')
-                        ->label('Отзывы')
-                        ->sortable()
-                        ->alignCenter(),
-                    Tables\Columns\BooleanColumn::make('is_active')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(5)
+                        ->step(0.1)
+                        ->default(0),
+                    TextInput::make('review_count')
+                        ->label('Количество отзывов')
+                        ->numeric()
+                        ->default(0),
+                    Toggle::make('is_active')
                         ->label('Активен')
-                        ->sortable(),
-                    Tables\Columns\BooleanColumn::make('is_verified')
-                        ->label('Верифицирован')
-                        ->sortable(),
-                    Tables\Columns\TextColumn::make('created_at')
-                        ->label('Дата регистрации')
-                        ->date()
-                        ->sortable()
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('salon_id')
-                        ->label('Салон')
-                        ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id'))),
-                    Tables\Filters\TernaryFilter::make('is_active')
-                        ->label('Активен'),
-                    Tables\Filters\TernaryFilter::make('is_verified')
-                        ->label('Верифицирован'),
-                ])
-                ->actions([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
-                        Tables\Actions\BulkAction::make('activate')
-                            ->label('Активировать')
-                            ->icon('heroicon-o-check')
-                            ->action(fn ($records) => $records->each->update(['is_active' => true])),
-                        Tables\Actions\BulkAction::make('deactivate')
-                            ->label('Деактивировать')
-                            ->icon('heroicon-o-x-mark')
-                            ->action(fn ($records) => $records->each->update(['is_active' => false])),
-                    ]),
-                ]);
-        }
+                        ->default(true),
+                ]),
+        ]);
+    }
 
-        public static function getEloquentQuery(): Builder
-        {
-            return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'));
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->label('ФИО')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('salon.name')
+                    ->label('Салон')
+                    ->searchable(),
+                TextColumn::make('specialization')
+                    ->label('Специализация')
+                    ->searchable(),
+                TextColumn::make('experience_years')
+                    ->label('Опыт (лет)')
+                    ->sortable(),
+                TextColumn::make('rating')
+                    ->label('Рейтинг')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn (float $state): string => match (true) {
+                        $state >= 4.5 => 'success',
+                        $state >= 3.5 => 'warning',
+                        default       => 'danger',
+                    }),
+                IconColumn::make('is_active')
+                    ->label('Активен')
+                    ->boolean(),
+                TextColumn::make('created_at')
+                    ->label('Создан')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('salon_id')
+                    ->label('Салон')
+                    ->options(function () {
+                        return BeautySalon::query()
+                            ->where('tenant_id', filament()->getTenant()?->id)
+                            ->pluck('name', 'id');
+                    }),
+                TernaryFilter::make('is_active')->label('Активность'),
+            ])
+            ->actions([
+                EditAction::make(),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListMasters::route('/'),
-                'create' => Pages\CreateMaster::route('/create'),
-                'view' => Pages\ViewMaster::route('/{record}'),
-                'edit' => Pages\EditMaster::route('/{record}/edit'),
-            ];
-        }
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->whereHas('salon', function (Builder $query) {
+                $query->where('tenant_id', filament()->getTenant()?->id);
+            });
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index'  => Pages\ListMasters::route('/'),
+            'create' => Pages\CreateMaster::route('/create'),
+            'edit'   => Pages\EditMaster::route('/{record}/edit'),
+        ];
+    }
 }

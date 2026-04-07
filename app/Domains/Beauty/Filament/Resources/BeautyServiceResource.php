@@ -1,15 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\BeautyService;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
 
-final class BeautyServiceResource extends Model
+final class BeautyServiceResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeautyService::class;
 
         protected static ?string $slug = 'marketplace/beauty/services';
@@ -54,7 +65,7 @@ final class BeautyServiceResource extends Model
                 TextColumn::make('category'),
                 TextColumn::make('price')->numeric()->sortable(),
                 TextColumn::make('duration_minutes')->numeric(),
-                BadgeColumn::make('status')->colors(['active' => 'success', 'inactive' => 'secondary']),
+                TextColumn::make('status')->badge()->colors(['active' => 'success', 'inactive' => 'secondary']),
                 TextColumn::make('rating')->numeric(),
             ])->filters([])->actions([])->bulkActions([]);
         }

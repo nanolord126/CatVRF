@@ -2,14 +2,31 @@
 
 namespace App\Services\Compliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Log\LogManager;
 
-final class MercuryService extends Model
+
+/**
+ * Class MercuryService
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Services\Compliance
+ */
+final readonly class MercuryService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     // Dependencies injected via constructor
         // Add private readonly properties here
         /**
@@ -31,8 +48,8 @@ final class MercuryService extends Model
                 if ($vsdId === 'test_vsd') return true;
 
                 return $response->successful() && $response->json('status') === 'COMPLETED';
-            } catch (Throwable $e) {
-                Log::channel('fraud_alert')->error('Mercury VSD verification failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('fraud_alert')->error('Mercury VSD verification failed', [
                     'vsd_id' => $vsdId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId

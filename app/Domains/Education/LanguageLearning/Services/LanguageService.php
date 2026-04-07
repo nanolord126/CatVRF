@@ -2,28 +2,28 @@
 
 namespace App\Domains\Education\LanguageLearning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class LanguageService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class LanguageService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Регистрация новой школы.
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function registerSchool(array $data, string $correlationId): LanguageSchool
         {
-            return DB::transaction(function () use ($data, $correlationId) {
-                $this->fraudControl->check(['operation' => 'register_school', 'data' => $data]);
+            return $this->db->transaction(function () use ($data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'register_school', amount: 0, correlationId: $correlationId ?? '');
 
-                Log::channel('audit')->info('Registering new language school', [
+                $this->logger->info('Registering new language school', [
                     'name' => $data['name'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -32,7 +32,7 @@ final class LanguageService extends Model
                     'correlation_id' => $correlationId,
                 ]));
 
-                Log::channel('audit')->info('Language school registered successfully', [
+                $this->logger->info('Language school registered successfully', [
                     'school_id' => $school->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -46,12 +46,12 @@ final class LanguageService extends Model
          */
         public function createCourse(array $data, string $correlationId): LanguageCourse
         {
-            return DB::transaction(function () use ($data, $correlationId) {
-                $this->fraudControl->check(['operation' => 'create_course', 'data' => $data]);
+            return $this->db->transaction(function () use ($data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'create_course', amount: 0, correlationId: $correlationId ?? '');
 
                 $teacher = LanguageTeacher::findOrFail($data['teacher_id']);
 
-                Log::channel('audit')->info('Creating language course', [
+                $this->logger->info('Creating language course', [
                     'title' => $data['title'],
                     'teacher' => $teacher->full_name,
                     'correlation_id' => $correlationId,
@@ -65,7 +65,7 @@ final class LanguageService extends Model
                 // Автоматическое создание первого вводного урока
                 $course->lessons()->create([
                     'topic' => 'Introductory Lesson: Placement Test',
-                    'scheduled_at' => now()->addDays(2),
+                    'scheduled_at' => Carbon::now()->addDays(2),
                     'duration_minutes' => 45,
                     'status' => 'scheduled',
                     'correlation_id' => $correlationId,
@@ -94,10 +94,10 @@ final class LanguageService extends Model
          */
         public function updateAvailability(int $teacherId, array $availability, string $correlationId): void
         {
-            DB::transaction(function () use ($teacherId, $availability, $correlationId) {
+            $this->db->transaction(function () use ($teacherId, $availability, $correlationId) {
                 $teacher = LanguageTeacher::findOrFail($teacherId);
 
-                Log::channel('audit')->info('Updating teacher availability', [
+                $this->logger->info('Updating teacher availability', [
                     'teacher_id' => $teacherId,
                     'correlation_id' => $correlationId,
                 ]);

@@ -2,96 +2,114 @@
 
 namespace App\Domains\Pet\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class CalculateClinicEarningsJob extends Model
+final class CalculateClinicEarningsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
+    use InteractsWithQueue;
+    use Queueable;
 
-        public function __construct(
-            private readonly int $clinicId = 0,
-            private readonly ?\DateTime $month = null,
-            private readonly string $correlationId = '',
-        ) {
-            $this->onQueue('default');
-        }
+    private readonly string $resolvedCorrelationId;
 
-        public function handle(): void
-        {
-            try {
-                $clinic = PetClinic::find($this->clinicId);
+    public function __construct(
+        private readonly int $clinicId = 0,
+        private readonly string $periodStart = '',
+        private readonly string $periodEnd = '',
+        private readonly string $correlationId = '',
+    ) {
+        $this->resolvedCorrelationId = $this->correlationId !== '' ? $this->correlationId : (string) Str::uuid();
+        $this->onQueue('earnings');
+    }
 
-                if (!$clinic) {
-                    Log::warning('Pet clinic not found', [
-                        'clinic_id' => $this->clinicId,
-                        'correlation_id' => $this->correlationId,
-                    ]);
-                    return;
-                }
+    public function handle(LoggerInterface $logger): void
+    {
+        $logger->info('CalculateClinicEarningsJob: Starting earnings calculation', [
+            'clinic_id' => $this->clinicId,
+            'period_start' => $this->periodStart,
+            'period_end' => $this->periodEnd,
+            'correlation_id' => $this->resolvedCorrelationId,
+        ]);
 
-                DB::transaction(function () use ($clinic) {
-                    // Calculate appointment earnings
-                    $appointmentEarnings = $clinic->appointments()
-                        ->whereMonth('created_at', $this->month->month)
-                        ->whereYear('created_at', $this->month->year)
-                        ->where('payment_status', 'paid')
-                        ->sum('commission_amount');
+        try {
+            $clinic = PetClinic::findOrFail($this->clinicId);
 
-                    // Calculate boarding earnings
-                    $boardingEarnings = $clinic->boardingReservations()
-                        ->whereMonth('created_at', $this->month->month)
-                        ->whereYear('created_at', $this->month->year)
-                        ->where('payment_status', 'paid')
-                        ->sum('commission_amount');
+            $completedAppointments = PetAppointment::where('clinic_id', $this->clinicId)
+                ->where('status', 'completed')
+                ->whereBetween('completed_at', [$this->periodStart, $this->periodEnd])
+                ->get();
 
-                    $totalEarnings = $appointmentEarnings + $boardingEarnings;
+            $totalRevenue = 0;
+            $totalPlatformFee = 0;
+            $totalClinicEarnings = 0;
+            $appointmentCount = $completedAppointments->count();
 
-                    BalanceTransaction::create([
-                        'tenant_id' => $clinic->tenant_id,
-                        'wallet_id' => $clinic->owner->wallet->id,
-                        'type' => 'commission',
-                        'amount' => (int)($totalEarnings * 100),
-                        'status' => 'completed',
-                        'reference_type' => 'pet_clinic_earnings',
-                        'reference_id' => $clinic->id,
-                        'correlation_id' => $this->correlationId,
-                        'metadata' => [
-                            'month' => $this->month->format('Y-m'),
-                            'appointment_earnings' => $appointmentEarnings,
-                            'boarding_earnings' => $boardingEarnings,
-                            'total_earnings' => $totalEarnings,
-                        ],
-                    ]);
+            foreach ($completedAppointments as $appointment) {
+                $appointmentRevenue = $appointment->total_price_kopecks;
+                $platformFee = (int) ($appointmentRevenue * 0.14);
+                $clinicShare = $appointmentRevenue - $platformFee;
 
-                    Log::channel('audit')->info('Pet clinic earnings calculated', [
-                        'clinic_id' => $clinic->id,
-                        'month' => $this->month->format('Y-m'),
-                        'appointment_earnings' => $appointmentEarnings,
-                        'boarding_earnings' => $boardingEarnings,
-                        'total_earnings' => $totalEarnings,
-                        'correlation_id' => $this->correlationId,
-                    ]);
-                });
-            } catch (\Throwable $e) {
-                Log::error('Failed to calculate clinic earnings', [
-                    'clinic_id' => $this->clinicId,
-                    'month' => $this->month->format('Y-m'),
-                    'correlation_id' => $this->correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                throw $e;
+                $totalRevenue += $appointmentRevenue;
+                $totalPlatformFee += $platformFee;
+                $totalClinicEarnings += $clinicShare;
             }
-        }
 
-        public function retryUntil(): \DateTime
-        {
-            return now()->addDays(7);
+            $earningsReport = ClinicEarningsReport::updateOrCreate(
+                [
+                    'clinic_id' => $this->clinicId,
+                    'period_start' => $this->periodStart,
+                    'period_end' => $this->periodEnd,
+                ],
+                [
+                    'uuid' => (string) Str::uuid(),
+                    'tenant_id' => $clinic->tenant_id,
+                    'total_revenue_kopecks' => $totalRevenue,
+                    'platform_fee_kopecks' => $totalPlatformFee,
+                    'clinic_earnings_kopecks' => $totalClinicEarnings,
+                    'appointment_count' => $appointmentCount,
+                    'average_ticket_kopecks' => $appointmentCount > 0 ? (int) ($totalRevenue / $appointmentCount) : 0,
+                    'correlation_id' => $this->resolvedCorrelationId,
+                    'calculated_at' => now(),
+                ],
+            );
+
+            $logger->info('CalculateClinicEarningsJob: Earnings calculated successfully', [
+                'clinic_id' => $this->clinicId,
+                'total_revenue' => $totalRevenue,
+                'platform_fee' => $totalPlatformFee,
+                'clinic_earnings' => $totalClinicEarnings,
+                'appointment_count' => $appointmentCount,
+                'report_id' => $earningsReport->id,
+                'correlation_id' => $this->resolvedCorrelationId,
+            ]);
+        } catch (\Throwable $e) {
+            $logger->error('CalculateClinicEarningsJob: Failed to calculate earnings', [
+                'clinic_id' => $this->clinicId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $this->resolvedCorrelationId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
         }
+    }
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(24);
+    }
+
+    public function tags(): array
+    {
+        return [
+            'clinic_earnings',
+            "clinic:{$this->clinicId}",
+            "correlation:{$this->resolvedCorrelationId}",
+        ];
+    }
 }

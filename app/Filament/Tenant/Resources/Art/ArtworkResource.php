@@ -2,14 +2,13 @@
 
 namespace App\Filament\Tenant\Resources\Art;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ArtworkResource extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class ArtworkResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Artwork::class;
 
         protected static ?string $navigationGroup = 'Art Vertical';
@@ -141,7 +140,7 @@ final class ArtworkResource extends Model
                         ->visible(fn (Artwork $record) => $record->status === 'available')
                         ->action(function (Artwork $record, ArtService $service) {
                             try {
-                                $service->purchaseArtwork(auth()->id() ?? 1, $record->id);
+                                $service->purchaseArtwork($this->guard->id() ?? 1, $record->id);
                                 Notification::make()
                                     ->title('Purchase successful')
                                     ->success()

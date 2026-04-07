@@ -2,14 +2,10 @@
 
 namespace App\Http\Requests\Api\HomeAppliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class ApplianceRepairRequest extends Model
+final class ApplianceRepairRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Авторизация: проверка лимитов и фрод-контроль.
          */
@@ -36,7 +32,6 @@ final class ApplianceRepairRequest extends Model
                 'client_id' => 'required_without:user_id|integer',
 
                 // Валидация адреса (Канон 2026)
-                'address' => 'required|array',
                 'address.city' => 'required|string|max:100',
                 'address.street' => 'required|string|max:100',
                 'address.house' => 'required|string|max:20',

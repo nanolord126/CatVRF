@@ -2,14 +2,16 @@
 
 namespace App\Domains\Logistics\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CourierRatingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CourierRatingController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function getCourierRatings(int $courierId): JsonResponse
         {
             try {
@@ -17,9 +19,9 @@ final class CourierRatingController extends Model
                     ->with('reviewer')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $ratings, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $ratings, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -28,30 +30,30 @@ final class CourierRatingController extends Model
             try {
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($shipmentId, $correlationId) {
+                $this->db->transaction(function () use ($shipmentId, $correlationId) {
                     $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
 
                     CourierRating::create([
                         'tenant_id' => $shipment->tenant_id,
                         'courier_service_id' => $shipment->courier_service_id,
-                        'reviewer_id' => auth()->id(),
-                        'rating' => request('rating'),
-                        'comment' => request('comment'),
+                        'reviewer_id' => $request->user()?->id,
+                        'rating' => $request->input('rating'),
+                        'comment' => $request->input('comment'),
                         'verified_transaction' => true,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Courier rated', [
+                    $this->logger->info('Courier rated', [
                         'shipment_id' => $shipmentId,
                         'courier_id' => $shipment->courier_service_id,
-                        'rating' => request('rating'),
+                        'rating' => $request->input('rating'),
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 }

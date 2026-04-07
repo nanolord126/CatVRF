@@ -2,21 +2,38 @@
 
 namespace App\Services\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultingRatingService extends Model
+use Illuminate\Http\Request;
+use App\Models\Consulting\Consultant;
+use App\Models\Consulting\ConsultingFirm;
+use App\Models\Consulting\ConsultingReview;
+use App\Models\Consulting\ConsultingSession;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ConsultingRatingService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @param string $correlationId Unified audit trace.
          */
         public function __construct(
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -24,23 +41,23 @@ final class ConsultingRatingService extends Model
          */
         public function submitSessionReview(int $sessionId, int $rating, string $comment, int $userId): ConsultingReview
         {
-            FraudControlService::check();
+            $this->fraud->check((int) $this->guard->id(), 'consulting_submit_review', $this->request->ip());
 
-            return DB::transaction(function() use ($sessionId, $rating, $comment, $userId) {
+            return $this->db->transaction(function() use ($sessionId, $rating, $comment, $userId) {
                 $session = ConsultingSession::findOrFail($sessionId);
 
                 if ($session->client_id !== $userId) {
-                    throw new \Exception("Unauthorized: User did not participate in this session.");
+                    throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('User did not participate in this session.');
                 }
 
                 if ($session->status !== 'completed') {
-                    throw new \Exception("Review must be submitted for a completed session.");
+                    throw new \LogicException('Review must be submitted for a completed session.');
                 }
 
-                Log::channel('audit')->info('Submitting Consulting Review', [
+                $this->logger->channel('audit')->info('Submitting Consulting Review', [
                     'session_id' => $sessionId,
                     'rating' => $rating,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $review = ConsultingReview::create([
@@ -51,7 +68,7 @@ final class ConsultingRatingService extends Model
                    'rating' => $rating,
                    'comment' => $comment,
                    'is_verified' => true, // Auto-verified if linked to a completed session
-                   'correlation_id' => $this->correlationId,
+                   'correlation_id' => $this->correlationId(),
                 ]);
 
                 // Logic for recalculating expert rating
@@ -66,9 +83,9 @@ final class ConsultingRatingService extends Model
          */
         public function recalculateConsultantRating(int $consultantId): void
         {
-            Log::channel('audit')->info('Recalculating Consultant Rating', [
+            $this->logger->channel('audit')->info('Recalculating Consultant Rating', [
                 'consultant_id' => $consultantId,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             $consultant = Consultant::findOrFail($consultantId);
@@ -90,9 +107,9 @@ final class ConsultingRatingService extends Model
          */
         public function recalculateFirmRating(int $firmId): void
         {
-            Log::channel('audit')->info('Recalculating Firm Rating', [
+            $this->logger->channel('audit')->info('Recalculating Firm Rating', [
                 'firm_id' => $firmId,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             $firm = ConsultingFirm::findOrFail($firmId);

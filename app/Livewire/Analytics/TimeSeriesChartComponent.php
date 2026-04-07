@@ -2,47 +2,51 @@
 
 namespace App\Livewire\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TimeSeriesChartComponent extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Livewire\Component;
+use Illuminate\Log\LogManager;
+
+final class TimeSeriesChartComponent extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     // Параметры
-        public string $vertical = 'beauty';
-        public string $chartType = 'line'; // line|bar
-        public string $heatmapType = 'geo'; // geo|click
-        public string $aggregation = 'daily'; // hourly|daily|weekly
-        public string $metric = 'event_count'; // event_count|unique_users|unique_sessions
-        public string $pageUrl = '';
-        public string $fromDate = '';
-        public string $toDate = '';
+        private string $vertical = 'beauty';
+        private string $chartType = 'line'; // line|bar
+        private string $heatmapType = 'geo'; // geo|click
+        private string $aggregation = 'daily'; // hourly|daily|weekly
+        private string $metric = 'event_count'; // event_count|unique_users|unique_sessions
+        private string $pageUrl = '';
+        private string $fromDate = '';
+        private string $toDate = '';
 
         // Режимы
-        public bool $isComparison = false;
-        public string $period1From = '';
-        public string $period1To = '';
-        public string $period2From = '';
-        public string $period2To = '';
+        private bool $isComparison = false;
+        private string $period1From = '';
+        private string $period1To = '';
+        private string $period2From = '';
+        private string $period2To = '';
 
         // Кастомные метрики
-        public bool $isCustomMetric = false;
-        public string $customMetric = 'event_intensity';
+        private bool $isCustomMetric = false;
+        private string $customMetric = 'event_intensity';
 
         // Состояние
-        public array $chartData = [];
-        public array $chartConfig = [];
-        public bool $isLoading = false;
-        public string $errorMessage = '';
-        public string $correlationId = '';
+        private array $chartData = [];
+        private array $chartConfig = [];
+        private bool $isLoading = false;
+        private string $errorMessage = '';
+        private string $correlationId = '';
 
         // Опции
-        public bool $showLegend = true;
-        public bool $showGrid = true;
-        public bool $showTooltip = true;
-        public bool $enableExport = true;
+        private bool $showLegend = true;
+        private bool $showGrid = true;
+        private bool $showTooltip = true;
+        private bool $enableExport = true;
 
         public function mount(): void
         {
@@ -83,7 +87,7 @@ final class TimeSeriesChartComponent extends Model
 
             } catch (\Exception $e) {
                 $this->errorMessage = 'Не удалось загрузить данные: ' . $e->getMessage();
-                Log::channel('error')->error('Chart data loading failed', [
+                $this->logger->channel('error')->error('Chart data loading failed', [
                     'correlation_id' => $this->correlationId,
                     'heatmap_type' => $this->heatmapType,
                     'message' => $e->getMessage(),
@@ -99,7 +103,7 @@ final class TimeSeriesChartComponent extends Model
         #[\Livewire\Attributes\On('reload-chart-data')]
         public function reloadChartData(): void
         {
-            Log::channel('analytics')->info('Reloading chart data via WebSocket', [
+            $this->logger->channel('analytics')->info('Reloading chart data via WebSocket', [
                 'correlation_id' => $this->correlationId,
                 'heatmap_type' => $this->heatmapType,
                 'vertical' => $this->vertical,
@@ -132,10 +136,10 @@ final class TimeSeriesChartComponent extends Model
 
             $response = Http::withHeader('X-Correlation-ID', $this->correlationId)
                 ->timeout(30)
-                ->get(config('app.url') . $endpoint, $params);
+                ->get($this->config->get('app.url') . $endpoint, $params);
 
             if ($response->failed()) {
-                throw new \Exception("API error: {$response->status()}");
+                throw new \RuntimeException("API error: {$response->status()}");
             }
 
             $data = $response->json('data');
@@ -167,10 +171,10 @@ final class TimeSeriesChartComponent extends Model
 
             $response = Http::withHeader('X-Correlation-ID', $this->correlationId)
                 ->timeout(30)
-                ->get(config('app.url') . $endpoint, $params);
+                ->get($this->config->get('app.url') . $endpoint, $params);
 
             if ($response->failed()) {
-                throw new \Exception("API error: {$response->status()}");
+                throw new \RuntimeException("API error: {$response->status()}");
             }
 
             $data = $response->json('data');
@@ -200,10 +204,10 @@ final class TimeSeriesChartComponent extends Model
 
             $response = Http::withHeader('X-Correlation-ID', $this->correlationId)
                 ->timeout(30)
-                ->get(config('app.url') . $endpoint, $params);
+                ->get($this->config->get('app.url') . $endpoint, $params);
 
             if ($response->failed()) {
-                throw new \Exception("API error: {$response->status()}");
+                throw new \RuntimeException("API error: {$response->status()}");
             }
 
             $data = $response->json('data');
@@ -436,7 +440,7 @@ final class TimeSeriesChartComponent extends Model
          */
         public function exportPng(): void
         {
-            Log::channel('audit')->info('PNG export initiated', [
+            $this->logger->channel('audit')->info('PNG export initiated', [
                 'correlation_id' => $this->correlationId,
                 'heatmap_type' => $this->heatmapType,
             ]);
@@ -449,7 +453,7 @@ final class TimeSeriesChartComponent extends Model
          */
         public function exportPdf(): void
         {
-            Log::channel('audit')->info('PDF export initiated', [
+            $this->logger->channel('audit')->info('PDF export initiated', [
                 'correlation_id' => $this->correlationId,
                 'heatmap_type' => $this->heatmapType,
             ]);
@@ -463,7 +467,7 @@ final class TimeSeriesChartComponent extends Model
          */
         public function pollChartData(): void
         {
-            Log::channel('analytics')->debug('Polling chart data (30s interval)', [
+            $this->logger->channel('analytics')->debug('Polling chart data (30s interval)', [
                 'correlation_id' => $this->correlationId,
                 'heatmap_type' => $this->heatmapType,
                 'vertical' => $this->vertical,
@@ -480,14 +484,14 @@ final class TimeSeriesChartComponent extends Model
                 $this->loadChartData();
 
                 // Логирование успеха
-                Log::channel('analytics')->debug('Poll completed successfully', [
+                $this->logger->channel('analytics')->debug('Poll completed successfully', [
                     'correlation_id' => $this->correlationId,
                     'data_points' => count($this->chartData['datasets'][0]['data'] ?? []),
                 ]);
 
             } catch (\Exception $e) {
                 // Логирование ошибки, но не прерывать polling
-                Log::channel('analytics')->warning('Poll error (non-critical)', [
+                $this->logger->channel('analytics')->warning('Poll error (non-critical)', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                 ]);

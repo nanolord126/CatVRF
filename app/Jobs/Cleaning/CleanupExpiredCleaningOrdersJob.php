@@ -2,44 +2,39 @@
 
 namespace App\Jobs\Cleaning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class CleanupExpiredCleaningOrdersJob extends Model
+final class CleanupExpiredCleaningOrdersJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
          * Parameters for the job (correlation tracking).
          */
-        public readonly string $correlationId;
-        public readonly int $expirationMinutes;
+        private string $correlationId;
+        private int $expirationMinutes;
 
         /**
          * Create a new job instance.
          */
         public function __construct(
-            string $correlationId = null,
-            int $expirationMinutes = 20 // Default 20 mins reserve rule
-        ) {
+            ?string $correlationId = null,
+            int $expirationMinutes = 20,
+    ) {
             $this->correlationId = $correlationId ?? Str::uuid()->toString();
             $this->expirationMinutes = $expirationMinutes;
-
-            // Audit startup
-            Log::channel('audit')->info('[CleaningJob] Expired Orders Cleanup Started', [
-                'correlation_id' => $this->correlationId,
-                'expiration_mins' => $this->expirationMinutes,
-            ]);
         }
 
         /**
          * Execute the job logic.
          * Identifying expired 'pending' orders and cleaning up resources.
          */
-        public function handle(CleaningBookingService $bookingService): void
+        public function handle(CleaningBookingService $bookingService, LogManager $logger): void
         {
             try {
                 // Find orders stuck in pending status longer than expiration buffer
@@ -48,7 +43,7 @@ final class CleanupExpiredCleaningOrdersJob extends Model
                     ->get();
 
                 if ($expiredOrders->isEmpty()) {
-                    Log::channel('audit')->info('[CleaningJob] No expired orders found.', [
+                    $logger->channel('audit')->info('[CleaningJob] No expired orders found.', [
                         'correlation_id' => $this->correlationId,
                     ]);
                     return;
@@ -58,20 +53,20 @@ final class CleanupExpiredCleaningOrdersJob extends Model
                     // Perform the cleanup through the secure service layer
                     $bookingService->cancelOrder($order->uuid, 'Automated expiration: No deposit paid within window.', $this->correlationId);
 
-                    Log::channel('audit')->warning('[CleaningJob] Cancelled expired order.', [
+                    $logger->channel('audit')->warning('[CleaningJob] Cancelled expired order.', [
                         'order_uuid' => $order->uuid,
                         'correlation_id' => $this->correlationId,
                         'client_id' => $order->user_id,
                     ]);
                 }
 
-                Log::channel('audit')->info('[CleaningJob] Expired Orders Cleanup Completed.', [
+                $logger->channel('audit')->info('[CleaningJob] Expired Orders Cleanup Completed.', [
                     'count' => $expiredOrders->count(),
                     'correlation_id' => $this->correlationId,
                 ]);
 
             } catch (Throwable $e) {
-                Log::channel('audit')->critical('[CleaningJob] Cleanup Failed Critical Error!', [
+                $logger->channel('audit')->critical('[CleaningJob] Cleanup Failed Critical Error!', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

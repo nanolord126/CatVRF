@@ -2,14 +2,22 @@
 
 namespace App\Domains\Tickets\Models;
 
+
+use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class Ticket extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'tickets';
@@ -35,8 +43,8 @@ final class Ticket extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $builder->where('tenant_id', tenant()?->id);
                 }
             });
 
@@ -44,7 +52,7 @@ final class Ticket extends Model
                 $model->uuid = (string) Str::uuid();
                 $model->qr_code = $model->qr_code ?? (string) Str::random(16);
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = tenant('id');
+                    $model->tenant_id = tenant()?->id;
                 }
             });
         }

@@ -2,23 +2,23 @@
 
 namespace App\Domains\Common\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class UpdateUserTasteProfileListener extends Model
+
+use Psr\Log\LoggerInterface;
+final class UpdateUserTasteProfileListener
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public int $tries = 3;
 
         public int $timeout = 30;
 
-        public function __construct(
-            private readonly UserTasteProfileService $tasteService,
-        ) {}
+        public function __construct(private readonly UserTasteProfileService $tasteService,
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function handle(UserInteractionEvent $event): void
         {
@@ -33,7 +33,7 @@ final class UpdateUserTasteProfileListener extends Model
                 );
 
                 // 2. Обновить специфические данные на основе типа взаимодействия
-                DB::transaction(function () use ($event) {
+                $this->db->transaction(function () use ($event) {
                     $profile = UserTasteProfile::where([
                         'user_id' => $event->userId,
                         'tenant_id' => $event->tenantId,
@@ -54,7 +54,7 @@ final class UpdateUserTasteProfileListener extends Model
                         'category' => $event->data['category'] ?? null,
                         'price' => $event->data['price'] ?? null,
                         'rating' => $event->data['rating'] ?? null,
-                        'created_at' => now()->toIso8601String(),
+                        'created_at' => Carbon::now()->toIso8601String(),
                     ];
 
                     $history[] = $newInteraction;
@@ -90,13 +90,13 @@ final class UpdateUserTasteProfileListener extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('User taste profile updated from interaction', [
+                $this->logger->info('User taste profile updated from interaction', [
                     'user_id' => $event->userId,
                     'interaction_type' => $event->interactionType,
                     'correlation_id' => $event->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update taste profile from interaction', [
+                $this->logger->error('Failed to update taste profile from interaction', [
                     'user_id' => $event->userId,
                     'interaction_type' => $event->interactionType,
                     'error' => $e->getMessage(),
@@ -112,7 +112,7 @@ final class UpdateUserTasteProfileListener extends Model
          */
         public function failed(UserInteractionEvent $event, \Throwable $exception): void
         {
-            Log::channel('audit')->error('UserTasteProfileListener failed permanently', [
+            $this->logger->error('UserTasteProfileListener failed permanently', [
                 'user_id' => $event->userId,
                 'interaction_type' => $event->interactionType,
                 'exception' => $exception->getMessage(),

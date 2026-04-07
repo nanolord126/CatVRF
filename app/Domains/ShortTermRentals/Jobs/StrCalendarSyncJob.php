@@ -2,19 +2,16 @@
 
 namespace App\Domains\ShortTermRentals\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StrCalendarSyncJob extends Model
+use Psr\Log\LoggerInterface;
+final class StrCalendarSyncJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            public readonly int $apartmentId,
-            public readonly ?string $correlationId = null
+            private readonly int $apartmentId,
+            private ?string $correlationId = null, private readonly LoggerInterface $logger
         ) {}
 
         public function handle(): void
@@ -22,7 +19,7 @@ final class StrCalendarSyncJob extends Model
             $correlationId = $this->correlationId ?? (string) Str::uuid();
             $apartment = StrApartment::findOrFail($this->apartmentId);
 
-            Log::channel('audit')->info('ShortTermRental: iCal Sync Started', [
+            $this->logger->info('ShortTermRental: iCal Sync Started', [
                 'apartment_id' => $apartment->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -49,7 +46,7 @@ final class StrCalendarSyncJob extends Model
                 );
             }
 
-            Log::channel('audit')->info('ShortTermRental: iCal Sync Finished', [
+            $this->logger->info('ShortTermRental: iCal Sync Finished', [
                 'apartment_id' => $apartment->id,
                 'blocked_dates_count' => count($externalBlockDates),
                 'correlation_id' => $correlationId,

@@ -2,14 +2,16 @@
 
 namespace App\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class DemandForecastJob extends Model
+final class DemandForecastJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -20,7 +22,10 @@ final class DemandForecastJob extends Model
         /**
          * Создать новый экземпляр job.
          */
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid()->toString();
         }
@@ -30,7 +35,7 @@ final class DemandForecastJob extends Model
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('DemandForecastJob started', [
+            $this->logger->channel('audit')->info('DemandForecastJob started', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -42,13 +47,20 @@ final class DemandForecastJob extends Model
                     $this->forecastProduct($product);
                 }
 
-                Log::channel('audit')->info('DemandForecastJob completed successfully', [
+                $this->logger->channel('audit')->info('DemandForecastJob completed successfully', [
                     'correlation_id' => $this->correlationId,
                     'products_processed' => $products->count(),
                 ]);
 
             } catch (\Exception $e) {
-                Log::channel('audit')->error('DemandForecastJob failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('DemandForecastJob failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -62,7 +74,7 @@ final class DemandForecastJob extends Model
          */
         private function trainModel(): void
         {
-            Log::info('Training demand forecast model...');
+            $this->logger->info('Training demand forecast model...');
 
             try {
                 // Эмуляция задержки обучения
@@ -70,7 +82,7 @@ final class DemandForecastJob extends Model
 
                 // В реальном приложении здесь был бы вызов Python-скрипта или API
                 // Для демо мы просто генерируем "новую версию" с хорошими метриками
-                $version = now()->format('Y-m-d') . '-v' . (DB::table('demand_model_versions')
+                $version = now()->format('Y-m-d') . '-v' . ($this->db->table('demand_model_versions')
                     ->whereDate('trained_at', now())
                     ->count() + 1);
 
@@ -81,8 +93,8 @@ final class DemandForecastJob extends Model
                     'mape' => 9.2, // Mean Absolute Percentage Error
                 ];
 
-                DB::transaction(function() use ($version, $metrics) {
-                    return DB::table('demand_model_versions')->insert([
+                $this->db->transaction(function() use ($version, $metrics) {
+                    return $this->db->table('demand_model_versions')->insert([
                         'version' => $version,
                         'trained_at' => now(),
                         'mae' => $metrics['mae'],
@@ -97,14 +109,14 @@ final class DemandForecastJob extends Model
                 if ($metrics['mape'] < 15) {
                     cache(['demand_model_active_version' => $version], now()->addDays(30));
 
-                    Log::info('New demand forecast model activated', [
+                    $this->logger->info('New demand forecast model activated', [
                         'version' => $version,
                         'mape' => $metrics['mape'],
                     ]);
                 }
 
             } catch (\Exception $e) {
-                Log::warning('Demand model training failed', [
+                $this->logger->warning('Demand model training failed', [
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -143,8 +155,8 @@ final class DemandForecastJob extends Model
                 ];
 
                 try {
-                    DB::transaction(function() use ($product, $forecastDate, $result) {
-                        DB::table('demand_forecasts')->updateOrInsert(
+                    $this->db->transaction(function() use ($product, $forecastDate, $result) {
+                        $this->db->table('demand_forecasts')->updateOrInsert(
                             [
                                 'tenant_id' => $product->tenant_id,
                                 'item_id' => $product->id,
@@ -163,7 +175,7 @@ final class DemandForecastJob extends Model
                         );
                     });
                 } catch (\Exception $e) {
-                    Log::warning('Failed to save forecast', [
+                    $this->logger->warning('Failed to save forecast', [
                         'product_id' => $product->id,
                         'date' => $forecastDate,
                         'error' => $e->getMessage(),

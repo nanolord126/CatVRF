@@ -2,14 +2,18 @@
 
 namespace App\Domains\Auto\Filament\Resources\TuningProjectResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class EditTuningProject extends Model
+
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditTuningProject extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = TuningProjectResource::class;
 
         protected function getHeaderActions(): array
@@ -17,7 +21,7 @@ final class EditTuningProject extends Model
             return [
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('TuningProject deleted', [
+                        $this->logger->info('TuningProject deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'project_id' => $this->record->id,
                         ]);
@@ -33,14 +37,14 @@ final class EditTuningProject extends Model
                             ->required(),
                     ])
                     ->action(function (array $data) {
-                        DB::transaction(function () use ($data) {
+                        $this->db->transaction(function () use ($data) {
                             $this->record->update([
                                 'status' => 'completed',
-                                'completion_date' => now(),
+                                'completion_date' => Carbon::now(),
                                 'final_price' => $data['final_price'],
                             ]);
 
-                            Log::channel('audit')->info('TuningProjectCompleted', [
+                            $this->logger->info('TuningProjectCompleted', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'project_id' => $this->record->id,
                             ]);
@@ -61,7 +65,7 @@ final class EditTuningProject extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('TuningProject updated', [
+            $this->logger->info('TuningProject updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'project_id' => $this->record->id,
                 'status' => $this->record->status,

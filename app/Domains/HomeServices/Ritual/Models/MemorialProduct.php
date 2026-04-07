@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MemorialProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'ritual_memorial_products';
 
         protected $fillable = [
@@ -44,12 +43,12 @@ final class MemorialProduct extends Model
         /**
          * Booted method for global scoping and UUID generation.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             // Изоляция данных на уровне базы (Tenant Scoping)
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
 
@@ -62,7 +61,7 @@ final class MemorialProduct extends Model
                     $model->correlation_id = (string) Str::uuid();
                 }
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = (int) tenant('id');
+                    $model->tenant_id = (int) tenant()->id;
                 }
             });
         }

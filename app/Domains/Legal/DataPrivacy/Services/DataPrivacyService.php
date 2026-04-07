@@ -1,21 +1,165 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Legal\DataPrivacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Legal\DataPrivacy\Models\PrivacyAudit;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class DataPrivacyService extends Model
+/**
+ * DataPrivacyService — управление аудитами приватности данных.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class DataPrivacyService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createAudit(int $consultantId,$auditType,$hoursSpent,$dueDate,string $correlationId=""):PrivacyAudit{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("privacy:audit:".auth()->id(),8))throw new \RuntimeException("Too many",429);RateLimiter::hit("privacy:audit:".auth()->id(),3600);
-    return DB::transaction(function()use($consultantId,$auditType,$hoursSpent,$dueDate,$correlationId){$c=PrivacyConsultant::findOrFail($consultantId);$total=(int)($c->price_kopecks_per_hour*$hoursSpent);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'privacy','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$a=PrivacyAudit::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'consultant_id'=>$consultantId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','audit_type'=>$auditType,'hours_spent'=>$hoursSpent,'due_date'=>$dueDate,'tags'=>['privacy'=>true]]);Log::channel('audit')->info('Privacy audit created',['audit_id'=>$a->id,'correlation_id'=>$correlationId]);return $a;});
+    /**
+     * Создать аудит приватности.
+     */
+    public function createAudit(
+        int    $consultantId,
+        string $auditScope,
+        string $regulations,
+        string $correlationId = '',
+    ): PrivacyAudit {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($consultantId, $auditScope, $regulations, $correlationId): PrivacyAudit {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'privacy_audit',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $rateKopecks = 400000;
+
+            $audit = PrivacyAudit::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'consultant_id'  => $consultantId,
+                'client_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $rateKopecks,
+                'payout_kopecks' => $rateKopecks - (int) ($rateKopecks * 0.14),
+                'payment_status' => 'pending',
+                'audit_scope'    => $auditScope,
+                'regulations'    => $regulations,
+                'tags'           => ['privacy' => true, 'gdpr' => true],
+            ]);
+
+            $this->logger->info('Privacy audit created', [
+                'audit_id'       => $audit->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
     }
-    public function completeAudit(int $auditId,string $correlationId=""):PrivacyAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$a=PrivacyAudit::findOrFail($auditId);if($a->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$a->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$a->payout_kopecks,'privacy_payout',['correlation_id'=>$correlationId,'audit_id'=>$a->id]);Log::channel('audit')->info('Privacy audit completed',['audit_id'=>$a->id]);return $a;});}
-    public function cancelAudit(int $auditId,string $correlationId=""):PrivacyAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$a=PrivacyAudit::findOrFail($auditId);if($a->status==='completed')throw new \RuntimeException("Cannot cancel",400);$a->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($a->payment_status==='completed')$this->wallet->credit(tenant()->id,$a->total_kopecks,'privacy_refund',['correlation_id'=>$correlationId,'audit_id'=>$a->id]);Log::channel('audit')->info('Privacy audit cancelled',['audit_id'=>$a->id]);return $a;});}
-    public function getAudit(int $auditId):PrivacyAudit{return PrivacyAudit::findOrFail($auditId);}
-    public function getUserAudits(int $clientId){return PrivacyAudit::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeAudit(int $auditId, string $correlationId = ''): PrivacyAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($auditId, $correlationId): PrivacyAudit {
+            $audit = PrivacyAudit::findOrFail($auditId);
+
+            if ($audit->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $audit->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $audit->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['audit_id' => $audit->id],
+            );
+
+            $this->logger->info('Privacy audit completed', [
+                'audit_id' => $audit->id, 'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
+    }
+
+    public function cancelAudit(int $auditId, string $correlationId = ''): PrivacyAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($auditId, $correlationId): PrivacyAudit {
+            $audit = PrivacyAudit::findOrFail($auditId);
+
+            if ($audit->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed audit', 400);
+            }
+
+            $wasPaid = $audit->payment_status === 'completed';
+
+            $audit->update([
+                'status'         => 'cancelled',
+                'payment_status' => $wasPaid ? 'refunded' : $audit->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($wasPaid) {
+                $this->wallet->credit(
+                    walletId: tenant()->id,
+                    amount: $audit->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['audit_id' => $audit->id],
+                );
+            }
+
+            $this->logger->info('Privacy audit cancelled', [
+                'audit_id' => $audit->id, 'refunded' => $wasPaid, 'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
+    }
+
+    public function getAudit(int $auditId): PrivacyAudit
+    {
+        return PrivacyAudit::findOrFail($auditId);
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, PrivacyAudit> */
+    public function getClientAudits(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return PrivacyAudit::where('client_id', $clientId)->orderByDesc('created_at')->take($limit)->get();
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return ['class' => static::class, 'timestamp' => Carbon::now()->toIso8601String()];
+    }
 }

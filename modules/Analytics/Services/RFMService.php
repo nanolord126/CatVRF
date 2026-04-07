@@ -1,17 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Modules\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Modules\Analytics\Models\BehavioralEvent;
+use Modules\Analytics\Models\CustomerSegment;
+use Modules\Common\Services\AbstractTechnicalVerticalService;
 
-final class RFMService extends Model
+final class RFMService extends AbstractTechnicalVerticalService
 {
-    use HasFactory;
+    public function isEnabled(): bool
+    {
+        return $this->tenant->settings['rfm_enabled'] ?? true;
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Выполняет RFM-анализ для всех пользователей тенанта.
+     * Выполняет RFM-анализ для всех пользователей тенанта.
          * Recency: Дней с последнего заказа.
          * Frequency: Количество заказов за период.
          * Monetary: Общий объем трат.

@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\Music\MusicReviewResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateMusicReview extends Model
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateMusicReview extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = MusicReviewResource::class;
 
         /**
@@ -28,14 +36,14 @@ final class CreateMusicReview extends Model
          */
         protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $record = static::getModel()::create($data);
 
-                Log::channel('audit')->info('New music review created via UI', [
+                $this->logger->info('New music review created via UI', [
                     'review_id' => $record->id,
                     'tenant_id' => $record->tenant_id,
                     'correlation_id' => $record->correlation_id,
-                    'created_by' => auth()->id(),
+                    'created_by' => $this->guard->id(),
                 ]);
 
                 return $record;

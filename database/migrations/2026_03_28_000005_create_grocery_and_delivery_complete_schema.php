@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('store_type')->comment('magnit, pyaterochka, vkusvelle, farm_market');
             $table->string('address');
-            $table->point('geo_point')->nullable()->spatialIndex();
+            $table->json('geo_point')->nullable();
             $table->json('schedule')->nullable();
             $table->boolean('is_verified')->default(false)->index();
             $table->integer('commission_rate')->default(1400)->comment('14%');
@@ -69,7 +69,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'picked', 'in_delivery', 'delivered', 'cancelled'])->default('pending')->index();
             $table->enum('payment_status', ['pending', 'paid', 'refunded'])->default('pending')->index();
             $table->string('delivery_address')->nullable();
-            $table->point('delivery_point')->nullable();
+            $table->geometry('delivery_point')->nullable();
             $table->string('correlation_id')->nullable()->index();
             $table->json('tags')->nullable();
             $table->dateTime('hold_until')->nullable()->comment('20-min hold');
@@ -135,7 +135,7 @@ return new class extends Migration
             $table->float('rating', 3, 2)->default(0);
             $table->integer('deliveries_count')->default(0);
             $table->enum('status', ['available', 'busy', 'offline'])->default('offline')->index();
-            $table->point('current_location')->nullable();
+            $table->geometry('current_location')->nullable();
             $table->timestamps();
 
             $table->index(['store_id', 'status']);
@@ -149,7 +149,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique()->index();
             $table->enum('status', ['assigned', 'picked_up', 'in_transit', 'delivered', 'failed'])->default('assigned')->index();
             $table->dateTime('event_time');
-            $table->point('location')->nullable();
+            $table->geometry('location')->nullable();
             $table->integer('eta_minutes')->nullable();
             $table->text('notes')->nullable();
             $table->string('correlation_id')->nullable()->index();
@@ -191,3 +191,5 @@ return new class extends Migration
         Schema::dropIfExists('grocery_stores');
     }
 };
+
+

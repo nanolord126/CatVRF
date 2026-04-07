@@ -2,24 +2,25 @@
 
 namespace App\Livewire\Marketplace\LanguageLearning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Contracts\Auth\Guard;
 
-final class LanguageLearningShowcase extends Model
+final class LanguageLearningShowcase extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $search = '';
-        public string $selectedLanguage = '';
-        public bool $showAiPanel = false;
+    private string $search = '';
+        private string $selectedLanguage = '';
+        private bool $showAiPanel = false;
 
         // AI Params
-        public string $aiLanguage = 'English';
-        public string $aiLevel = 'A0';
-        public string $aiGoal = 'Business';
-        public int $aiWeeklyHours = 5;
-        public ?array $aiResult = null;
+        private string $aiLanguage = 'English';
+        private string $aiLevel = 'A0';
+        private string $aiGoal = 'Business';
+        private int $aiWeeklyHours = 5;
+        private ?array $aiResult = null;
 
         protected $queryString = ['search', 'selectedLanguage'];
 
@@ -39,7 +40,7 @@ final class LanguageLearningShowcase extends Model
                     'level' => $this->aiLevel,
                     'goal' => $this->aiGoal,
                     'weekly_hours' => $this->aiWeeklyHours,
-                ], (int)auth()->user()?->tenant_id ?? 0, $correlationId);
+                ], (int)$this->guard->user()?->tenant_id ?? 0, $correlationId);
 
                 Notification::make()
                     ->title('AI Path Generated')

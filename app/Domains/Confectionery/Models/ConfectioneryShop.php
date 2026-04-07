@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class ConfectioneryShop extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'confectionery_shops';
@@ -38,21 +37,21 @@ final class ConfectioneryShop extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function products() { return $this->hasMany(Cake::class, 'confectionery_shop_id'); }
         /**
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function orders() { return $this->hasMany(CakeOrder::class, 'confectionery_shop_id'); }
         /**
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function customDesigns() { return $this->hasMany(CustomCakeDesign::class, 'confectionery_shop_id'); }
 

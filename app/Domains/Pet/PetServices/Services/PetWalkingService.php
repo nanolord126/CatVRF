@@ -2,175 +2,188 @@
 
 namespace App\Domains\Pet\PetServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class PetWalkingService extends Model
+final readonly class PetWalkingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly WalletService $walletService,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-        public function createWalkingBooking(array $data): PetWalking
-        {
-            Log::channel('audit')->info('PetWalkingService: Creating walking booking', [
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'walker_id' => $data['walker_id'],
-                'tenant_id' => filament()->getTenant()->id,
-            ]);
+    /**
+     * Создание заказа на выгул питомца.
+     */
+    public function createWalkOrder(
+        int $walkerId,
+        int $petId,
+        string $scheduledDate,
+        int $durationMinutes,
+        int $priceKopecks,
+        string $correlationId,
+    ): PetWalkingOrder {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pet_walking_book',
+            amount: $priceKopecks,
+            correlationId: $correlationId,
+        );
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(fn () => PetWalking::create([
-                'uuid' => Str::uuid(),
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tenant_id' => filament()->getTenant()->id,
-                'pet_id' => $data['pet_id'],
-                'walker_id' => $data['walker_id'],
-                'walk_date' => $data['walk_date'],
-                'walk_time' => $data['walk_time'],
-                'duration_minutes' => $data['duration_minutes'] ?? 30,
-                'price' => $data['price'] ?? 50000,
-                'location' => $data['location'] ?? 'home',
-                'status' => 'pending',
-                'special_instructions' => $data['special_instructions'] ?? [],
-                'tags' => $data['tags'] ?? [],
-            ]));
-        }
+        return $this->db->transaction(function () use ($walkerId, $petId, $scheduledDate, $durationMinutes, $priceKopecks, $correlationId): PetWalkingOrder {
+            $platformFee = (int) ($priceKopecks * 0.14);
+            $payoutAmount = $priceKopecks - $platformFee;
 
-        public function acceptWalkingBooking(int $bookingId, int $walkerId): bool
-        {
-            $booking = PetWalking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('PetWalkingService: Walker accepted booking', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+            $walkOrder = PetWalkingOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
                 'walker_id' => $walkerId,
+                'client_id' => $this->guard->id(),
+                'pet_id' => $petId,
+                'scheduled_date' => $scheduledDate,
+                'duration_minutes' => $durationMinutes,
+                'total_kopecks' => $priceKopecks,
+                'platform_fee_kopecks' => $platformFee,
+                'payout_kopecks' => $payoutAmount,
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'correlation_id' => $correlationId,
+                'tags' => ['service' => 'walking'],
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking) {
-                $booking->update(['status' => 'accepted']);
-                return true;
-            });
-        }
-
-        public function startWalk(int $bookingId): bool
-        {
-            $booking = PetWalking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('PetWalkingService: Walk started', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+            $this->logger->info('Pet walking order created', [
+                'order_id' => $walkOrder->id,
+                'order_uuid' => $walkOrder->uuid,
+                'walker_id' => $walkerId,
+                'pet_id' => $petId,
+                'duration_minutes' => $durationMinutes,
+                'total_kopecks' => $priceKopecks,
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking) {
-                $booking->update([
-                    'status' => 'in_progress',
-                    'start_time' => now(),
-                ]);
-                return true;
-            });
-        }
+            return $walkOrder;
+        });
+    }
 
-        public function completeWalk(int $bookingId, array $photoUrls = [], string $notes = ''): bool
-        {
-            $booking = PetWalking::findOrFail($bookingId);
+    /**
+     * Начало выгула (вокер подтверждает забор питомца).
+     */
+    public function startWalk(int $orderId, float $lat, float $lon, string $correlationId): PetWalkingOrder
+    {
+        return $this->db->transaction(function () use ($orderId, $lat, $lon, $correlationId): PetWalkingOrder {
+            $order = PetWalkingOrder::lockForUpdate()->findOrFail($orderId);
 
-            Log::channel('audit')->info('PetWalkingService: Walk completed', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+            if ($order->status !== 'pending') {
+                throw new \RuntimeException("Walk order {$orderId} cannot be started from status: {$order->status}.");
+            }
+
+            $order->update([
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'start_location' => ['lat' => $lat, 'lon' => $lon],
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking, $photoUrls, $notes) {
-                $booking->update([
-                    'status' => 'completed',
-                    'end_time' => now(),
-                    'photo_urls' => $photoUrls,
-                    'completion_notes' => $notes,
-                ]);
+            $this->logger->info('Pet walk started', [
+                'order_id' => $order->id,
+                'walker_id' => $order->walker_id,
+                'start_lat' => $lat,
+                'start_lon' => $lon,
+                'correlation_id' => $correlationId,
+            ]);
 
-                // Credit to walker wallet
-                $this->walletService->credit(
-                    tenantId: $booking->tenant_id,
-                    amount: (int) ($booking->price * 0.85),
-                    reason: 'walking_service_completed',
-                    correlationId: $booking->correlation_id,
+            return $order->refresh();
+        });
+    }
+
+    /**
+     * Завершение выгула и выплата вокеру.
+     */
+    public function completeWalk(int $orderId, float $lat, float $lon, string $correlationId): PetWalkingOrder
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pet_walking_complete',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($orderId, $lat, $lon, $correlationId): PetWalkingOrder {
+            $order = PetWalkingOrder::lockForUpdate()->findOrFail($orderId);
+
+            if ($order->status !== 'in_progress') {
+                throw new \RuntimeException("Walk order {$orderId} is not in progress.");
+            }
+
+            $order->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'end_location' => ['lat' => $lat, 'lon' => $lon],
+                'actual_duration_minutes' => (int) now()->diffInMinutes($order->started_at),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                userId: $order->walker_id,
+                amount: $order->payout_kopecks,
+                type: 'walking_payout',
+                reason: "Pet walk #{$order->id} completed",
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Pet walk completed with payout', [
+                'order_id' => $order->id,
+                'payout_kopecks' => $order->payout_kopecks,
+                'walker_id' => $order->walker_id,
+                'actual_duration' => $order->actual_duration_minutes,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order->refresh();
+        });
+    }
+
+    /**
+     * Отмена заказа на выгул.
+     */
+    public function cancelWalk(int $orderId, string $reason, string $correlationId): PetWalkingOrder
+    {
+        return $this->db->transaction(function () use ($orderId, $reason, $correlationId): PetWalkingOrder {
+            $order = PetWalkingOrder::lockForUpdate()->findOrFail($orderId);
+
+            if ($order->status === 'completed') {
+                throw new \RuntimeException("Cannot cancel a completed walk order.");
+            }
+
+            if ($order->payment_status === 'completed') {
+                $this->wallet->credit(
+                    userId: $order->client_id,
+                    amount: $order->total_kopecks,
+                    type: 'walking_refund',
+                    reason: "Pet walk #{$order->id} cancelled: {$reason}",
+                    correlationId: $correlationId,
                 );
+            }
 
-                return true;
-            });
-        }
-
-        public function getAvailableWalkers(string $walkDate, string $walkTime): Collection
-        {
-            return collect()->map(function () {
-                return [
-                    'walker_id' => random_int(1, 10),
-                    'rating' => random_int(45, 50) / 10,
-                    'available' => true,
-                ];
-            })->take(5);
-        }
-
-        public function cancelWalkingBooking(int $bookingId, string $reason = ''): bool
-        {
-            $booking = PetWalking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('PetWalkingService: Cancelling walking booking', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
-                'reason' => $reason,
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => $order->payment_status === 'completed' ? 'refunded' : $order->payment_status,
+                'cancellation_reason' => $reason,
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking, $reason) {
-                $booking->update([
-                    'status' => 'cancelled',
-                    'cancellation_reason' => $reason,
-                ]);
+            $this->logger->info('Pet walk cancelled', [
+                'order_id' => $order->id,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
 
-                return true;
-            });
-        }
+            return $order->refresh();
+        });
+    }
 }

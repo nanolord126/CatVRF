@@ -2,17 +2,17 @@
 
 namespace App\Domains\EventPlanning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventFinancialPolicyService extends Model
+
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class EventFinancialPolicyService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly \App\Domains\Payments\Services\WalletService $walletService,
-        ) {}
+
+    public function __construct(private readonly \App\Domains\Payments\Services\WalletService $walletService,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Рассчитать предоплату (Prepayment Calculation)
@@ -21,7 +21,6 @@ final class EventFinancialPolicyService extends Model
         public function calculateRequiredPrepayment(Event $event): int
         {
             $percentage = match ($event->type) {
-                'wedding' => 20,
                 'corporate' => 30,
                 'birthday' => 15,
                 default => 25,
@@ -29,10 +28,11 @@ final class EventFinancialPolicyService extends Model
 
             $prepayment = (int) ($event->total_budget_kopecks * ($percentage / 100));
 
-            Log::channel('audit')->info('Financial: Prepayment calculated', [
+            $this->logger->info('Financial: Prepayment calculated', [
                 'event_uuid' => $event->uuid,
                 'amount' => $prepayment,
                 'percentage' => $percentage,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $prepayment;
@@ -58,11 +58,12 @@ final class EventFinancialPolicyService extends Model
 
             $fee = (int) ($event->total_budget_kopecks * ($percentage / 100));
 
-            Log::channel('audit')->warning('Financial: Cancellation fee calculated', [
+            $this->logger->warning('Financial: Cancellation fee calculated', [
                 'event_uuid' => $event->uuid,
                 'daysToEvent' => $daysToEvent,
                 'fee_percentage' => $percentage,
                 'fee_amount' => $fee,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $fee;
@@ -75,17 +76,19 @@ final class EventFinancialPolicyService extends Model
         {
             $aiPlan = $event->ai_plan;
             if (empty($aiPlan)) {
-                Log::channel('audit')->warning('Financial: Attempted distribution without AI Plan', [
+                $this->logger->warning('Financial: Attempted distribution without AI Plan', [
                     'event_uuid' => $event->uuid,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return;
             }
 
             // Логика распределения копеек из JSON плана по связанным вендорам
             // (Реализуется в Layer 7 при маппинге EventVendor)
-            Log::channel('audit')->info('Financial: Budget distributed to modules', [
+            $this->logger->info('Financial: Budget distributed to modules', [
                 'event_uuid' => $event->uuid,
                 'total' => $event->total_budget_kopecks,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 }

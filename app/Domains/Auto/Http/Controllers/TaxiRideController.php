@@ -2,25 +2,25 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiRideController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TaxiRideController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly TaxiService $taxiService
+            private readonly TaxiService $taxiService, private readonly LoggerInterface $logger
         ) {
-        }
+
+    }
 
         /**
          * Заказать поездку
          */
         public function store(Request $request): JsonResponse
         {
-            $correlationId = request()->header('X-Correlation-ID', \Illuminate\Support\Str::uuid());
+            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid());
 
             try {
                 // Валидация входных данных
@@ -45,7 +45,7 @@ final class TaxiRideController extends Model
                     $validated['cargo_type'] ?? 'passenger'
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'ride_id' => $ride->id,
                     'uuid' => $ride->uuid,
@@ -53,14 +53,14 @@ final class TaxiRideController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
 
-            } catch (\Exception $e) {
-                Log::error('Ride creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Ride creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => 'Failed to create ride request',
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,

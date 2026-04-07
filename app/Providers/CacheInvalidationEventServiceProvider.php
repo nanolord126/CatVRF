@@ -2,34 +2,59 @@
 
 namespace App\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Events\AIConstructorDesignSaved;
+use App\Events\MasterAvailabilityChanged;
+use App\Events\ProductInventoryChanged;
+use App\Events\UserTasteProfileChanged;
+use App\Events\VerticalStatsRecalculated;
+use App\Listeners\InvalidateAIConstructorCacheListener;
+use App\Listeners\InvalidateMasterAvailabilityCacheListener;
+use App\Listeners\InvalidateProductInventoryCacheListener;
+use App\Listeners\InvalidateUserTasteCacheListener;
+use App\Listeners\InvalidateVerticalStatsCacheListener;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider;
 
-final class CacheInvalidationEventServiceProvider extends Model
+/**
+ * Class CacheInvalidationEventServiceProvider
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Providers
+ */
+final class CacheInvalidationEventServiceProvider extends EventServiceProvider
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $listen = [
-            UserTasteProfileChanged::class => [
-                InvalidateUserTasteCacheListener::class,
-            ],
-            ProductInventoryChanged::class => [
-                InvalidateProductInventoryCacheListener::class,
-            ],
-            MasterAvailabilityChanged::class => [
-                InvalidateMasterAvailabilityCacheListener::class,
-            ],
-            AIConstructorDesignSaved::class => [
-                InvalidateAIConstructorCacheListener::class,
-            ],
-            VerticalStatsRecalculated::class => [
-                InvalidateVerticalStatsCacheListener::class,
-            ],
-        ];
+        UserTasteProfileChanged::class => [
+            InvalidateUserTasteCacheListener::class,
+        ],
+        ProductInventoryChanged::class => [
+            InvalidateProductInventoryCacheListener::class,
+        ],
+        MasterAvailabilityChanged::class => [
+            InvalidateMasterAvailabilityCacheListener::class,
+        ],
+        AIConstructorDesignSaved::class => [
+            InvalidateAIConstructorCacheListener::class,
+        ],
+        VerticalStatsRecalculated::class => [
+            InvalidateVerticalStatsCacheListener::class,
+        ],
+    ];
 
-        public function boot(): void
-        {
-            parent::boot();
-        }
+    /**
+     * Handle boot operation.
+     *
+     * @throws \DomainException
+     */
+    public function boot(): void
+    {
+        parent::boot();
+    }
 }

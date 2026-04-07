@@ -2,23 +2,21 @@
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotoSessionController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PhotoSessionController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
     		private readonly SessionService $sessionService,
-    		private readonly FraudControlService $fraudControlService,
-    	) {}
+    		private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
     	public function store(Request $request): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$this->authorize('create', PhotoSession::class);
@@ -34,23 +32,23 @@ final class PhotoSessionController extends Model
 
     			$session = $this->sessionService->createSession(
     				array_merge($validated, [
-    					'user_id' => auth()->id(),
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'user_id' => $request->user()?->id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'correlation_id' => $correlationId,
     				])
     			);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $session,
     				'correlation_id' => $correlationId,
     			], 201);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Photography: Session creation failed', [
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Photography: Session creation failed', [
     				'error' => $e->getMessage(),
     				'correlation_id' => Str::uuid(),
     			]);
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка при создании сессии',
     				'correlation_id' => Str::uuid(),
@@ -64,13 +62,13 @@ final class PhotoSessionController extends Model
     			$session = PhotoSession->findOrFail($id);
     			$this->authorize('view', $session);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $session,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Сессия не найдена',
     				'correlation_id' => Str::uuid(),
@@ -81,17 +79,17 @@ final class PhotoSessionController extends Model
     	public function mySessions(): JsonResponse
     	{
     		try {
-    			$sessions = PhotoSession->where('user_id', auth()->id())
+    			$sessions = PhotoSession->where('user_id', $request->user()?->id)
     				->latest()
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $sessions,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -105,17 +103,17 @@ final class PhotoSessionController extends Model
     			$session = PhotoSession->findOrFail($id);
     			$this->authorize('update', $session);
 
-    			$status = request()->validate(['status' => 'required|in:pending,confirmed,completed,cancelled'])['status'];
+    			$status = $request->validate(['status' => 'required|in:pending,confirmed,completed,cancelled'])['status'];
 
     			$this->sessionService->updateSessionStatus($session, $status);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Статус обновлен',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -131,13 +129,13 @@ final class PhotoSessionController extends Model
 
     			$this->sessionService->cancelSession($session);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Сессия отменена',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Отмена невозможна',
     				'correlation_id' => Str::uuid(),
@@ -150,13 +148,13 @@ final class PhotoSessionController extends Model
     		try {
     			$sessions = PhotoSession->where('status', 'pending')->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $sessions,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),

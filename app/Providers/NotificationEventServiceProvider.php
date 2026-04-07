@@ -2,14 +2,26 @@
 
 namespace App\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
-final class NotificationEventServiceProvider extends Model
+/**
+ * Class NotificationEventServiceProvider
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Providers
+ */
+final class NotificationEventServiceProvider extends ServiceProvider
 {
-    use HasFactory;
+    
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * События и их listener'ы
          */

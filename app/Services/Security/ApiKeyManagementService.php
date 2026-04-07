@@ -2,14 +2,25 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ApiKeyManagementService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class ApiKeyManagementService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Generate new API key for tenant
          */
@@ -21,10 +32,12 @@ final class ApiKeyManagementService extends Model
             ?\DateTime $expiresAt = null
         ): array {
             $rawKey = Str::random(64);
-            $keyHash = $this->hash->make($rawKey);
+            $keyHash = Hash::make($rawKey);
             $keyId = (string) Str::uuid()->toString();
 
-            DB::transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
+            $this->fraud->check(new \stdClass());
+
+            $this->db->transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
                 $this->createApiKey(
                     tenantId: $tenantId,
                     keyId: $keyId,
@@ -35,10 +48,10 @@ final class ApiKeyManagementService extends Model
                     expiresAt: $expiresAt
                 );
 
-                Log::channel('audit')->info('API Key generated', [
+                $this->logger->channel('audit')->info('API Key generated', [
                     'tenant_id' => $tenantId,
                     'key_id' => $keyId,
-                    'correlation_id' => request()->header('X-Correlation-ID', Str::uuid()->toString()),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
                 ]);
             });
 
@@ -57,7 +70,7 @@ final class ApiKeyManagementService extends Model
         {
             $keyHash = $this->hashKey($rawKey);
 
-            $apiKey = DB::table('api_keys')
+            $apiKey = $this->db->table('api_keys')
                 ->where('key_hash', $keyHash)
                 ->where('status', 'active')
                 ->first();
@@ -71,8 +84,8 @@ final class ApiKeyManagementService extends Model
                 return false;
             }
 
-            DB::transaction(function () use ($apiKey, $clientIp) {
-                DB::table('api_keys')
+            $this->db->transaction(function () use ($apiKey, $clientIp) {
+                $this->db->table('api_keys')
                     ->where('id', $apiKey->id)
                     ->update(['last_used_at' => now()]);
 
@@ -91,22 +104,22 @@ final class ApiKeyManagementService extends Model
          */
         public function revokeKey(int $tenantId, string $keyId): bool
         {
-            return DB::transaction(function () use ($tenantId, $keyId) {
-                $updated = DB::table('api_keys')
+            return $this->db->transaction(function () use ($tenantId, $keyId) {
+                $updated = $this->db->table('api_keys')
                     ->where('tenant_id', $tenantId)
                     ->where('key_id', $keyId)
                     ->update(['status' => 'revoked']);
 
                 if ($updated) {
-                    $apiKey = DB::table('api_keys')
+                    $apiKey = $this->db->table('api_keys')
                         ->where('key_id', $keyId)
                         ->first();
                     $this->logAudit($apiKey->id, 'revoked', null);
 
-                    Log::channel('audit')->info('API Key revoked', [
+                    $this->logger->channel('audit')->info('API Key revoked', [
                         'tenant_id' => $tenantId,
                         'key_id' => $keyId,
-                        'correlation_id' => request()->header('X-Correlation-ID', Str::uuid()->toString()),
+                        'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
                     ]);
                 }
 
@@ -119,8 +132,8 @@ final class ApiKeyManagementService extends Model
          */
         public function rotateKey(int $tenantId, string $keyId): array
         {
-            return DB::transaction(function () use ($tenantId, $keyId) {
-                $oldKey = DB::table('api_keys')
+            return $this->db->transaction(function () use ($tenantId, $keyId) {
+                $oldKey = $this->db->table('api_keys')
                     ->where('tenant_id', $tenantId)
                     ->where('key_id', $keyId)
                     ->first();
@@ -150,7 +163,7 @@ final class ApiKeyManagementService extends Model
             ?array $ipWhitelist,
             ?\DateTime $expiresAt
         ): void {
-            DB::table('api_keys')->insert([
+            $this->db->table('api_keys')->insert([
                 'tenant_id' => $tenantId,
                 'key_id' => $keyId,
                 'name' => $name,
@@ -172,13 +185,13 @@ final class ApiKeyManagementService extends Model
 
         private function logAudit(int $apiKeyId, string $action, ?string $ipAddress): void
         {
-            DB::table('api_key_audit_logs')->insert([
+            $this->db->table('api_key_audit_logs')->insert([
                 'api_key_id' => $apiKeyId,
                 'action' => $action,
                 'ip_address' => $ipAddress,
-                'user_agent' => request()->header('User-Agent'),
+                'user_agent' => $this->request->header('User-Agent'),
                 'metadata' => json_encode([
-                    'correlation_id' => request()->header('X-Correlation-ID', Str::uuid()->toString()),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -1,19 +1,50 @@
 <?php declare(strict_types=1);
 
+/**
+ * CakeConstructor — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/cakeconstructor
+ */
+
+
 namespace App\Services\AI\Constructors;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Services\RecommendationService;
 
-final class CakeConstructor extends Model
+/**
+ * Class CakeConstructor
+ *
+ * Component of the CatVRF platform.
+ * Follows strict coding standards:
+ * - final class (no inheritance unless required)
+ * - private readonly properties
+ * - Constructor injection only
+ * - correlation_id in all operations
+ *
+ * @package App\Services\AI\Constructors
+ */
+final readonly class CakeConstructor extends BaseConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(private readonly RecommendationService $recommendationService)
         {
-        }
 
+    }
+
+        /**
+         * Handle build operation.
+         *
+         * @throws \DomainException
+         */
         public function build(User $user, array $inputParams, ?array $imageAnalysis): array
         {
             $tasteProfile = $this->getTasteProfile($user);

@@ -1,58 +1,26 @@
 <?php declare(strict_types=1);
 
-namespace Modules\Payments\Config;
+use Illuminate\Support\Env;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+return [
+    'default_gateway' => Env::get('PAYMENTS_DEFAULT_GATEWAY', 'tinkoff'),
 
-final class payments extends Model
-{
-    use HasFactory;
+    'tinkoff' => [
+        'terminal_key' => Env::get('TINKOFF_TERMINAL_KEY'),
+        'secret_key' => Env::get('TINKOFF_SECRET_KEY'),
+        'api_url' => rtrim((string) Env::get('TINKOFF_API_URL', 'https://securepay.tinkoff.ru/v2'), '/'),
+        'notification_ip_whitelist' => Env::get('TINKOFF_IP_WHITELIST', ''),
+        'webhook_token_header' => 'Token',
+    ],
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    <?php
-    
-    
-    
-    return [
-        'gateways' => [
-            'tinkoff' => [
-                'terminal_id' => DopplerService::get('TINKOFF_TERMINAL_ID'),
-                'secret_key' => DopplerService::get('TINKOFF_SECRET_KEY'),
-                'api_url' => DopplerService::get('TINKOFF_API_URL', 'https://securepay.tinkoff.ru/v2/'),
-            ],
-            'sber' => [
-                'username' => DopplerService::get('SBER_USERNAME'),
-                'password' => DopplerService::get('SBER_PASSWORD'),
-                'api_url' => DopplerService::get('SBER_API_URL'),
-            ],
-            'tochka' => [
-                'client_id' => DopplerService::get('TOCHKA_CLIENT_ID'),
-                'client_secret' => DopplerService::get('TOCHKA_CLIENT_SECRET'),
-            ],
-        ],
-        'ofd' => [
-            'default' => DopplerService::get('OFD_DRIVER', 'tensor'), // tensor or atol
-            'tensor' => [
-                'app_id' => DopplerService::get('TENSOR_APP_ID'),
-                'app_secret' => DopplerService::get('TENSOR_APP_SECRET'),
-            ],
-            'atol' => [
-                'login' => DopplerService::get('ATOL_LOGIN'),
-                'password' => DopplerService::get('ATOL_PASSWORD'),
-            ],
-        ],
-        'commissions' => [
-            'platform_percent' => 12.0,
-            'client_cashback_percent' => 1.0, // 1% from the 12% goes back to client
-        ],
-        'onboarding' => [
-            'trial_days' => 7,
-            'total_fee' => 15000.0,
-            'license_fee' => 7500.0,
-            'deposit_amount' => 7500.0,
-            'is_deposit_refundable' => false, // Non-refundable deposit policy
-        ],
-    ];
-    
-}
+    'idempotency_ttl' => 86400,
+
+    'webhook' => [
+        'rate_limit' => Env::get('PAYMENTS_WEBHOOK_RATE', '30,1'),
+        'signature_header' => 'Token',
+    ],
+
+    'recurring' => [
+        'enabled' => Env::get('PAYMENTS_RECURRING_ENABLED', true),
+    ],
+];

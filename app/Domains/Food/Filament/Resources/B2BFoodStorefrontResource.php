@@ -1,15 +1,28 @@
 <?php declare(strict_types=1);
 
+/**
+ * B2BFoodStorefrontResource — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/b2bfoodstorefrontresource
+ */
+
+
 namespace App\Domains\Food\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BFoodStorefrontResource extends Model
+final class B2BFoodStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BFoodStorefront::class;
     	protected static ?string $navigationIcon = 'heroicon-o-fire';
     	protected static ?string $navigationGroup = 'Food B2B';
@@ -40,4 +53,20 @@ final class B2BFoodStorefrontResource extends Model
     			->filters([Tables\Filters\SelectFilter::make('is_verified')])
     			->actions([Tables\Actions\ViewAction::make(), Tables\Actions\EditAction::make()]);
     	}
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

@@ -1,120 +1,161 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BeautyLookConstructor extends Model
+use Carbon\Carbon;
+use App\Domains\Beauty\Models\BeautyConsumable;
+use App\Domains\Beauty\Models\BeautyService as BeautyServiceModel;
+use App\DTOs\AI\AIConstructionResult;
+use App\Services\AI\ImageAnalysisService;
+use App\Services\FraudControlService;
+use App\Services\RecommendationService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+
+/**
+ * BeautyLookConstructor — AI-конструктор персонализированного образа.
+ *
+ * Анализирует фото лица через Vision API, генерирует рекомендации
+ * по макияжу и причёске с учётом цветотипа и UserTasteProfile,
+ * сохраняет результат в БД.
+ */
+final readonly class BeautyLookConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private ImageAnalysisService $imageAnalysis,
-            private RecommendationService $recommendation,
-            private InventoryManagementService $inventory,
-            private FraudControlService $fraud,
-            private string $correlationId
-        ) {}
+        private ImageAnalysisService $imageAnalysis,
+        private RecommendationService $recommendation,
+        private InventoryManagementService $inventory,
+        private FraudControlService $fraud,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {
+    }
 
-        /**
-         * Создать персонализированный образ на основе фото лица
-         */
-        public function construct(int $userId, \Illuminate\Http\UploadedFile $photo, array $params = []): AIConstructionResult
-        {
-            Log::channel('audit')->info('BeautyLookConstructor: start construction', [
-                'user_id' => $userId,
-                'correlation_id' => $this->correlationId,
+    /**
+     * Создать персонализированный образ на основе фото лица.
+     *
+     * @param array<string, mixed> $params Дополнительные параметры анализа
+     */
+    public function construct(int $userId, UploadedFile $photo, array $params = []): AIConstructionResult
+    {
+        $correlationId = Str::uuid()->toString();
+
+        $this->logger->info('BeautyLookConstructor: start construction', [
+            'user_id' => $userId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return $this->db->transaction(function () use ($userId, $photo, $params, $correlationId): AIConstructionResult {
+            $this->fraud->check(
+                userId: (int) ($this->guard->id() ?? 0),
+                operationType: 'beauty_ai_constructor',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $faceAnalysis = $this->imageAnalysis->analyzeFace($photo);
+
+            $context = array_merge($params, [
+                'face_shape' => $faceAnalysis['face_shape'] ?? 'oval',
+                'color_type' => $faceAnalysis['color_type'] ?? 'summer',
+                'skin_condition' => $faceAnalysis['skin_condition'] ?? 'normal',
+                'vertical' => 'Beauty',
             ]);
 
-            return DB::transaction(function () use ($userId, $photo, $params) {
-                // 1. Fraud Check
-                $this->fraud->check('beauty_ai_constructor', ['user_id' => $userId]);
+            $recommendations = $this->recommendation->getForUser($userId, 'Beauty', $context);
 
-                // 2. Vision Analysis (Цветотип, форма лица, состояние кожи)
-                $faceAnalysis = $this->imageAnalysis->analyzeFace($photo);
+            $suggestions = $this->enrichSuggestions($recommendations);
 
-                // 3. Генерация рекомендаций через RecommendationService (Профиль вкусов v2.0)
-                $context = array_merge($params, [
-                    'face_shape' => $faceAnalysis['face_shape'] ?? 'oval',
-                    'color_type' => $faceAnalysis['color_type'] ?? 'summer',
-                    'skin_condition' => $faceAnalysis['skin_condition'] ?? 'normal',
-                    'vertical' => 'Beauty',
-                ]);
+            $colorType = $faceAnalysis['color_type'] ?? 'summer';
+            $faceShape = $faceAnalysis['face_shape'] ?? 'oval';
 
-                $recommendations = $this->recommendation->getForUser($userId, 'Beauty', $context);
-
-                // 4. Проверка наличия товаров и услуг
-                $suggestions = $this->enrichSuggestions($recommendations);
-
-                // 5. Формирование результата (Output: Фото-превью через AI + список SKU)
-                $result = new AIConstructionResult(
-                    vertical: 'Beauty',
-                    type: 'image',
-                    payload: [
-                        'analysis' => $faceAnalysis,
-                        'generated_look_url' => $this->generatePreviewUrl($faceAnalysis, $context),
-                        'look_description' => "Ваш идеальный образ на базе анализа 15 параметров лица: {$faceAnalysis['face_shape']} форма, {$faceAnalysis['color_type']} цветотип.",
-                        'makeup_steps' => [
-                            'skin' => 'Увлажнение и база под макияж',
-                            'eyes' => 'Акцент на глаза с использованием палитры ' . ($faceAnalysis['color_type'] === 'summer' ? 'холодных' : 'теплых') . ' тонов',
-                            'lips' => 'Нюдовая помада для баланса',
-                        ],
+            $result = new AIConstructionResult(
+                vertical: 'Beauty',
+                type: 'image',
+                payload: [
+                    'analysis' => $faceAnalysis,
+                    'generated_look_url' => $this->generatePreviewUrl($faceAnalysis, $context, $correlationId),
+                    'look_description' => "Ваш идеальный образ на базе анализа 15 параметров лица: {$faceShape} форма, {$colorType} цветотип.",
+                    'makeup_steps' => [
+                        'skin' => 'Увлажнение и база под макияж',
+                        'eyes' => 'Акцент на глаза с использованием палитры ' . ($colorType === 'summer' ? 'холодных' : 'теплых') . ' тонов',
+                        'lips' => 'Нюдовая помада для баланса',
                     ],
-                    suggestions: $suggestions,
-                    confidence_score: (float)($faceAnalysis['confidence'] ?? 0.92),
-                    correlation_id: $this->correlationId
-                );
+                ],
+                suggestions: $suggestions,
+                confidence_score: (float) ($faceAnalysis['confidence'] ?? 0.92),
+                correlation_id: $correlationId,
+            );
 
-                // 6. Сохранение в БД
-                $this->saveToDatabase($userId, $result);
+            $this->saveToDatabase($userId, $result);
 
-                Log::channel('audit')->info('BeautyLookConstructor: construction finished', [
-                    'user_id' => $userId,
-                    'correlation_id' => $this->correlationId,
-                    'suggestions_count' => count($suggestions),
-                ]);
-
-                return $result;
-            });
-        }
-
-        private function enrichSuggestions(\Illuminate\Support\Collection $recommendations): array
-        {
-            return $recommendations->map(function ($item) {
-                $inStock = false;
-                if ($item instanceof BeautyProduct) {
-                    $inStock = $this->inventory->getCurrentStock($item->id) > 0;
-                } elseif ($item instanceof BeautyService) {
-                    $inStock = $item->masters()->where('is_active', true)->exists();
-                }
-
-                return array_merge($item->toArray(), [
-                    'in_stock' => $inStock,
-                    'match_reason' => 'Рекомендовано на основе вашего цветотипа и предпочтений.',
-                ]);
-            })->toArray();
-        }
-
-        private function generatePreviewUrl(array $analysis, array $context): string
-        {
-            // В реальности здесь вызов к Stable Diffusion / DALL-E / Midjourney API
-            return "https://cdn.catvrf.com/ai/previews/beauty-" . $this->correlationId . ".jpg";
-        }
-
-        private function saveToDatabase(int $userId, AIConstructionResult $result): void
-        {
-            DB::table('ai_constructions')->insert([
-                'uuid' => \Illuminate\Support\Str::uuid(),
+            $this->logger->info('BeautyLookConstructor: construction finished', [
                 'user_id' => $userId,
-                'tenant_id' => tenant()->id ?? 0,
-                'vertical' => $result->vertical,
-                'design_data' => json_encode($result->payload),
-                'suggestions' => json_encode($result->suggestions),
-                'correlation_id' => $result->correlation_id,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'correlation_id' => $correlationId,
+                'suggestions_count' => count($suggestions),
             ]);
-        }
+
+            return $result;
+        });
+    }
+
+    /**
+     * Обогатить рекомендации данными о наличии и причинами подбора.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrichSuggestions(Collection $recommendations): array
+    {
+        return $recommendations->map(function (object $item): array {
+            $inStock = false;
+
+            if ($item instanceof BeautyConsumable) {
+                $inStock = $this->inventory->getCurrentStock($item->id) > 0;
+            } elseif ($item instanceof BeautyServiceModel) {
+                $inStock = $item->masters()->where('is_active', true)->exists();
+            }
+
+            return array_merge($item->toArray(), [
+                'in_stock' => $inStock,
+                'match_reason' => 'Рекомендовано на основе вашего цветотипа и предпочтений.',
+            ]);
+        })->toArray();
+    }
+
+    /**
+     * Сгенерировать URL превью образа.
+     *
+     * @param array<string, mixed> $analysis Результат анализа лица
+     * @param array<string, mixed> $context Контекст построения образа
+     */
+    private function generatePreviewUrl(array $analysis, array $context, string $correlationId): string
+    {
+        return 'https://cdn.catvrf.com/ai/previews/beauty-' . $correlationId . '.jpg';
+    }
+
+    /**
+     * Сохранить результат конструктора в таблицу ai_constructions.
+     */
+    private function saveToDatabase(int $userId, AIConstructionResult $result): void
+    {
+        $this->db->table('ai_constructions')->insert([
+            'uuid' => Str::uuid()->toString(),
+            'user_id' => $userId,
+            'tenant_id' => 0,
+            'vertical' => $result->vertical,
+            'design_data' => json_encode($result->payload, JSON_THROW_ON_ERROR),
+            'suggestions' => json_encode($result->suggestions, JSON_THROW_ON_ERROR),
+            'correlation_id' => $result->correlation_id,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+    }
 }

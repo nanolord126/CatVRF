@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BookOrderResource extends Model
+final class BookOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BookOrder::class;
         protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
         protected static ?string $navigationGroup = 'Books & Education';
@@ -123,31 +120,15 @@ final class BookOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBookOrder::route('/'),
-                'create' => Pages\\CreateBookOrder::route('/create'),
-                'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBookOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBookOrder::route('/'),
-                'create' => Pages\\CreateBookOrder::route('/create'),
-                'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBookOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBookOrder::route('/'),
-                'create' => Pages\\CreateBookOrder::route('/create'),
-                'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBookOrder::route('/{record}'),
+                'index' => Pages\ListBookOrder::route('/'),
+                'create' => Pages\CreateBookOrder::route('/create'),
+                'edit' => Pages\EditBookOrder::route('/{record}/edit'),
+                'view' => Pages\ViewBookOrder::route('/{record}'),
             ];
         }
 }

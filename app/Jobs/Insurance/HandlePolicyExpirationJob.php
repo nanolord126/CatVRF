@@ -2,14 +2,16 @@
 
 namespace App\Jobs\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class HandlePolicyExpirationJob extends Model
+final class HandlePolicyExpirationJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -19,17 +21,17 @@ final class HandlePolicyExpirationJob extends Model
          * Create a new job instance.
          */
         public function __construct(
-            protected string $correlationId = null
-        ) {
+            private ?string $correlationId = null,
+    ) {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
 
         /**
          * Execute the job logic.
          */
-        public function handle(): void
+        public function handle(LogManager $logger, DatabaseManager $db): void
         {
-            Log::channel('audit')->info('[HandlePolicyExpirationJob] Job execution started', [
+            $logger->channel('audit')->info('[HandlePolicyExpirationJob] Job execution started', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -44,10 +46,10 @@ final class HandlePolicyExpirationJob extends Model
                 ];
 
                 // Chunk processing for memory safety (Canon 2026 Batch logic)
-                $expiredPoliciesQuery->chunk(100, function ($policies) use (&$stats) {
+                $expiredPoliciesQuery->chunk(100, function ($policies) use (&$stats, $logger, $db) {
                     foreach ($policies as $policy) {
                         try {
-                            DB::transaction(function () use ($policy) {
+                            $db->transaction(function () use ($policy, $logger) {
                                 $policy->update([
                                     'status' => 'expired',
                                     'correlation_id' => $this->correlationId,
@@ -55,7 +57,7 @@ final class HandlePolicyExpirationJob extends Model
 
                                 // Potential for event dispatch: PolicyExpiredEvent::dispatch($policy);
 
-                                Log::channel('audit')->info('[HandlePolicyExpirationJob] Policy marked as EXPIRED', [
+                                $logger->channel('audit')->info('[HandlePolicyExpirationJob] Policy marked as EXPIRED', [
                                     'correlation_id' => $this->correlationId,
                                     'policy_uuid' => $policy->uuid,
                                     'expires_at' => $policy->expires_at->toDateTimeString(),
@@ -65,7 +67,7 @@ final class HandlePolicyExpirationJob extends Model
                             $stats['processed']++;
 
                         } catch (Exception $policyException) {
-                            Log::channel('audit')->error('[HandlePolicyExpirationJob] Failed to expire policy', [
+                            $logger->channel('audit')->error('[HandlePolicyExpirationJob] Failed to expire policy', [
                                 'correlation_id' => $this->correlationId,
                                 'policy_id' => $policy->id,
                                 'error' => $policyException->getMessage(),
@@ -75,13 +77,20 @@ final class HandlePolicyExpirationJob extends Model
                     }
                 });
 
-                Log::channel('audit')->info('[HandlePolicyExpirationJob] Finished processing policy expirations', [
+                $logger->channel('audit')->info('[HandlePolicyExpirationJob] Finished processing policy expirations', [
                     'correlation_id' => $this->correlationId,
                     'stats' => $stats,
                 ]);
 
             } catch (Exception $globalException) {
-                Log::channel('audit')->critical('[HandlePolicyExpirationJob] GLOBAL CRITICAL FAILURE', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($globalException->getMessage(), [
+                    'exception' => $globalException::class,
+                    'file' => $globalException->getFile(),
+                    'line' => $globalException->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $logger->channel('audit')->critical('[HandlePolicyExpirationJob] GLOBAL CRITICAL FAILURE', [
                     'correlation_id' => $this->correlationId,
                     'error' => $globalException->getMessage(),
                     'trace' => $globalException->getTraceAsString(),

@@ -2,33 +2,29 @@
 
 namespace App\Domains\RealEstate\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class MortgageController extends Model
+final class MortgageController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly MortgageCalculatorService $mortgageService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud) {}
 
         public function index(): JsonResponse
         {
             try {
                 $applications = MortgageApplication::query()
-                    ->where('client_id', auth()->id())
+                    ->where('client_id', $request->user()?->id)
                     ->with('property')
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $applications,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 
@@ -36,7 +32,7 @@ final class MortgageController extends Model
         {
             $this->authorize('view', $application);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $application->load('property'),
             ]);
@@ -45,7 +41,7 @@ final class MortgageController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $request->validate([
@@ -58,9 +54,9 @@ final class MortgageController extends Model
                 ]);
 
                 $application = MortgageApplication::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()?->id,
                     'property_id' => $request->get('property_id'),
-                    'client_id' => auth()->id(),
+                    'client_id' => $request->user()?->id,
                     'property_price' => $request->get('property_price'),
                     'loan_amount' => $request->get('property_price') - $request->get('initial_payment'),
                     'initial_payment' => $request->get('initial_payment'),
@@ -70,12 +66,12 @@ final class MortgageController extends Model
                     'status' => 'draft',
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $application,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 
@@ -89,12 +85,12 @@ final class MortgageController extends Model
                     (float) $request->get('interest_rate'),
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $result,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 }

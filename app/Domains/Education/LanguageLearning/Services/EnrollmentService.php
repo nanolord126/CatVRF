@@ -2,35 +2,36 @@
 
 namespace App\Domains\Education\LanguageLearning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class EnrollmentService extends Model
+use App\Domains\Education\LanguageLearning\Models\LanguageCourse;
+use App\Domains\Education\LanguageLearning\Models\LanguageEnrollment;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class EnrollmentService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private WalletService $walletService
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+            private WalletService $walletService,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Записать пользователя на курс (B2C/B2B).
          */
         public function enroll(int $userId, int $courseId, string $type, string $correlationId): LanguageEnrollment
         {
-            return DB::transaction(function () use ($userId, $courseId, $type, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $courseId, $type, $correlationId) {
                 $course = LanguageCourse::findOrFail($courseId);
 
                 // Проверка фрода и лимитов
-                $this->fraudControl->check(['operation' => 'enroll_course', 'user_id' => $userId]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'enroll_course', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($course->enrollments()->count() >= $course->max_students) {
-                    throw new \Exception('Course is full');
+                    throw new \DomainException('Course is full');
                 }
 
-                Log::channel('audit')->info('User enrollment initiated', [
+                $this->logger->info('User enrollment initiated', [
                     'user_id' => $userId,
                     'course_id' => $courseId,
                     'correlation_id' => $correlationId,
@@ -42,7 +43,7 @@ final class EnrollmentService extends Model
                     : $course->price_total;
 
                 // Списание с кошелька (копейки)
-                $this->walletService->debit($userId, $price, "Enrollment to course: {$course->title}", $correlationId);
+                $this->walletService->debit($userId, $price, 'language_enrollment', $correlationId);
 
                 $enrollment = LanguageEnrollment::create([
                     'user_id' => $userId,
@@ -54,7 +55,7 @@ final class EnrollmentService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('User enrollment completed', [
+                $this->logger->info('User enrollment completed', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -68,7 +69,7 @@ final class EnrollmentService extends Model
          */
         public function updateProgress(int $enrollmentId, int $lessonId, string $correlationId): void
         {
-            DB::transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
+            $this->db->transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
                 $enrollment = LanguageEnrollment::findOrFail($enrollmentId);
                 $course = $enrollment->course;
 
@@ -84,7 +85,7 @@ final class EnrollmentService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Enrollment progress updated', [
+                $this->logger->info('Enrollment progress updated', [
                     'enrollment_id' => $enrollmentId,
                     'percent' => $percent,
                     'correlation_id' => $correlationId,

@@ -2,17 +2,17 @@
 
 namespace App\Domains\Consulting\AI\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RecommendationService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class RecommendationService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(?string $correlationId = null)
+        public function __construct(?string $correlationId = null,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -48,11 +48,11 @@ final class RecommendationService extends Model
         {
             try {
                 // В 2026 тут запрос к отдельному ML-API
-                // Http::post(config('services.ml.url') . '/forecast', ['user_id' => $userId]);
+                // Http::post($this->config->get('services.ml.url') . '/forecast', ['user_id' => $userId]);
 
                 return collect([]); // Пока пусто
-            } catch (\Exception $e) {
-                Log::error('AI Recommendation failed: ' . $e->getMessage());
+            } catch (\Throwable $e) {
+                $this->logger->error('AI Recommendation failed: ' . $e->getMessage());
                 return collect([]);
             }
         }
@@ -62,7 +62,7 @@ final class RecommendationService extends Model
          */
         public function logView(int $userId, int $postId): void
         {
-            Log::channel('audit')->info('User viewed post', [
+            $this->logger->info('User viewed post', [
                 'user_id' => $userId,
                 'post_id' => $postId,
                 'correlation_id' => $this->correlationId,

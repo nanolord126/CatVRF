@@ -1,28 +1,41 @@
 <?php declare(strict_types=1);
 
+/**
+ * ConsumableController — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/consumablecontroller
+ */
+
+
 namespace App\Domains\Food\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class ConsumableController extends Model
+final class ConsumableController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
         {
             try {
                 $consumables = FoodConsumable::query()
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()->id)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $consumables,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
@@ -30,7 +43,7 @@ final class ConsumableController extends Model
         {
             $this->authorize('view', $consumable);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $consumable,
             ]);
@@ -39,14 +52,20 @@ final class ConsumableController extends Model
         public function lowStock(): JsonResponse
         {
             $consumables = FoodConsumable::query()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', tenant()->id)
                 ->whereRaw('current_stock < min_stock_threshold')
                 ->get();
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $consumables,
                 'count' => $consumables->count(),
             ]);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

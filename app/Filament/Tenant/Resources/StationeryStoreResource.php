@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StationeryStoreResource extends Model
+final class StationeryStoreResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StationeryStore::class;
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
         protected static ?string $navigationGroup = 'Stationery Hub';
@@ -79,22 +76,15 @@ final class StationeryStoreResource extends Model
                 ])->columns(2),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStationeryStore::route('/'),
-                'create' => Pages\\CreateStationeryStore::route('/create'),
-                'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryStore::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStationeryStore::route('/'),
-                'create' => Pages\\CreateStationeryStore::route('/create'),
-                'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryStore::route('/{record}'),
+                'index' => Pages\ListStationeryStore::route('/'),
+                'create' => Pages\CreateStationeryStore::route('/create'),
+                'edit' => Pages\EditStationeryStore::route('/{record}/edit'),
+                'view' => Pages\ViewStationeryStore::route('/{record}'),
             ];
         }
 }

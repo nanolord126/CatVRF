@@ -2,14 +2,17 @@
 
 namespace App\Services\Compliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ComplianceRequirementService extends Model
+use App\Models\ComplianceIntegration;
+use Illuminate\Cache\CacheManager;
+
+final readonly class ComplianceRequirementService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Map of categories/tags to integration type.
          */
@@ -64,7 +67,7 @@ final class ComplianceRequirementService extends Model
             if ($className === 'MedicalService') return 'mdlp';
             if ($className === 'Dish' || $className === 'PetProduct') return 'mercury';
 
-            return null;
+            throw new \DomainException('Operation returned no result');
         }
 
         /**
@@ -72,7 +75,7 @@ final class ComplianceRequirementService extends Model
          */
         public function hasActiveIntegration(int $tenantId, string $type): bool
         {
-            return Cache::remember("compliance:{$tenantId}:{$type}:active", 300, function () use ($tenantId, $type) {
+            return $this->cache->remember("compliance:{$tenantId}:{$type}:active", 300, function () use ($tenantId, $type) {
                 return ComplianceIntegration::where('tenant_id', $tenantId)
                     ->where('type', $type)
                     ->where('status', 'connected')

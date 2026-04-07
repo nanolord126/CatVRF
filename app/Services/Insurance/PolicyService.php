@@ -2,14 +2,26 @@
 
 namespace App\Services\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Insurance\InsuranceCompany;
+use App\Models\Insurance\InsurancePolicy;
+use App\Models\User;
+use Exception;
+use Illuminate\Support\Collection;
 
-final class PolicyService extends Model
+
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class PolicyService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Issue a formal policy with legal contract.
          */
@@ -25,7 +37,7 @@ final class PolicyService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Audit Log Start (Canon 2026: Logic trace)
-            Log::channel('audit')->info('[PolicyService] Issuing new policy', [
+            $this->logger->channel('audit')->info('[PolicyService] Issuing new policy', [
                 'correlation_id' => $correlationId,
                 'company_id' => $company->id,
                 'user_id' => $user->id,
@@ -35,7 +47,8 @@ final class PolicyService extends Model
 
             try {
                 // 2. Transaction Scope (Atomic Operation)
-                return DB::transaction(function () use (
+                $this->fraud->check(new \stdClass());
+                return $this->db->transaction(function () use (
                     $company, $user, $typeId, $premiumAmount, $coverageAmount, $policyData, $correlationId
                 ) {
                     // 3. Create Core Policy Record
@@ -58,11 +71,11 @@ final class PolicyService extends Model
 
                     // 4. Verification Step (Logical consistency)
                     if ($premiumAmount <= 0) {
-                        throw new Exception('[PolicyService] Premium cannot be zero or negative.');
+                        throw new \InvalidArgumentException('[PolicyService] Premium cannot be zero or negative.');
                     }
 
                     if ($coverageAmount < ($premiumAmount * 2)) {
-                        throw new Exception('[PolicyService] Coverage must be at least 2x the premium.');
+                        throw new \InvalidArgumentException('[PolicyService] Coverage must be at least 2x the premium.');
                     }
 
                     // 5. Initialize Legal Contract
@@ -74,7 +87,7 @@ final class PolicyService extends Model
                     ]);
 
                     // 6. Success Log Audit
-                    Log::channel('audit')->info('[PolicyService] Policy successfully issued', [
+                    $this->logger->channel('audit')->info('[PolicyService] Policy successfully issued', [
                         'correlation_id' => $correlationId,
                         'policy_uuid' => $policy->uuid,
                         'policy_number' => $policy->policy_number,
@@ -84,8 +97,15 @@ final class PolicyService extends Model
                 });
 
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 7. Error handling (Log and bubble up)
-                Log::channel('audit')->error('[PolicyService] Policy issuance failed', [
+                $this->logger->channel('audit')->error('[PolicyService] Policy issuance failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -102,7 +122,7 @@ final class PolicyService extends Model
         {
             $correlationId = $correlationId ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($policyId, $correlationId) {
+            return $this->db->transaction(function () use ($policyId, $correlationId) {
                 $policy = InsurancePolicy::lockForUpdate()->findOrFail($policyId);
 
                 if ($policy->status === 'active') {
@@ -111,7 +131,7 @@ final class PolicyService extends Model
 
                 // check if signed contract exists
                 if (!$policy->contract || !$policy->contract->signed_at) {
-                    Log::channel('audit')->warning('[PolicyService] Policy activation skipped: contract not signed', [
+                    $this->logger->channel('audit')->warning('[PolicyService] Policy activation skipped: contract not signed', [
                         'correlation_id' => $correlationId,
                         'policy_id' => $policyId,
                     ]);
@@ -124,7 +144,7 @@ final class PolicyService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('[PolicyService] Policy activated', [
+                $this->logger->channel('audit')->info('[PolicyService] Policy activated', [
                     'policy_id' => $policyId,
                     'correlation_id' => $correlationId,
                 ]);

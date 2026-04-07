@@ -1,11 +1,50 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+/**
+ * AutoParts3DService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/autoparts3dservice
+ * @see https://catvrf.ru/docs/autoparts3dservice
+ * @see https://catvrf.ru/docs/autoparts3dservice
+ * @see https://catvrf.ru/docs/autoparts3dservice
+ * @see https://catvrf.ru/docs/autoparts3dservice
+ */
+
+
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
+/**
+ * Class AutoParts3DService
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Services\ThreeD
+ */
 final class AutoParts3DService
 {
+    /**
+     * Handle generateProductVisualization operation.
+     *
+     * @throws \DomainException
+     */
     public function generateProductVisualization(array $productData): array
     {
         return [

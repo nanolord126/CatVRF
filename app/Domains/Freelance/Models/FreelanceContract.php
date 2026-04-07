@@ -1,5 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * FreelanceContract — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/freelancecontract
+ */
+
+
 namespace App\Domains\Freelance\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,8 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 final class FreelanceContract extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'freelance_contracts';
 
         protected $fillable = [
@@ -49,4 +64,10 @@ final class FreelanceContract extends Model
         {
             return $this->belongsTo(FreelanceOrder::class, 'order_id');
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

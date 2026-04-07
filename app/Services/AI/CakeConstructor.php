@@ -2,17 +2,17 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CakeConstructor extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+final readonly class CakeConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private RecommendationService $recommendation,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         public function construct(
             array $analysis,
@@ -44,12 +44,13 @@ final class CakeConstructor extends Model
 
                 $allItems = \array_merge($baseCakes, $decorations, $additionalServices);
 
-                Log::channel('audit')->info('Cake construction completed', [
+                $this->logger->channel('audit')->info('Cake construction completed', [
                     'occasion' => $occasion,
                     'flavor' => $flavor,
                     'design' => $design,
                     'items_count' => \count($allItems),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'data' => [
@@ -73,9 +74,10 @@ final class CakeConstructor extends Model
                     ],
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Cake construction failed', [
+                $this->logger->channel('audit')->error('Cake construction failed', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 throw $e;
             }
         }
@@ -107,7 +109,6 @@ final class CakeConstructor extends Model
         private function selectDesign(array $colors, array $styles, string $occasion): string
         {
             $designs = match ($occasion) {
-                'birthday' => 'festive',
                 'wedding' => 'elegant',
                 'corporate' => 'professional',
                 'kids' => 'playful',

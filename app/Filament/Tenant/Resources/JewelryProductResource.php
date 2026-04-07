@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class JewelryProductResource extends Model
+final class JewelryProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = JewelryProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
         protected static ?string $navigationGroup = 'Jewelry Management';
@@ -141,22 +138,15 @@ final class JewelryProductResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListJewelryProduct::route('/'),
-                'create' => Pages\\CreateJewelryProduct::route('/create'),
-                'edit' => Pages\\EditJewelryProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelryProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListJewelryProduct::route('/'),
-                'create' => Pages\\CreateJewelryProduct::route('/create'),
-                'edit' => Pages\\EditJewelryProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelryProduct::route('/{record}'),
+                'index' => Pages\ListJewelryProduct::route('/'),
+                'create' => Pages\CreateJewelryProduct::route('/create'),
+                'edit' => Pages\EditJewelryProduct::route('/{record}/edit'),
+                'view' => Pages\ViewJewelryProduct::route('/{record}'),
             ];
         }
 }

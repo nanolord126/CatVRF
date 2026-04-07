@@ -2,6 +2,8 @@
 
 namespace App\Notifications\Channels;
 
+
+use Psr\Log\LoggerInterface;
 use App\Services\SmsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -14,17 +16,18 @@ use Illuminate\Support\Facades\Log;
  * - Vonage (Nexmo)
  * - Other SMS providers
  */
-class SmsChannel
+final class SmsChannel
 {
     /**
      * Инстанс SmsService
      */
-    protected SmsService $smsService;
+    private SmsService $smsService;
 
     /**
      * Конструктор
      */
-    public function __construct(SmsService $smsService)
+    public function __construct(
+        private readonly LoggerInterface $logger,SmsService $smsService)
     {
         $this->smsService = $smsService;
     }
@@ -36,7 +39,7 @@ class SmsChannel
     {
         // Проверить, что объект имеет метод toSms
         if (!method_exists($notification, 'toSms')) {
-            Log::warning('Notification does not have toSms method', [
+            $this->logger->warning('Notification does not have toSms method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -47,7 +50,7 @@ class SmsChannel
             // Получить номер телефона
             $phone = $this->getPhoneNumber($notifiable);
             if (!$phone) {
-                throw new \Exception("No phone number found for notifiable: {$notifiable->id}");
+                throw new \RuntimeException("No phone number found for notifiable: {$notifiable->id}");
             }
 
             // Получить данные SMS
@@ -63,7 +66,7 @@ class SmsChannel
                 priority: $smsData['priority'] ?? 'normal',
             );
 
-            Log::channel('audit')->info('SMS notification sent', [
+            $this->logger->info('SMS notification sent', [
                 'type' => $notification->getType(),
                 'phone' => $this->maskPhone($phone),
                 'correlation_id' => $notification->getCorrelationId(),
@@ -71,7 +74,14 @@ class SmsChannel
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('notifications')->error('Failed to send SMS notification', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send SMS notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),
@@ -104,7 +114,7 @@ class SmsChannel
             return $notifiable->routeNotificationForSms();
         }
 
-        return null;
+        return '';
     }
 
     /**

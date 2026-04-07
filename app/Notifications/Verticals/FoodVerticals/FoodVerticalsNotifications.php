@@ -9,7 +9,7 @@ use App\Notifications\BaseSmsNotification;
 // ========== LOGISTICS ==========
 final class ShipmentDispatchedNotification extends BasePushNotification
 {
-    protected string $type = 'logistics.shipment.dispatched';
+    private string $type = 'logistics.shipment.dispatched';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -24,7 +24,7 @@ final class ShipmentDispatchedNotification extends BasePushNotification
 
 final class DeliveryConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'logistics.delivery.confirmed';
+    private string $type = 'logistics.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -40,7 +40,7 @@ final class DeliveryConfirmedNotification extends BasePushNotification
 // ========== FRESH PRODUCE ==========
 final class FreshProduceOrderConfirmedNotification extends BaseSmsNotification
 {
-    protected string $type = 'fresh_produce.order.confirmed';
+    private string $type = 'fresh_produce.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -50,7 +50,7 @@ final class FreshProduceOrderConfirmedNotification extends BaseSmsNotification
 
 final class FreshProduceDeliveryArrivingNotification extends BasePushNotification
 {
-    protected string $type = 'fresh_produce.delivery.arriving';
+    private string $type = 'fresh_produce.delivery.arriving';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -66,7 +66,7 @@ final class FreshProduceDeliveryArrivingNotification extends BasePushNotificatio
 // ========== GROCERY ==========
 final class GroceryOrderConfirmedNotification extends BaseSmsNotification
 {
-    protected string $type = 'grocery.order.confirmed';
+    private string $type = 'grocery.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -76,7 +76,7 @@ final class GroceryOrderConfirmedNotification extends BaseSmsNotification
 
 final class GroceryDeliveryArrivingNotification extends BasePushNotification
 {
-    protected string $type = 'grocery.delivery.arriving';
+    private string $type = 'grocery.delivery.arriving';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -93,7 +93,7 @@ final class GroceryDeliveryArrivingNotification extends BasePushNotification
 // ========== PHARMACY ==========
 final class PrescriptionReadyNotification extends BaseSmsNotification
 {
-    protected string $type = 'pharmacy.prescription.ready';
+    private string $type = 'pharmacy.prescription.ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -103,8 +103,8 @@ final class PrescriptionReadyNotification extends BaseSmsNotification
 
 final class MedicineDeliveredNotification extends BaseMailableNotification
 {
-    protected string $type = 'pharmacy.medicine.delivered';
-    protected string $template = 'emails.pharmacy.medicine_delivered';
+    private string $type = 'pharmacy.medicine.delivered';
+    private string $template = 'emails.pharmacy.medicine_delivered';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -116,8 +116,8 @@ final class MedicineDeliveredNotification extends BaseMailableNotification
 // ========== HEALTHY FOOD ==========
 final class MealPlanCreatedNotification extends BaseMailableNotification
 {
-    protected string $type = 'healthy_food.meal_plan.created';
-    protected string $template = 'emails.healthy_food.meal_plan_created';
+    private string $type = 'healthy_food.meal_plan.created';
+    private string $template = 'emails.healthy_food.meal_plan_created';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -128,7 +128,7 @@ final class MealPlanCreatedNotification extends BaseMailableNotification
 
 final class DeliveryScheduledNotification extends BasePushNotification
 {
-    protected string $type = 'healthy_food.delivery.scheduled';
+    private string $type = 'healthy_food.delivery.scheduled';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -143,7 +143,7 @@ final class DeliveryScheduledNotification extends BasePushNotification
 // ========== CONFECTIONERY ==========
 final class ConfectioneryOrderConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'confectionery.order.confirmed';
+    private string $type = 'confectionery.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -158,7 +158,7 @@ final class ConfectioneryOrderConfirmedNotification extends BasePushNotification
 
 final class ConfectioneryReadyForPickupNotification extends BasePushNotification
 {
-    protected string $type = 'confectionery.ready.pickup';
+    private string $type = 'confectionery.ready.pickup';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -175,7 +175,7 @@ final class ConfectioneryReadyForPickupNotification extends BasePushNotification
 // ========== MEAT SHOPS ==========
 final class MeatOrderConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'meat_shops.order.confirmed';
+    private string $type = 'meat_shops.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -189,7 +189,7 @@ final class MeatOrderConfirmedNotification extends BasePushNotification
 
 final class MeatOrderReadyNotification extends BaseSmsNotification
 {
-    protected string $type = 'meat_shops.order.ready';
+    private string $type = 'meat_shops.order.ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -200,8 +200,8 @@ final class MeatOrderReadyNotification extends BaseSmsNotification
 // ========== OFFICE CATERING ==========
 final class MenuApprovedNotification extends BaseMailableNotification
 {
-    protected string $type = 'office_catering.menu.approved';
-    protected string $template = 'emails.office_catering.menu_approved';
+    private string $type = 'office_catering.menu.approved';
+    private string $template = 'emails.office_catering.menu_approved';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -212,7 +212,7 @@ final class MenuApprovedNotification extends BaseMailableNotification
 
 final class CateringDeliveryConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'office_catering.delivery.confirmed';
+    private string $type = 'office_catering.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -228,8 +228,8 @@ final class CateringDeliveryConfirmedNotification extends BasePushNotification
 // ========== FARM DIRECT ==========
 final class FarmOrderConfirmedNotification extends BaseMailableNotification
 {
-    protected string $type = 'farm_direct.order.confirmed';
-    protected string $template = 'emails.farm_direct.order_confirmed';
+    private string $type = 'farm_direct.order.confirmed';
+    private string $template = 'emails.farm_direct.order_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -240,7 +240,7 @@ final class FarmOrderConfirmedNotification extends BaseMailableNotification
 
 final class FarmPickupTimeNotification extends BaseSmsNotification
 {
-    protected string $type = 'farm_direct.pickup.time';
+    private string $type = 'farm_direct.pickup.time';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -251,8 +251,8 @@ final class FarmPickupTimeNotification extends BaseSmsNotification
 // ========== BOOKS ==========
 final class BookOrderShippedNotification extends BaseMailableNotification
 {
-    protected string $type = 'books.order.shipped';
-    protected string $template = 'emails.books.order_shipped';
+    private string $type = 'books.order.shipped';
+    private string $template = 'emails.books.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -263,7 +263,7 @@ final class BookOrderShippedNotification extends BaseMailableNotification
 
 final class BookDeliveryArrivedNotification extends BasePushNotification
 {
-    protected string $type = 'books.delivery.arrived';
+    private string $type = 'books.delivery.arrived';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {

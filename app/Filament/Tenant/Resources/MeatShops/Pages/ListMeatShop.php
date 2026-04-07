@@ -2,6 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\MeatShops\Pages;
 
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\MeatShops\MeatShopsResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,6 +16,10 @@ use Illuminate\Support\Str;
 
 final class ListMeatShop extends ListRecords
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = MeatShopsResource::class;
 
     protected function getHeaderActions(): array
@@ -26,10 +34,10 @@ final class ListMeatShop extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = auth()->id();
+        $userId = $this->guard->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('MeatShops ListRecords accessed', [
+        $this->logger->info('MeatShops ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -53,8 +61,8 @@ final class ListMeatShop extends ListRecords
 
     public function render()
     {
-        Log::channel('audit')->info('ListMeatShop page rendered', [
-            'user_id' => auth()->id(),
+        $this->logger->info('ListMeatShop page rendered', [
+            'user_id' => $this->guard->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

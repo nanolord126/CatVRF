@@ -2,14 +2,17 @@
 
 namespace App\Services\Legal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PricingService extends Model
+use App\Models\Lawyer;
+use App\Models\LegalService;
+use Illuminate\Log\LogManager;
+
+final class PricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Calculate consultation price based on lawyer, complexity, and urgency.
          */
@@ -25,7 +28,6 @@ final class PricingService extends Model
 
             // Complexity Multiplier
             $multiplier *= match ($complexity) {
-                'high' => 1.5,
                 'special' => 2.0,
                 default => 1.0,
             };
@@ -42,7 +44,7 @@ final class PricingService extends Model
 
             $finalPrice = (int) ($basePrice * $multiplier);
 
-            Log::channel('audit')->info('Legal consultation price calculated', [
+            $this->logger->channel('audit')->info('Legal consultation price calculated', [
                 'lawyer_id' => $lawyer->id,
                 'base_price' => $basePrice,
                 'final_price' => $finalPrice,
@@ -82,7 +84,7 @@ final class PricingService extends Model
                 $finalPrice = (int) ($finalPrice * 0.85); // 15% discount for legal entities
             }
 
-            Log::channel('audit')->info('Legal service price calculated', [
+            $this->logger->channel('audit')->info('Legal service price calculated', [
                 'service_id' => $service->id,
                 'page_count' => $pageCount,
                 'final_price' => $finalPrice,
@@ -99,7 +101,7 @@ final class PricingService extends Model
         {
             // Simple heuristic: legal consultation shouldn't exceed 500,000 RUB or be less than 1 rub
             if ($price > 50000000 || $price < 100) {
-                Log::channel('fraud_alert')->warning('Suspicious legal price detected', [
+                $this->logger->channel('fraud_alert')->warning('Suspicious legal price detected', [
                     'price' => $price,
                     'type' => $type,
                 ]);

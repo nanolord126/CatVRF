@@ -2,18 +2,16 @@
 
 namespace App\Domains\Sports\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private ReviewService $reviewService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private ReviewService $reviewService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function byStudio(int $studioId): JsonResponse
         {
@@ -22,29 +20,29 @@ final class ReviewController extends Model
                     ->where('published_at', '!=', null)
                     ->paginate(10);
 
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list reviews'], 500);
             }
         }
 
         public function myReviews(): JsonResponse
         {
             try {
-                $reviews = Review::where('reviewer_id', auth()->id())->paginate(10);
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                $reviews = Review::where('reviewer_id', $request->user()?->id)->paginate(10);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list reviews'], 500);
             }
         }
 
         public function store(int $studioId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'required|integer|min:1|max:5',
                     'title' => 'required|string|max:255',
                     'content' => 'required|string',
@@ -52,10 +50,10 @@ final class ReviewController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                $review = DB::transaction(fn() => $this->reviewService->createReview(
+                $review = $this->db->transaction(fn() => $this->reviewService->createReview(
                     $studioId,
                     null,
-                    auth()->id(),
+                    $request->user()?->id,
                     $validated['rating'],
                     $validated['title'],
                     $validated['content'],
@@ -65,24 +63,24 @@ final class ReviewController extends Model
                     $correlationId
                 ));
 
-                Log::channel('audit')->info('Sports studio review created', [
+                $this->logger->info('Sports studio review created', [
                     'correlation_id' => $correlationId,
                     'review_id'      => $review->id ?? null,
                     'studio_id'      => $studioId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'rating'         => $validated['rating'],
                 ]);
 
-                return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to create review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create review'], 500);
             }
         }
 
         public function storeForTrainer(int $trainerId): JsonResponse
         {
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'required|integer|min:1|max:5',
                     'title' => 'required|string|max:255',
                     'content' => 'required|string',
@@ -90,10 +88,10 @@ final class ReviewController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                $review = DB::transaction(fn() => $this->reviewService->createReview(
+                $review = $this->db->transaction(fn() => $this->reviewService->createReview(
                     null,
                     $trainerId,
-                    auth()->id(),
+                    $request->user()?->id,
                     $validated['rating'],
                     $validated['title'],
                     $validated['content'],
@@ -103,22 +101,22 @@ final class ReviewController extends Model
                     $correlationId
                 ));
 
-                return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to create review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create review'], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $review = Review::findOrFail($id);
                 $this->authorize('update', $review);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'sometimes|integer|min:1|max:5',
                     'title' => 'sometimes|string',
                     'content' => 'sometimes|string',
@@ -132,9 +130,9 @@ final class ReviewController extends Model
                     $correlationId
                 );
 
-                return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to update review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to update review'], 500);
             }
         }
 
@@ -147,9 +145,9 @@ final class ReviewController extends Model
                 $correlationId = Str::uuid()->toString();
                 $review->delete();
 
-                return response()->json(['success' => true, 'message' => 'Review deleted', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Review deleted', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to delete review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to delete review'], 500);
             }
         }
 }

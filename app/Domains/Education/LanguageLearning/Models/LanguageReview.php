@@ -1,5 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * LanguageReview — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/languagereview
+ */
+
+
 namespace App\Domains\Education\LanguageLearning\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,8 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 final class LanguageReview extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'language_reviews';
 
         protected $fillable = [
@@ -33,12 +48,12 @@ final class LanguageReview extends Model
         {
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (int) (tenant('id') ?? 1);
+                $model->tenant_id = $model->tenant_id ?? (int) (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

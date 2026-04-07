@@ -2,14 +2,13 @@
 
 namespace App\Domains\HobbyAndCraft\Hobby\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LowMaterialStockAlertJob extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final class LowMaterialStockAlertJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -18,9 +17,8 @@ final class LowMaterialStockAlertJob extends Model
         /**
          * Create a new job instance.
          */
-        public function __construct(
-            public readonly ?string $correlationId = null
-        ) {}
+        public function __construct(public ?string $correlationId = null,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Handle the stock Audit.
@@ -29,8 +27,9 @@ final class LowMaterialStockAlertJob extends Model
         {
             $cid = $this->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('Low Stock Audit Started (Hobby)', [
-                'cid' => $cid
+            $this->logger->info('Low Stock Audit Started (Hobby)', [
+                'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             try {
@@ -41,9 +40,10 @@ final class LowMaterialStockAlertJob extends Model
                     ->get();
 
                 if ($criticalMaterials->isEmpty()) {
-                    Log::channel('audit')->info('Hobby Inventory Check: All materials in stock.', [
-                        'cid' => $cid
-                    ]);
+                    $this->logger->info('Hobby Inventory Check: All materials in stock.', [
+                        'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return;
                 }
 
@@ -53,12 +53,13 @@ final class LowMaterialStockAlertJob extends Model
                 foreach ($groupedByStore as $storeId => $materials) {
                     $store = $materials->first()->store;
 
-                    Log::channel('audit')->warning('Critical Stock Alert for Hobby Store', [
+                    $this->logger->warning('Critical Stock Alert for Hobby Store', [
                         'store' => $store->name,
                         'tenant_id' => $store->tenant_id,
                         'count' => $materials->count(),
-                        'cid' => $cid
-                    ]);
+                        'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                     // 3. Automated Notification (Surrogate for Notification Service)
                     $this->notifyStoreOwner($store, $materials);
@@ -71,17 +72,19 @@ final class LowMaterialStockAlertJob extends Model
                     }
                 }
 
-                Log::channel('audit')->info('Low Stock Audit Completed (Hobby)', [
+                $this->logger->info('Low Stock Audit Completed (Hobby)', [
                     'processed_stores' => $groupedByStore->count(),
-                    'cid' => $cid
-                ]);
+                    'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Low Stock Job Failure', [
+                $this->logger->error('Low Stock Job Failure', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'cid' => $cid
-                ]);
+                    'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 throw $e;
             }
@@ -95,6 +98,6 @@ final class LowMaterialStockAlertJob extends Model
             // Actual logic: dispatch(new SendHobbyStockNotification($store, $materials))
             $skus = $materials->pluck('sku')->toArray();
 
-            Log::info("Email notification queued for Store: {$store->name} (SKUs: " . implode(',', $skus) . ")");
+            $this->logger->info("Email notification queued for Store: {$store->name} (SKUs: " . implode(',', $skus) . ")");
         }
 }

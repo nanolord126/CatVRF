@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api\V2\Search;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class SearchController extends Model
+final class SearchController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly LiveSearchService $search
-        ) {
+            private readonly LiveSearchService $search,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Live Search
             $this->middleware('auth:sanctum')->only(['searchDocuments']); // Поиск внутри системы требует авторизации
              // 1000 light / 100 heavy запросов/час
@@ -49,28 +52,28 @@ final class SearchController extends Model
                 $results = $results->take($limit);
                 // Записываем поиск в историю
                 $this->search->recordSearch(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     query: $validated['q'],
                     resultsCount: $results->count()
                 );
-                Log::channel('audit')->info('Document search executed', [
+                $this->logger->channel('audit')->info('Document search executed', [
                     'correlation_id' => $correlationId,
                     'query' => $validated['q'],
                     'results_count' => $results->count(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'query' => $validated['q'],
                     'results' => $results,
                     'count' => $results->count(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Document search failed', [
+                $this->logger->channel('audit')->error('Document search failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Search failed',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -94,18 +97,18 @@ final class SearchController extends Model
                 );
                 $limit = $validated['limit'] ?? 10;
                 $results = $results->take($limit);
-                return response()->json([
+                return $this->response->json([
                     'query' => $validated['q'],
                     'results' => $results,
                     'count' => $results->count(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('User search failed', [
+                $this->logger->channel('audit')->error('User search failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Search failed',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -119,19 +122,19 @@ final class SearchController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $history = $this->search->getSearchHistory(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id
                 );
-                return response()->json([
+                return $this->response->json([
                     'history' => $history,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get search history', [
+                $this->logger->channel('audit')->error('Failed to get search history', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to get history',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -145,19 +148,19 @@ final class SearchController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $this->search->clearSearchHistory(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to clear search history', [
+                $this->logger->channel('audit')->error('Failed to clear search history', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to clear history',
                     'correlation_id' => $correlationId,
                 ], 500);

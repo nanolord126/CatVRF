@@ -1,52 +1,60 @@
 <?php declare(strict_types=1);
 
+/**
+ * VeganProductCreatedEvent — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/veganproductcreatedevent
+ */
+
+
 namespace App\Domains\VeganProducts\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class VeganProductCreatedEvent extends Model
+final class VeganProductCreatedEvent
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
         /**
          * Create a new event instance.
          */
         public function __construct(
-            public readonly VeganProduct $product,
-            public readonly int $userId,
-            public readonly string $correlationId,
-            public readonly array $meta = [],
-        ) {}
+            private readonly VeganProduct $product,
+            private readonly int $userId,
+            private readonly string $correlationId,
+            private array $meta = []) {}
     }
 
     /**
      * VeganStockAlertEvent - Triggered when stock falls below threshold.
      */
-    class VeganStockAlertEvent
+    final class VeganStockAlertEvent
     {
         use Dispatchable, SerializesModels;
 
         public function __construct(
-            public readonly VeganProduct $product,
-            public readonly int $currentStock,
-            public readonly string $correlationId,
-        ) {}
+            private readonly VeganProduct $product,
+            private readonly int $currentStock,
+            private readonly string $correlationId) {}
     }
 
     /**
      * VeganSubscriptionRenewedEvent - Triggered after a subscription box is processed.
      */
-    class VeganSubscriptionRenewedEvent
+    final class VeganSubscriptionRenewedEvent
     {
         use Dispatchable, SerializesModels;
 
         public function __construct(
-            public readonly int $subscriptionId,
-            public readonly int $boxId,
-            public readonly string $correlationId,
-        ) {}
+            private readonly int $subscriptionId,
+            private readonly int $boxId,
+            private readonly string $correlationId) {}
 }

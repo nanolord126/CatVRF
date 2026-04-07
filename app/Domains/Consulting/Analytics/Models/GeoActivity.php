@@ -8,12 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 final class GeoActivity extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'geo_activities';
         public $timestamps = false;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'user_id',
             'activity_type',
@@ -34,6 +35,22 @@ final class GeoActivity extends Model
             'longitude' => 'float',
             'recorded_at' => 'datetime',
         ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         public function tenant(): BelongsTo
         {

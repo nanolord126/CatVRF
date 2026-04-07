@@ -2,19 +2,22 @@
 
 namespace App\Domains\Logistics\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class CourierService extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'courier_services';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'business_group_id',
             'user_id',
@@ -42,11 +45,11 @@ final class CourierService extends Model
             'is_active' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check()) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }

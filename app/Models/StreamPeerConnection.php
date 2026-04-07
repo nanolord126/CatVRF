@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Tenant;
+use App\Models\User;
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class StreamPeerConnection extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasFactory;
-        use HasUuids;
-        use SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 
-        protected $table = 'stream_peer_connections';
+    protected $table = 'stream_peer_connections';
 
         protected $fillable = [
             'uuid',
@@ -43,17 +47,12 @@ final class StreamPeerConnection extends Model
             'ice_candidates',
         ];
 
-        public static function booted(): void
-        {
-            static::addGlobalScope(new TenantScope());
-        }
-
-        /**
+/**
          * Relationship: Belongs to Stream/Event
          */
         public function stream(): BelongsTo
         {
-            return $this->belongsTo(Event::class, 'stream_id');
+            return $this->belongsTo(\App\Domains\Education\Bloggers\Models\Stream::class, 'stream_id');
         }
 
         /**

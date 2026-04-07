@@ -2,25 +2,24 @@
 
 namespace App\Jobs\ML;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class MLRecalculateUserTastesJob extends Model
+final class MLRecalculateUserTastesJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $timeout = 3600;
         public int $tries = 3;
 
         public function __construct(
-            private readonly int $batchSize = 100,
-        ) {}
+            private int $batchSize = 100,
+            private readonly LogManager $logger,
+    ) {}
 
         /**
          * Выполнить job
@@ -28,7 +27,7 @@ final class MLRecalculateUserTastesJob extends Model
         public function handle(UserTasteProfileService $profileService, TasteMLService $mlService): void
         {
             try {
-                Log::channel('audit')->info('Starting daily user taste profiles recalculation');
+                $this->logger->channel('audit')->info('Starting daily user taste profiles recalculation');
 
                 // Получить всех активных пользователей постранично
                 User::whereActive(true)->chunk($this->batchSize, function ($users) use ($profileService, $mlService) {
@@ -36,7 +35,7 @@ final class MLRecalculateUserTastesJob extends Model
                         try {
                             $this->recalculateUserTaste($user->id, $user->tenant_id, $profileService, $mlService);
                         } catch (Throwable $e) {
-                            Log::channel('audit')->error('Failed to recalculate user taste', [
+                            $this->logger->channel('audit')->error('Failed to recalculate user taste', [
                                 'user_id' => $user->id,
                                 'error' => $e->getMessage(),
                             ]);
@@ -44,9 +43,9 @@ final class MLRecalculateUserTastesJob extends Model
                     }
                 });
 
-                Log::channel('audit')->info('Daily user taste profiles recalculation completed successfully');
+                $this->logger->channel('audit')->info('Daily user taste profiles recalculation completed successfully');
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Daily user taste recalculation job failed', [
+                $this->logger->channel('audit')->error('Daily user taste recalculation job failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -93,7 +92,7 @@ final class MLRecalculateUserTastesJob extends Model
                 $correlationId
             );
 
-            Log::channel('audit')->debug('User taste profile recalculated', [
+            $this->logger->channel('audit')->debug('User taste profile recalculated', [
                 'user_id' => $userId,
                 'data_quality_score' => $profile->refresh()->getDataQualityScore(),
                 'correlation_id' => $correlationId,

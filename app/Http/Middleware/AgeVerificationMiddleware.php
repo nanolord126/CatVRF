@@ -5,8 +5,11 @@ namespace App\Http\Middleware;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * AgeVerificationMiddleware — Проверка возраста пользователя для чувствительных вертикалей
@@ -36,12 +39,17 @@ use Illuminate\Support\Str;
  */
 final class AgeVerificationMiddleware
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
+
     /**
      * Минимальный требуемый возраст по вертикалям
      */
     private const AGE_RESTRICTIONS = [
         // 18+ вертикали (строгие)
-        'pharmacy' => 18,
         'medical' => 18,
         'vapes' => 18,
         'alcohol' => 18,
@@ -67,7 +75,6 @@ final class AgeVerificationMiddleware
         'board-games' => 6,
 
         // 0+ (без ограничений)
-        'food' => 0,
         'toys-kids' => 0,
         'books' => 0,
         'education' => 0,
@@ -94,8 +101,8 @@ final class AgeVerificationMiddleware
             }
 
             // Проверяем, аутентифицирован ли пользователь
-            if (!auth()->check()) {
-                Log::channel('audit')->warning('Age verification required for unauthenticated user', [
+            if (!$this->guard->check()) {
+                $this->logger->channel('audit')->warning('Age verification required for unauthenticated user', [
                     'vertical' => $vertical,
                     'min_age' => $minAge,
                     'path' => $request->path(),
@@ -103,26 +110,26 @@ final class AgeVerificationMiddleware
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'error' => sprintf('Must be at least %d years old to access this', $minAge),
                     'min_age' => $minAge,
                     'correlation_id' => $correlationId,
                 ], 403);
             }
 
-            $user = auth()->user();
+            $user = $this->guard->user();
             $userAge = $this->calculateAge($user->birthdate ?? null);
 
             // Если дата рождения не указана
             if ($userAge === null) {
-                Log::channel('audit')->warning('User birthdate not set', [
+                $this->logger->channel('audit')->warning('User birthdate not set', [
                     'user_id' => $user->id,
                     'vertical' => $vertical,
                     'min_age' => $minAge,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Please update your birthdate to access this section',
                     'correlation_id' => $correlationId,
                 ], 403);
@@ -130,7 +137,7 @@ final class AgeVerificationMiddleware
 
             // Проверяем возраст
             if ($userAge < $minAge) {
-                Log::channel('fraud_alert')->warning('Age verification failed', [
+                $this->logger->channel('fraud_alert')->warning('Age verification failed', [
                     'user_id' => $user->id,
                     'user_age' => $userAge,
                     'min_age' => $minAge,
@@ -139,7 +146,7 @@ final class AgeVerificationMiddleware
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'error' => sprintf('You must be at least %d years old to access this', $minAge),
                     'min_age' => $minAge,
                     'your_age' => $userAge,
@@ -148,7 +155,7 @@ final class AgeVerificationMiddleware
             }
 
             // Логируем успешную проверку возраста
-            Log::channel('audit')->debug('Age verification passed', [
+            $this->logger->channel('audit')->debug('Age verification passed', [
                 'user_id' => $user->id,
                 'user_age' => $userAge,
                 'vertical' => $vertical,
@@ -158,14 +165,14 @@ final class AgeVerificationMiddleware
             return $next($request);
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Age verification middleware error', [
+            $this->logger->channel('audit')->error('Age verification middleware error', [
                 'error' => $e->getMessage(),
                 'path' => $request->path(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return $this->response->json([
                 'error' => 'Internal server error',
                 'correlation_id' => $correlationId,
             ], 500);
@@ -178,14 +185,14 @@ final class AgeVerificationMiddleware
     private function calculateAge(?string $birthdate): ?int
     {
         if (!$birthdate) {
-            return null;
+            return $next($request);
         }
 
         try {
             $birth = Carbon::parse($birthdate);
             return $birth->diffInYears(Carbon::now());
         } catch (\Throwable) {
-            return null;
+            return $next($request);
         }
     }
 
@@ -204,6 +211,6 @@ final class AgeVerificationMiddleware
             }
         }
 
-        return null;
+        return $next($request);
     }
 }

@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class LanguageSchool extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'language_schools';
@@ -41,12 +40,12 @@ final class LanguageSchool extends Model
         {
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (int) (tenant('id') ?? 1);
+                $model->tenant_id = $model->tenant_id ?? (int) (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

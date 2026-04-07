@@ -2,22 +2,23 @@
 
 namespace App\Domains\Sports\Fitness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClassService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ClassService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function createClass(int $gymId, int $trainerId, string $name, string $description, string $classType, int $durationMinutes, int $maxParticipants, float $pricePerClass, string $correlationId): FitnessClass
         {
-
 
             try {
                 $gym = Gym::findOrFail($gymId);
 
-                $class = DB::transaction(function () use ($gym, $trainerId, $name, $description, $classType, $durationMinutes, $maxParticipants, $pricePerClass, $correlationId) {
+                $class = $this->db->transaction(function () use ($gym, $trainerId, $name, $description, $classType, $durationMinutes, $maxParticipants, $pricePerClass, $correlationId) {
                     $class = FitnessClass::create([
                         'tenant_id' => $gym->tenant_id,
                         'gym_id' => $gym->id,
@@ -32,7 +33,7 @@ final class ClassService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Fitness class created', [
+                    $this->logger->info('Fitness class created', [
                         'class_id' => $class->id,
                         'gym_id' => $gym->id,
                         'trainer_id' => $trainerId,
@@ -44,7 +45,7 @@ final class ClassService extends Model
 
                 return $class;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create fitness class', [
+                $this->logger->error('Failed to create fitness class', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -55,18 +56,18 @@ final class ClassService extends Model
         public function updateClass(FitnessClass $class, array $data, string $correlationId): void
         {
 
-
             try {
-                DB::transaction(function () use ($class, $data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($class, $data, $correlationId) {
                     $class->update(array_merge($data, ['correlation_id' => $correlationId]));
 
-                    Log::channel('audit')->info('Fitness class updated', [
+                    $this->logger->info('Fitness class updated', [
                         'class_id' => $class->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update fitness class', [
+                $this->logger->error('Failed to update fitness class', [
                     'class_id' => $class->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

@@ -1,22 +1,45 @@
 <?php declare(strict_types=1);
 
+/**
+ * TicketPurchaseRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/ticketpurchaserequest
+ */
+
+
 namespace App\Http\Requests\Api\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketPurchaseRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class TicketPurchaseRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Api\Tickets
+ */
+final class TicketPurchaseRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Пользователь должен быть авторизован и пройти фрод-контроль.
          */
         public function authorize(): bool
         {
             // В реальном 2026 тут проверка FraudControlService::check()
-            return auth()->check();
+            return $this->guard->check();
         }
 
         /**

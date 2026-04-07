@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Courses\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class EnrollmentService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class EnrollmentService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function enrollStudent(
             int $courseId,
@@ -20,35 +20,27 @@ final class EnrollmentService extends Model
             string $correlationId = '',
         ): Enrollment {
 
-
             try {
-                Log::channel('audit')->info('Enrolling student in course', [
+                $this->logger->info('Enrolling student in course', [
                     'course_id' => $courseId,
                     'student_id' => $studentId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $enrollment = DB::transaction(function () use ($courseId, $studentId, $correlationId) {
+                $enrollment = $this->db->transaction(function () use ($courseId, $studentId, $correlationId) {
                     $course = Course::findOrFail($courseId);
 
                     $commission = (int) ($course->price * 14 / 100);
 
                     $enrollment = Enrollment::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'course_id' => $courseId,
                         'student_id' => $studentId,
                         'status' => 'active',
                         'progress_percent' => 0,
-                        'enrolled_at' => now(),
+                        'enrolled_at' => Carbon::now(),
                         'course_price' => $course->price,
                         'commission_price' => $commission,
                         'correlation_id' => $correlationId,
@@ -61,14 +53,14 @@ final class EnrollmentService extends Model
                     return $enrollment;
                 });
 
-                Log::channel('audit')->info('Student enrolled successfully', [
+                $this->logger->info('Student enrolled successfully', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $enrollment;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Enrollment failed', [
+                $this->logger->error('Enrollment failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -79,27 +71,26 @@ final class EnrollmentService extends Model
         public function completeEnrollment(Enrollment $enrollment, string $correlationId = ''): Enrollment
         {
 
-
             try {
-                Log::channel('audit')->info('Completing enrollment', [
+                $this->logger->info('Completing enrollment', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 $enrollment->update([
                     'status' => 'completed',
-                    'completed_at' => now(),
+                    'completed_at' => Carbon::now(),
                     'progress_percent' => 100,
                 ]);
 
-                Log::channel('audit')->info('Enrollment completed', [
+                $this->logger->info('Enrollment completed', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $enrollment;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to complete enrollment', [
+                $this->logger->error('Failed to complete enrollment', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -110,9 +101,8 @@ final class EnrollmentService extends Model
         public function dropEnrollment(Enrollment $enrollment, string $reason = '', string $correlationId = ''): bool
         {
 
-
             try {
-                Log::channel('audit')->info('Dropping enrollment', [
+                $this->logger->info('Dropping enrollment', [
                     'enrollment_id' => $enrollment->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -120,14 +110,14 @@ final class EnrollmentService extends Model
 
                 $enrollment->update(['status' => 'dropped']);
 
-                Log::channel('audit')->info('Enrollment dropped', [
+                $this->logger->info('Enrollment dropped', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to drop enrollment', [
+                $this->logger->error('Failed to drop enrollment', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

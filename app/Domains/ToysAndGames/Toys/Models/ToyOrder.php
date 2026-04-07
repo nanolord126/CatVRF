@@ -1,17 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\ToysAndGames\Toys\Models;
 
+use HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+use ToysDomainTrait;
 
+/**
+     * ToyOrder Model (L1)
+     * Master transaction record supporting B2B (Company) and B2C (User).
+     */
 final class ToyOrder extends Model
 {
-    use HasFactory;
+        use ToysDomainTrait;
+        protected $table = 'toy_orders';
+        protected $fillable = [
+            'uuid', 'tenant_id', 'user_id', 'b2b_company_id', 'store_id',
+            'total_amount', 'status', 'payment_status', 'gift_requested',
+            'correlation_id', 'metadata'
+        ];
+        protected $casts = [
+            'metadata' => 'json',
+            'gift_requested' => 'boolean'
+        ];
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasUuids, SoftDeletes, TenantScoped;
-        protected $table = 'toy_orders'; protected $fillable = ['uuid','tenant_id','seller_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','items_json','tags'];
-        protected $casts = ['total_kopecks'=>'integer','payout_kopecks'=>'integer','items_json'=>'json','tags'=>'json'];
-        protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('toy_orders.tenant_id',tenant()->id));}
-}
+        public function store(): BelongsTo { return $this->belongsTo(ToyStore::class, 'store_id'); }
+        public function user(): BelongsTo { return $this->belongsTo(\App\Models\User::class, 'user_id'); }
+        public function b2bCompany(): BelongsTo { return $this->belongsTo(\App\Models\BusinessGroup::class, 'b2b_company_id'); }
+    }

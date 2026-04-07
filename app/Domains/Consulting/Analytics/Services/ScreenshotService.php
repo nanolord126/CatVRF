@@ -2,14 +2,18 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ScreenshotService extends Model
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class ScreenshotService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @var int Screenshot cache TTL in seconds (1 hour)
          */
@@ -43,10 +47,11 @@ final class ScreenshotService extends Model
         /**
          * Create a new ScreenshotService instance.
          */
-        public function __construct()
+        public function __construct(private readonly \Illuminate\Cache\CacheManager $cache,
+        private readonly ConfigRepository $config, private readonly Request $request, private readonly LoggerInterface $logger)
         {
             // Load whitelist from config or environment
-            $this->urlWhitelist = \config('analytics.screenshot_whitelist', []);
+            $this->urlWhitelist = $this->config->get('analytics.screenshot_whitelist', []);
         }
 
         /**
@@ -79,7 +84,7 @@ final class ScreenshotService extends Model
                 // Generate cache key
                 $cacheKey = $this->generateCacheKey($url, $tenantId);
 
-                Log::channel('audit')->debug('Attempting to retrieve cached screenshot', [
+                $this->logger->debug('Attempting to retrieve cached screenshot', [
                     'url' => $url,
                     'tenant_id' => $tenantId,
                     'cache_key' => $cacheKey,
@@ -87,7 +92,7 @@ final class ScreenshotService extends Model
                 ]);
 
                 // Try to get cached screenshot
-                $cachedScreenshot = Cache::get($cacheKey);
+                $cachedScreenshot = $this->cache->get($cacheKey);
                 if ($cachedScreenshot) {
                     return \array_merge($cachedScreenshot, [
                         'cached' => true,
@@ -96,7 +101,7 @@ final class ScreenshotService extends Model
                 }
 
                 // Capture new screenshot
-                Log::channel('audit')->info('Capturing new page screenshot', [
+                $this->logger->info('Capturing new page screenshot', [
                     'url' => $url,
                     'tenant_id' => $tenantId,
                     'timeout_ms' => $this->puppeteerTimeout,
@@ -114,16 +119,16 @@ final class ScreenshotService extends Model
                     'height' => $screenshotData['height'],
                     'format' => 'png',
                     'data_url' => $screenshotData['data_url'] ?? null,
-                    'captured_at' => \now()->toIso8601String(),
+                    'captured_at' => \Carbon::now()->toIso8601String(),
                 ];
 
-                Cache::put(
+                $this->cache->put(
                     $cacheKey,
                     $screenshotMetadata,
                     $this->cacheTtl
                 );
 
-                Log::channel('audit')->info('Page screenshot captured and cached', [
+                $this->logger->info('Page screenshot captured and cached', [
                     'url' => $url,
                     'tenant_id' => $tenantId,
                     'file_size' => $screenshotData['size'],
@@ -134,12 +139,12 @@ final class ScreenshotService extends Model
 
                 return \array_merge($screenshotMetadata, [
                     'cached' => false,
-                    'expires_at' => \now()->addSeconds($this->cacheTtl)->toIso8601String(),
+                    'expires_at' => \Carbon::now()->addSeconds($this->cacheTtl)->toIso8601String(),
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Screenshot capture failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Screenshot capture failed', [
                     'url' => $url,
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
@@ -170,10 +175,10 @@ final class ScreenshotService extends Model
             $correlationId ??= "invalidate-{$this->generateTraceId()}";
             $cacheKey = $this->generateCacheKey($url, $tenantId);
 
-            $wasInCache = Cache::has($cacheKey);
-            Cache::forget($cacheKey);
+            $wasInCache = $this->cache->has($cacheKey);
+            $this->cache->forget($cacheKey);
 
-            Log::channel('audit')->debug('Screenshot cache invalidated', [
+            $this->logger->debug('Screenshot cache invalidated', [
                 'url' => $url,
                 'tenant_id' => $tenantId,
                 'cache_key' => $cacheKey,
@@ -202,16 +207,16 @@ final class ScreenshotService extends Model
             // Using cache tags for bulk invalidation
             // Tag format: screenshots:tenant:{id}
             try {
-                Cache::tags([$this->cacheTag, "tenant:{$tenantId}"])->flush();
+                $this->cache->tags([$this->cacheTag, "tenant:{$tenantId}"])->flush();
 
-                Log::channel('audit')->info('All tenant screenshots invalidated', [
+                $this->logger->info('All tenant screenshots invalidated', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return -1; // Unknown count with tag-based invalidation
-            } catch (\Exception $e) {
-                Log::channel('audit')->warning('Failed to invalidate all screenshots', [
+            } catch (\Throwable $e) {
+                $this->logger->warning('Failed to invalidate all screenshots', [
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -265,10 +270,11 @@ final class ScreenshotService extends Model
             // $result = shell_exec('node resources/scripts/capture-screenshot.js ' . escapeshellarg($url));
             // $data = json_decode($result, true);
 
-            Log::channel('audit')->debug('Capturing screenshot with Puppeteer', [
+            $this->logger->debug('Capturing screenshot with Puppeteer', [
                 'url' => $url,
                 'viewport' => "{$this->maxWidth}x{$this->maxHeight}",
                 'options' => $options,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
             // OR use Laravel package:
             // - spatie/browsershot (wrapper for Puppeteer)
@@ -390,8 +396,8 @@ final class ScreenshotService extends Model
                 'format' => 'png',
                 'error' => $error->getMessage(),
                 'fallback' => true,
-                'captured_at' => \now()->toIso8601String(),
-                'expires_at' => \now()->addSeconds($this->cacheTtl)->toIso8601String(),
+                'captured_at' => \Carbon::now()->toIso8601String(),
+                'expires_at' => \Carbon::now()->addSeconds($this->cacheTtl)->toIso8601String(),
                 'cached' => false,
                 'correlation_id' => $correlationId,
             ];
@@ -404,7 +410,7 @@ final class ScreenshotService extends Model
          */
         private function generateTraceId(): string
         {
-            return \now()->timestamp . '-' . Str::random(8);
+            return \Carbon::now()->timestamp . '-' . Str::random(8);
         }
 
         /**

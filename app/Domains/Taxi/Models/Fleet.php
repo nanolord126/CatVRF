@@ -2,14 +2,18 @@
 
 namespace App\Domains\Taxi\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class Fleet extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'taxi_fleets';
@@ -44,7 +48,7 @@ final class Fleet extends Model
                 $fleet->uuid = $fleet->uuid ?? (string) Str::uuid();
                 $fleet->tenant_id = $fleet->tenant_id ?? (tenant()->id ?? 1);
                 $fleet->status = $fleet->status ?? 'active';
-                $fleet->correlation_id = $fleet->correlation_id ?? request()->header('X-Correlation-ID');
+                $fleet->correlation_id = $fleet->correlation_id ?? $this->request->header('X-Correlation-ID');
             });
 
             static::addGlobalScope('tenant', function ($query) {

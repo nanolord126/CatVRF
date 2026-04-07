@@ -2,14 +2,14 @@
 
 namespace App\Domains\Sports\SportingGoods\Models;
 
+use App\Models\Traits\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class SportProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, HasUuids;
 
         protected $table = "sport_products";
@@ -33,4 +33,27 @@ final class SportProduct extends Model
                 }
             });
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

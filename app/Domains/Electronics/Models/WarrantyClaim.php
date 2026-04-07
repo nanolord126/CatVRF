@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class WarrantyClaim extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'warranty_claims';
@@ -28,7 +27,7 @@ final class WarrantyClaim extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function product(): BelongsTo
         {
@@ -39,7 +38,7 @@ final class WarrantyClaim extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isPending(): bool
         {
@@ -50,7 +49,7 @@ final class WarrantyClaim extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isResolved(): bool
         {
@@ -61,8 +60,8 @@ final class WarrantyClaim extends Model
         {
             parent::booted();
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

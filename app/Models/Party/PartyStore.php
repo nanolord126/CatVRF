@@ -3,13 +3,16 @@
 namespace App\Models\Party;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class PartyStore extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'party_stores';

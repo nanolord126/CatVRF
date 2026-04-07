@@ -2,32 +2,28 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HomeServicesService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class HomeServicesService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: Str::uuid()->toString();
-        }
+    public function __construct(private FraudControlService $fraud,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function bookService(array $data, int $userId, int $tenantId): HomeServiceJob
         {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            $correlationId = $data['correlation_id'] ?? \Illuminate\Support\Str::uuid()->toString();
+
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'home_service_booking',
+                amount: (int) ($data['price'] ?? 0),
+                correlationId: $correlationId
             );
-    DB::transaction(function () use ($data, $userId, $tenantId) {
+
+            return $this->db->transaction(function () use ($data, $userId, $tenantId, $correlationId) {
             $job = HomeServiceJob::create([
                 'tenant_id' => $tenantId,
                 'uuid' => Str::uuid(),
@@ -41,7 +37,7 @@ final class HomeServicesService extends Model
                 'status' => 'pending',
             ]);
 
-            Log::channel('audit')->info('Home service job booked', [
+            $this->logger->info('Home service job booked', [
                 'correlation_id' => $this->correlationId,
                 'job_id' => $job->id,
             ]);
@@ -56,16 +52,8 @@ final class HomeServicesService extends Model
         public function executeInTransaction(callable $callback)
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($callback) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($callback) {
                 return $callback();
             });
         }

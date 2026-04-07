@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class LuxuryReview extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'luxury_reviews';
@@ -33,7 +32,7 @@ final class LuxuryReview extends Model
             'tags' => 'json',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 $model->uuid = (string) Str::uuid();

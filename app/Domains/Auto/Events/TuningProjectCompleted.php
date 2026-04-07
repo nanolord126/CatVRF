@@ -1,22 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * TuningProjectCompleted — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/tuningprojectcompleted
+ */
+
+
 namespace App\Domains\Auto\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TuningProjectCompleted extends Model
+use Psr\Log\LoggerInterface;
+final class TuningProjectCompleted
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
         public function __construct(
             public readonly TuningProject $project,
-            public readonly string $correlationId
+            public readonly string $correlationId, public readonly LoggerInterface $logger
         ) {
-            Log::channel('audit')->info('TuningProjectCompleted event dispatched', [
+            $this->logger->info('TuningProjectCompleted event dispatched', [
                 'correlation_id' => $this->correlationId,
                 'project_id' => $this->project->id,
             ]);
@@ -34,4 +47,20 @@ final class TuningProjectCompleted extends Model
         {
             return 'tuning.project.completed';
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

@@ -1,20 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Modules\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Modules\Common\Services\AbstractTechnicalVerticalService;
+use OpenAI\Laravel\Facades\OpenAI;
 
-final class RecommendationService extends Model
+final class RecommendationService extends AbstractTechnicalVerticalService
 {
-    use HasFactory;
+    public function isEnabled(): bool
+    {
+        return $this->tenant->settings['recommendations_enabled'] ?? true;
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    // Dependencies injected via constructor
-        // Add private readonly properties here
-        /**
-         * Генерация эмбеддинга для сущности (Товар/Услуга/Профиль)
-         */
+    /**
+     * Генерация эмбеддинга для сущности (Товар/Услуга/Профиль)
+     */
         public function getEmbedding(string $text): array
         {
             return Cache::remember('emb_' . md5($text), 86400, function () use ($text) {

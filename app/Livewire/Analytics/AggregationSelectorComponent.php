@@ -2,17 +2,13 @@
 
 namespace App\Livewire\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class AggregationSelectorComponent extends Model
+final class AggregationSelectorComponent extends Component
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $aggregation = 'daily';
-        public array $selectedMetrics = [];
-        public bool $showLabels = true;
+    private string $aggregation = 'daily';
+        private array $selectedMetrics = [];
+        private bool $showLabels = true;
 
         protected $listeners = ['update-aggregation'];
 

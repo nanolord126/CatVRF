@@ -2,41 +2,58 @@
 
 namespace App\Services\AI\Constructors;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Data\DTO\AI\Constructors\BeautyLookConstructorInput;
+use App\Data\DTO\AI\Constructors\BeautyLookConstructorOutput;
+use App\Data\DTO\AI\Constructors\RecommendedProductDTO;
+use App\Data\DTO\AI\Constructors\RecommendedServiceDTO;
+use App\Domains\Beauty\Models\BeautyProduct;
+use App\Domains\Beauty\Models\BeautyService;
+use App\Services\AI\ImageAnalysisService;
+use App\Services\FraudControlService;
+use App\Services\ML\UserTasteProfileService;
 
-final class BeautyLookConstructor extends Model
+
+use Throwable;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class BeautyLookConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
             private ImageAnalysisService $imageAnalysisService,
-            private FraudControlService $fraudControlService,
+            private FraudControlService $fraud,
             private UserTasteProfileService $userTasteProfileService,
-        ) {
-        }
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {
+
+    }
 
         public function construct(BeautyLookConstructorInput $input): BeautyLookConstructorOutput
         {
-            Log::channel('audit')->info('BeautyLookConstructor started', [
+            $this->logger->channel('audit')->info('BeautyLookConstructor started', [
                 'correlation_id' => $input->correlationId,
                 'user_id' => $input->userId,
             ]);
 
-            $this->fraudControlService->check([
-                'user_id' => $input->userId,
-                'operation' => 'ai_beauty_look_constructor',
-                'correlation_id' => $input->correlationId,
-            ]);
+            $this->fraud->check(
+                userId: $input->userId,
+                operationType: 'ai_beauty_look_constructor',
+                amount: 0,
+                correlationId: $input->correlationId,
+            );
 
             try {
-                return DB::transaction(function () use ($input) {
+                return $this->db->transaction(function () use ($input) {
                     // 1. Анализ фото (форма лица, цветотип, кожа)
-                    $photoAnalysis = $this->imageAnalysisService->analyzeFace($input->photo);
+                    $photoAnalysis = $this->imageAnalysisService->analyze(
+                        $input->photo,
+                        'Анализ лица для салона красоты. Определи: тип лица, тон кожи, цвет волос, форму бровей, возраст, состояние кожи.',
+                        ['vertical' => 'beauty', 'user_id' => $input->userId]
+                    );
 
                     // 2. Получение профиля вкусов (v2.0 explicit + implicit)
-                    $tasteProfile = $this->userTasteProfileService->getProfileV2($input->userId);
+                    $tasteProfile = $this->userTasteProfileService->getOrCreateProfile($input->userId, (int) tenant()->id, $input->correlationId)->explicit_preferences ?? [];
 
                     // 3. Генерация макияжа, причёски, ухода
                     $generatedLook = $this->generateLook($photoAnalysis, $tasteProfile, $input);
@@ -64,7 +81,7 @@ final class BeautyLookConstructor extends Model
                     // Сохраняем результат в таблицу ai_constructions
                     $this->saveConstruction($input, $output, $photoAnalysis);
 
-                    Log::channel('audit')->info('BeautyLookConstructor finished successfully', [
+                    $this->logger->channel('audit')->info('BeautyLookConstructor finished successfully', [
                         'correlation_id' => $input->correlationId,
                         'user_id' => $input->userId,
                         'total_cost' => $totalCost,
@@ -73,7 +90,7 @@ final class BeautyLookConstructor extends Model
                     return $output;
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('BeautyLookConstructor failed', [
+                $this->logger->channel('audit')->error('BeautyLookConstructor failed', [
                     'correlation_id' => $input->correlationId,
                     'user_id' => $input->userId,
                     'error' => $e->getMessage(),
@@ -142,8 +159,8 @@ final class BeautyLookConstructor extends Model
 
         private function saveConstruction(BeautyLookConstructorInput $input, BeautyLookConstructorOutput $output, array $photoAnalysis): void
         {
-            DB::table('ai_constructions')->insert([
-                'uuid' => DB::raw('gen_random_uuid()'),
+            $this->db->table('ai_constructions')->insert([
+                'uuid' => $this->db->raw('gen_random_uuid()'),
                 'tenant_id' => tenant()->id,
                 'user_id' => $input->userId,
                 'type' => 'beauty_look',
@@ -153,7 +170,15 @@ final class BeautyLookConstructor extends Model
                     'budget_level' => $input->budgetLevel,
                 ]),
                 'analysis_result' => json_encode($photoAnalysis),
-                'construction_data' => json_encode($output->toArray()),
+                'construction_data' => json_encode([
+                    'look_description' => $output->lookDescription,
+                    'makeup_analysis' => $output->makeupAnalysis,
+                    'hair_analysis' => $output->hairAnalysis,
+                    'skin_analysis' => $output->skinAnalysis,
+                    'recommended_products' => $output->recommendedProducts,
+                    'recommended_services' => $output->recommendedServices,
+                    'total_cost' => $output->totalCost,
+                ]),
                 'correlation_id' => $input->correlationId,
                 'created_at' => now(),
                 'updated_at' => now(),

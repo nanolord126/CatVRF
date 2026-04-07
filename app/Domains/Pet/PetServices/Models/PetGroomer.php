@@ -1,14 +1,70 @@
 <?php declare(strict_types=1);
 
+/**
+ * PetGroomer — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/petgroomer
+ */
+
+
 namespace App\Domains\Pet\PetServices\Models;
 
+use App\Models\Traits\HasUuids;
+use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Class PetGroomer
+ *
+ * Part of the Pet vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Eloquent model with tenant-scoping and business group isolation.
+ * All queries are automatically scoped by tenant_id via global scope.
+ *
+ * Required fields: uuid, correlation_id, tenant_id, business_group_id, tags (json).
+ * Audit logging is handled via model events (created, updated, deleted).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property string $uuid
+ * @property string|null $correlation_id
+ * @property array|null $tags
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @package App\Domains\Pet\PetServices\Models
+ */
 final class PetGroomer extends Model
 {
     use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='pet_groomers';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','specialization','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('pet_groomers.tenant_id',tenant()->id));}
+    protected $table = 'pet_groomers';
+    protected $fillable = ['uuid', 'tenant_id', 'user_id', 'correlation_id', 'name', 'specialization', 'price_kopecks_per_hour', 'rating', 'is_verified', 'tags'];
+    protected $casts = ['price_kopecks_per_hour' => 'integer', 'rating' => 'float', 'is_verified' => 'boolean', 'tags' => 'json'];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('tenant', fn ($q) => $q->where('pet_groomers.tenant_id', tenant()->id));
+    }
+
+    /**
+     * The number of models to return for pagination.
+     */
+    protected $perPage = 25;
+
 }

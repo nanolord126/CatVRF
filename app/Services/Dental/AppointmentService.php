@@ -2,20 +2,30 @@
 
 namespace App\Services\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Models\Dental\DentalAppointment;
+use App\Models\Dental\Dentist;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class AppointmentService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private \App\Services\FraudControlService $fraudControl,
-            private string $correlation_id = ''
-        ) {
-            $this->correlation_id = empty($correlation_id) ? (string) Str::uuid() : $correlation_id;
-        }
+        private readonly Request $request,
+        private \App\Services\FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Get appointments for a clinic or dentist with tenant scoping.
@@ -36,34 +46,36 @@ final class AppointmentService extends Model
          */
         public function createAppointment(array $data): DentalAppointment
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 // 1. Audit Check
-                Log::channel('audit')->info('Creating dental appointment', [
+                $this->logger->channel('audit')->info('Creating dental appointment', [
                     'clinic_id' => $data['clinic_id'],
                     'dentist_id' => $data['dentist_id'],
                     'client_id' => $data['client_id'],
                     'scheduled_at' => $data['scheduled_at'],
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 // 2. Capacity & Schedule Check
                 $this->validateCapacity($data['dentist_id'], $data['scheduled_at']);
 
                 // 3. Fraud Control
-                $fraudScore = $this->fraudControl->check([
-                    'operation' => 'create_appointment',
-                    'user_id' => $data['client_id'],
-                    'scheduled_at' => $data['scheduled_at'],
-                    'data' => $data,
-                ]);
+                $fraudResult = $this->fraud->check(
+                    (int) ($data['client_id'] ?? 0),
+                    'create_appointment',
+                    (int) ($data['price_cents'] ?? 0),
+                    (string) $this->request->ip(),
+                    null,
+                    $this->correlationId(),
+                );
 
-                if ($fraudScore > 0.8) {
+                if (($fraudResult['decision'] ?? 'allow') === 'review') {
                     throw new \RuntimeException('Appointment blocked by FraudML: High probability of suspicious activity.');
                 }
 
                 // 4. Create Appointment
                 $appointment = DentalAppointment::create(array_merge($data, [
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                     'uuid' => (string) Str::uuid(),
                     'status' => 'pending',
                 ]));
@@ -81,16 +93,16 @@ final class AppointmentService extends Model
          */
         public function updateStatus(int $id, string $newStatus): void
         {
-            DB::transaction(function () use ($id, $newStatus) {
+            $this->db->transaction(function () use ($id, $newStatus) {
                 $appointment = DentalAppointment::findOrFail($id);
                 $oldStatus = $appointment->status;
 
                 // Log
-                Log::channel('audit')->info('Updating appointment status', [
+                $this->logger->channel('audit')->info('Updating appointment status', [
                     'id' => $id,
                     'old' => $oldStatus,
                     'new' => $newStatus,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $appointment->transitionTo($newStatus);
@@ -126,17 +138,17 @@ final class AppointmentService extends Model
          */
         public function cancelAppointment(int $id, string $reason): bool
         {
-            return DB::transaction(function () use ($id, $reason) {
+            return $this->db->transaction(function () use ($id, $reason) {
                 $appointment = DentalAppointment::findOrFail($id);
 
                 if ($appointment->status === 'cancelled') {
                     return true;
                 }
 
-                Log::channel('audit')->warning('Cancelling appointment', [
+                $this->logger->channel('audit')->warning('Cancelling appointment', [
                     'appointment_id' => $id,
                     'reason' => $reason,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $appointment->update([

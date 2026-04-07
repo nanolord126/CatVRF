@@ -2,22 +2,23 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class VapeOrderService extends Model
+use App\Domains\SportsNutrition\Models\VapeOrder;
+use App\Services\FraudControlService;
+use App\Domains\Wallet\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+final readonly class VapeOrderService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP.
          */
-        public function __construct(
-            private VapeAgeVerificationService $ageVerifier,
+        public function __construct(private VapeAgeVerificationService $ageVerifier,
             private WalletService $wallet,
             private FraudControlService $fraud,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать черновик заказа (Draft) с 18+ проверкой.
@@ -26,7 +27,7 @@ final class VapeOrderService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            Log::channel('audit')->info('Vape order init request', [
+            $this->logger->info('Vape order init request', [
                 'user_id' => $userId,
                 'params' => $params,
                 'correlation_id' => $correlationId,
@@ -34,21 +35,19 @@ final class VapeOrderService extends Model
 
             // 1. Жёсткая проверка на 18+ перед созданием заказа (Возрастной Гейт)
             if (!$this->ageVerifier->hasAValidVerification($userId)) {
-                Log::channel('audit')->warning('Vape order rejected: No age verification', [
+                $this->logger->warning('Vape order rejected: No age verification', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
-                abort(403, 'Age verification Required (18+) via ESIA/EBS/ID');
+                throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                    'Age verification Required (18+) via ESIA/EBS/ID',
+                );
             }
 
             // 2. Fraud Check попытки заказа
-            $this->fraud->check([
-                'operation' => 'vape_order_create',
-                'user_id' => $userId,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vape_order_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($userId, $params, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $params, $correlationId) {
 
                 // 3. Создаем запись заказа ( Draft )
                 $order = VapeOrder::create([
@@ -63,7 +62,7 @@ final class VapeOrderService extends Model
 
                 // 4. Резервируем товар (Hold) — логика реализована будет в InventoryService
                 // Здесь фиксируем факт начала резервации.
-                Log::channel('audit')->info('Vape inventory hold started', [
+                $this->logger->info('Vape inventory hold started', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -80,7 +79,7 @@ final class VapeOrderService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($orderUuid, $correlationId) {
+            return $this->db->transaction(function () use ($orderUuid, $correlationId) {
 
                 $order = VapeOrder::where('uuid', $orderUuid)->lockForUpdate()->firstOrFail();
 
@@ -94,12 +93,6 @@ final class VapeOrderService extends Model
                 // 6. Переводим в 'paid' - статус готовности к отгрузке (выбытие КИЗ)
                 $order->update([
                     'status' => 'paid',
-                    'paid_at' => now(),
-                ]);
-
-                Log::channel('audit')->info('Vape order paid and ready for delivery', [
-                    'order_id' => $order->id,
-                    'user_id' => $order->user_id,
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -114,7 +107,7 @@ final class VapeOrderService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($orderUuid, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($orderUuid, $reason, $correlationId) {
 
                 $order = VapeOrder::where('uuid', $orderUuid)->lockForUpdate()->firstOrFail();
 
@@ -129,11 +122,6 @@ final class VapeOrderService extends Model
 
                 $order->update([
                     'status' => 'cancelled',
-                    'cancelled_at' => now(),
-                ]);
-
-                Log::channel('audit')->info('Vape order cancelled', [
-                    'order_id' => $order->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
                 ]);

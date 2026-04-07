@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class TaxiRide extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'auto_taxi_rides';
 
         protected $fillable = [

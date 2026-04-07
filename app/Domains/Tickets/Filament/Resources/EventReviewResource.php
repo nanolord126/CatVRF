@@ -2,14 +2,11 @@
 
 namespace App\Domains\Tickets\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class EventReviewResource extends Model
+final class EventReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = EventReview::class;
         protected static ?string $navigationIcon = 'heroicon-o-star';
         protected static ?string $navigationLabel = 'Отзывы событий';
@@ -111,7 +108,7 @@ final class EventReviewResource extends Model
         public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', filament()->getTenant()?->id)
                 ->with(['event', 'buyer']);
         }
 }

@@ -2,14 +2,20 @@
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditDentalClinic extends Model
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditDentalClinic extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = DentalClinicResource::class;
 
         protected function getHeaderActions(): array
@@ -24,11 +30,11 @@ final class EditDentalClinic extends Model
 
         protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($record, $data) {
+            return $this->db->transaction(function () use ($record, $data) {
                 $oldName = $record->name;
                 $record = parent::handleRecordUpdate($record, $data);
 
-                Log::channel('audit')->info('Dental Clinic Updated', [
+                $this->logger->info('Dental Clinic Updated', [
                     'clinic_id' => $record->id,
                     'old_name' => $oldName,
                     'new_name' => $record->name,
@@ -43,4 +49,27 @@ final class EditDentalClinic extends Model
         {
             return $this->getResource()::getUrl('index');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

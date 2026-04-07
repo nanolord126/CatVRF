@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class SocialMedia extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, BelongsToTenant;
 
         protected $table = 'social_media';
@@ -30,6 +29,22 @@ final class SocialMedia extends Model
             'meta' => 'json',
         ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
+
         protected static function booted(): void
         {
             static::creating(function (self $model) {
@@ -41,7 +56,7 @@ final class SocialMedia extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function mediable(): MorphTo
         {

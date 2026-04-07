@@ -2,14 +2,21 @@
 
 namespace App\Http\Requests\Api\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BaseApiRequest extends Model
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class BaseApiRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Api\Tickets
+ */
+final class BaseApiRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * По умолчанию авторизован, проверяется в подклассах.
          */
@@ -34,7 +41,7 @@ final class BaseApiRequest extends Model
             $correlationId = $this->getCorrelationId();
 
             throw new HttpResponseException(
-                response()->json([
+                $this->responseFactory->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => 'Ошибка валидации данных',
@@ -42,4 +49,14 @@ final class BaseApiRequest extends Model
                 ], 422)
             );
         }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

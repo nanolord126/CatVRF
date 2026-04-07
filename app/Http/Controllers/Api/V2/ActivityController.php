@@ -2,24 +2,20 @@
 
 namespace App\Http\Controllers\Api\V2;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ActivityController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final class ActivityController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    userId} - Get user activity
-     * - POST /api/v2/activities/track - Track activity
-     *
-     * @package App\Http\Controllers\Api\V2
-     */
-    final class ActivityController extends BaseApiV2Controller
-    {
-        public function __construct(
+    public function __construct(
+        private readonly Request $request,
             private readonly UserActivityService $activityService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {
             parent::__construct();
         }
         /**
@@ -31,7 +27,7 @@ final class ActivityController extends Model
         public function getActivities(): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
+            $tenantId = filament()->getTenant()?->id ?? $this->guard->user()?->tenant_id;
             try {
                 $activities = []; // In production: fetch from database
                 return $this->successResponse(
@@ -40,7 +36,7 @@ final class ActivityController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get activities', [
+                $this->logger->channel('audit')->error('Failed to get activities', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -62,10 +58,10 @@ final class ActivityController extends Model
             $correlationId = (string) Str::uuid()->toString();
             try {
                 $this->activityService->recordActivity(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     tenantId: filament()->getTenant()?->id ?? 0,
-                    activity: request()->get('activity', 'unknown'),
-                    metadata: request()->get('metadata', [])
+                    activity: $this->request->get('activity', 'unknown'),
+                    metadata: $this->request->get('metadata', [])
                 );
                 return $this->successResponse(
                     data: ['tracked' => true],
@@ -73,7 +69,7 @@ final class ActivityController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to track activity', [
+                $this->logger->channel('audit')->error('Failed to track activity', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

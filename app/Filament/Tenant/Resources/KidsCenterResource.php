@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class KidsCenterResource extends Model
+final class KidsCenterResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = KidsCenter::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-puzzle-piece';
@@ -122,23 +120,15 @@ final class KidsCenterResource extends Model
                                 ]),
                         ])->columnSpan(['lg' => 1]),
                 ])->columns(3);
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListKidsCenter::route('/'),
-                'create' => Pages\\CreateKidsCenter::route('/create'),
-                'edit' => Pages\\EditKidsCenter::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsCenter::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListKidsCenter::route('/'),
-                'create' => Pages\\CreateKidsCenter::route('/create'),
-                'edit' => Pages\\EditKidsCenter::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsCenter::route('/{record}'),
+                'index' => Pages\ListKidsCenter::route('/'),
+                'create' => Pages\CreateKidsCenter::route('/create'),
+                'edit' => Pages\EditKidsCenter::route('/{record}/edit'),
+                'view' => Pages\ViewKidsCenter::route('/{record}'),
             ];
         }
 }

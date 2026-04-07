@@ -1,15 +1,48 @@
 <?php declare(strict_types=1);
 
+/**
+ * ListCorporateContracts — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ * @see https://catvrf.ru/docs/listcorporatecontracts
+ */
+
+
 namespace App\Filament\Tenant\Resources\Education\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListCorporateContracts extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\ListRecords;
+
+final class ListCorporateContracts extends ListRecords
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = CorporateContractResource::class;
 
         /**
@@ -32,8 +65,8 @@ final class ListCorporateContracts extends Model
         {
             parent::mount();
 
-            Log::channel('audit')->info('B2B Education: Viewing contracts list', [
-                'user_id' => auth()->id(),
+            $this->logger->info('B2B Education: Viewing contracts list', [
+                'user_id' => $this->guard->id(),
                 'tenant_id' => filament()->getTenant()->id,
                 'correlation_id' => (string) Str::uuid(),
             ]);

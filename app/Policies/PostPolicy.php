@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 final class PostPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /** Видеть пост (публичный или владелец) */
@@ -57,7 +58,7 @@ final class PostPolicy extends Model
             }
 
             // Если модерация отключена — владелец публикует сам
-            if (! config('channels.moderation.enabled', true)) {
+            if (! $this->config->get('channels.moderation.enabled', true)) {
                 return (int) $post->tenant_id === (int) $user->current_tenant_id;
             }
 

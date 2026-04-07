@@ -2,19 +2,21 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketValidationService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TicketValidationService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
-        }
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+
+    }
 
         private function getCorrelationId(): string
         {
@@ -28,7 +30,7 @@ final class TicketValidationService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('Attempting ticket validation', [
+            $this->logger->info('Attempting ticket validation', [
                 'ticket_number' => $ticketNumber,
                 'correlation_id' => $correlationId,
             ]);
@@ -37,7 +39,7 @@ final class TicketValidationService extends Model
             $ticket = Ticket::where('ticket_number', $ticketNumber)->first();
 
             if (!$ticket) {
-                Log::channel('audit')->error('Ticket not found', [
+                $this->logger->error('Ticket not found', [
                     'ticket_number' => $ticketNumber,
                     'correlation_id' => $correlationId,
                 ]);
@@ -45,15 +47,11 @@ final class TicketValidationService extends Model
             }
 
             // 2. Fraud Check (предотвращение двойного прохода или краденых билетов)
-            $this->fraudControl->check([
-                'operation' => 'ticket_validation',
-                'ticket_id' => $ticket->id,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ticket_validation', amount: 0, correlationId: $correlationId ?? '');
 
             // 3. Проверка статуса
             if ($ticket->isValidated()) {
-                Log::channel('audit')->warning('Ticket already validated', [
+                $this->logger->warning('Ticket already validated', [
                     'ticket_number' => $ticketNumber,
                     'validated_at' => $ticket->validated_at,
                     'correlation_id' => $correlationId,
@@ -62,12 +60,12 @@ final class TicketValidationService extends Model
             }
 
             // 4. Метка прохода
-            return DB::transaction(function () use ($ticket, $correlationId) {
+            return $this->db->transaction(function () use ($ticket, $correlationId) {
                 $lockingTicket = Ticket::where('id', $ticket->id)->lockForUpdate()->first();
 
                 $lockingTicket->validate();
 
-                Log::channel('audit')->info('Ticket successfully validated', [
+                $this->logger->info('Ticket successfully validated', [
                     'ticket_uuid' => $lockingTicket->uuid,
                     'correlation_id' => $correlationId,
                 ]);

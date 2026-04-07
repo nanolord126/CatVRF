@@ -2,34 +2,33 @@
 
 namespace App\Domains\Education\Kids\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class KidsVoucherService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class KidsVoucherService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a new gift voucher.
          */
         public function createVoucher(KidsVoucherCreateDto $dto): KidsVoucher
         {
-            Log::channel('audit')->info('Attempting to create kids voucher', [
+            $this->logger->info('Attempting to create kids voucher', [
                 'type' => $dto->voucher_type,
                 'correlation_id' => $dto->correlation_id
             ]);
 
             // Fraud control check before mutation
-            FraudControlService::check('kids_voucher_create', [
-                'type' => $dto->voucher_type,
-                'value' => $dto->face_value
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'kids_voucher_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 $voucher = KidsVoucher::create($dto->toArray());
 
-                Log::channel('audit')->info('Kids voucher created successfully', [
+                $this->logger->info('Kids voucher created successfully', [
                     'voucher_id' => $voucher->id,
                     'correlation_id' => $dto->correlation_id
                 ]);
@@ -43,7 +42,7 @@ final class KidsVoucherService extends Model
          */
         public function redeemVoucherValue(string $code, int $amount, string $correlationId): void
         {
-            DB::transaction(function () use ($code, $amount, $correlationId) {
+            $this->db->transaction(function () use ($code, $amount, $correlationId) {
                 $voucher = KidsVoucher::where('code', $code)->lockForUpdate()->firstOrFail();
 
                 if (!$voucher->isValid()) {
@@ -60,7 +59,7 @@ final class KidsVoucherService extends Model
                     $voucher->update(['status' => 'redeemed']);
                 }
 
-                Log::channel('audit')->info('Voucher balance redeemed', [
+                $this->logger->info('Voucher balance redeemed', [
                     'voucher_id' => $voucher->id,
                     'amount' => $amount,
                     'correlation_id' => $correlationId
@@ -73,7 +72,7 @@ final class KidsVoucherService extends Model
          */
         public function rechargeVoucher(int $voucherId, int $amount, string $correlationId): void
         {
-            DB::transaction(function () use ($voucherId, $amount, $correlationId) {
+            $this->db->transaction(function () use ($voucherId, $amount, $correlationId) {
                 $voucher = KidsVoucher::where('id', $voucherId)->lockForUpdate()->firstOrFail();
 
                 if (!$voucher->is_rechargeable) {
@@ -83,7 +82,7 @@ final class KidsVoucherService extends Model
                 $voucher->increment('current_balance', $amount);
                 $voucher->update(['status' => 'active']);
 
-                Log::channel('audit')->info('Voucher balance recharged', [
+                $this->logger->info('Voucher balance recharged', [
                     'voucher_id' => $voucherId,
                     'amount' => $amount,
                     'correlation_id' => $correlationId

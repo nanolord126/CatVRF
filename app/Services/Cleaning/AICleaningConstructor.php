@@ -2,24 +2,28 @@
 
 namespace App\Services\Cleaning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AICleaningConstructor extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Models\Cleaning\CleaningService;
+use Illuminate\Log\LogManager;
+
+final readonly class AICleaningConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    private string $correlationId;
+    public function __construct(
+        private readonly Request $request,
+        private \OpenAI\Client $openai,
+        private RecommendationService $recommendation,
+        private CleaningBookingService $bookingService,
+        private readonly LogManager $logger,
+    ) {}
 
-        public function __construct(
-            private OpenAI\Client $openai,
-            private RecommendationService $recommendation,
-            private CleaningBookingService $bookingService,
-            ?string $correlationId = null
-        ) {
-            $this->correlationId = $correlationId ?? (string) Str::uuid();
-        }
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Builds a comprehensive cleaning plan using AI for photo/text analysis.
@@ -31,11 +35,11 @@ final class AICleaningConstructor extends Model
          */
         public function buildCleaningPlan(array $photoUrls, string $type, ?int $budgetMax = null): array
         {
-            Log::channel('audit')->info('AI Cleaning Plan Generation Started', [
+            $this->logger->channel('audit')->info('AI Cleaning Plan Generation Started', [
                 'type' => $type,
                 'photos_count' => count($photoUrls),
                 'budget' => $budgetMax,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             try {
@@ -49,7 +53,7 @@ final class AICleaningConstructor extends Model
                 $estimates = $this->calculatePlanSummary($matchedServices, $visualAnalysis['area_estimation_sqm']);
 
                 $plan = [
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                     'visual_findings' => $visualAnalysis['detected_objects'], // 'Windows', 'Deep stains', 'Tile grout'
                     'recommended_services' => $matchedServices,
                     'estimated_sqm' => $visualAnalysis['area_estimation_sqm'],
@@ -60,18 +64,18 @@ final class AICleaningConstructor extends Model
                 ];
 
                 // 4. Final Logging for audit trace
-                Log::channel('audit')->info('AI Cleaning Plan Generated Successfully', [
+                $this->logger->channel('audit')->info('AI Cleaning Plan Generated Successfully', [
                     'total_cents' => $plan['estimated_total_cents'],
                     'services_count' => count($matchedServices),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $plan;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Cleaning Plan Generation Failed', [
+                $this->logger->channel('audit')->error('AI Cleaning Plan Generation Failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
                 throw $e;
             }

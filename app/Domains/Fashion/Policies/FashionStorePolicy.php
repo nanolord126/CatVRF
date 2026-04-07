@@ -2,59 +2,62 @@
 
 namespace App\Domains\Fashion\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Fashion\Models\FashionStore;
+use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
-final class FashionStorePolicy extends Model
+/**
+ * Class FashionStorePolicy
+ *
+ * Part of the Fashion vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Authorization policy for resource access control.
+ * Enforces tenant-scoped permissions.
+ * Integrates with B2C/B2B role system.
+ *
+ * @package App\Domains\Fashion\Policies
+ */
+final class FashionStorePolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
-        public function viewAny(User $user): bool
-        {
-            return $user->can('view_fashion');
-        }
-
-        public function view(User $user, FashionStore $store): bool
-        {
-            return $store->tenant_id === $user->tenant_id;
-        }
-
-        public function create(User $user): bool
-        {
-            // Проверка через Fraud ML перед созданием магазина
-            if (!app(\App\Services\FraudControlService::class)->shouldBlock(0.1, 'create_fashion_store')) {
-                 return $user->can('manage_fashion');
-            }
-
-            return false;
-        }
-
-        public function update(User $user, FashionStore $store): bool
-        {
-            return $store->tenant_id === $user->tenant_id && $user->can('manage_fashion');
-        }
-
-        public function delete(User $user, FashionStore $store): bool
-        {
-            return $store->tenant_id === $user->tenant_id && $user->isAdmin();
-        }
+    /**
+     * Handle viewAny operation.
+     *
+     * @throws \DomainException
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->can('view_fashion');
     }
 
-        public function create(User $user): Response
-        {
-            return $user->hasPermission('create_fashion_store') ? $this->response->allow() : $this->response->deny();
+    /**
+     * Handle view operation.
+     *
+     * @throws \DomainException
+     */
+    public function view(User $user, FashionStore $store): bool
+    {
+        return $store->tenant_id === $user->tenant_id;
+    }
+
+    public function create(User $user): bool
+    {
+        if (!app(\App\Services\FraudControlService::class)->shouldBlock(0.1, 'create_fashion_store')) {
+            return $user->can('manage_fashion');
         }
 
-        public function update(User $user, FashionStore $store): Response
-        {
-            return $user->id === $store->owner_id || $user->isAdmin() ? $this->response->allow() : $this->response->deny();
-        }
+        return false;
+    }
 
-        public function delete(User $user, FashionStore $store): Response
-        {
-            return $user->isAdmin() ? $this->response->allow() : $this->response->deny();
-        }
+    public function update(User $user, FashionStore $store): bool
+    {
+        return $store->tenant_id === $user->tenant_id && $user->can('manage_fashion');
+    }
+
+    public function delete(User $user, FashionStore $store): bool
+    {
+        return $store->tenant_id === $user->tenant_id && $user->isAdmin();
+    }
 }

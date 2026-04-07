@@ -1,53 +1,56 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\BeautyProduct;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\NumberColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 
-final class BeautyProductResource extends Model
+final class BeautyProductResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = BeautyProduct::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Select, Textarea};
-    use Filament\Tables\Columns\{TextColumn, NumberColumn, BadgeColumn};
-    use Filament\Tables\Actions\{DeleteAction, EditAction};
-    use Filament\Tables\Filters\{Filter, SelectFilter};
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
-    /**
-     * Filament Resource для товаров красоты.
-     * Production 2026.
-     */
-    final class BeautyProductResource extends Resource
+    protected static ?string $navigationLabel = 'Товары';
+
+    protected static ?string $pluralModelLabel = 'Товары красоты';
+
+    public static function form(Form $form): Form
     {
-        protected static ?string $model = BeautyProduct::class;
-
-        protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-
-        protected static ?string $navigationLabel = 'Товары';
-
-        protected static ?string $pluralModelLabel = 'Товары красоты';
-
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Section::make('Основное')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Название')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('sku')
-                            ->label('SKU')
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(100),
-                        Textarea::make('description')
-                            ->label('Описание'),
-                        Select::make('consumable_type')
-                            ->label('Тип расхода')
-                            ->options([
-                                'none' => 'Не расходник',
+        return $form->schema([
+            Section::make('Основное')
+                ->schema([
+                    TextInput::make('name')
+                        ->label('Название')
+                        ->required()
+                        ->maxLength(255),
+                    TextInput::make('sku')
+                        ->label('SKU')
+                        ->unique(ignoreRecord: true)
+                        ->maxLength(100),
+                    Textarea::make('description')
+                        ->label('Описание'),
+                    Select::make('consumable_type')
+                        ->label('Тип расхода')
+                        ->options([
+                            'none' => 'Не расходник',
                                 'low' => 'Низкий расход',
                                 'medium' => 'Средний расход',
                                 'high' => 'Высокий расход',
@@ -87,10 +90,10 @@ final class BeautyProductResource extends Model
                     NumberColumn::make('current_stock')
                         ->label('Остаток')
                         ->sortable(),
-                    BadgeColumn::make('consumable_type')
+                    TextColumn::make('consumable_type')
+                        ->badge()
                         ->label('Тип')
                         ->getStateUsing(fn ($record) => match ($record->consumable_type) {
-                            'low' => 'Низкий',
                             'medium' => 'Средний',
                             'high' => 'Высокий',
                             default => 'Нет',

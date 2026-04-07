@@ -5,7 +5,7 @@ namespace Modules\Inventory\Services;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class InventorySyncService extends Model
+final class InventorySyncService
 {
     use HasFactory;
 

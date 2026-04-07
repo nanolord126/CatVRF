@@ -1,50 +1,49 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\AppointmentResource;
-use App\Services\FraudControlService;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * EditAppointment — Filament Page (Layer 9).
+ *
+ * Tenant-scoped appointment editing with correlation_id tracing.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages
+ */
 final class EditAppointment extends EditRecord
 {
     protected static string $resource = AppointmentResource::class;
 
-    protected function handleRecordUpdate(Model $record, array $data): Model
-    {
-        return DB::transaction(function () use ($record, $data) {
-            $correlationId = (string) Str::uuid();
-
-            app(FraudControlService::class)->check(
-                userId: Auth::id(),
-                operationType: 'edit-appointment',
-                amount: $data['total_price'] ?? 0,
-                correlationId: $correlationId
-            );
-
-            Log::channel('audit')->info('Appointment updated', [
-                'record_id' => $record->id,
-                'data' => $data,
-                'tenant_id' => tenant('id'),
-                'correlation_id' => $correlationId,
-            ]);
-
-            $record->update($data);
-
-            return $record;
-        });
-    }
-
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = Str::uuid()->toString();
+
+        app(LoggerInterface::class)->info('Beauty: обновление записи', [
+            'tenant_id'      => filament()->getTenant()?->id,
+            'record_id'      => $this->record->getKey(),
+            'correlation_id' => $data['correlation_id'],
+        ]);
+
+        return $data;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

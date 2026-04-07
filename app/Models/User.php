@@ -177,7 +177,7 @@ final class User extends Authenticatable implements FilamentUser
     public function getRoleInTenant(?int $tenantId): ?Role
     {
         if (!$tenantId) {
-            return null;
+            throw new \DomainException('Entity not found');
         }
 
         $tenant = $this->tenants()
@@ -191,7 +191,7 @@ final class User extends Authenticatable implements FilamentUser
             return $roleValue instanceof Role ? $roleValue : Role::tryFrom($roleValue);
         }
 
-        return null;
+        throw new \DomainException('Entity not found');
     }
 
     /**

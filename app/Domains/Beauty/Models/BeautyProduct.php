@@ -1,20 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class BeautyProduct extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
         protected $table = 'beauty_products';
 
         protected $fillable = [
+        'uuid',
             'tenant_id',
             'salon_id',
             'name',
@@ -41,7 +44,17 @@ final class BeautyProduct extends Model
 
         protected static function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+            static::addGlobalScope('tenant_scoping', static function ($query): void {
+                if (function_exists('tenant') && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
+                }
+            });
+
+            static::creating(static function (self $model): void {
+                if (empty($model->uuid)) {
+                    $model->uuid = (string) \Illuminate\Support\Str::uuid();
+                }
+            });
         }
 
         public function salon(): BelongsTo
@@ -50,14 +63,26 @@ final class BeautyProduct extends Model
         }
 
         /**
-         * Check if product is legally sellable.
+         * Check if product is in stock and available for sale.
          */
-        public function isSellable(): bool
+        public function isInStock(): bool
         {
-            if ($this->deleted_at !== null) return false;
+            return $this->current_stock > 0;
+        }
 
-            $compliance = app(\App\Services\Compliance\ComplianceRequirementService::class);
+        /**
+         * Check if stock is below minimum threshold.
+         */
+        public function isBelowMinStock(): bool
+        {
+            return $this->current_stock <= $this->min_stock_threshold;
+        }
 
-            return ! $compliance->isBlocked($this);
+        /**
+         * Get price in rubles (from kopecks).
+         */
+        public function getPriceRubles(): float
+        {
+            return $this->price / 100;
         }
 }

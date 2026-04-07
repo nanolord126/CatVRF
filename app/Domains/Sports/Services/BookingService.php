@@ -2,14 +2,18 @@
 
 namespace App\Domains\Sports\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class BookingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function createBooking(
             int $classId,
             int $memberId,
@@ -20,37 +24,36 @@ final class BookingService extends Model
             ?string $correlationId = null,
         ): Booking {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
 
-                Log::channel('audit')->info('Creating booking', [
+                $this->logger->info('Creating booking', [
                     'class_id' => $classId,
                     'member_id' => $memberId,
                     'type' => $type,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $booking = DB::transaction(function () use (
+                $booking = $this->db->transaction(function () use (
                     $classId,
                     $memberId,
                     $trainerId,
                     $type,
                     $price,
                     $isTrial,
-                    $correlationId,
-                ) {
+                    $correlationId) {
                     $classSession = ClassSession::findOrFail($classId);
 
                     if ($classSession->enrolled_count >= $classSession->max_participants && !$isTrial) {
-                        throw new \Exception('Class is full');
+                        throw new \DomainException('Class is full');
                     }
 
                     $classSession->increment('enrolled_count');
 
                     return Booking::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()?->id,
                         'class_id' => $classId,
                         'member_id' => $memberId,
                         'trainer_id' => $trainerId,
@@ -63,14 +66,14 @@ final class BookingService extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Booking created', [
+                $this->logger->info('Booking created', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $booking;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create booking', [
+                $this->logger->error('Failed to create booking', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? null,
                 ]);
@@ -81,7 +84,7 @@ final class BookingService extends Model
         public function confirmBooking(Booking $booking, ?string $correlationId = null): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -92,13 +95,14 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Booking confirmed', [
+                $this->logger->info('Booking confirmed', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to confirm booking', [
+                $this->logger->error('Failed to confirm booking', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
                 throw $e;
             }
@@ -107,12 +111,14 @@ final class BookingService extends Model
         public function cancelBooking(Booking $booking, string $reason = '', ?string $correlationId = null): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
 
-                DB::transaction(function () use ($booking, $reason, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($booking, $reason, $correlationId) {
                     $booking->update([
                         'status' => 'cancelled',
                         'notes' => $reason,
@@ -122,13 +128,14 @@ final class BookingService extends Model
                     $booking->class->decrement('enrolled_count');
                 });
 
-                Log::channel('audit')->info('Booking cancelled', [
+                $this->logger->info('Booking cancelled', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to cancel booking', [
+                $this->logger->error('Failed to cancel booking', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
                 throw $e;
             }
@@ -137,7 +144,7 @@ final class BookingService extends Model
         public function markAsAttended(Booking $booking, ?string $correlationId = null): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -148,13 +155,14 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Booking marked as attended', [
+                $this->logger->info('Booking marked as attended', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to mark booking as attended', [
+                $this->logger->error('Failed to mark booking as attended', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
                 throw $e;
             }

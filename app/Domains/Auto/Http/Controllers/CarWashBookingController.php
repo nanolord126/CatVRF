@@ -2,17 +2,15 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CarWashBookingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CarWashBookingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -20,16 +18,16 @@ final class CarWashBookingController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $bookings = CarWashBooking::query()
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()->id)
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $bookings,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при получении броней',
                 ], 500);
@@ -38,22 +36,15 @@ final class CarWashBookingController extends Model
 
         public function store(Request $request): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -70,9 +61,9 @@ final class CarWashBookingController extends Model
                 ]);
 
                 $validated = $request->all();
-                $booking = DB::transaction(function () use ($validated, $correlationId) {
+                $booking = $this->db->transaction(function () use ($validated, $correlationId) {
                     $booking = CarWashBooking::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'client_id' => ($validated['client_id'] ?? null),
                         'wash_type' => ($validated['wash_type'] ?? null),
                         'scheduled_at' => ($validated['scheduled_at'] ?? null),
@@ -81,7 +72,7 @@ final class CarWashBookingController extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Car wash booking created', [
+                    $this->logger->info('Car wash booking created', [
                         'booking_id' => $booking->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -89,13 +80,13 @@ final class CarWashBookingController extends Model
                     return $booking;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании брони',
                 ], 500);
@@ -104,7 +95,7 @@ final class CarWashBookingController extends Model
 
         public function show(CarWashBooking $booking): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $booking,
             ]);
@@ -117,16 +108,17 @@ final class CarWashBookingController extends Model
 
                 $booking->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->info('Car wash booking cancelled', [
+                $this->logger->info('Car wash booking cancelled', [
                     'booking_id' => $booking->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Бронь отменена',
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при отмене брони',
                 ], 500);
@@ -137,7 +129,7 @@ final class CarWashBookingController extends Model
         {
             $washTypes = ['standard' => 'Стандартная', 'premium' => 'Премиум', 'express' => 'Экспресс'];
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'types' => $washTypes,
             ]);
@@ -151,7 +143,7 @@ final class CarWashBookingController extends Model
                 'express' => ['name' => 'Экспресс мойка', 'price' => 35000, 'duration' => 20],
             ];
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'types' => $types,
             ]);

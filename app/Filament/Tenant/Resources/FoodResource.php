@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FoodResource extends Model
+final class FoodResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BFoodOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -147,31 +145,15 @@ final class FoodResource extends Model
                     ]),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFood::route('/'),
-                'create' => Pages\\CreateFood::route('/create'),
-                'edit' => Pages\\EditFood::route('/{record}/edit'),
-                'view' => Pages\\ViewFood::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFood::route('/'),
-                'create' => Pages\\CreateFood::route('/create'),
-                'edit' => Pages\\EditFood::route('/{record}/edit'),
-                'view' => Pages\\ViewFood::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFood::route('/'),
-                'create' => Pages\\CreateFood::route('/create'),
-                'edit' => Pages\\EditFood::route('/{record}/edit'),
-                'view' => Pages\\ViewFood::route('/{record}'),
+                'index' => Pages\ListFood::route('/'),
+                'create' => Pages\CreateFood::route('/create'),
+                'edit' => Pages\EditFood::route('/{record}/edit'),
+                'view' => Pages\ViewFood::route('/{record}'),
             ];
         }
 }

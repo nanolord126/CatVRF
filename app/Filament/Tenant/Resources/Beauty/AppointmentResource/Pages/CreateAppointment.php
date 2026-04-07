@@ -1,42 +1,54 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\AppointmentResource;
-use App\Services\FraudControlService;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * CreateAppointment — Filament Page (Layer 9).
+ *
+ * Tenant-scoped appointment creation with correlation_id tracing.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages
+ */
 final class CreateAppointment extends CreateRecord
 {
     protected static string $resource = AppointmentResource::class;
 
-    protected function handleRecordCreation(array $data): Model
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return DB::transaction(function () use ($data) {
-            $correlationId = (string) Str::uuid();
+        $data['tenant_id']      = filament()->getTenant()?->id;
+        $data['uuid']           ??= Str::uuid()->toString();
+        $data['correlation_id'] ??= Str::uuid()->toString();
+        $data['status']         ??= 'pending';
 
-            app(FraudControlService::class)->check(
-                userId: Auth::id(),
-                operationType: 'create-appointment',
-                amount: $data['total_price'] ?? 0,
-                correlationId: $correlationId
-            );
+        app(LoggerInterface::class)->info('Beauty: создание записи', [
+            'tenant_id'      => $data['tenant_id'],
+            'client_id'      => $data['client_id'] ?? null,
+            'correlation_id' => $data['correlation_id'],
+        ]);
 
-            Log::channel('audit')->info('Appointment created', [
-                'data' => $data,
-                'tenant_id' => tenant('id'),
-                'correlation_id' => $correlationId,
-            ]);
+        return $data;
+    }
 
-            $data['tenant_id'] = tenant('id');
-            $data['correlation_id'] = $correlationId;
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 
-            return static::getModel()::create($data);
-        });
+    /**
+     * Get the string representation of this object.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return static::class . '::' . ($this->id ?? 'new');
     }
 }

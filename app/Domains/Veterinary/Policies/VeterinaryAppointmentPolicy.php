@@ -1,0 +1,68 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Veterinary\Policies;
+
+use App\Models\User;
+use App\Domains\Veterinary\Models\VeterinaryAppointment;
+use Illuminate\Auth\Access\HandlesAuthorization;
+
+final class VeterinaryAppointmentPolicy
+{
+    use HandlesAuthorization;
+
+    /**
+     * Determine whether the user can view any models.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->tenant_id !== null;
+    }
+
+    /**
+     * Determine whether the user can view the model.
+     */
+    public function view(User $user, VeterinaryAppointment $veterinaryAppointment): bool
+    {
+        return $user->tenant_id === $veterinaryAppointment->tenant_id;
+    }
+
+    /**
+     * Determine whether the user can create models.
+     */
+    public function create(User $user): bool
+    {
+        return $user->tenant_id !== null;
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function update(User $user, VeterinaryAppointment $veterinaryAppointment): bool
+    {
+        return $user->tenant_id === $veterinaryAppointment->tenant_id;
+    }
+
+    /**
+     * Determine whether the user can delete the model.
+     */
+    public function delete(User $user, VeterinaryAppointment $veterinaryAppointment): bool
+    {
+        return $user->tenant_id === $veterinaryAppointment->tenant_id;
+    }
+
+    /**
+     * Determine whether the user can restore the model.
+     */
+    public function restore(User $user, VeterinaryAppointment $veterinaryAppointment): bool
+    {
+        return $user->tenant_id === $veterinaryAppointment->tenant_id;
+    }
+
+    /**
+     * Determine whether the user can permanently delete the model.
+     */
+    public function forceDelete(User $user, VeterinaryAppointment $veterinaryAppointment): bool
+    {
+        return false;
+    }
+}

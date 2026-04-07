@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Tenant Middleware
@@ -22,6 +23,10 @@ use Illuminate\Http\Request;
  */
 final class TenantMiddleware
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
+
     /**
      * Handle the request
      *
@@ -47,7 +52,7 @@ final class TenantMiddleware
         }
 
         // Verify tenant exists and is active
-        $tenant = \DB::table('tenants')
+        $tenant = $this->db->table('tenants')
             ->where('id', $tenantId)
             ->where('is_active', true)
             ->first();

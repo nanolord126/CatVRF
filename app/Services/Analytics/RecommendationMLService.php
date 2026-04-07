@@ -2,14 +2,25 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RecommendationMLService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+
+
+
+final readonly class RecommendationMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 300; // 5 минут для динамичности
         private const MIN_SCORE_THRESHOLD = 0.3; // 30% минимальный скор
         private const MAX_RECOMMENDATIONS = 10;
@@ -27,7 +38,7 @@ final class RecommendationMLService extends Model
         {
             $cacheKey = $this->getCacheKey($userId, $vertical, $context);
 
-            return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $vertical, $context) {
+            return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($userId, $vertical, $context) {
                 try {
                     // Получаем рекомендации из каждого источника
                     $behaviorRecs = $this->getRecommendationsByBehavior($userId, $vertical);
@@ -52,11 +63,12 @@ final class RecommendationMLService extends Model
                         ->values();
 
                 } catch (\Throwable $e) {
-                    Log::channel('analytics_errors')->error('Failed to generate recommendations', [
+                    $this->logger->channel('analytics_errors')->error('Failed to generate recommendations', [
                         'user_id' => $userId,
                         'vertical' => $vertical,
-                        'error' => $e->getMessage()
-                    ]);
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return collect();
                 }
             });
@@ -73,13 +85,13 @@ final class RecommendationMLService extends Model
         private function getRecommendationsByBehavior(int $userId, ?string $vertical = null): Collection
         {
             // Получаем категории, которые смотрел пользователь
-            $viewedCategories = DB::table('user_views')
+            $viewedCategories = $this->db->table('user_views')
                 ->where('user_id', $userId)
                 ->distinct('product_category_id')
                 ->pluck('product_category_id')
                 ->toArray();
 
-            $query = DB::table('products')
+            $query = $this->db->table('products')
                 ->whereIn('category_id', $viewedCategories ?? [])
                 ->where('status', 'active');
 
@@ -126,7 +138,7 @@ final class RecommendationMLService extends Model
         private function getRecommendationsByGeo(int $userId, ?string $vertical = null): Collection
         {
             // Получаем локацию пользователя
-            $userLocation = DB::table('users')
+            $userLocation = $this->db->table('users')
                 ->where('id', $userId)
                 ->select('latitude', 'longitude', 'city')
                 ->first();
@@ -137,7 +149,7 @@ final class RecommendationMLService extends Model
 
             $radiusKm = 5; // Поиск в радиусе 5 км
 
-            $query = DB::table('products')
+            $query = $this->db->table('products')
                 ->where('status', 'active')
                 ->whereRaw("
                     (6371 * acos(
@@ -146,7 +158,7 @@ final class RecommendationMLService extends Model
                         sin(radians(?)) * sin(radians(latitude))
                     )) < ?
                 ", [$userLocation->latitude, $userLocation->longitude, $userLocation->latitude, $radiusKm])
-                ->select('id', DB::raw('AVG(rating) as rating'), DB::raw('COUNT(*) as popularity'));
+                ->select('id', $this->db->raw('AVG(rating) as rating'), $this->db->raw('COUNT(*) as popularity'));
 
             if ($vertical) {
                 $query->where('vertical', $vertical);
@@ -177,12 +189,12 @@ final class RecommendationMLService extends Model
         {
             // Этот метод требует наличия embedding модели (например, OpenAI)
 
-            $userEmbedding = Cache::get("user_embedding:{$userId}");
+            $userEmbedding = $this->cache->get("user_embedding:{$userId}");
             if (!$userEmbedding) {
                 return collect();
             }
 
-            $query = DB::table('product_embeddings')
+            $query = $this->db->table('product_embeddings')
                 ->select('product_id')
                 ->whereRaw('cosine_similarity(?, embeddings) > 0.75', [$userEmbedding]);
 
@@ -199,7 +211,7 @@ final class RecommendationMLService extends Model
                     return [
                         'id' => $row->product_id,
                         'source' => 'embedding',
-                        'score' => (float) ($row->similarity ?? 0.75),
+                        'score' => 0.75,
                         'reason' => 'Similar to items you like',
                     ];
                 });
@@ -215,7 +227,7 @@ final class RecommendationMLService extends Model
          */
         private function getRecommendationsByBusinessRules(int $userId, ?string $vertical = null): Collection
         {
-            $query = DB::table('products')
+            $query = $this->db->table('products')
                 ->where('status', 'active')
                 ->select('id', 'boost_score', 'is_promoted');
 
@@ -264,6 +276,10 @@ final class RecommendationMLService extends Model
             float $rulesWeight
         ): Collection {
             $allRecommendations = [];
+            $behaviorById = $behavior->keyBy('id');
+            $geoById = $geo->keyBy('id');
+            $embeddingById = $embedding->keyBy('id');
+            $rulesById = $rules->keyBy('id');
 
             // Собираем все уникальные ID
             $allIds = collect([
@@ -276,10 +292,10 @@ final class RecommendationMLService extends Model
             // Вычисляем взвешенный скор для каждого
             foreach ($allIds as $id) {
                 $scores = [];
-                $scores[] = ($behavior->firstWhere('id', $id)?->score ?? 0) * $behaviorWeight;
-                $scores[] = ($geo->firstWhere('id', $id)?->score ?? 0) * $geoWeight;
-                $scores[] = ($embedding->firstWhere('id', $id)?->score ?? 0) * $embeddingWeight;
-                $scores[] = ($rules->firstWhere('id', $id)?->score ?? 0) * $rulesWeight;
+                $scores[] = ((float) (($behaviorById->get($id)['score'] ?? 0))) * $behaviorWeight;
+                $scores[] = ((float) (($geoById->get($id)['score'] ?? 0))) * $geoWeight;
+                $scores[] = ((float) (($embeddingById->get($id)['score'] ?? 0))) * $embeddingWeight;
+                $scores[] = ((float) (($rulesById->get($id)['score'] ?? 0))) * $rulesWeight;
 
                 $combinedScore = array_sum($scores);
 

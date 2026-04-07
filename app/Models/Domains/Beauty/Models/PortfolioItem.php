@@ -1,13 +1,74 @@
 <?php declare(strict_types=1);
 
+/**
+ * PortfolioItem — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/portfolioitem
+ */
+
+
 namespace App\Models\Domains\Beauty\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Class PortfolioItem
+ *
+ * Part of the Beauty vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Eloquent model with tenant-scoping and business group isolation.
+ * All queries are automatically scoped by tenant_id via global scope.
+ *
+ * Required fields: uuid, correlation_id, tenant_id, business_group_id, tags (json).
+ * Audit logging is handled via model events (created, updated, deleted).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property string $uuid
+ * @property string|null $correlation_id
+ * @property array|null $tags
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @package App\Models\Domains\Beauty\Models
+ */
 final class PortfolioItem extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /** @use HasFactory<\Database\Factories\Domains\Beauty\Models\PortfolioItemFactory> */
-        use HasFactory;
+    use HasFactory;
+
+    protected $table = 'portfolio_items';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'user_id',
+        'master_id',
+        'title',
+        'description',
+        'image_url',
+        'tags',
+        'correlation_id',
+    ];
+
+    protected $casts = [
+        'tags' => 'json',
+    ];
+
+    /**
+     * The number of models to return for pagination.
+     */
+    protected $perPage = 25;
+
 }

@@ -1,38 +1,59 @@
-<?php declare(strict_types=1);
+<?php
 
+declare(strict_types=1);
+
+use App\Domains\RealEstate\Presentation\Http\Controllers\B2C\PropertyDetailsController;
+use App\Domains\RealEstate\Presentation\Http\Controllers\B2C\PropertySearchController;
+use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\ContractController;
+use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\PropertyController;
+use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\ViewingController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['api'])->prefix('api/realestate')->group(function () {
-    // Public endpoints
-    Route::get('/properties', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'index']);
-    Route::get('/properties/{property}', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'show']);
-    Route::get('/properties/{property}/details', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'details']);
-    Route::get('/rentals', [\App\Domains\RealEstate\Http\Controllers\RentalListingController::class, 'index']);
-    Route::get('/sales', [\App\Domains\RealEstate\Http\Controllers\SaleListingController::class, 'index']);
+/*
+|--------------------------------------------------------------------------
+| B2C — Публичные маршруты для покупателей / арендаторов
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['api', 'throttle:120,1'])->prefix('api/v1/real-estate')->group(function (): void {
 
-    // Authenticated endpoints
-    Route::middleware(['auth:api'])->group(function () {
-        Route::post('/viewings', [\App\Domains\RealEstate\Http\Controllers\ViewingAppointmentController::class, 'create']);
-        Route::get('/viewings', [\App\Domains\RealEstate\Http\Controllers\ViewingAppointmentController::class, 'index']);
-        Route::patch('/viewings/{appointment}', [\App\Domains\RealEstate\Http\Controllers\ViewingAppointmentController::class, 'update']);
-        Route::delete('/viewings/{appointment}', [\App\Domains\RealEstate\Http\Controllers\ViewingAppointmentController::class, 'cancel']);
+    // Поиск объектов недвижимости (гео-фильтр, цена, тип и т.д.)
+    Route::get('/properties', PropertySearchController::class)
+        ->name('realestate.b2c.properties.search');
 
-        Route::post('/mortgages', [\App\Domains\RealEstate\Http\Controllers\MortgageController::class, 'store']);
-        Route::get('/mortgages', [\App\Domains\RealEstate\Http\Controllers\MortgageController::class, 'index']);
-        Route::get('/mortgages/{application}', [\App\Domains\RealEstate\Http\Controllers\MortgageController::class, 'show']);
-        Route::get('/mortgages/{application}/calculate', [\App\Domains\RealEstate\Http\Controllers\MortgageController::class, 'calculate']);
+    // Детали объекта
+    Route::get('/properties/{id}', [PropertyDetailsController::class, 'show'])
+        ->name('realestate.b2c.properties.show');
 
-        // Owner endpoints
-        Route::post('/properties', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'store']);
-        Route::patch('/properties/{property}', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'update']);
-        Route::post('/properties/{property}/list-rental', [\App\Domains\RealEstate\Http\Controllers\RentalListingController::class, 'store']);
-        Route::post('/properties/{property}/list-sale', [\App\Domains\RealEstate\Http\Controllers\SaleListingController::class, 'store']);
-    });
-
-    // Admin endpoints
-    Route::middleware(['auth:api', 'admin'])->group(function () {
-        Route::delete('/properties/{property}', [\App\Domains\RealEstate\Http\Controllers\PropertyController::class, 'destroy']);
-        Route::delete('/rentals/{listing}', [\App\Domains\RealEstate\Http\Controllers\RentalListingController::class, 'destroy']);
-        Route::delete('/sales/{listing}', [\App\Domains\RealEstate\Http\Controllers\SaleListingController::class, 'destroy']);
-    });
+    // Запрос на просмотр (требует авторизации клиента)
+    Route::post('/properties/{id}/viewing', [PropertyDetailsController::class, 'requestViewing'])
+        ->middleware('auth:sanctum')
+        ->name('realestate.b2c.properties.request_viewing');
 });
+
+/*
+|--------------------------------------------------------------------------
+| B2B — Маршруты для агентств / Filament дашборд (tenant-aware)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['api', 'auth:sanctum', 'throttle:60,1'])
+    ->prefix('api/v1/b2b/real-estate')
+    ->group(function (): void {
+
+        // ── Объекты ────────────────────────────────────────────────────
+        Route::post('/properties', [PropertyController::class, 'store'])
+            ->name('realestate.b2b.properties.store');
+
+        Route::post('/properties/{id}/publish', [PropertyController::class, 'publish'])
+            ->name('realestate.b2b.properties.publish');
+
+        // ── Просмотры ──────────────────────────────────────────────────
+        Route::post('/viewings/{id}/confirm', [ViewingController::class, 'confirm'])
+            ->name('realestate.b2b.viewings.confirm');
+
+        // ── Контракты ──────────────────────────────────────────────────
+        Route::post('/contracts', [ContractController::class, 'store'])
+            ->name('realestate.b2b.contracts.store');
+
+        Route::post('/contracts/{id}/sign', [ContractController::class, 'sign'])
+            ->name('realestate.b2b.contracts.sign');
+    });

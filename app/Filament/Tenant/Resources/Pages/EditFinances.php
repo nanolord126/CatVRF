@@ -2,30 +2,59 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditFinances extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\FinancesResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+/**
+ * Class EditFinances
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditFinances extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = FinancesResource::class;
 
-    final class EditFinances extends EditRecord
+    protected function getHeaderActions(): array
     {
-        protected static string $resource = FinancesResource::class;
+        return [
+            ViewAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Удалить запись?')
+                ->modalDescription('Это действие необратимо.')
+                ->modalSubmitActionLabel('Да, удалить'),
+        ];
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit Finances';
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) Str::uuid();
+        return $data;
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+    protected function afterSave(): void
+    {
+        $record = $this->record;
+        $this->logger->info('Financial transaction updated', [
+            'transaction_id' => $record->id,
+            'type'           => $record->type,
+            'status'         => $record->status,
+            'amount'         => $record->amount,
+            'correlation_id' => $record->correlation_id,
+        ]);
+    }
 }

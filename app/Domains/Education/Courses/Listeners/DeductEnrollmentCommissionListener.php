@@ -2,42 +2,48 @@
 
 namespace App\Domains\Education\Courses\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class DeductEnrollmentCommissionListener extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductEnrollmentCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(EnrollmentCreated $event): void
         {
             try {
-                Log::channel('audit')->info('Deducting enrollment commission', [
+                $this->logger->info('Deducting enrollment commission', [
                     'enrollment_id' => $event->enrollment->id,
                     'correlation_id' => $event->correlationId,
                     'amount' => $event->enrollment->commission_price,
                 ]);
 
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($event) {
                     // Deduct 14% commission from instructor wallet/balance
                     $instructorWallet = $event->enrollment->course->instructor_id
-                        ? DB::table('wallets')->where('user_id', $event->enrollment->course->instructor_id)->first()
+                        ? $this->db->table('wallets')->where('user_id', $event->enrollment->course->instructor_id)->first()
                         : null;
 
                     if ($instructorWallet) {
-                        DB::table('wallets')
+                        $this->db->table('wallets')
                             ->where('id', $instructorWallet->id)
-                            ->update(['balance' => DB::raw("balance - {$event->enrollment->commission_price}")]);
+                            ->update(['balance' => $this->db->raw("balance - {$event->enrollment->commission_price}")]);
                     }
 
-                    Log::channel('audit')->info('Enrollment commission deducted', [
+                    $this->logger->info('Enrollment commission deducted', [
                         'enrollment_id' => $event->enrollment->id,
                         'correlation_id' => $event->correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct enrollment commission', [
+                $this->logger->error('Failed to deduct enrollment commission', [
                     'enrollment_id' => $event->enrollment->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -45,4 +51,27 @@ final class DeductEnrollmentCommissionListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

@@ -2,18 +2,18 @@
 
 namespace App\Domains\Fashion\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIOutfitConstructor extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class AIOutfitConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlation_id;
 
-        public function __construct() {
-            $this->correlation_id = request()->header('X-Correlation-ID', Str::uuid()->toString());
+        public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger) {
+            $this->correlation_id = $this->request->header('X-Correlation-ID', Str::uuid()->toString());
         }
 
         /**
@@ -21,7 +21,7 @@ final class AIOutfitConstructor extends Model
          */
         public function generateFromPhoto(string $photoPath, string $style = 'casual'): Collection
         {
-            Log::channel('audit')->info('AI Outfit generation started via Photo Analysis', [
+            $this->logger->info('AI Outfit generation started via Photo Analysis', [
                 'photo' => $photoPath,
                 'correlation_id' => $this->correlation_id,
             ]);

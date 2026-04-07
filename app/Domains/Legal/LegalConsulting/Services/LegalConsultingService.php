@@ -1,21 +1,168 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Legal\LegalConsulting\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Legal\LegalConsulting\Models\ConsultationCase;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class LegalConsultingService extends Model
+/**
+ * LegalConsultingService — управление юридическими консультациями.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class LegalConsultingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createCase(int $firmId,$caseType,$consultationHours,$dueDate,string $correlationId=""):ConsultationCase{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("legal:case:".auth()->id(),6))throw new \RuntimeException("Too many",429);RateLimiter::hit("legal:case:".auth()->id(),3600);
-    return DB::transaction(function()use($firmId,$caseType,$consultationHours,$dueDate,$correlationId){$f=LawFirm::findOrFail($firmId);$total=(int)($f->price_kopecks_per_hour*$consultationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'legal_consult','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$c=ConsultationCase::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'firm_id'=>$firmId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','case_type'=>$caseType,'consultation_hours'=>$consultationHours,'due_date'=>$dueDate,'tags'=>['legal'=>true]]);Log::channel('audit')->info('Legal consultation case created',['case_id'=>$c->id,'correlation_id'=>$correlationId]);return $c;});
+    /**
+     * Создать консультационный кейс.
+     */
+    public function createCase(
+        int    $firmId,
+        string $caseType,
+        string $description,
+        int    $hoursEstimate,
+        string $correlationId = '',
+    ): ConsultationCase {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($firmId, $caseType, $description, $hoursEstimate, $correlationId): ConsultationCase {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'legal_consulting',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $rateKopecks = 600000;
+            $total = $rateKopecks * $hoursEstimate;
+
+            $case = ConsultationCase::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'firm_id'        => $firmId,
+                'client_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $total,
+                'payout_kopecks' => $total - (int) ($total * 0.14),
+                'payment_status' => 'pending',
+                'case_type'      => $caseType,
+                'description'    => $description,
+                'hours_estimate' => $hoursEstimate,
+                'tags'           => ['legal_consulting' => true],
+            ]);
+
+            $this->logger->info('Consultation case created', [
+                'case_id'        => $case->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $case;
+        });
     }
-    public function completeCase(int $caseId,string $correlationId=""):ConsultationCase{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($caseId,$correlationId){$c=ConsultationCase::findOrFail($caseId);if($c->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$c->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$c->payout_kopecks,'legal_payout',['correlation_id'=>$correlationId,'case_id'=>$c->id]);Log::channel('audit')->info('Legal consultation case completed',['case_id'=>$c->id]);return $c;});}
-    public function cancelCase(int $caseId,string $correlationId=""):ConsultationCase{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($caseId,$correlationId){$c=ConsultationCase::findOrFail($caseId);if($c->status==='completed')throw new \RuntimeException("Cannot cancel",400);$c->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($c->payment_status==='completed')$this->wallet->credit(tenant()->id,$c->total_kopecks,'legal_refund',['correlation_id'=>$correlationId,'case_id'=>$c->id]);Log::channel('audit')->info('Legal consultation case cancelled',['case_id'=>$c->id]);return $c;});}
-    public function getCase(int $caseId):ConsultationCase{return ConsultationCase::findOrFail($caseId);}
-    public function getUserCases(int $clientId){return ConsultationCase::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeCase(int $caseId, string $correlationId = ''): ConsultationCase
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($caseId, $correlationId): ConsultationCase {
+            $case = ConsultationCase::findOrFail($caseId);
+
+            if ($case->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $case->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $case->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['case_id' => $case->id],
+            );
+
+            $this->logger->info('Consultation case completed', [
+                'case_id' => $case->id, 'correlation_id' => $correlationId,
+            ]);
+
+            return $case;
+        });
+    }
+
+    public function cancelCase(int $caseId, string $correlationId = ''): ConsultationCase
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($caseId, $correlationId): ConsultationCase {
+            $case = ConsultationCase::findOrFail($caseId);
+
+            if ($case->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed case', 400);
+            }
+
+            $wasPaid = $case->payment_status === 'completed';
+
+            $case->update([
+                'status'         => 'cancelled',
+                'payment_status' => $wasPaid ? 'refunded' : $case->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($wasPaid) {
+                $this->wallet->credit(
+                    walletId: tenant()->id,
+                    amount: $case->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['case_id' => $case->id],
+                );
+            }
+
+            $this->logger->info('Consultation case cancelled', [
+                'case_id' => $case->id, 'refunded' => $wasPaid, 'correlation_id' => $correlationId,
+            ]);
+
+            return $case;
+        });
+    }
+
+    public function getCase(int $caseId): ConsultationCase
+    {
+        return ConsultationCase::findOrFail($caseId);
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, ConsultationCase> */
+    public function getClientCases(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return ConsultationCase::where('client_id', $clientId)->orderByDesc('created_at')->take($limit)->get();
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return ['class' => static::class, 'timestamp' => Carbon::now()->toIso8601String()];
+    }
 }

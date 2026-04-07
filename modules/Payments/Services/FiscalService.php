@@ -5,7 +5,7 @@ namespace Modules\Payments\Services;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class FiscalService extends Model
+final class FiscalService
 {
     use HasFactory;
 

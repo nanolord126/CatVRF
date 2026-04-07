@@ -2,18 +2,16 @@
 
 namespace App\Domains\Taxi\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiRideController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TaxiRideController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly TaxiSurgeService $surgeService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly TaxiSurgeService $surgeService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -22,20 +20,21 @@ final class TaxiRideController extends Model
 
                 $rides = TaxiRide::query()
                     ->with(['passenger', 'driver', 'vehicle'])
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()?->id)
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $rides,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch rides', [
+                $this->logger->error('Failed to fetch rides', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при получении поездок',
                 ], 500);
@@ -46,22 +45,15 @@ final class TaxiRideController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'taxi_ride_create',
-                0,
-                $request->ip(),
-                $request->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'taxi_ride_create', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('TaxiRide create blocked', [
+                $this->logger->warning('TaxiRide create blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -77,15 +69,15 @@ final class TaxiRideController extends Model
                     'dropoff_point' => 'required|array',
                 ]);
 
-                $ride = DB::transaction(function () use ($validated, $correlationId) {
+                $ride = $this->db->transaction(function () use ($validated, $correlationId) {
                     $surgeMultiplier = $this->surgeService->calculateSurgeMultiplier(
                         $validated['pickup_point'],
-                        tenant('id'),
+                        tenant()?->id,
                         $correlationId,
                     );
 
                     $ride = TaxiRide::create([
-                        'tenant_id'        => tenant('id'),
+                        'tenant_id'        => tenant()?->id,
                         'passenger_id'     => $validated['passenger_id'],
                         'driver_id'        => $validated['driver_id'],
                         'vehicle_id'       => $validated['vehicle_id'],
@@ -98,7 +90,7 @@ final class TaxiRideController extends Model
                         'correlation_id'   => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('TaxiRide created', [
+                    $this->logger->info('TaxiRide created', [
                         'ride_id'          => $ride->id,
                         'passenger_id'     => $ride->passenger_id,
                         'driver_id'        => $ride->driver_id,
@@ -109,19 +101,19 @@ final class TaxiRideController extends Model
                     return $ride;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'data'           => $ride,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create ride', [
+                $this->logger->error('Failed to create ride', [
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании поездки',
                 ], 500);
@@ -131,12 +123,12 @@ final class TaxiRideController extends Model
         public function show(TaxiRide $ride): JsonResponse
         {
             try {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ride->load(['passenger', 'driver', 'vehicle']),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Поездка не найдена',
                 ], 404);
@@ -150,10 +142,10 @@ final class TaxiRideController extends Model
 
                 $this->authorize('cancel', $ride);
 
-                $ride = DB::transaction(function () use ($ride, $correlationId) {
+                $ride = $this->db->transaction(function () use ($ride, $correlationId) {
                     $ride->update(['status' => 'cancelled']);
 
-                    Log::channel('audit')->info('Ride cancelled', [
+                    $this->logger->info('Ride cancelled', [
                         'ride_id' => $ride->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -161,17 +153,18 @@ final class TaxiRideController extends Model
                     return $ride;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ride,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to cancel ride', [
+                $this->logger->error('Failed to cancel ride', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при отмене поездки',
                 ], 500);
@@ -192,32 +185,32 @@ final class TaxiRideController extends Model
 
                 $before = ['rating' => $ride->rating, 'comment' => $ride->comment ?? null];
 
-                DB::transaction(function () use ($ride, $validated) {
+                $this->db->transaction(function () use ($ride, $validated) {
                     $ride->update([
                         'rating'  => $validated['rating'],
                         'comment' => $validated['comment'] ?? null,
                     ]);
                 });
 
-                Log::channel('audit')->info('TaxiRide rated', [
+                $this->logger->info('TaxiRide rated', [
                     'ride_id'        => $ride->id,
                     'before'         => $before,
                     'after'          => ['rating' => $validated['rating'], 'comment' => $validated['comment'] ?? null],
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'message'        => 'Спасибо за оценку',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::error('TaxiRide rate failed', [
+                $this->logger->error('TaxiRide rate failed', [
                     'ride_id' => $ride->id,
                     'error'   => $e->getMessage(),
                     'trace'   => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при оценке поездки',
                 ], 500);
@@ -226,7 +219,7 @@ final class TaxiRideController extends Model
 
         public function status(TaxiRide $ride): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'status' => $ride->status,
                 'driver' => $ride->driver,

@@ -1,18 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Modules\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use Modules\Analytics\Models\BehavioralEvent;
+use Modules\Analytics\Models\CustomerSegment;
+use Modules\Common\Services\AbstractTechnicalVerticalService;
 
-final class InterestMappingService extends Model
+final class InterestMappingService extends AbstractTechnicalVerticalService
 {
-    use HasFactory;
+    public function isEnabled(): bool
+    {
+        return $this->tenant->settings['interest_mapping_enabled'] ?? true;
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    // Dependencies injected via constructor
-        // Add private readonly properties here
-        public function mapUserInterests(User $user): void
+    public function mapUserInterests(User $user): void
         {
             $interactions = BehavioralEvent::where('user_id', $user->id)
                 ->where('event_type', 'view')

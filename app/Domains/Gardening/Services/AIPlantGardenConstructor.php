@@ -2,17 +2,16 @@
 
 namespace App\Domains\Gardening\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIPlantGardenConstructor extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AIPlantGardenConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIConstructorService $aiConstructor,
-            private readonly RecommendationService $recommendation
+            private readonly RecommendationService $recommendation, private readonly Request $request, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -34,7 +33,6 @@ final class AIPlantGardenConstructor extends Model
                     'current_month' => (int) date('m'),
                     'is_spring' => in_array((int) date('m'), [3, 4, 5]),
                     'light_score' => match ($dto->plotType) {
-                        'balcony' => 'partial_shade',
                         'backyard' => 'full_sun',
                         default => 'full_sun'
                     }
@@ -61,7 +59,7 @@ final class AIPlantGardenConstructor extends Model
                 // D. Compute monthly maintenance plan
                 $plan = $this->computeCarePlan($matchingPlants, (int) date('m'));
 
-                Log::channel('recommend')->info('Gardening AI Plan Generated', [
+                $this->logger->info('Gardening AI Plan Generated', [
                     'user' => $dto->userId,
                     'cid' => $correlationId,
                     'plan_items_count' => count($recommendations['items'] ?? [])
@@ -77,10 +75,11 @@ final class AIPlantGardenConstructor extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Gardening AI generation failed', [
+                $this->logger->error('Gardening AI generation failed', [
                     'user' => $dto->userId,
                     'cid' => $correlationId,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 throw $e;

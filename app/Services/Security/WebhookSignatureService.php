@@ -2,14 +2,24 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class WebhookSignatureService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Illuminate\Log\LogManager;
+
+final readonly class WebhookSignatureService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Проверить подпись webhook от платёжного шлюза.
          *
@@ -22,7 +32,6 @@ final class WebhookSignatureService extends Model
         public function verify(string $provider, string $payload, string $signature): bool
         {
             return match(strtolower($provider)) {
-                'tinkoff' => $this->verifyTinkoff($payload, $signature),
                 'sber' => $this->verifySber($payload, $signature),
                 'sbp' => $this->verifySbp($payload, $signature),
                 default => throw new RuntimeException("Unknown webhook provider: {$provider}"),
@@ -41,10 +50,10 @@ final class WebhookSignatureService extends Model
          */
         private function verifyTinkoff(string $payload, string $signature): bool
         {
-            $secretKey = config('payment.webhooks.tinkoff.secret_key');
+            $secretKey = $this->config->get('payment.webhooks.tinkoff.secret_key');
 
             if (!$secretKey) {
-                Log::channel('fraud_alert')->warning('Tinkoff webhook secret not configured');
+                $this->logger->channel('fraud_alert')->warning('Tinkoff webhook secret not configured');
                 return false;
             }
 
@@ -52,16 +61,18 @@ final class WebhookSignatureService extends Model
 
             // Timing-safe comparison для защиты от timing attacks
             if (!hash_equals($expectedSignature, $signature)) {
-                Log::channel('fraud_alert')->warning('Tinkoff webhook signature mismatch', [
+                $this->logger->channel('fraud_alert')->warning('Tinkoff webhook signature mismatch', [
                     'provider' => 'tinkoff',
                     'expected_first_chars' => substr($expectedSignature, 0, 8),
                     'provided_first_chars' => substr($signature, 0, 8),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
 
-            Log::channel('audit')->info('Tinkoff webhook verified', [
+            $this->logger->channel('audit')->info('Tinkoff webhook verified', [
                 'signature_hash' => substr($signature, 0, 8) . '***',
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return true;
@@ -79,8 +90,8 @@ final class WebhookSignatureService extends Model
          */
         private function verifySber(string $payload, string $signature): bool
         {
-            $secretKey = config('payment.webhooks.sber.secret_key');
-            $certificate = config('payment.webhooks.sber.certificate');
+            $secretKey = $this->config->get('payment.webhooks.sber.secret_key');
+            $certificate = $this->config->get('payment.webhooks.sber.certificate');
 
             // Если есть сертификат - проверить подпись сертификатом
             if ($certificate && file_exists($certificate)) {
@@ -89,20 +100,21 @@ final class WebhookSignatureService extends Model
 
             // Иначе использовать HMAC-SHA256
             if (!$secretKey) {
-                Log::channel('fraud_alert')->warning('Sber webhook secret not configured');
+                $this->logger->channel('fraud_alert')->warning('Sber webhook secret not configured');
                 return false;
             }
 
             $expectedSignature = hash_hmac('sha256', $payload, $secretKey);
 
             if (!hash_equals($expectedSignature, $signature)) {
-                Log::channel('fraud_alert')->warning('Sber webhook signature mismatch', [
+                $this->logger->channel('fraud_alert')->warning('Sber webhook signature mismatch', [
                     'provider' => 'sber',
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
 
-            Log::channel('audit')->info('Sber webhook verified');
+            $this->logger->channel('audit')->info('Sber webhook verified');
 
             return true;
         }
@@ -120,36 +132,39 @@ final class WebhookSignatureService extends Model
         private function verifySbp(string $payload, string $signature): bool
         {
             // Проверить IP whitelist
-            $clientIp = request()->ip();
-            $sbpIps = config('payment.webhooks.sbp.ip_whitelist', []);
+            $clientIp = $this->request->ip();
+            $sbpIps = $this->config->get('payment.webhooks.sbp.ip_whitelist', []);
 
             if (!$this->isIpWhitelisted($clientIp, $sbpIps)) {
-                Log::channel('fraud_alert')->warning('SBP webhook IP not whitelisted', [
+                $this->logger->channel('fraud_alert')->warning('SBP webhook IP not whitelisted', [
                     'provider' => 'sbp',
                     'client_ip' => $clientIp,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
 
             // Проверить HMAC
-            $secretKey = config('payment.webhooks.sbp.secret_key');
+            $secretKey = $this->config->get('payment.webhooks.sbp.secret_key');
 
             if (!$secretKey) {
-                Log::channel('fraud_alert')->warning('SBP webhook secret not configured');
+                $this->logger->channel('fraud_alert')->warning('SBP webhook secret not configured');
                 return false;
             }
 
             $expectedSignature = hash_hmac('sha256', $payload, $secretKey);
 
             if (!hash_equals($expectedSignature, $signature)) {
-                Log::channel('fraud_alert')->warning('SBP webhook signature mismatch', [
+                $this->logger->channel('fraud_alert')->warning('SBP webhook signature mismatch', [
                     'provider' => 'sbp',
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
 
-            Log::channel('audit')->info('SBP webhook verified', [
+            $this->logger->channel('audit')->info('SBP webhook verified', [
                 'client_ip' => $clientIp,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return true;
@@ -169,15 +184,16 @@ final class WebhookSignatureService extends Model
                 $publicKey = openssl_pkey_get_public(file_get_contents($certificatePath));
 
                 if (!$publicKey) {
-                    Log::channel('fraud_alert')->error('Failed to load certificate', [
+                    $this->logger->channel('fraud_alert')->error('Failed to load certificate', [
                         'path' => $certificatePath,
-                    ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return false;
                 }
 
                 $decodedSignature = base64_decode($signature, true);
                 if ($decodedSignature === false) {
-                    Log::channel('fraud_alert')->warning('Invalid base64 signature');
+                    $this->logger->channel('fraud_alert')->warning('Invalid base64 signature');
                     return false;
                 }
 
@@ -191,17 +207,18 @@ final class WebhookSignatureService extends Model
                 openssl_pkey_free($publicKey);
 
                 if ($verified === 1) {
-                    Log::channel('audit')->info('Certificate-based webhook verified');
+                    $this->logger->channel('audit')->info('Certificate-based webhook verified');
                     return true;
                 }
 
-                Log::channel('fraud_alert')->warning('Certificate-based webhook verification failed');
+                $this->logger->channel('fraud_alert')->warning('Certificate-based webhook verification failed');
                 return false;
 
             } catch (\Throwable $e) {
-                Log::channel('fraud_alert')->error('Certificate verification error', [
+                $this->logger->channel('fraud_alert')->error('Certificate verification error', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
         }

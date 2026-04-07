@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Api\CarRental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CarRentalApiController extends Model
+final class CarRentalApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly CarRentalBookingService $bookingService,
             private readonly AICarRecommendationConstructor $aiConstructor,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Endpoint: GET /api/car-rental/fleet
          * Browsing available fleet within tenant.
@@ -27,12 +28,12 @@ final class CarRentalApiController extends Model
                 ->latest()
                 ->paginate($request->get('limit', 15));
             // 2. Audit Log (Canon 2026: Traceable access)
-            Log::channel('audit')->info('[CarRentalAPI] Fleet requested', [
+            $this->logger->channel('audit')->info('[CarRentalAPI] Fleet requested', [
                 'correlation_id' => $correlationId,
                 'client_ip' => $request->ip(),
                 'count' => $cars->count(),
             ]);
-            return response()->json([
+            return $this->response->json([
                 'status' => 'success',
                 'correlation_id' => $correlationId,
                 'data' => $cars,
@@ -63,22 +64,22 @@ final class CarRentalApiController extends Model
                     isB2B: $validated['is_b2b'] ?? false
                 );
                 // 3. Audit Log
-                Log::channel('audit')->info('[CarRentalAPI] AI Recommendations generated', [
+                $this->logger->channel('audit')->info('[CarRentalAPI] AI Recommendations generated', [
                     'correlation_id' => $correlationId,
                     'person_count' => $validated['person_count'],
                     'travel_goal_summary' => Str::limit($validated['travel_goal'], 30),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'success',
                     'correlation_id' => $correlationId,
                     'recommendations' => $recommendations,
                 ]);
             } catch (\Throwable $e) {
-                Log::error("[CarRentalAPI] AI Matching Failed", [
+                $this->logger->error("[CarRentalAPI] AI Matching Failed", [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => 'AI reasoning failed',
                     'correlation_id' => $correlationId,
@@ -92,7 +93,7 @@ final class CarRentalApiController extends Model
         public function getCarDetails(int $id): JsonResponse
         {
             $car = Car::with(['type', 'company'])->findOrFail($id);
-            return response()->json([
+            return $this->response->json([
                 'status' => 'success',
                 'data' => $car,
             ]);

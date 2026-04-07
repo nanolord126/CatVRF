@@ -2,25 +2,40 @@
 
 namespace App\Livewire\Food;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class FoodOrderTracker extends Model
+/**
+ * Class FoodOrderTracker
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Food
+ */
+final class FoodOrderTracker extends Component
 {
-    use HasFactory;
+    private string $orderId;
+        private string $status = 'pending';
+        private string $estimatedTime = '';
+        private array $timeline = [];
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $orderId;
-        public string $status = 'pending';
-        public string $estimatedTime = '';
-        public array $timeline = [];
-
+        /**
+         * Handle mount operation.
+         *
+         * @throws \DomainException
+         */
         public function mount(string $orderId): void
         {
             $this->orderId = $orderId;
             $this->loadOrderStatus();
         }
 
+        /**
+         * Handle loadOrderStatus operation.
+         *
+         * @throws \DomainException
+         */
         public function loadOrderStatus(): void
         {
             // In real app, fetch from database
@@ -34,6 +49,11 @@ final class FoodOrderTracker extends Model
             ];
         }
 
+        /**
+         * Handle render operation.
+         *
+         * @throws \DomainException
+         */
         public function render(): View
         {
             return view('livewire.food.order-tracker');

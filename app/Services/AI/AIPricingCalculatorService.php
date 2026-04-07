@@ -2,14 +2,8 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class AIPricingCalculatorService extends Model
+final readonly class AIPricingCalculatorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Калькулятор для вертикали Furniture — расчёт стоимости ремонта
          */

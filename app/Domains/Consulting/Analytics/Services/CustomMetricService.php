@@ -2,20 +2,22 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CustomMetricService extends Model
+
+use Psr\Log\LoggerInterface;
+final readonly class CustomMetricService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ClickHouseService $clickHouseService,
-        ) {
-        }
+
+    public function __construct(private readonly ClickHouseService $clickHouseService,
+        private readonly \Illuminate\Cache\CacheManager $cache, private readonly LoggerInterface $logger) {
 
-        private string $correlationId = '';
+    }
+
+        string $correlationId = '';
 
         /**
          * Получить кастомную метрику для геоданных
@@ -36,14 +38,14 @@ final class CustomMetricService extends Model
             Carbon $toDate,
             string $metricType,
             string $aggregation = 'daily',
-            array $params = [],
-        ): array {
+            array $params = []
+    ): array {
             $cacheKey = $this->buildGeoCacheKey($tenantId, $vertical, $fromDate, $toDate, $metricType, $aggregation);
 
             // Проверить кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
-                Log::channel('analytics')->debug('Geo custom metric cache hit', [
+                $this->logger->debug('Geo custom metric cache hit', [
                     'correlation_id' => $this->correlationId,
                     'metric_type' => $metricType,
                 ]);
@@ -53,14 +55,12 @@ final class CustomMetricService extends Model
             try {
                 // Получить базовые данные
                 $baseData = match($aggregation) {
-                    'hourly' => $this->clickHouseService->queryGeoHourly($tenantId, $vertical, [$fromDate, $toDate], 'event_count'),
                     'weekly' => $this->clickHouseService->queryGeoWeekly($tenantId, $vertical, [$fromDate, $toDate]),
                     default => $this->clickHouseService->queryGeoDaily($tenantId, $vertical, [$fromDate, $toDate], 'event_count'),
                 };
 
                 // Вычислить метрику
                 $metricData = match($metricType) {
-                    'event_intensity' => $this->calculateEventIntensity($baseData, $fromDate, $toDate),
                     'engagement_score' => $this->calculateEngagementScore($baseData),
                     'growth_rate' => $this->calculateGrowthRate($baseData),
                     'hotspot_concentration' => $this->calculateHotspotConcentration($baseData),
@@ -77,21 +77,20 @@ final class CustomMetricService extends Model
                     ],
                     'data' => $metricData,
                     'metadata' => [
-                        'generated_at' => now()->toIso8601String(),
+                        'generated_at' => Carbon::now()->toIso8601String(),
                         'correlation_id' => $this->correlationId,
                     ],
                 ];
 
                 // Кэшировать (5m/1h/24h в зависимости от типа)
                 $ttl = match($aggregation) {
-                    'hourly' => 5 * 60,
                     'weekly' => 86400,
                     default => 3600,
                 };
 
-                Cache::put($cacheKey, $response, $ttl);
+                cache()->put($cacheKey, $response, $ttl);
 
-                Log::channel('analytics')->info('Geo custom metric calculated', [
+                $this->logger->info('Geo custom metric calculated', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'metric_type' => $metricType,
@@ -99,8 +98,8 @@ final class CustomMetricService extends Model
                 ]);
 
                 return $response;
-            } catch (\Exception $e) {
-                Log::channel('error')->error('Geo custom metric calculation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo custom metric calculation failed', [
                     'correlation_id' => $this->correlationId,
                     'metric_type' => $metricType,
                     'message' => $e->getMessage(),
@@ -134,14 +133,14 @@ final class CustomMetricService extends Model
             Carbon $fromDate,
             Carbon $toDate,
             string $metricType,
-            string $aggregation = 'daily',
-        ): array {
+            string $aggregation = 'daily'
+    ): array {
             $cacheKey = $this->buildClickCacheKey($tenantId, $vertical, $pageUrl, $fromDate, $toDate, $metricType, $aggregation);
 
             // Проверить кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
-                Log::channel('analytics')->debug('Click custom metric cache hit', [
+                $this->logger->debug('Click custom metric cache hit', [
                     'correlation_id' => $this->correlationId,
                     'metric_type' => $metricType,
                 ]);
@@ -151,13 +150,11 @@ final class CustomMetricService extends Model
             try {
                 // Получить базовые данные
                 $baseData = match($aggregation) {
-                    'hourly' => $this->clickHouseService->queryClickHourly($tenantId, $vertical, $pageUrl, [$fromDate, $toDate]),
                     default => $this->clickHouseService->queryClickDaily($tenantId, $vertical, $pageUrl, [$fromDate, $toDate]),
                 };
 
                 // Вычислить метрику
                 $metricData = match($metricType) {
-                    'click_density' => $this->calculateClickDensity($baseData),
                     'interaction_score' => $this->calculateInteractionScore($baseData),
                     'user_engagement' => $this->calculateUserEngagement($baseData),
                     'click_conversion' => $this->calculateClickConversion($baseData),
@@ -174,20 +171,19 @@ final class CustomMetricService extends Model
                     ],
                     'data' => $metricData,
                     'metadata' => [
-                        'generated_at' => now()->toIso8601String(),
+                        'generated_at' => Carbon::now()->toIso8601String(),
                         'correlation_id' => $this->correlationId,
                     ],
                 ];
 
                 // Кэшировать
                 $ttl = match($aggregation) {
-                    'hourly' => 5 * 60,
                     default => 3600,
                 };
 
-                Cache::put($cacheKey, $response, $ttl);
+                cache()->put($cacheKey, $response, $ttl);
 
-                Log::channel('analytics')->info('Click custom metric calculated', [
+                $this->logger->info('Click custom metric calculated', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'metric_type' => $metricType,
@@ -195,8 +191,8 @@ final class CustomMetricService extends Model
                 ]);
 
                 return $response;
-            } catch (\Exception $e) {
-                Log::channel('error')->error('Click custom metric calculation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Click custom metric calculation failed', [
                     'correlation_id' => $this->correlationId,
                     'metric_type' => $metricType,
                     'message' => $e->getMessage(),
@@ -532,9 +528,9 @@ final class CustomMetricService extends Model
          */
         public function invalidateCache(int $tenantId): void
         {
-            Cache::tags(['custom_metric', "tenant:{$tenantId}"])->flush();
+            $this->cache->tags(['custom_metric', "tenant:{$tenantId}"])->flush();
 
-            Log::channel('analytics')->info('Custom metric cache invalidated', [
+            $this->logger->info('Custom metric cache invalidated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -558,8 +554,8 @@ final class CustomMetricService extends Model
             Carbon $from,
             Carbon $to,
             string $metricType,
-            string $aggregation,
-        ): string {
+            string $aggregation
+    ): string {
             return "custom_metric:geo:tenant:{$tenantId}:vertical:{$vertical}:from:{$from->format('Y-m-d')}:to:{$to->format('Y-m-d')}:metric:{$metricType}:agg:{$aggregation}:v1";
         }
 
@@ -573,8 +569,8 @@ final class CustomMetricService extends Model
             Carbon $from,
             Carbon $to,
             string $metricType,
-            string $aggregation,
-        ): string {
+            string $aggregation
+    ): string {
             $urlHash = md5($pageUrl);
             return "custom_metric:click:tenant:{$tenantId}:vertical:{$vertical}:url:{$urlHash}:from:{$from->format('Y-m-d')}:to:{$to->format('Y-m-d')}:metric:{$metricType}:agg:{$aggregation}:v1";
         }

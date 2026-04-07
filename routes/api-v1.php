@@ -40,6 +40,7 @@ Route::prefix('v1')
         require base_path('routes/luxury.api.php');
         require base_path('routes/pd.api.php');
         require base_path('routes/ritual.api.php');
+        require base_path('routes/geo_logistics.api.php');
 
     });
 

@@ -2,20 +2,23 @@
 
 namespace App\Domains\Fashion\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OrderService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class OrderService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание заказа на одежду/обувь.
@@ -26,24 +29,19 @@ final class OrderService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting - защита от выкупа всего стока ботами
-            if (RateLimiter::tooManyAttempts("fashion:order:".auth()->id(), 5)) {
+            if ($this->rateLimiter->tooManyAttempts("fashion:order:".$this->guard->id(), 5)) {
                 throw new \RuntimeException("Too many orders. Wait.", 429);
             }
-            RateLimiter::hit("fashion:order:".auth()->id(), 3600);
+            $this->rateLimiter->hit("fashion:order:".$this->guard->id(), 3600);
 
-            return DB::transaction(function () use ($brandId, $items, $requiresFitting, $correlationId) {
+            return $this->db->transaction(function () use ($brandId, $items, $requiresFitting, $correlationId) {
                 $brand = FashionBrand::findOrFail($brandId);
 
                 // 2. Fraud Check - проверка на массовые возвраты и поддельные аккаунты
-                $fraud = $this->fraud->check([
-                    "user_id" => auth()->id() ?? 0,
-                    "operation_type" => "fashion_order_create",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["brand_id" => $brandId, "items_count" => count($items)]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->warning("Fashion Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
+                    $this->logger->warning("Fashion Block", ["user" => $this->guard->id(), "score" => $fraud["score"]]);
                     throw new \RuntimeException("Blocked by security. High return risk detected.", 403);
                 }
 
@@ -67,7 +65,7 @@ final class OrderService extends Model
                     "uuid" => (string) Str::uuid(),
                     "tenant_id" => $brand->tenant_id,
                     "brand_id" => $brandId,
-                    "client_id" => auth()->id(),
+                    "client_id" => $this->guard->id(),
                     "status" => "pending_payment",
                     "total_price_kopecks" => $totalPrice,
                     "requires_fitting" => $requiresFitting,
@@ -75,7 +73,7 @@ final class OrderService extends Model
                     "tags" => ["collection:spring_2026", "fitting:".($requiresFitting ? "yes" : "no")]
                 ]);
 
-                Log::channel("audit")->info("Fashion: order created", ["order_id" => $order->id, "fitting" => $requiresFitting]);
+                $this->logger->info("Fashion: order created", ["order_id" => $order->id, "fitting" => $requiresFitting]);
 
                 return $order;
             });
@@ -89,7 +87,7 @@ final class OrderService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = FashionOrder::with("items")->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $keptItemIds, $correlationId) {
+            $this->db->transaction(function () use ($order, $keptItemIds, $correlationId) {
                 foreach ($order->items as $item) {
                     if (!in_array($item->id, $keptItemIds)) {
                         // Возвращаем невыкупленный товар на склад
@@ -113,7 +111,7 @@ final class OrderService extends Model
                 $newTotal = $order->items->whereIn("id", $keptItemIds)->sum(fn($i) => $i->price_kopecks * $i->pivot->quantity);
                 $order->update(["total_price_kopecks" => $newTotal, "status" => "partially_returned"]);
 
-                Log::channel("audit")->info("Fashion: fitting processed", ["order_id" => $order->id, "kept" => count($keptItemIds)]);
+                $this->logger->info("Fashion: fitting processed", ["order_id" => $order->id, "kept" => count($keptItemIds)]);
             });
         }
 
@@ -125,8 +123,8 @@ final class OrderService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = FashionOrder::with("brand")->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $correlationId) {
-                $order->update(["status" => "completed", "finalized_at" => now()]);
+            $this->db->transaction(function () use ($order, $correlationId) {
+                $order->update(["status" => "completed", "finalized_at" => Carbon::now()]);
 
                 // 6. Окончательное списание из Inventory
                 $this->inventory->deductStock(
@@ -152,7 +150,7 @@ final class OrderService extends Model
                     correlationId: $correlationId
                 );
 
-                Log::channel("audit")->info("Fashion: payout done", ["order_id" => $order->id, "payout" => $payout]);
+                $this->logger->info("Fashion: payout done", ["order_id" => $order->id, "payout" => $payout]);
             });
         }
 }

@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\Education\CourseResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditCourse extends Model
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditCourse extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = CourseResource::class;
 
         /**
@@ -22,12 +30,12 @@ final class EditCourse extends Model
             // 1. Фрод-проверка на изменение контента
             app(FraudControlService::class)->checkOperation('edit_education_course', [
                 'tenant_id' => tenant()->id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $correlationId,
                 'course_id' => $this->record->id,
             ]);
 
-            Log::channel('audit')->info('User started Education Course edit', [
+            $this->logger->info('User started Education Course edit', [
                 'tenant_id' => tenant()->id,
                 'course_id' => $this->record->id,
                 'correlation_id' => $correlationId,
@@ -39,10 +47,10 @@ final class EditCourse extends Model
          */
         protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($record, $data) {
+            return $this->db->transaction(function () use ($record, $data) {
                 $updatedRecord = parent::handleRecordUpdate($record, $data);
 
-                Log::channel('audit')->info('Education Course updated', [
+                $this->logger->info('Education Course updated', [
                     'course_id' => $updatedRecord->id,
                     'correlation_id' => $data['correlation_id'] ?? (string) Str::uuid(),
                 ]);
@@ -56,7 +64,7 @@ final class EditCourse extends Model
          */
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('Education Course edit successfully finalized', [
+            $this->logger->info('Education Course edit successfully finalized', [
                 'course_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

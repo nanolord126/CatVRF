@@ -2,17 +2,18 @@
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BPhotoController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+
+final class B2BPhotoController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-    		private readonly B2BService $b2bService
-    	) {}
+
+    public function __construct(private readonly B2BService $b2bService
+    ,
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
     	public function storefronts(): JsonResponse
     	{
@@ -21,13 +22,13 @@ final class B2BPhotoController extends Model
     				->where('is_verified', true)
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $storefronts,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -53,22 +54,22 @@ final class B2BPhotoController extends Model
 
     			$storefront = $this->b2bService->createStorefront(
     				array_merge($validated, [
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'correlation_id' => $correlationId,
     				])
     			);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $storefront,
     				'correlation_id' => $correlationId,
     			], 201);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Photography B2B: Storefront creation failed', [
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Photography B2B: Storefront creation failed', [
     				'error' => $e->getMessage(),
     				'correlation_id' => Str::uuid(),
     			]);
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка при создании витрины',
     				'correlation_id' => Str::uuid(),
@@ -82,13 +83,13 @@ final class B2BPhotoController extends Model
     			$storefront = B2BPhotoStorefront::with('b2bOrders')->findOrFail($id);
     			$this->authorize('view', $storefront);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $storefront,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Витрина не найдена',
     				'correlation_id' => Str::uuid(),
@@ -111,18 +112,18 @@ final class B2BPhotoController extends Model
 
     			$storefront->update($validated);
 
-    			Log::channel('audit')->info('Photography B2B: Storefront updated', [
+    			$this->logger->info('Photography B2B: Storefront updated', [
     				'storefront_id' => $id,
     				'correlation_id' => Str::uuid(),
     			]);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Витрина обновлена',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -149,18 +150,18 @@ final class B2BPhotoController extends Model
 
     			$order = $this->b2bService->createB2BOrder(
     				array_merge($validated, [
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'correlation_id' => $correlationId,
     				])
     			);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $order,
     				'correlation_id' => $correlationId,
     			], 201);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка при создании заказа',
     				'correlation_id' => Str::uuid(),
@@ -173,13 +174,13 @@ final class B2BPhotoController extends Model
     		try {
     			$orders = B2BPhotoOrder::paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $orders,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -190,17 +191,17 @@ final class B2BPhotoController extends Model
     	public function myB2BOrders(): JsonResponse
     	{
     		try {
-    			$orders = B2BPhotoOrder::where('tenant_id', auth()->user()->tenant_id)
+    			$orders = B2BPhotoOrder::where('tenant_id', $request->user()->tenant_id)
     				->latest()
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $orders,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -214,13 +215,13 @@ final class B2BPhotoController extends Model
     			$order = B2BPhotoOrder::findOrFail($id);
     			$this->authorize('view', $order);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $order,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Заказ не найден',
     				'correlation_id' => Str::uuid(),
@@ -238,19 +239,19 @@ final class B2BPhotoController extends Model
 
     			$order->update(['status' => $status]);
 
-    			Log::channel('audit')->info('Photography B2B: Order status updated', [
+    			$this->logger->info('Photography B2B: Order status updated', [
     				'order_id' => $id,
     				'status' => $status,
     				'correlation_id' => Str::uuid(),
     			]);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Статус обновлен',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -266,13 +267,13 @@ final class B2BPhotoController extends Model
 
     			$this->b2bService->approveB2BOrder($order);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Заказ одобрен',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -289,19 +290,19 @@ final class B2BPhotoController extends Model
     			$reason = $request->get('reason', 'Причина не указана');
     			$order->update(['status' => 'rejected', 'notes' => $reason]);
 
-    			Log::channel('audit')->info('Photography B2B: Order rejected', [
+    			$this->logger->info('Photography B2B: Order rejected', [
     				'order_id' => $id,
     				'reason' => $reason,
     				'correlation_id' => Str::uuid(),
     			]);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Заказ отклонен',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -314,13 +315,13 @@ final class B2BPhotoController extends Model
     		try {
     			$orders = B2BPhotoOrder::where('status', 'pending')->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $orders,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -333,24 +334,24 @@ final class B2BPhotoController extends Model
     		try {
     			$this->authorize('verify', B2BPhotoStorefront::class);
 
-    			DB::transaction(function () use ($id) {
+    			$this->db->transaction(function () use ($id) {
     				$storefront = B2BPhotoStorefront::findOrFail($id);
     				$storefront->update(['is_verified' => true]);
 
-    				Log::channel('audit')->info('Photography B2B: INN verified', [
+    				$this->logger->info('Photography B2B: INN verified', [
     					'storefront_id' => $id,
     					'inn' => $storefront->inn,
     					'correlation_id' => Str::uuid(),
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'ИНН верифицирован',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),

@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ * FreelanceDeliverablePolicy — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/freelancedeliverablepolicy
+ */
+
+
 namespace App\Domains\Freelance\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class FreelanceDeliverablePolicy extends Model
+final class FreelanceDeliverablePolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function view(User $user, FreelanceDeliverable $deliverable): Response
         {
             $contract = $deliverable->contract;
@@ -50,4 +61,10 @@ final class FreelanceDeliverablePolicy extends Model
                 ? $this->response->allow()
                 : $this->response->deny();
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

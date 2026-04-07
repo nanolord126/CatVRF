@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class OrderController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class OrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly LiveCommerceService $commerceService,
-        ) {}
+            private readonly LiveCommerceService $commerceService, private readonly LoggerInterface $logger) {}
 
         /**
          * Create live-commerce order
@@ -21,7 +21,7 @@ final class OrderController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $stream = Stream::where('room_id', $roomId)
                     ->where('status', 'live')
@@ -37,7 +37,7 @@ final class OrderController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Live order created', [
+                $this->logger->info('Live order created', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                     'user_id' => $userId,
@@ -45,19 +45,20 @@ final class OrderController extends Model
                     'amount' => $order->total,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $order,
                     'payment_id' => $order->payment_id,
                     'requires_confirmation' => $order->status === 'pending',
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Create order failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Create order failed', [
                     'error' => $e->getMessage(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to create order',
                     'error' => $e->getMessage(),
                 ], 400);
@@ -71,18 +72,19 @@ final class OrderController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $order = \App\Domains\Content\Bloggers\Models\StreamOrder::findOrFail($orderId);
 
                 // Verify order belongs to current user
                 if ($order->user_id !== $userId) {
-                    Log::channel('audit')->warning('Unauthorized order confirmation attempt', [
+                    $this->logger->warning('Unauthorized order confirmation attempt', [
                         'user_id' => $userId,
                         'order_id' => $orderId,
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Unauthorized',
                     ], 403);
                 }
@@ -92,23 +94,24 @@ final class OrderController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Order payment confirmed', [
+                $this->logger->info('Order payment confirmed', [
                     'correlation_id' => $correlationId,
                     'order_id' => $orderId,
                     'user_id' => $userId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $order,
                     'status' => 'paid',
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Confirm payment failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Confirm payment failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to confirm payment',
                     'error' => $e->getMessage(),
                 ], 400);
@@ -125,17 +128,17 @@ final class OrderController extends Model
                     ->findOrFail($orderId);
 
                 // Check authorization
-                if ($order->user_id !== auth()->id() && $order->stream->blogger_id !== auth()->id()) {
-                    return response()->json([
+                if ($order->user_id !== $request->user()?->id && $order->stream->blogger_id !== $request->user()?->id) {
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => $order,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Order not found',
                 ], 404);
             }
@@ -147,7 +150,7 @@ final class OrderController extends Model
         public function getUserOrders(Request $request): JsonResponse
         {
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $orders = \App\Domains\Content\Bloggers\Models\StreamOrder::where('user_id', $userId)
                     ->where('tenant_id', tenant()->id)
@@ -155,15 +158,15 @@ final class OrderController extends Model
                     ->orderByDesc('created_at')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => $orders->items(),
                     'pagination' => [
                         'total' => $orders->total(),
                         'current_page' => $orders->currentPage(),
                     ],
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch orders',
                 ], 500);
             }
@@ -176,39 +179,39 @@ final class OrderController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $order = \App\Domains\Content\Bloggers\Models\StreamOrder::findOrFail($orderId);
 
                 if ($order->user_id !== $userId) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
                 if ($order->isPaid()) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Cannot cancel paid order',
                     ], 400);
                 }
 
                 $order->update([
                     'status' => 'cancelled',
-                    'cancelled_at' => now(),
+                    'cancelled_at' => Carbon::now(),
                 ]);
 
-                Log::channel('audit')->info('Order cancelled', [
+                $this->logger->info('Order cancelled', [
                     'correlation_id' => $correlationId,
                     'order_id' => $orderId,
                     'user_id' => $userId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $order,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to cancel order',
                 ], 400);
             }

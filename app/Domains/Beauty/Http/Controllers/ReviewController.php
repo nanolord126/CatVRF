@@ -1,18 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ReviewController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ReviewService $reviewService,
-            private readonly FraudControlService $fraudControlService,) {}
+
+public function __construct(
+        private ReviewService $reviewService,
+        private FraudControlService $fraud,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {
+    }
 
         public function index(int $serviceId): JsonResponse
         {
@@ -23,25 +29,25 @@ final class ReviewController extends Model
                     ->paginate(20);
 
                 $correlationId = Str::uuid()->toString();
-                Log::channel('audit')->info('Beauty reviews listed', [
+                $this->logger->info('Beauty reviews listed', [
                     'service_id' => $serviceId,
                     'count' => $reviews->count(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
                 $correlationId = Str::uuid()->toString();
-                Log::error('Beauty review listing failed', [
+                $this->logger->error('Beauty review listing failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -49,69 +55,50 @@ final class ReviewController extends Model
             }
         }
 
-        public function store(int $serviceId): JsonResponse
+        public function store(int $serviceId, \Illuminate\Http\Request $request): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $correlationId = Str::uuid()->toString();
 
-            if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
-                    'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
-                    'score'          => $fraudResult['score'],
-                ]);
-                return response()->json([
-                    'success'        => false,
-                    'error'          => 'Операция заблокирована.',
-                    'correlation_id' => $correlationId,
-                ], 403);
-            }
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'review_create', amount: 0, correlationId: $correlationId);
 
             try {
-                $correlationId = Str::uuid()->toString();
 
-                $review = DB::transaction(function () use ($serviceId, $correlationId) {
+                $review = $this->db->transaction(function () use ($serviceId, $correlationId) {
                     return Review::create([
                         'uuid' => Str::uuid(),
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'service_id' => $serviceId,
-                        'user_id' => auth()->id(),
-                        'appointment_id' => request('appointment_id'),
-                        'rating' => request('rating'),
-                        'title' => request('title'),
-                        'comment' => request('comment'),
-                        'images' => request('images', []),
+                        'user_id' => $request->user()?->id,
+                        'appointment_id' => $request->input('appointment_id'),
+                        'rating' => $request->input('rating'),
+                        'title' => $request->input('title'),
+                        'comment' => $request->input('comment'),
+                        'images' => $request->input('images', []),
                         'status' => 'pending',
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                Log::channel('audit')->info('Beauty review created', [
+                $this->logger->info('Beauty review created', [
                     'review_id' => $review->id,
                     'service_id' => $serviceId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
                 $correlationId = Str::uuid()->toString();
-                Log::error('Beauty review creation failed', [
+                $this->logger->error('Beauty review creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -119,65 +106,46 @@ final class ReviewController extends Model
             }
         }
 
-        public function destroy(int $serviceId, int $reviewId): JsonResponse
+        public function destroy(int $serviceId, int $reviewId, \Illuminate\Http\Request $request): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $correlationId = Str::uuid()->toString();
 
-            if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
-                    'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
-                    'score'          => $fraudResult['score'],
-                ]);
-                return response()->json([
-                    'success'        => false,
-                    'error'          => 'Операция заблокирована.',
-                    'correlation_id' => $correlationId,
-                ], 403);
-            }
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'review_delete', amount: 0, correlationId: $correlationId);
 
             try {
-                $correlationId = Str::uuid()->toString();
                 $review = Review::findOrFail($reviewId);
 
-                if ($review->user_id !== auth()->id()) {
-                    return response()->json([
+                if ($review->user_id !== $request->user()?->id) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                         'correlation_id' => $correlationId,
                     ], 403);
                 }
 
-                DB::transaction(function () use ($review, $correlationId) {
+                $this->db->transaction(function () use ($review, $correlationId) {
                     $review->update(['status' => 'deleted', 'correlation_id' => $correlationId]);
                     $review->delete();
                 });
 
-                Log::channel('audit')->info('Beauty review deleted', [
+                $this->logger->info('Beauty review deleted', [
                     'review_id' => $reviewId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Review deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
                 $correlationId = Str::uuid()->toString();
-                Log::error('Beauty review deletion failed', [
+                $this->logger->error('Beauty review deletion failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,

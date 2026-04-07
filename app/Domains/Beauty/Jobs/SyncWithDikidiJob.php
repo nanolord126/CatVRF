@@ -1,32 +1,38 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SyncWithDikidiJob extends Model
+
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final class SyncWithDikidiJob
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithQueue;
         use Queueable;
         use SerializesModels;
 
         public function __construct(
-            private readonly int $tenantId,
-            private readonly string $correlationId,
+            private int $tenantId,
+            private string $correlationId,
+            private ConfigRepository $config,
+            private LoggerInterface $logger,
         ) {}
 
-        public function handle(): void
+        public function handle(\Illuminate\Http\Client\Factory $http): void
         {
             $tenant = \App\Models\Tenant::findOrFail($this->tenantId);
-            $dikidiApiKey = config('integrations.dikidi.api_key');
+            $dikidiApiKey = $this->config->get('integrations.dikidi.api_key');
 
             if (!$dikidiApiKey || !$tenant->dikidi_business_id) {
-                Log::channel('audit')->warning('Dikidi sync skipped - no credentials', [
+                $this->logger->warning('Dikidi sync skipped - no credentials', [
                     'tenant_id' => $this->tenantId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -34,12 +40,12 @@ final class SyncWithDikidiJob extends Model
             }
 
             try {
-                $response = Http::withHeaders([
+                $response = $http->withHeaders([
                     'Authorization' => "Bearer {$dikidiApiKey}",
                     'Accept' => 'application/json',
                 ])->get("https://api.dikidi.net/v1/business/{$tenant->dikidi_business_id}/appointments", [
-                    'from' => now()->subDays(7)->toDateString(),
-                    'to' => now()->toDateString(),
+                    'from' => Carbon::now()->subDays(7)->toDateString(),
+                    'to' => Carbon::now()->toDateString(),
                 ]);
 
                 if ($response->successful()) {
@@ -52,19 +58,19 @@ final class SyncWithDikidiJob extends Model
                             [
                                 'status' => $dikidiAppointment['status'],
                                 'datetime_start' => $dikidiAppointment['datetime'],
-                                'synced_at' => now(),
+                                'synced_at' => Carbon::now(),
                             ]
                         );
                     }
 
-                    Log::channel('audit')->info('Dikidi sync completed', [
+                    $this->logger->info('Dikidi sync completed', [
                         'tenant_id' => $this->tenantId,
                         'synced_count' => count($appointments),
                         'correlation_id' => $this->correlationId,
                     ]);
                 }
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Dikidi sync failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Dikidi sync failed', [
                     'tenant_id' => $this->tenantId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,

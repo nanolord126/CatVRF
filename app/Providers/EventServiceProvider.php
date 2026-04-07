@@ -2,14 +2,13 @@
 
 namespace App\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Event;
+use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
+use App\Listeners\DebitAdCampaignBudget;
 
-final class EventServiceProvider extends Model
+final class EventServiceProvider extends ServiceProvider
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /** @var array<class-string, list<class-string>> */
         protected $listen = [
             // ── Auto / Taxi ─────────────────────────────────────────────
@@ -138,10 +137,15 @@ final class EventServiceProvider extends Model
             SessionCompleted::class => [UpdateRatingsListener::class],
             PhotoReviewSubmitted::class => [UpdateRatingsListener::class],
 
-            // ── RealEstate ──────────────────────────────────────────────
-            PropertyListed::class => [],
-            PropertyViewed::class => [UpdatePropertyStatsListener::class],
-            PropertySold::class   => [RealEstateDeductCommission::class],
+            // ── RealEstate (Clean Architecture 2026) ────────────────────
+            \App\Domains\RealEstate\Domain\Events\ViewingConfirmed::class => [
+                \App\Domains\RealEstate\Application\Listeners\NotifyClientOnViewingConfirmed::class,
+            ],
+            \App\Domains\RealEstate\Domain\Events\ContractSigned::class => [
+                \App\Domains\RealEstate\Application\Listeners\UpdatePropertyStatusOnContractSigned::class,
+            ],
+            \App\Domains\RealEstate\Domain\Events\PropertyListed::class  => [],
+            \App\Domains\RealEstate\Domain\Events\ViewingCancelled::class => [],
 
             // ── Sports ──────────────────────────────────────────────────
             PurchaseCreated::class   => [DeductPurchaseCommissionListener::class],
@@ -159,6 +163,11 @@ final class EventServiceProvider extends Model
             TourBooked::class           => [DeductTourBookingCommissionListener::class],
             FlightBooked::class         => [],
             TransportationBooked::class => [DeductTransportationCommissionListener::class],
+
+            // ── Ad Campaigns ─────────────────────────────────────────────
+            AdImpressionRegistered::class => [
+                DebitAdCampaignBudget::class,
+            ],
         ];
 
         public function boot(): void {}

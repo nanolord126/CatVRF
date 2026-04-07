@@ -2,14 +2,9 @@
 
 namespace App\Domains\Logistics\DataTransferObjects;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class CourierProfileDto extends Model
+final readonly class CourierProfileDto
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             public string $uuid,
             public string $fullName,
@@ -19,8 +14,8 @@ final class CourierProfileDto extends Model
             public ?string $licensePlate,
             public int $totalOrders,
             public bool $isActive,
-            public array $currentLocation = [],
-            public array $metadata = []
+            private array $currentLocation = [],
+            private array $metadata = []
         ) {}
 
         public static function fromModel(\App\Domains\Logistics\Models\Courier $courier): self
@@ -38,4 +33,27 @@ final class CourierProfileDto extends Model
                 metadata: $courier->metadata ?? []
             );
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

@@ -2,15 +2,8 @@
 
 namespace App\Filament\Tenant\Resources\Collectibles;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CollectibleResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    DatePicker, Grid, Section, Select, TagsInput, Textarea, TextInput, Toggle, FileUpload, Hidden, Repeater, BelongsToSelect};
+use Psr\Log\LoggerInterface;
     use Filament\Resources\Resource;
     use Filament\Tables;
     use Filament\Tables\Columns\{BadgeColumn, IconColumn, ImageColumn, TextColumn, NumericColumn};
@@ -24,6 +17,10 @@ final class CollectibleResource extends Model
 
     final class CollectibleResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = Collectible::class;
 
         protected static ?string $navigationIcon = 'heroicon-m-gift';
@@ -320,7 +317,7 @@ final class CollectibleResource extends Model
                         EditAction::make(),
                         DeleteAction::make()
                             ->after(function (Collectible $record) {
-                                Log::channel('audit')->info('Collectible deleted', [
+                                $this->logger->info('Collectible deleted', [
                                     'id' => $record->id,
                                     'correlation_id' => $record->correlation_id ?? Str::uuid(),
                                 ]);
@@ -332,7 +329,7 @@ final class CollectibleResource extends Model
                     BulkActionGroup::make([
                         DeleteBulkAction::make()
                             ->action(function () {
-                                Log::channel('audit')->info('Collectibles bulk deleted', [
+                                $this->logger->info('Collectibles bulk deleted', [
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),

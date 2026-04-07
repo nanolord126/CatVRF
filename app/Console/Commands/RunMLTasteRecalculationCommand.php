@@ -2,13 +2,31 @@
 
 namespace App\Console\Commands;
 
+
+use Psr\Log\LoggerInterface;
 use App\Domains\Common\Jobs\MLRecalculateUserTastesJob;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Class RunMLTasteRecalculationCommand
+ *
+ * Component of the CatVRF platform.
+ * Follows strict coding standards:
+ * - final class (no inheritance unless required)
+ * - private readonly properties
+ * - Constructor injection only
+ * - correlation_id in all operations
+ *
+ * @package App\Console\Commands
+ */
 final class RunMLTasteRecalculationCommand extends Command
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected $signature = 'taste-ml:recalculate
         {--force : Пересчитать всех пользователей, даже если недавно обновляли}
         {--batch=1000 : Размер батча пересчёта}
@@ -27,7 +45,7 @@ final class RunMLTasteRecalculationCommand extends Command
         try {
             MLRecalculateUserTastesJob::dispatch();
 
-            Log::channel('audit')->info('ML taste recalculation dispatched', [
+            $this->logger->info('ML taste recalculation dispatched', [
                 'force' => $force,
                 'batch' => $batchSize,
                 'correlation_id' => $correlationId,
@@ -36,7 +54,7 @@ final class RunMLTasteRecalculationCommand extends Command
             $this->info('✓ Job отправлена в очередь');
             return Command::SUCCESS;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('ML taste recalculation dispatch failed', [
+            $this->logger->error('ML taste recalculation dispatch failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

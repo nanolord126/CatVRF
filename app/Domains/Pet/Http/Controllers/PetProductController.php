@@ -2,18 +2,16 @@
 
 namespace App\Domains\Pet\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetProductController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PetProductController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ProductService $productService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -22,14 +20,14 @@ final class PetProductController extends Model
                     ->with('clinic')
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $products,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Failed to get products', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to get products', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve products',
                     'correlation_id' => Str::uuid(),
@@ -42,13 +40,13 @@ final class PetProductController extends Model
             try {
                 $product = PetProduct::with('clinic')->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $product,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Product not found',
                     'correlation_id' => Str::uuid(),
@@ -59,28 +57,28 @@ final class PetProductController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
-                $clinic = auth()->user()->clinics()->findOrFail($request->clinic_id);
+                $clinic = $request->user()->clinics()->findOrFail($request->clinic_id);
 
                 $product = $this->productService->createProduct($clinic, $request->validated(), $correlationId);
 
-                Log::channel('audit')->info('Pet product created', [
+                $this->logger->info('Pet product created', [
                     'correlation_id' => $correlationId,
                     'product_id'     => $product->id ?? null,
                     'tenant_id'      => $product->tenant_id ?? null,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $product,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::error('Failed to create product', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to create product', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create product',
                     'correlation_id' => Str::uuid(),
@@ -91,7 +89,7 @@ final class PetProductController extends Model
         public function update(Request $request, $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $product = PetProduct::findOrFail($id);
@@ -99,20 +97,20 @@ final class PetProductController extends Model
 
                 $product = $this->productService->updateProduct($product, $request->validated(), $correlationId);
 
-                Log::channel('audit')->info('Pet product updated', [
+                $this->logger->info('Pet product updated', [
                     'correlation_id' => $correlationId,
                     'product_id'     => $product->id,
                     'tenant_id'      => $product->tenant_id ?? null,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $product,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update product',
                     'correlation_id' => Str::uuid(),
@@ -123,7 +121,7 @@ final class PetProductController extends Model
         public function destroy($id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $product = PetProduct::findOrFail($id);
@@ -131,20 +129,20 @@ final class PetProductController extends Model
 
                 $product->delete();
 
-                Log::channel('audit')->info('Pet product deleted', [
+                $this->logger->info('Pet product deleted', [
                     'correlation_id' => $correlationId,
                     'product_id'     => $product->id,
                     'tenant_id'      => $product->tenant_id ?? null,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Product deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete product',
                     'correlation_id' => Str::uuid(),
@@ -171,13 +169,13 @@ final class PetProductController extends Model
 
                 $products = $query->where('is_active', true)->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $products,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Search failed',
                     'correlation_id' => Str::uuid(),

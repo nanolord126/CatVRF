@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+
+use Psr\Log\LoggerInterface;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -9,6 +11,10 @@ use Illuminate\Support\Str;
 
 final class CheckTenantUser extends Command
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected $signature = 'app:check-tenant-user
         {--tenant-id= : Tenant ID to check against}
         {--user-id= : User ID to check}
@@ -47,7 +53,7 @@ final class CheckTenantUser extends Command
         $user = $query->first();
 
         if ($user === null) {
-            Log::channel('audit')->warning('Tenant user not found', [
+            $this->logger->warning('Tenant user not found', [
                 'tenant_id' => $tenantId,
                 'user_id' => $userId,
                 'email' => $email,
@@ -58,7 +64,7 @@ final class CheckTenantUser extends Command
             return self::FAILURE;
         }
 
-        Log::channel('audit')->info('Tenant user verified', [
+        $this->logger->info('Tenant user verified', [
             'tenant_id' => $tenantId,
             'user_id' => $user->id,
             'email' => $user->email,

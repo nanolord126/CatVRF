@@ -2,14 +2,11 @@
 
 namespace App\Domains\RealEstate\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BRealEstateStorefrontResource extends Model
+final class B2BRealEstateStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BRealEstateStorefront::class;
     	protected static ?string $navigationIcon = 'heroicon-o-home';
     	protected static ?string $navigationGroup = 'RealEstate B2B';
@@ -37,4 +34,27 @@ final class B2BRealEstateStorefrontResource extends Model
     			Tables\Columns\IconColumn::make('is_active'),
     		])->filters([Tables\Filters\SelectFilter::make('is_verified')])->actions([Tables\Actions\ViewAction::make(), Tables\Actions\EditAction::make()]);
     	}
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

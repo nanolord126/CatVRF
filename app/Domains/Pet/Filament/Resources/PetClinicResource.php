@@ -2,14 +2,11 @@
 
 namespace App\Domains\Pet\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetClinicResource extends Model
+final class PetClinicResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetClinic::class;
 
         protected static ?string $slug = 'pet-clinics';
@@ -62,9 +59,9 @@ final class PetClinicResource extends Model
                     TextColumn::make('rating')
                         ->numeric()
                         ->sortable(),
-                    BooleanColumn::make('is_verified')
+                    IconColumn::make('is_verified')->boolean()
                         ->sortable(),
-                    BooleanColumn::make('is_active')
+                    IconColumn::make('is_active')->boolean()
                         ->sortable(),
                 ])
                 ->filters([

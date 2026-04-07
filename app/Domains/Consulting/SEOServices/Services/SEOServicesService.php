@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\SEOServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\SEOServices\Models\SEOContract;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class SEOServicesService extends Model
+final readonly class SEOServicesService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createContract(int $specialistId,$contractType,$monthsDuration,$startDate,string $correlationId=""):SEOContract{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("seo:cont:".auth()->id(),5))throw new \RuntimeException("Too many",429);RateLimiter::hit("seo:cont:".auth()->id(),3600);
-    return DB::transaction(function()use($specialistId,$contractType,$monthsDuration,$startDate,$correlationId){$s=SEOSpecialist::findOrFail($specialistId);$total=(int)($s->price_kopecks_per_month*$monthsDuration);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'seo_services','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$c=SEOContract::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'specialist_id'=>$specialistId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','contract_type'=>$contractType,'months_duration'=>$monthsDuration,'start_date'=>$startDate,'tags'=>['seo'=>true]]);Log::channel('audit')->info('SEO contract created',['contract_id'=>$c->id,'correlation_id'=>$correlationId]);return $c;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): SEOContract {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'seoservices:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): SEOContract {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'seoservices_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = SEOContract::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['seoservices' => true],
+            ]);
+
+            $this->logger->info('SEOServicesService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function activateContract(int $contractId,string $correlationId=""):SEOContract{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($contractId,$correlationId){$c=SEOContract::findOrFail($contractId);if($c->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$c->update(['status'=>'active','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$c->payout_kopecks,'seo_payout',['correlation_id'=>$correlationId,'contract_id'=>$c->id]);Log::channel('audit')->info('SEO contract activated',['contract_id'=>$c->id]);return $c;});}
-    public function cancelContract(int $contractId,string $correlationId=""):SEOContract{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($contractId,$correlationId){$c=SEOContract::findOrFail($contractId);if($c->status==='completed')throw new \RuntimeException("Cannot cancel",400);$c->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($c->payment_status==='completed')$this->wallet->credit(tenant()->id,$c->total_kopecks,'seo_refund',['correlation_id'=>$correlationId,'contract_id'=>$c->id]);Log::channel('audit')->info('SEO contract cancelled',['contract_id'=>$c->id]);return $c;});}
-    public function getContract(int $contractId):SEOContract{return SEOContract::findOrFail($contractId);}
-    public function getUserContracts(int $clientId){return SEOContract::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): SEOContract
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): SEOContract {
+            $project = SEOContract::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('SEOServicesService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): SEOContract
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): SEOContract {
+            $project = SEOContract::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('SEOServicesService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): SEOContract
+    {
+        return SEOContract::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return SEOContract::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

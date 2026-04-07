@@ -24,7 +24,7 @@ return new class extends Migration
                 $table->foreignId('business_group_id')->nullable()->constrained('business_groups');
                 $table->string('name')->comment('Название магазина или пекарни');
                 $table->string('address')->comment('Адрес производства/точки выдачи');
-                $table->point('location')->nullable()->index();
+                $table->geometry('location')->nullable()->index();
                 $table->json('schedule')->nullable()->comment('Расписание работы JSON');
                 $table->string('certification_id')->nullable()->comment('Сертификат Vegan Society или др.');
                 $table->boolean('is_active')->default(true);
@@ -149,3 +149,5 @@ return new class extends Migration
         Schema::dropIfExists('vegan_stores');
     }
 };
+
+

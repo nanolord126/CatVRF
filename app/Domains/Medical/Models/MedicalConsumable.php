@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalConsumable extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_consumables';
@@ -42,7 +41,7 @@ final class MedicalConsumable extends Model
         /**
          * КАНОН: Global Scopes и События модели.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (MedicalConsumable $consumable) {
                 $consumable->uuid = $consumable->uuid ?? (string)Str::uuid();
@@ -98,7 +97,7 @@ final class MedicalConsumable extends Model
         public function decrementStock(int $amount, string $reason = 'appointment_usage'): void
         {
             if ($this->stock_quantity < $amount) {
-                throw new \Exception("Insufficient stock for consumable: {$this->name}");
+                throw new \RuntimeException("Insufficient stock for consumable: {$this->name}");
             }
 
             $this->decrement('stock_quantity', $amount);

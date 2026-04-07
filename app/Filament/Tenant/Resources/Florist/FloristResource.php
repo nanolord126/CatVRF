@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Florist;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FloristResource extends Model
+final class FloristResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FloristShop::class;
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
         protected static ?string $navigationGroup = 'Вертикали';

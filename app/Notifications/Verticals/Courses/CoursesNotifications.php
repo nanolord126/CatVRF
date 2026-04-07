@@ -2,16 +2,13 @@
 
 namespace App\Notifications\Verticals\Courses;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 
 final class EnrollmentConfirmedNotification extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected string $type = 'courses.enrollment.confirmed';
-        protected string $template = 'emails.courses.enrollment_confirmed';
+    private string $type = 'courses.enrollment.confirmed';
+        private string $template = 'emails.courses.enrollment_confirmed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -22,7 +19,7 @@ final class EnrollmentConfirmedNotification extends Model
 
     final class CourseStartedNotification extends BasePushNotification
     {
-        protected string $type = 'courses.course.started';
+        private string $type = 'courses.course.started';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -38,7 +35,7 @@ final class EnrollmentConfirmedNotification extends Model
 
     final class AssignmentGradedNotification extends BasePushNotification
     {
-        protected string $type = 'courses.assignment.graded';
+        private string $type = 'courses.assignment.graded';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -54,8 +51,8 @@ final class EnrollmentConfirmedNotification extends Model
 
     final class CertificateIssuedNotification extends BaseMailableNotification
     {
-        protected string $type = 'courses.certificate.issued';
-        protected string $template = 'emails.courses.certificate_issued';
+        private string $type = 'courses.certificate.issued';
+        private string $template = 'emails.courses.certificate_issued';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {

@@ -2,14 +2,17 @@
 
 namespace App\Domains\Travel\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class Excursion extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use LogsActivity;
 
         protected $table = 'excursions';
@@ -37,7 +40,7 @@ final class Excursion extends Model
             static::creating(function (Excursion $model) {
                 if (!$model->uuid) $model->uuid = (string) Str::uuid();
                 if (!$model->tenant_id) $model->tenant_id = (tenant()->id ?? 1);
-                if (!$model->correlation_id) $model->correlation_id = request()->header('X-Correlation-ID');
+                if (!$model->correlation_id) $model->correlation_id = $this->request->header('X-Correlation-ID');
             });
 
             static::addGlobalScope('tenant', function ($builder) {

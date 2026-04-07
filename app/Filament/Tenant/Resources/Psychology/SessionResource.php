@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Psychology;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class SessionResource extends Model
+final class SessionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PsychologicalSession::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document-text';

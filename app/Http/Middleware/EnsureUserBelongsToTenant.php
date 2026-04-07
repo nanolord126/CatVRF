@@ -1,15 +1,34 @@
 <?php declare(strict_types=1);
 
+/**
+ * EnsureUserBelongsToTenant — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/ensureuserbelongstotenant
+ * @see https://catvrf.ru/docs/ensureuserbelongstotenant
+ * @see https://catvrf.ru/docs/ensureuserbelongstotenant
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class EnsureUserBelongsToTenant extends Model
+final class EnsureUserBelongsToTenant
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle an incoming request.
          */
@@ -34,7 +53,7 @@ final class EnsureUserBelongsToTenant extends Model
             if ($tenant) {
                 // Check if user has ANY business role in this tenant
                 if (!$user->hasRoleInTenant($tenant->id, \App\Enums\Role::businessRoles())) {
-                    Log::channel('audit')->warning('Tenant access blocked', [
+                    $this->logger->channel('audit')->warning('Tenant access blocked', [
                         'user_id' => $user->id,
                         'tenant_id' => $tenant->id,
                         'ip' => $request->ip(),
@@ -46,4 +65,10 @@ final class EnsureUserBelongsToTenant extends Model
 
             return $next($request);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

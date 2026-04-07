@@ -1,68 +1,70 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Logistics\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UpdateShipmentStatusJob extends Model
+use Psr\Log\LoggerInterface;
+use App\Domains\Logistics\Models\Shipment;
+use App\Domains\Logistics\Models\ShipmentTracking;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+final class UpdateShipmentStatusJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            private readonly int $shipmentId = 0,
-            private readonly string $status = '',
-            private readonly string $correlationId = '',
-        ) {
-            $this->onQueue('default');
-        }
+    public function __construct(
+        private readonly int $shipmentId,
+        private readonly string $status,
+        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        $this->onQueue('default');
+    }
 
-        public function handle(): void
-        {
-            try {
-                $shipment = Shipment::find($this->shipmentId);
-                if (!$shipment) {
-                    Log::channel('audit')->warning('Shipment not found for status update', [
-                        'shipment_id' => $this->shipmentId,
-                        'correlation_id' => $this->correlationId,
-                    ]);
-                    return;
-                }
-
-                $shipment->update(['status' => $this->status, 'correlation_id' => $this->correlationId]);
-
-                ShipmentTracking::create([
-                    'tenant_id' => $shipment->tenant_id,
-                    'shipment_id' => $shipment->id,
-                    'event_type' => match($this->status) {
-                        'picked_up' => 'picked_up',
-                        'in_transit' => 'in_transit',
-                        'delivered' => 'delivered',
-                        default => 'in_transit',
-                    },
-                    'event_time' => now(),
+    public function handle(): void
+    {
+        try {
+            $shipment = Shipment::find($this->shipmentId);
+            if (!$shipment) {
+                $this->logger->warning('Shipment not found for status update', [
+                    'shipment_id' => $this->shipmentId,
                     'correlation_id' => $this->correlationId,
                 ]);
-
-                Log::channel('audit')->info('Shipment status updated via job', [
-                    'shipment_id' => $this->shipmentId,
-                    'status' => $this->status,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update shipment status', [
-                    'shipment_id' => $this->shipmentId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
+                return;
             }
-        }
 
-        public function retryUntil(): \DateTime
-        {
-            return now()->addHours(4);
+            $shipment->update(['status' => $this->status, 'correlation_id' => $this->correlationId]);
+
+            ShipmentTracking::create([
+                'tenant_id' => $shipment->tenant_id,
+                'shipment_id' => $shipment->id,
+                'event_type' => match($this->status) {
+                    'in_transit' => 'in_transit',
+                    'delivered' => 'delivered',
+                    default => 'in_transit',
+                },
+                'event_time' => now(),
+                'correlation_id' => $this->correlationId,
+            ]);
+
+            $this->logger->info('Shipment status updated via job', [
+                'shipment_id' => $this->shipmentId,
+                'new_status' => $this->status,
+                'correlation_id' => $this->correlationId,
+            ]);
+
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to update shipment status via job', [
+                'shipment_id' => $this->shipmentId,
+                'status' => $this->status,
+                'correlation_id' => $this->correlationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->fail($e);
         }
+    }
 }

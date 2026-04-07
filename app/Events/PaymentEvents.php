@@ -2,17 +2,12 @@
 
 namespace App\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PaymentInitiatedEvent extends Model
+final class PaymentInitiatedEvent
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $userId,
@@ -34,7 +29,7 @@ final class PaymentInitiatedEvent extends Model
     {
         use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $userId,
@@ -54,7 +49,7 @@ final class PaymentInitiatedEvent extends Model
     {
         use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $userId,
@@ -62,7 +57,7 @@ final class PaymentInitiatedEvent extends Model
             public int $paymentId,
             public int $amount,
             public string $transactionId,
-            public ?string $receiptUrl = null,
+            private ?string $receiptUrl = null,
             ?string $correlationId = null
         ) {
             $this->correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
@@ -76,7 +71,7 @@ final class PaymentInitiatedEvent extends Model
     {
         use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $userId,
@@ -84,7 +79,7 @@ final class PaymentInitiatedEvent extends Model
             public int $paymentId,
             public string $errorCode,
             public string $errorMessage,
-            public bool $canRetry = true,
+            private bool $canRetry = true,
             ?string $correlationId = null
         ) {
             $this->correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
@@ -98,7 +93,7 @@ final class PaymentInitiatedEvent extends Model
     {
         use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $userId,
@@ -106,7 +101,7 @@ final class PaymentInitiatedEvent extends Model
             public int $paymentId,
             public int $refundAmount,
             public string $refundReason,
-            public int $daysToAccount = 3,
+            private int $daysToAccount = 3,
             ?string $correlationId = null
         ) {
             $this->correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();

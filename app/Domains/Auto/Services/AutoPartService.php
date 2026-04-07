@@ -2,17 +2,17 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoPartService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AutoPartService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Поиск совместимых запчастей по полному VIN или маске модели.
@@ -22,14 +22,14 @@ final class AutoPartService extends Model
          */
         public function findPartsByVin(string $vin, ?string $correlationId = null): Collection
         {
-            Log::channel('audit')->info('VIN Search initiated', [
+            $this->logger->info('VIN Search initiated', [
                 'vin' => $vin,
                 'correlation_id' => $correlationId,
             ]);
 
             // 1. Предварительная валидация VIN (проверка структуры через модель)
             if (!AutoVehicle::isValidVin($vin)) {
-                Log::channel('audit')->warning('Invalid VIN search attempt', ['vin' => $vin]);
+                $this->logger->warning('Invalid VIN search attempt', ['vin' => $vin]);
                 return collect();
             }
 
@@ -45,20 +45,16 @@ final class AutoPartService extends Model
          */
         public function createPart(array $data, string $correlationId): AutoPart
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 1. Fraud Check перед мутацией
-                $this->fraudControl->check([
-                    'type' => 'auto_part_creation',
-                    'sku' => $data['sku'] ?? null,
-                    'tenant_id' => tenant('id'),
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'auto_part_creation', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Создание записи
                 $part = AutoPart::create(array_merge($data, [
                     'correlation_id' => $correlationId,
                 ]));
 
-                Log::channel('audit')->info('Auto Part created', [
+                $this->logger->info('Auto Part created', [
                     'uuid' => $part->uuid,
                     'sku' => $part->sku,
                     'correlation_id' => $correlationId,
@@ -73,14 +69,14 @@ final class AutoPartService extends Model
          */
         public function reserveForOrder(AutoPart $part, int $quantity, string $orderUuid): bool
         {
-            return DB::transaction(function () use ($part, $quantity, $orderUuid) {
+            return $this->db->transaction(function () use ($part, $quantity, $orderUuid) {
                 if ($part->stock_quantity < $quantity) {
                     throw new \RuntimeException("Insufficient stock for part: {$part->sku}");
                 }
 
                 $part->decrement('stock_quantity', $quantity);
 
-                Log::channel('inventory')->info('Part reserved for order', [
+                $this->logger->info('Part reserved for order', [
                     'part_uuid' => $part->uuid,
                     'quantity' => $quantity,
                     'order_uuid' => $orderUuid,

@@ -2,17 +2,15 @@
 
 namespace App\Domains\RealEstate\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RentalListingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class RentalListingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -22,12 +20,12 @@ final class RentalListingController extends Model
                     ->with('property')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $listings,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 
@@ -35,13 +33,13 @@ final class RentalListingController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(auth()->id() ?? 0, 'rental_listing_create', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'rental_listing_create', amount: 0, correlationId: $correlationId ?? '');
             if ($fraudResult['decision'] === 'block') {
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
-                $data = request()->validate([
+                $data = $request->validate([
                     'property_id'      => 'required|integer',
                     'rent_price_month' => 'required|integer|min:1',
                     'deposit'          => 'nullable|integer|min:0',
@@ -50,34 +48,34 @@ final class RentalListingController extends Model
                     'description'      => 'nullable|string',
                 ]);
 
-                $listing = DB::transaction(function () use ($data, $correlationId) {
+                $listing = $this->db->transaction(function () use ($data, $correlationId) {
                     return RentalListing::create([
                         ...$data,
-                        'tenant_id'      => tenant('id') ?? auth()->user()?->tenant_id ?? 1,
+                        'tenant_id'      => tenant()?->id ?? $request->user()?->tenant_id ?? 1,
                         'status'         => 'active',
                         'correlation_id' => $correlationId,
                         'uuid'           => Str::uuid(),
                     ]);
                 });
 
-                Log::channel('audit')->info('Rental listing created', [
+                $this->logger->info('Rental listing created', [
                     'correlation_id' => $correlationId,
                     'listing_id'     => $listing->id,
                     'tenant_id'      => $listing->tenant_id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'property_id'    => $listing->property_id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'data'           => $listing,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Rental listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка создания объявления.', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('Rental listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка создания объявления.', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -85,31 +83,31 @@ final class RentalListingController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(auth()->id() ?? 0, 'rental_listing_delete', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'rental_listing_delete', amount: 0, correlationId: $correlationId ?? '');
             if ($fraudResult['decision'] === 'block') {
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
-                DB::transaction(function () use ($rentalListing) {
+                $this->db->transaction(function () use ($rentalListing) {
                     $rentalListing->update(['status' => 'removed']);
                     $rentalListing->delete();
                 });
 
-                Log::channel('audit')->info('Rental listing deleted', [
+                $this->logger->info('Rental listing deleted', [
                     'correlation_id' => $correlationId,
                     'listing_id'     => $rentalListing->id,
                     'tenant_id'      => $rentalListing->tenant_id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Rental listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка удаления объявления.', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('Rental listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка удаления объявления.', 'correlation_id' => $correlationId], 500);
             }
         }
 }

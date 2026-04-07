@@ -2,593 +2,605 @@
 
 namespace App\Domains\Flowers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\B2BFlowerOrder;
+use App\Domains\Flowers\Models\B2BFlowerStorefront;
+use App\Domains\Flowers\Models\FlowerProduct;
+use App\Domains\Flowers\Services\B2BFlowerOrderService;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class B2BFlowerController extends Model
+final readonly class B2BFlowerController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly B2BFlowerOrderService $b2bOrderService,
-        ) {}
+        private B2BFlowerOrderService $b2bOrderService,
+        private FraudControlService $fraud,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {}
 
-        public function register(Request $request): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function register(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $validated = $request->validate([
-                    'company_inn' => 'required|string|unique:b2b_flower_storefronts',
-                    'company_name' => 'required|string|max:255',
-                    'contact_person' => 'required|string|max:255',
-                    'contact_phone' => 'required|string',
-                    'contact_email' => 'required|email',
-                    'shop_id' => 'required|integer|exists:flower_shops,id',
+        try {
+            $validated = $request->validate([
+                'company_inn' => 'required|string|unique:b2b_flower_storefronts',
+                'company_name' => 'required|string|max:255',
+                'contact_person' => 'required|string|max:255',
+                'contact_phone' => 'required|string',
+                'contact_email' => 'required|email',
+                'shop_id' => 'required|integer|exists:flower_shops,id',
+            ]);
+
+            $tenantId = $request->user()?->tenant_id ?? 0;
+
+            $storefront = $this->db->transaction(function () use ($validated, $correlationId, $tenantId) {
+                $storefront = B2BFlowerStorefront::query()->create([
+                    'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
+                    ...$validated,
                 ]);
 
-                $storefront = DB::transaction(function () use ($validated, $correlationId) {
-                    $storefront = B2BFlowerStorefront::query()->create([
-                        'tenant_id' => filament()->getTenant()->id,
-                        'correlation_id' => $correlationId,
-                        ...$validated,
-                    ]);
-
-                    Log::channel('audit')->info('B2B flower storefront created', [
-                        'storefront_id' => $storefront->id,
-                        'company_inn' => $validated['company_inn'],
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $storefront;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefront,
-                    'message' => 'Registration submitted. Awaiting verification.',
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_CREATED);
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('B2B registration failed', [
-                    'error' => $exception->getMessage(),
+                $this->logger->info('B2B flower storefront created', [
+                    'storefront_id' => $storefront->id,
+                    'company_inn' => $validated['company_inn'],
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+                return $storefront;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefront,
+                'message' => 'Registration submitted. Awaiting verification.',
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $exception) {
+            $this->logger->error('B2B registration failed', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function profile(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function profile(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->firstOrFail();
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->firstOrFail();
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefront,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Storefront not found',
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_NOT_FOUND);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefront,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Storefront not found',
+                'correlation_id' => $correlationId,
+            ], 404);
         }
+    }
 
-        public function updateProfile(Request $request): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $validated = $request->validate([
-                    'contact_person' => 'string|max:255',
-                    'contact_phone' => 'string',
-                    'contact_email' => 'email',
-                ]);
+        try {
+            $validated = $request->validate([
+                'contact_person' => 'string|max:255',
+                'contact_phone' => 'string',
+                'contact_email' => 'email',
+            ]);
 
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->firstOrFail();
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->firstOrFail();
 
-                $storefront = DB::transaction(function () use ($storefront, $validated, $correlationId) {
-                    $storefront->update([...$validated, 'correlation_id' => $correlationId]);
+            $storefront = $this->db->transaction(function () use ($storefront, $validated, $correlationId) {
+                $storefront->update([...$validated, 'correlation_id' => $correlationId]);
 
-                    Log::channel('audit')->info('B2B storefront updated', [
-                        'storefront_id' => $storefront->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $storefront;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefront,
+                $this->logger->info('B2B storefront updated', [
+                    'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+
+                return $storefront;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefront,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function products(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function products(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->where('is_active', true)
-                    ->firstOrFail();
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->where('is_active', true)
+                ->firstOrFail();
 
-                $products = $storefront->shop->products()
-                    ->where('is_available', true)
-                    ->paginate(15);
+            $products = $storefront->shop->products()
+                ->where('is_available', true)
+                ->paginate(15);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $products,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $products,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function productDetail(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function productDetail(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $product = \App\Domains\Flowers\Models\FlowerProduct::query()
-                    ->findOrFail($id);
+        try {
+            $product = FlowerProduct::query()->findOrFail($id);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $product,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Product not found',
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_NOT_FOUND);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $product,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Product not found',
+                'correlation_id' => $correlationId,
+            ], 404);
         }
+    }
 
-        public function productInquiry(int $id, Request $request): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function productInquiry(int $id, Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $validated = $request->validate([
-                    'quantity' => 'required|integer|min:1',
-                    'message' => 'nullable|string',
-                ]);
+        try {
+            $validated = $request->validate([
+                'quantity' => 'required|integer|min:1',
+                'message' => 'nullable|string',
+            ]);
 
-                Log::channel('audit')->info('B2B product inquiry', [
-                    'product_id' => $id,
-                    'quantity' => $validated['quantity'],
-                    'correlation_id' => $correlationId,
-                ]);
+            $this->logger->info('B2B product inquiry', [
+                'product_id' => $id,
+                'quantity' => $validated['quantity'],
+                'correlation_id' => $correlationId,
+            ]);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Inquiry sent',
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Inquiry sent',
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function createOrder(Request $request): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function createOrder(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->where('is_active', true)
-                    ->firstOrFail();
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->where('is_active', true)
+                ->firstOrFail();
 
-                $validated = $request->validate([
-                    'items' => 'required|array|min:1',
-                    'delivery_address' => 'required|string',
-                    'delivery_date' => 'required|date|after:today',
-                ]);
+            $validated = $request->validate([
+                'items' => 'required|array|min:1',
+                'delivery_address' => 'required|string',
+                'delivery_date' => 'required|date|after:today',
+            ]);
 
-                $order = $this->b2bOrderService->createB2BOrder(
-                    tenantId: filament()->getTenant()->id,
-                    storefrontId: $storefront->id,
-                    items: $validated['items'],
-                    deliveryData: $validated,
-                    correlationId: $correlationId,
-                );
+            $tenantId = $request->user()?->tenant_id ?? 0;
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $order,
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_CREATED);
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('B2B order creation failed', [
-                    'error' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
+            $order = $this->b2bOrderService->createB2BOrder(
+                tenantId: $tenantId,
+                storefrontId: $storefront->id,
+                items: $validated['items'],
+                deliveryData: $validated,
+                correlationId: $correlationId,
+            );
 
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $order,
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $exception) {
+            $this->logger->error('B2B order creation failed', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function listOrders(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function listOrders(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->firstOrFail();
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->firstOrFail();
 
-                $orders = B2BFlowerOrder::query()
-                    ->where('storefront_id', $storefront->id)
-                    ->paginate(15);
+            $orders = B2BFlowerOrder::query()
+                ->where('storefront_id', $storefront->id)
+                ->paginate(15);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $orders,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $orders,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function orderDetail(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function orderDetail(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $order = B2BFlowerOrder::query()
-                    ->where('id', $id)
-                    ->firstOrFail();
+        try {
+            $order = B2BFlowerOrder::query()
+                ->where('id', $id)
+                ->firstOrFail();
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $order,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Order not found',
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_NOT_FOUND);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $order,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Order not found',
+                'correlation_id' => $correlationId,
+            ], 404);
         }
+    }
 
-        public function updateOrder(int $id, Request $request): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function updateOrder(int $id, Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $order = B2BFlowerOrder::query()->findOrFail($id);
+        try {
+            $order = B2BFlowerOrder::query()->findOrFail($id);
 
-                if ($order->status !== 'draft') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot update this order',
-                        'correlation_id' => $correlationId,
-                    ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
-                }
-
-                $validated = $request->validate([
-                    'delivery_address' => 'string',
-                    'delivery_date' => 'date|after:today',
-                ]);
-
-                $order = DB::transaction(function () use ($order, $validated, $correlationId) {
-                    $order->update([...$validated, 'correlation_id' => $correlationId]);
-
-                    Log::channel('audit')->info('B2B order updated', [
-                        'order_id' => $order->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $order;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $order,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
+            if ($order->status !== 'draft') {
+                return new JsonResponse([
                     'success' => false,
-                    'message' => $exception->getMessage(),
+                    'message' => 'Cannot update this order',
                     'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
+                ], 422);
             }
-        }
 
-        public function submitOrder(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+            $validated = $request->validate([
+                'delivery_address' => 'string',
+                'delivery_date' => 'date|after:today',
+            ]);
 
-            try {
-                $order = B2BFlowerOrder::query()->findOrFail($id);
+            $order = $this->db->transaction(function () use ($order, $validated, $correlationId) {
+                $order->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $order = DB::transaction(function () use ($order, $correlationId) {
-                    $order->update(['status' => 'submitted']);
-
-                    Log::channel('audit')->info('B2B order submitted', [
-                        'order_id' => $order->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $order;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $order,
+                $this->logger->info('B2B order updated', [
+                    'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+
+                return $order;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $order,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function cancelOrder(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function submitOrder(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $order = B2BFlowerOrder::query()->findOrFail($id);
+        try {
+            $order = B2BFlowerOrder::query()->findOrFail($id);
 
-                if (!in_array($order->status, ['draft', 'submitted'])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot cancel this order',
-                        'correlation_id' => $correlationId,
-                    ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
-                }
+            $order = $this->db->transaction(function () use ($order, $correlationId) {
+                $order->update(['status' => 'submitted']);
 
-                $order = DB::transaction(function () use ($order, $correlationId) {
-                    $order->update(['status' => 'cancelled']);
-
-                    Log::channel('audit')->info('B2B order cancelled', [
-                        'order_id' => $order->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $order;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $order,
+                $this->logger->info('B2B order submitted', [
+                    'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+
+                return $order;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $order,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function orderInvoice(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function cancelOrder(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $order = B2BFlowerOrder::query()->findOrFail($id);
+        try {
+            $order = B2BFlowerOrder::query()->findOrFail($id);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'order_number' => $order->order_number,
-                        'company_inn' => $order->storefront->company_inn,
-                        'subtotal' => $order->subtotal,
-                        'discount' => $order->bulk_discount,
-                        'commission' => $order->commission_amount,
-                        'total' => $order->total_amount,
-                        'delivery_date' => $order->delivery_date,
-                    ],
+            if (!in_array($order->status, ['draft', 'submitted'])) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Cannot cancel this order',
+                    'correlation_id' => $correlationId,
+                ], 422);
+            }
+
+            $order = $this->db->transaction(function () use ($order, $correlationId) {
+                $order->update(['status' => 'cancelled']);
+
+                $this->logger->info('B2B order cancelled', [
+                    'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invoice not found',
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_NOT_FOUND);
-            }
+
+                return $order;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $order,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function ordersAnalytics(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function orderInvoice(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->firstOrFail();
+        try {
+            $order = B2BFlowerOrder::query()->findOrFail($id);
 
-                $orders = B2BFlowerOrder::query()
-                    ->where('storefront_id', $storefront->id)
-                    ->get();
+            return new JsonResponse([
+                'success' => true,
+                'data' => [
+                    'order_number' => $order->order_number,
+                    'company_inn' => $order->storefront->company_inn,
+                    'subtotal' => $order->subtotal,
+                    'discount' => $order->bulk_discount,
+                    'commission' => $order->commission_amount,
+                    'total' => $order->total_amount,
+                    'delivery_date' => $order->delivery_date,
+                ],
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Invoice not found',
+                'correlation_id' => $correlationId,
+            ], 404);
+        }
+    }
 
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'total_orders' => $orders->count(),
-                        'pending' => $orders->where('status', 'draft')->count(),
-                        'confirmed' => $orders->where('status', 'confirmed')->count(),
-                        'delivered' => $orders->where('status', 'delivered')->count(),
-                    ],
+    public function ordersAnalytics(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->firstOrFail();
+
+            $orders = B2BFlowerOrder::query()
+                ->where('storefront_id', $storefront->id)
+                ->get();
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => [
+                    'total_orders' => $orders->count(),
+                    'pending' => $orders->where('status', 'draft')->count(),
+                    'confirmed' => $orders->where('status', 'confirmed')->count(),
+                    'delivered' => $orders->where('status', 'delivered')->count(),
+                ],
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function spendingAnalytics(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        try {
+            $storefront = B2BFlowerStorefront::query()
+                ->where('company_inn', $request->user()->company_inn)
+                ->firstOrFail();
+
+            $orders = B2BFlowerOrder::query()
+                ->where('storefront_id', $storefront->id)
+                ->where('payment_status', 'paid')
+                ->get();
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => [
+                    'total_spent' => $orders->sum('total_amount'),
+                    'total_orders' => $orders->count(),
+                    'average_order' => $orders->count() > 0 ? $orders->sum('total_amount') / $orders->count() : 0,
+                ],
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function adminStorefronts(): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+
+        try {
+            $storefronts = B2BFlowerStorefront::query()->paginate(20);
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefronts,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function adminVerifyStorefront(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+
+        try {
+            $storefront = B2BFlowerStorefront::query()->findOrFail($id);
+
+            $storefront = $this->db->transaction(function () use ($storefront, $correlationId) {
+                $storefront->update(['is_verified' => true]);
+
+                $this->logger->info('B2B storefront verified', [
+                    'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+
+                return $storefront;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefront,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 
-        public function spendingAnalytics(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+    public function adminDeleteStorefront(int $id): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $storefront = B2BFlowerStorefront::query()
-                    ->where('company_inn', auth()->user()->company_inn)
-                    ->firstOrFail();
-
-                $orders = B2BFlowerOrder::query()
-                    ->where('storefront_id', $storefront->id)
-                    ->where('payment_status', 'paid')
-                    ->get();
-
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'total_spent' => $orders->sum('total_amount'),
-                        'total_orders' => $orders->count(),
-                        'average_order' => $orders->count() > 0 ? $orders->sum('total_amount') / $orders->count() : 0,
-                    ],
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
-        }
-
-        public function adminStorefronts(): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
-
-            try {
-                $storefronts = B2BFlowerStorefront::query()->paginate(20);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefronts,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
-        }
-
-        public function adminVerifyStorefront(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
-
-            try {
+        try {
+            $this->db->transaction(function () use ($id, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()->findOrFail($id);
+                $storefront->delete();
 
-                $storefront = DB::transaction(function () use ($storefront, $correlationId) {
-                    $storefront->update(['is_verified' => true]);
-
-                    Log::channel('audit')->info('B2B storefront verified', [
-                        'storefront_id' => $storefront->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $storefront;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefront,
+                $this->logger->info('B2B storefront deleted', [
+                    'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Storefront deleted',
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
-
-        public function adminDeleteStorefront(int $id): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
-
-            try {
-                DB::transaction(function () use ($id, $correlationId) {
-                    $storefront = B2BFlowerStorefront::query()->findOrFail($id);
-                    $storefront->delete();
-
-                    Log::channel('audit')->info('B2B storefront deleted', [
-                        'storefront_id' => $storefront->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Storefront deleted',
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
-        }
+    }
 }

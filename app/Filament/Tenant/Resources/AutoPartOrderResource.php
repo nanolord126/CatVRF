@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoPartOrderResource extends Model
+final class AutoPartOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoPartOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
@@ -108,31 +105,15 @@ final class AutoPartOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoPartOrder::route('/'),
-                'create' => Pages\\CreateAutoPartOrder::route('/create'),
-                'edit' => Pages\\EditAutoPartOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPartOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAutoPartOrder::route('/'),
-                'create' => Pages\\CreateAutoPartOrder::route('/create'),
-                'edit' => Pages\\EditAutoPartOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPartOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoPartOrder::route('/'),
-                'create' => Pages\\CreateAutoPartOrder::route('/create'),
-                'edit' => Pages\\EditAutoPartOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPartOrder::route('/{record}'),
+                'index' => Pages\ListAutoPartOrder::route('/'),
+                'create' => Pages\CreateAutoPartOrder::route('/create'),
+                'edit' => Pages\EditAutoPartOrder::route('/{record}/edit'),
+                'view' => Pages\ViewAutoPartOrder::route('/{record}'),
             ];
         }
 }

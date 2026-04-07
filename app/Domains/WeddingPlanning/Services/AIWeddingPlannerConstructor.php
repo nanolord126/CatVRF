@@ -2,19 +2,18 @@
 
 namespace App\Domains\WeddingPlanning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIWeddingPlannerConstructor extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIWeddingPlannerConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор
          */
+        private readonly string $correlationId;
+
         public function __construct(
-            private string $correlationId = ''
+            string $correlationId = '', private readonly LoggerInterface $logger
         ) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
@@ -29,7 +28,7 @@ final class AIWeddingPlannerConstructor extends Model
          */
         public function generateWeddingPlan(int $budget, string $style, int $guestCount): array
         {
-            Log::channel('audit')->info('AIConstructor: Generating wedding plan', [
+            $this->logger->info('AIConstructor: Generating wedding plan', [
                 'budget' => $budget,
                 'style' => $style,
                 'guests' => $guestCount,
@@ -67,7 +66,6 @@ final class AIWeddingPlannerConstructor extends Model
         private function calculateBudgetDistribution(int $budget, string $style): array
         {
             $ratios = match ($style) {
-                'luxury' => ['venue' => 0.40, 'catering' => 0.30, 'decor' => 0.15, 'photo' => 0.10, 'other' => 0.05],
                 'boho' => ['venue' => 0.20, 'catering' => 0.25, 'decor' => 0.35, 'photo' => 0.15, 'other' => 0.05],
                 'rustic' => ['venue' => 0.25, 'catering' => 0.30, 'decor' => 0.25, 'photo' => 0.10, 'other' => 0.10],
                 default => ['venue' => 0.30, 'catering' => 0.30, 'decor' => 0.20, 'photo' => 0.15, 'other' => 0.05],

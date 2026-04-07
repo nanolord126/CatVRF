@@ -2,30 +2,58 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditBeverageSubscription extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\BeverageSubscriptionResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class EditBeverageSubscription
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditBeverageSubscription extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = BeverageSubscriptionResource::class;
 
-    final class EditBeverageSubscription extends EditRecord
+    protected function getHeaderActions(): array
     {
-        protected static string $resource = BeverageSubscriptionResource::class;
+        return [
+            ViewAction::make(),
+            DeleteAction::make()->requiresConfirmation()
+                ->modalHeading('Отменить подписку?')
+                ->modalDescription('Подписка будет удалена без возврата средств.')
+                ->modalSubmitActionLabel('Да, удалить'),
+        ];
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit BeverageSubscription';
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('BeverageSubscription updated', [
+            'subscription_id' => $this->record->id,
+            'plan_type'       => $this->record->plan_type,
+            'status'          => $this->record->status,
+            'auto_renew'      => $this->record->auto_renew,
+            'tenant_id'       => $this->record->tenant_id,
+            'correlation_id'  => $this->record->correlation_id,
+        ]);
+    }
 }

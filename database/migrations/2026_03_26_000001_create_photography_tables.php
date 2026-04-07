@@ -29,7 +29,7 @@ return new class extends Migration
                 
                 $table->string('name')->comment('Название студии');
                 $table->string('address')->comment('Адрес студии');
-                $table->point('geo_point')->nullable()->comment('Координаты');
+                $table->geometry('geo_point')->nullable()->comment('Координаты');
                 $table->jsonb('schedule_json')->comment('Расписание работы');
                 $table->jsonb('amenities')->nullable()->comment('Удобства: гримерка, циклорама и т.д.');
                 
@@ -174,3 +174,5 @@ return new class extends Migration
         Schema::dropIfExists('photography_studios');
     }
 };
+
+

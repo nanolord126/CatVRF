@@ -1,24 +1,63 @@
 <?php declare(strict_types=1);
 
+/**
+ * ConsumableDeductionService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/consumabledeductionservice
+ */
+
+
 namespace App\Domains\Pharmacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsumableDeductionService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ConsumableDeductionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function deduct(int $id, int $qty, string $correlationId): void
         {
-            $this->fraud->check(['id' => $id, 'qty' => $qty]);
-            DB::transaction(function () use ($id, $qty, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'qty', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($id, $qty, $correlationId) {
                 $c = PharmacyConsumable::findOrFail($id);
                 $c->decrement('stock', $qty);
-                Log::channel('audit')->info("Consumable deducted", ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
+                $this->logger->info("Consumable deducted", ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
             });
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

@@ -2,36 +2,30 @@
 
 namespace App\Domains\ConstructionAndRepair\ConstructionMaterials\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MaterialService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MaterialService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly string $correlationId = '',
-        ) {
+
+    public function __construct(private readonly FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             $this->correlationId = $correlationId ?: Str::uuid()->toString();
         }
 
         public function orderMaterial(int $materialId, int $quantity, array $data, int $userId, int $tenantId): MaterialOrder
         {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($materialId, $quantity, $data, $userId, $tenantId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($materialId, $quantity, $data, $userId, $tenantId) {
                 $material = ConstructionMaterial::lockForUpdate()->find($materialId);
 
                 if (!$material || $material->current_stock < $quantity) {
-                    throw new \Exception('Insufficient stock');
+                    throw new \RuntimeException('Insufficient stock');
                 }
 
                 $order = MaterialOrder::create([
@@ -46,7 +40,7 @@ final class MaterialService extends Model
                     'delivery_address' => $data['address'] ?? '',
                 ]);
 
-                Log::channel('audit')->info('Material order created', [
+                $this->logger->info('Material order created', [
                     'correlation_id' => $this->correlationId,
                     'order_id' => $order->id,
                     'material_id' => $materialId,
@@ -60,10 +54,9 @@ final class MaterialService extends Model
         public function deliverOrder(MaterialOrder $order): void
         {
 
-
             $order->update(['status' => 'delivered']);
 
-            Log::channel('audit')->info('Material order delivered', [
+            $this->logger->info('Material order delivered', [
                 'correlation_id' => $this->correlationId,
                 'order_id' => $order->id,
             ]);

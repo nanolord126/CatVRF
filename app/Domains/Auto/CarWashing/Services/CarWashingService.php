@@ -1,21 +1,180 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\CarWashing\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CarWashingService extends Model
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Auto\CarWashing\Models\CarWashStation;
+use App\Domains\Auto\CarWashing\Models\WashingOrder;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Cache\RateLimiter;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+
+/**
+ * Сервис управления заказами на мойку автомобилей.
+ *
+ * Комиссия платформы: 14% от стоимости услуги.
+ * Все операции в $this->db->transaction(). FraudControlService перед каждой мутацией.
+ *
+ * @package App\Domains\Auto\CarWashing\Services
+ */
+final readonly class CarWashingService
 {
-    use HasFactory;
+    private const COMMISSION_RATE   = 0.14;
+    private const RATE_LIMIT_KEY    = 'carwash:order';
+    private const RATE_LIMIT_MAX    = 30;
+    private const RATE_LIMIT_DECAY  = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createOrder(int $stationId,$bookingDate,$serviceType,string $correlationId=""):WashingOrder{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("carwash:order:".auth()->id(),30))throw new \RuntimeException("Too many",429);RateLimiter::hit("carwash:order:".auth()->id(),3600);
-    return DB::transaction(function()use($stationId,$bookingDate,$serviceType,$correlationId){$s=CarWashStation::findOrFail($stationId);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'car_washing','correlation_id'=>$correlationId,'amount'=>$s->price_kopecks_per_service]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$o=WashingOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'station_id'=>$stationId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$s->price_kopecks_per_service,'payout_kopecks'=>$s->price_kopecks_per_service-(int)($s->price_kopecks_per_service*0.14),'payment_status'=>'pending','booking_date'=>$bookingDate,'service_type'=>$serviceType,'tags'=>['carwash'=>true]]);Log::channel('audit')->info('Car wash order created',['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});
+    public function __construct(private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private RateLimiter         $rateLimiter,
+        private LoggerInterface     $auditLogger,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {
+
     }
-    public function completeOrder(int $orderId,string $correlationId=""):WashingOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=WashingOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks,'carwash_payout',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Car wash completed',['order_id'=>$o->id]);return $o;});}
-    public function cancelOrder(int $orderId,string $correlationId=""):WashingOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=WashingOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed')$this->wallet->credit(tenant()->id,$o->total_kopecks,'carwash_refund',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Car wash cancelled',['order_id'=>$o->id]);return $o;});}
-    public function getOrder(int $orderId):WashingOrder{return WashingOrder::findOrFail($orderId);}
-    public function getUserOrders(int $clientId){return WashingOrder::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Создать заказ на мойку.
+     *
+     * @throws \RuntimeException если превышен лимит запросов или заблокирован fraud
+ */
+    public function createOrder(
+        int    $stationId,
+        mixed  $bookingDate,
+        string $serviceType,
+        int    $clientId,
+        string $correlationId = '',
+    ): WashingOrder {
+        $correlationId = $correlationId ?: Uuid::uuid4()->toString();
+
+        $key = self::RATE_LIMIT_KEY . ':' . $clientId;
+        if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
+            throw new \RuntimeException('Превышен лимит запросов.', 429);
+        }
+        $this->rateLimiter->hit($key, self::RATE_LIMIT_DECAY);
+
+        return $this->db->transaction(function () use ($stationId, $bookingDate, $serviceType, $clientId, $correlationId): WashingOrder {
+            $station = CarWashStation::findOrFail($stationId);
+
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'car_washing', amount: 0, correlationId: $correlationId ?? '');
+
+            if (($fraudResult['decision'] ?? 'allow') === 'block') {
+                throw new \RuntimeException('Операция заблокирована системой безопасности.', 403);
+            }
+
+            $payout = (int) ($station->price_kopecks_per_service * (1 - self::COMMISSION_RATE));
+
+            $order = WashingOrder::create([
+                'uuid'           => Uuid::uuid4()->toString(),
+                'tenant_id'      => tenant()->id,
+                'station_id'     => $stationId,
+                'client_id'      => $clientId,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $station->price_kopecks_per_service,
+                'payout_kopecks' => $payout,
+                'payment_status' => 'pending',
+                'booking_date'   => $bookingDate,
+                'service_type'   => $serviceType,
+                'tags'           => ['carwash' => true],
+            ]);
+
+            $this->auditLogger->info('Car wash order created', [
+                'order_id'       => $order->id,
+                'station_id'     => $stationId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Завершить заказ и зачислить выплату на кошелёк станции.
+     */
+    public function completeOrder(int $orderId, string $correlationId = ''): WashingOrder
+    {
+        $correlationId = $correlationId ?: Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): WashingOrder {
+            $order = WashingOrder::findOrFail($orderId);
+
+            if ($order->payment_status !== 'completed') {
+                throw new \RuntimeException('Заказ не оплачен.', 400);
+            }
+
+            $order->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->wallet->credit(
+                tenantId: tenant()->id,
+                amount: $order->payout_kopecks,
+                type: 'wash_payout',
+                meta: [
+                    'order_id'       => $order->id,
+                    'correlation_id' => $correlationId,
+                ],
+            );
+
+            return $order;
+        });
+    }
+
+    /**
+     * Отменить заказ с возвратом средств (refund).
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): WashingOrder
+    {
+        $correlationId = $correlationId ?: Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): WashingOrder {
+            $order = WashingOrder::findOrFail($orderId);
+
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Нельзя отменить завершённый заказ.', 400);
+            }
+
+            $order->update([
+                'status'         => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($order->payment_status === 'completed') {
+                $this->wallet->credit(
+                    tenantId: tenant()->id,
+                    amount: $order->total_kopecks,
+                    type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    meta: [
+                        'order_id'       => $order->id,
+                        'correlation_id' => $correlationId,
+                    ],
+                );
+            }
+
+            return $order;
+        });
+    }
+
+    /**
+     * Получить заказ по id.
+     */
+    public function getOrder(int $orderId): WashingOrder
+    {
+        return WashingOrder::findOrFail($orderId);
+    }
+
+    /**
+     * Получить заказы пользователя (10 последних).
+     */
+    public function getUserOrders(int $clientId): \Illuminate\Support\Collection
+    {
+        return WashingOrder::where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
 }

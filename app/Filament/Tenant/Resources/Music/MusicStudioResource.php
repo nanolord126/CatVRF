@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MusicStudioResource extends Model
+final class MusicStudioResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MusicStudio::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-microphone';

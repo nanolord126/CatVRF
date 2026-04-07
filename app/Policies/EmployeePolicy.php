@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class EmployeePolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -36,7 +37,7 @@ final class EmployeePolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -54,7 +55,7 @@ final class EmployeePolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -72,7 +73,7 @@ final class EmployeePolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

@@ -2,14 +2,14 @@
 
 namespace App\Services\Documentation;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class DocumentationGeneratorService extends Model
+final readonly class DocumentationGeneratorService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Генерирует API документацию
          *
@@ -380,7 +380,7 @@ final class DocumentationGeneratorService extends Model
                 ));
             }
 
-            Log::channel('documentation')->info('Documentation saved', [
+            $this->logger->channel('documentation')->info('Documentation saved', [
                 'type' => $type,
                 'format' => $format,
                 'path' => $filepath,

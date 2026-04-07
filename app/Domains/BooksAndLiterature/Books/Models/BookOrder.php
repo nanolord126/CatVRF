@@ -1,23 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\BooksAndLiterature\Books\Models;
 
+use BooksDomainTrait, SoftDeletes;
+use BooksDomainTrait;
+use HasFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+     * Order Model (L1/9)
+     */
 final class BookOrder extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasUuids, SoftDeletes, TenantScoped;
-
+        use BooksDomainTrait;
         protected $table = 'book_orders';
-        protected $fillable = ['uuid', 'tenant_id', 'client_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'items_json', 'tags'];
-        protected $casts = ['total_kopecks' => 'integer', 'payout_kopecks' => 'integer', 'items_json' => 'json', 'tags' => 'json'];
-
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn($q) => $q->where('book_orders.tenant_id', tenant()->id));
-        }
-}
+        protected $fillable = ['tenant_id', 'uuid', 'user_id', 'type', 'order_number', 'total_amount', 'status', 'shipping_address', 'order_items', 'is_gift', 'gift_message', 'correlation_id'];
+        protected $casts = ['order_items' => 'json', 'is_gift' => 'boolean'];
+    }

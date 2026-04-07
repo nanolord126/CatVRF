@@ -75,6 +75,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 'meat_shops.api.php',
                 'pharmacy.api.php',
                 'furniture.api.php',
+                // B2B API v1 (universal key-based auth)
+                'api_b2b.php',
             ];
             foreach ($verticalRoutes as $file) {
                 $path = __DIR__ . '/../routes/' . $file;
@@ -85,42 +87,24 @@ $app = Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append(\App\Http\Middleware\EnforceDbTransaction::class);
-        // Force Doppler Secrets Load (Production only)
-        // if (($_ENV['APP_ENV'] ?? 'local') === 'production' && class_exists(\App\Services\Infrastructure\DopplerService::class)) {
-        //     (new \App\Services\Infrastructure\DopplerService())->boot();
-        // }
-        
-        // Web middleware stack
-        // $middleware->web(append: [
-        //     \App\Http\Middleware\HandleInertiaRequests::class,
-        // ]);
-        
-        // Global middleware stack
-        // $middleware->append(\App\Http\Middleware\FraudControlMiddleware::class);
-        // $middleware->append(\App\Http\Middleware\BusinessGroupGuard::class);
-        // $middleware->append(\App\Http\Middleware\TenantScoping::class);
-        
-        // Rate limiting middleware groups
-        $middleware->group('api', [
-            \App\Http\Middleware\TrustProxies::class,
-            \Illuminate\Http\Middleware\HandleCors::class,
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ]);
+
+        $middleware->api(append: [
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
-        
-        // Trusted proxies for behind load balancers
-        if (($_ENV['APP_ENV'] ?? 'local') === 'production') {
-            $trustedProxies = [
-                '10.0.0.0/8',      // Private network
-                '172.16.0.0/12',   // Private network
-                '192.168.0.0/16',  // Private network
-            ];
-            if (!empty($_ENV['LOAD_BALANCER_IP'])) {
-                $trustedProxies[] = (string) $_ENV['LOAD_BALANCER_IP'];
-            }
-            $middleware->trustProxies(at: $trustedProxies);
-        }
+
+        $middleware->alias([
+            'tenant'  => \App\Http\Middleware\EnsureUserBelongsToTenant::class,
+            'b2b.api' => \App\Http\Middleware\B2BApiMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Custom exception handling

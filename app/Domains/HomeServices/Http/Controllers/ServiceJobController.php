@@ -2,66 +2,66 @@
 
 namespace App\Domains\HomeServices\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ServiceJobController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final readonly class ServiceJobController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private JobService $jobService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private JobService $jobService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function create(): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'service_listing_id' => 'required|integer|exists:service_listings,id',
                     'address' => 'required|string',
                     'description' => 'required|string',
                     'scheduled_at' => 'nullable|date',
                 ]);
 
-                $job = \DB::transaction(fn() => $this->jobService->createJob(
+                $job = $this->db->transaction(fn() => $this->jobService->createJob(
                     $validated['service_listing_id'],
-                    auth()->id(),
+                    $request->user()?->id,
                     $validated['address'],
                     $validated['description'],
                     $correlationId
                 ));
 
-                Log::channel('audit')->info('HomeService job created', [
+                $this->logger->info('HomeService job created', [
                     'correlation_id' => $correlationId,
                     'job_id'         => $job->id ?? null,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'listing_id'     => $validated['service_listing_id'],
                 ]);
 
                 SendJobReminderJob::dispatch($job->id, $correlationId);
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to create job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create job'], 500);
             }
         }
 
         public function myJobs(): JsonResponse
         {
             try {
-                $jobs = ServiceJob::where('client_id', auth()->id())
-                    ->orWhere('contractor_id', \App\Domains\HomeServices\Models\Contractor::where('user_id', auth()->id())->value('id'))
+                $jobs = ServiceJob::where('client_id', $request->user()?->id)
+                    ->orWhere('contractor_id', \App\Domains\HomeServices\Models\Contractor::where('user_id', $request->user()?->id)->value('id'))
                     ->with(['serviceListing', 'contractor', 'client'])
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $jobs, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $jobs, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch jobs'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch jobs'], 500);
             }
         }
 
@@ -71,9 +71,9 @@ final class ServiceJobController extends Model
                 $job = ServiceJob::with(['serviceListing', 'contractor', 'client', 'reviews', 'disputes'])->findOrFail($id);
                 $this->authorize('view', $job);
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Job not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Job not found'], 404);
             }
         }
 
@@ -84,18 +84,18 @@ final class ServiceJobController extends Model
                 $this->authorize('accept', $job);
 
                 $correlationId = Str::uuid()->toString();
-                $this->fraudControlService->check(auth()->id() ?? 0, 'job_accept', 0, request()->ip(), null, $correlationId);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'job_accept', amount: 0, correlationId: $correlationId ?? '');
                 $job->update(['status' => 'accepted', 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('HomeService job accepted', [
+                $this->logger->info('HomeService job accepted', [
                     'correlation_id' => $correlationId,
                     'job_id'         => $job->id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to accept job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to accept job'], 500);
             }
         }
 
@@ -105,18 +105,18 @@ final class ServiceJobController extends Model
                 $job = ServiceJob::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                $this->fraudControlService->check(auth()->id() ?? 0, 'job_start', 0, request()->ip(), null, $correlationId);
-                $job->update(['status' => 'in_progress', 'started_at' => now(), 'correlation_id' => $correlationId]);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'job_start', amount: 0, correlationId: $correlationId ?? '');
+                $job->update(['status' => 'in_progress', 'started_at' => Carbon::now(), 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('HomeService job started', [
+                $this->logger->info('HomeService job started', [
                     'correlation_id' => $correlationId,
                     'job_id'         => $job->id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to start job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to start job'], 500);
             }
         }
 
@@ -126,11 +126,11 @@ final class ServiceJobController extends Model
                 $job = ServiceJob::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                \DB::transaction(fn() => $this->jobService->completeJob($job, $correlationId));
+                $this->db->transaction(fn() => $this->jobService->completeJob($job, $correlationId));
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to complete job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to complete job'], 500);
             }
         }
 
@@ -141,11 +141,11 @@ final class ServiceJobController extends Model
                 $this->authorize('cancel', $job);
 
                 $correlationId = Str::uuid()->toString();
-                \DB::transaction(fn() => $this->jobService->cancelJob($job, request()->input('reason', 'User cancelled'), $correlationId));
+                $this->db->transaction(fn() => $this->jobService->cancelJob($job, $request->input('reason', 'User cancelled'), $correlationId));
 
-                return response()->json(['success' => true, 'message' => 'Job cancelled', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Job cancelled', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to cancel job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to cancel job'], 500);
             }
         }
 
@@ -155,7 +155,7 @@ final class ServiceJobController extends Model
                 $job = ServiceJob::findOrFail($jobId);
                 $this->authorize('create', ServiceDispute::class);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'type' => 'required|in:quality_issue,incomplete_work,safety_concern,other',
                     'description' => 'required|string',
                     'evidence' => 'nullable|array',
@@ -164,31 +164,31 @@ final class ServiceJobController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $dispute = ServiceDispute::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()->id,
                     'job_id' => $jobId,
-                    'initiator_id' => auth()->id(),
+                    'initiator_id' => $request->user()?->id,
                     'type' => $validated['type'],
                     'description' => $validated['description'],
                     'evidence' => $validated['evidence'] ?? [],
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $dispute, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $dispute, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to create dispute'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create dispute'], 500);
             }
         }
 
         public function myDisputes(): JsonResponse
         {
             try {
-                $disputes = ServiceDispute::where('initiator_id', auth()->id())
+                $disputes = ServiceDispute::where('initiator_id', $request->user()?->id)
                     ->with(['job'])
                     ->paginate(10);
 
-                return response()->json(['success' => true, 'data' => $disputes, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $disputes, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch disputes'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch disputes'], 500);
             }
         }
 
@@ -198,7 +198,7 @@ final class ServiceJobController extends Model
                 $dispute = ServiceDispute::findOrFail($id);
                 $this->authorize('resolve', $dispute);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'resolution' => 'required|string',
                     'refund_amount' => 'nullable|numeric|min:0',
                 ]);
@@ -209,14 +209,14 @@ final class ServiceJobController extends Model
                     'status' => 'resolved',
                     'resolution' => $validated['resolution'],
                     'refund_amount' => $validated['refund_amount'] ?? null,
-                    'resolved_by' => auth()->user()->email,
-                    'resolved_at' => now(),
+                    'resolved_by' => $request->user()->email,
+                    'resolved_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $dispute, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $dispute, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to resolve dispute'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to resolve dispute'], 500);
             }
         }
 
@@ -226,13 +226,13 @@ final class ServiceJobController extends Model
                 $job = ServiceJob::findOrFail($id);
                 $this->authorize('view', $job);
 
-                $validated = request()->validate(['status' => 'required|in:completed,cancelled']);
+                $validated = $request->validate(['status' => 'required|in:completed,cancelled']);
 
                 $job->update(['status' => $validated['status']]);
 
-                return response()->json(['success' => true, 'data' => $job, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $job, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to resolve job'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to resolve job'], 500);
             }
         }
 }

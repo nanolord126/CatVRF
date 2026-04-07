@@ -2,20 +2,33 @@
 
 namespace App\Services\Collectibles;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CollectibleService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use App\Models\Collectibles\CollectibleItem;
+use App\Models\Collectibles\CollectibleOrder;
+use Illuminate\Database\Eloquent\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class CollectibleService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private FraudControlService $fraud,
             private WalletService $wallet,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -27,59 +40,11 @@ final class CollectibleService extends Model
             $item = CollectibleItem::with('store')->findOrFail($itemId);
 
             // 1. Pre-purchase Fraud Check
-            $this->fraud->check([
-                'operation' => 'collectible_purchase',
-                'user_id' => $userId,
-                'item_id' => $itemId,
-                'amount' => $item->price_cents,
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check((int) $userId, 'collectible_purchase', $this->request->ip());
 
-            return DB::transaction(function () use ($userId, $item, $type) {
+            return $this->db->transaction(function () use ($userId, $item, $type) {
                 // 2. Financial settlement via WalletService
-                $this->wallet->debit($userId, $item->price_cents, "Purchase of collectible: {$item->name}");
-
-                // Platform commission (14% per CAÑON)
-                $commission = (int) ($item->price_cents * 0.14);
-                $sellerAmount = $item->price_cents - $commission;
-
-                $this->wallet->credit($item->store->tenant_id, $sellerAmount, "Sale of collectible: {$item->name}");
-
-                // 3. Order record creation
-                $order = CollectibleOrder::create([
-                    'user_id' => $userId,
-                    'item_id' => $item->id,
-                    'total_cents' => $item->price_cents,
-                    'status' => 'completed',
-                    'type' => $type,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                // 4. Update item ownership/availability
-                $item->update(['collection_id' => $this->getOrCreateUserCollection($userId, $item->category->name)]);
-
-                Log::channel('audit')->info('Collectible purchase finalized', [
-                    'order_id' => $order->id,
-                    'user_id' => $userId,
-                    'item_id' => $item->id,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                return $order;
-            });
-        }
-
-        /**
-         * Register a new collectible item with automated authenticity verification attempt.
-         */
-        public function registerItem(array $data): CollectibleItem
-        {
-            return DB::transaction(function () use ($data) {
-                $item = CollectibleItem::create(array_merge($data, [
-                    'correlation_id' => $this->correlationId,
-                ]));
-
-                Log::channel('audit')->info('New collectible item registered', [
+                $this->wallet->debit($userId, $item->price_cents, \App\Domains\Wallet\Enums\BalanceTransactionType::COMMISSION, $this, null, null, [
                     'item_id' => $item->id,
                     'store_id' => $item->store_id,
                     'correlation_id' => $this->correlationId,

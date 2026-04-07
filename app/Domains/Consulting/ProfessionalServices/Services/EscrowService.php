@@ -2,131 +2,189 @@
 
 namespace App\Domains\Consulting\ProfessionalServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\ProfessionalServices\Models\Contract;
+use App\Domains\Consulting\ProfessionalServices\Models\Milestone;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class EscrowService extends Model
+final readonly class EscrowService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly PaymentService $payment,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-        /**
-         * Создание контракта с депонированием средств (Hold).
-         */
-        public function openContract(int $clientId, int $providerId, int $totalAmount, array $milestones, string $correlationId = ""): Contract
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создание контракта с депонированием средств (Hold).
+     */
+    public function openContract(
+        int $clientId,
+        int $providerId,
+        int $totalAmount,
+        array $milestones,
+        string $correlationId = '',
+    ): Contract {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-            // 1. Rate Limiting
-            if (RateLimiter::tooManyAttempts("escrow:open:{$clientId}", 3)) {
-                throw new \RuntimeException("Слишком много попыток открытия контракта.", 429);
-            }
-            RateLimiter::hit("escrow:open:{$clientId}", 3600);
-
-            return DB::transaction(function () use ($clientId, $providerId, $totalAmount, $milestones, $correlationId) {
-
-                // 2. Fraud Check - проверка на отмывание денег через проф-услуги
-                $fraud = $this->fraud->check([
-                    "user_id" => $clientId,
-                    "operation_type" => "escrow_contract_create",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["provider_id" => $providerId, "amount" => $totalAmount]
-                ]);
-
-                if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->error("Escrow Security Block", ["client" => $clientId, "score" => $fraud["score"]]);
-                    throw new \RuntimeException("Контракт заблокирован комплаенсом.", 403);
-                }
-
-                // 3. Создание контракта
-                $contract = Contract::create([
-                    "uuid" => (string) Str::uuid(),
-                    "client_id" => $clientId,
-                    "provider_id" => $providerId,
-                    "total_amount_kopecks" => $totalAmount,
-                    "status" => "active",
-                    "correlation_id" => $correlationId
-                ]);
-
-                // 4. Создание этапов (Milestones)
-                foreach ($milestones as $m) {
-                    Milestone::create([
-                        "contract_id" => $contract->id,
-                        "title" => $m["title"],
-                        "amount_kopecks" => $m["amount"],
-                        "status" => "pending",
-                    ]);
-                }
-
-                // 5. Hold средств на кошельке клиента
-                $this->wallet->hold(
-                    userId: $clientId,
-                    amount: $totalAmount,
-                    reason: "Escrow Contract #{$contract->id} initialized",
-                    correlationId: $correlationId
-                );
-
-                Log::channel("audit")->info("Escrow: contract opened", ["contract_id" => $contract->id, "amount" => $totalAmount]);
-
-                return $contract;
-            });
+        if ($this->rateLimiter->tooManyAttempts("escrow:open:{$clientId}", 3)) {
+            throw new \RuntimeException('Too many contract open attempts', 429);
         }
 
-        /**
-         * Приемка этапа и выплата исполнителю.
-         */
-        public function releaseMilestone(int $milestoneId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $milestone = Milestone::with("contract")->findOrFail($milestoneId);
+        $this->rateLimiter->hit("escrow:open:{$clientId}", 3600);
 
-            if ($milestone->status !== "pending") {
-                throw new \RuntimeException("Этап уже оплачен или отменен.");
+        return $this->db->transaction(function () use ($clientId, $providerId, $totalAmount, $milestones, $correlationId): Contract {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'escrow_open',
+                amount: $totalAmount,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                $this->logger->error('Escrow security block', [
+                    'client_id' => $clientId,
+                    'score' => $fraudResult['score'] ?? 0,
+                    'correlation_id' => $correlationId,
+                ]);
+                throw new \RuntimeException('Contract blocked by compliance', 403);
             }
 
-            DB::transaction(function () use ($milestone, $correlationId) {
-                $contract = $milestone->contract;
+            $contract = Contract::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'client_id' => $clientId,
+                'provider_id' => $providerId,
+                'total_amount_kopecks' => $totalAmount,
+                'status' => 'active',
+                'correlation_id' => $correlationId,
+            ]);
 
-                // Обновляем статус этапа
-                $milestone->update(["status" => "completed", "paid_at" => now()]);
+            foreach ($milestones as $mData) {
+                Milestone::create([
+                    'contract_id' => $contract->id,
+                    'title' => $mData['title'],
+                    'amount_kopecks' => $mData['amount'],
+                    'status' => 'pending',
+                ]);
+            }
 
-                // Расчет 14% комиссии платформы
-                $total = $milestone->amount_kopecks;
-                $platformFee = (int) ($total * 0.14);
-                $providerPayout = $total - $platformFee;
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $totalAmount,
+                reason: 'escrow_hold',
+                correlationId: $correlationId,
+            );
 
-                // 6. Release Hold (списание с клиента)
-                $this->wallet->releaseHold(
-                    userId: $contract->client_id,
-                    amount: $total,
-                    correlationId: $correlationId
-                );
+            $this->logger->info('Escrow contract opened', [
+                'contract_id' => $contract->id,
+                'total_amount' => $totalAmount,
+                'milestones_count' => count($milestones),
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 7. Дебет клиента (реальный перевод)
-                $this->wallet->debit(
-                    userId: $contract->client_id,
-                    amount: $total,
-                    type: "escrow_payment",
-                    reason: "Payment for Milestone #{$milestone->id}",
-                    correlationId: $correlationId
-                );
+            return $contract;
+        });
+    }
 
-                // 8. Кредит исполнителю (за вычетом 14%)
+    /**
+     * Завершение этапа (milestone) — выплата исполнителю.
+     */
+    public function completeMilestone(
+        int $milestoneId,
+        string $correlationId = '',
+    ): Milestone {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($milestoneId, $correlationId): Milestone {
+            $milestone = Milestone::findOrFail($milestoneId);
+            $contract = Contract::findOrFail($milestone->contract_id);
+
+            if ($milestone->status !== 'pending') {
+                throw new \RuntimeException('Milestone already processed', 400);
+            }
+
+            $milestone->update([
+                'status' => 'completed',
+            ]);
+
+            $providerPayout = $milestone->amount_kopecks - (int) ($milestone->amount_kopecks * 0.14);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $providerPayout,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Escrow milestone completed', [
+                'milestone_id' => $milestone->id,
+                'contract_id' => $contract->id,
+                'payout' => $providerPayout,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $milestone;
+        });
+    }
+
+    /**
+     * Отмена контракта — возврат средств клиенту.
+     */
+    public function cancelContract(
+        int $contractId,
+        string $correlationId = '',
+    ): Contract {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($contractId, $correlationId): Contract {
+            $contract = Contract::findOrFail($contractId);
+
+            if ($contract->status !== 'active') {
+                throw new \RuntimeException('Contract is not active', 400);
+            }
+
+            $contract->update([
+                'status' => 'cancelled',
+            ]);
+
+            $pendingTotal = Milestone::where('contract_id', $contractId)
+                ->where('status', 'pending')
+                ->sum('amount_kopecks');
+
+            if ($pendingTotal > 0) {
                 $this->wallet->credit(
-                    userId: $contract->provider_id,
-                    amount: $providerPayout,
-                    type: "escrow_payout",
-                    reason: "Milestone #{$milestone->id} completed",
-                    correlationId: $correlationId
+                    walletId: (int) tenant()->id,
+                    amount: (int) $pendingTotal,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
                 );
+            }
 
-                Log::channel("audit")->info("Escrow: milestone released", ["milestone_id" => $milestone->id, "payout" => $providerPayout]);
-            });
-        }
+            Milestone::where('contract_id', $contractId)
+                ->where('status', 'pending')
+                ->update(['status' => 'cancelled']);
+
+            $this->logger->info('Escrow contract cancelled', [
+                'contract_id' => $contract->id,
+                'refunded' => $pendingTotal,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $contract;
+        });
+    }
+
+    public function getContract(int $contractId): Contract
+    {
+        return Contract::findOrFail($contractId);
+    }
 }

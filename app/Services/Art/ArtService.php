@@ -2,20 +2,36 @@
 
 namespace App\Services\Art;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ArtService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use App\Models\Art\Artwork;
+use App\Models\Art\ArtOrder;
+use App\Models\Art\ArtGallery;
+use Illuminate\Database\Eloquent\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ArtService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private readonly FraudControlService $fraud,
             private readonly WalletService $wallet,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (Request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -24,18 +40,18 @@ final class ArtService extends Model
          */
         public function registerArtwork(array $data): Artwork
         {
-            $this->fraud->check(['type' => 'art_registration', 'data' => $data]);
+            $this->fraud->check((int) $this->guard->id(), 'art_registration', $this->request->ip());
 
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $artwork = Artwork::create(array_merge($data, [
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                     'status' => 'pending', // Default to review for security
                 ]));
 
-                Log::channel('audit')->info('Artwork registered', [
+                $this->logger->channel('audit')->info('Artwork registered', [
                     'id' => $artwork->id,
                     'uuid' => $artwork->uuid,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $artwork;
@@ -51,12 +67,12 @@ final class ArtService extends Model
             $artwork = Artwork::findOrFail($artworkId);
 
             if ($artwork->status !== 'available') {
-                throw new \Exception('Artwork is not available for purchase.');
+                throw new \DomainException('Artwork is not available for purchase.');
             }
 
-            $this->fraud->check(['type' => 'art_purchase', 'user_id' => $userId, 'artwork_id' => $artworkId]);
+            $this->fraud->check((int) $userId, 'art_purchase', $this->request->ip());
 
-            return DB::transaction(function () use ($userId, $artwork, $type) {
+            return $this->db->transaction(function () use ($userId, $artwork, $type) {
                 // Locking the artwork for the transaction duration
                 $artwork->lockForUpdate()->increment('price_cents', 0);
 
@@ -64,38 +80,20 @@ final class ArtService extends Model
                 $commissionCents = (int)($totalCents * 0.14); // Standard Platform Commission 14%
 
                 // Debit user wallet, credit gallery/artist wallet
-                $this->wallet->debit($userId, $totalCents, "Purchase of artwork: {$artwork->title}");
-                $this->wallet->credit($artwork->gallery->tenant_id, $totalCents - $commissionCents, "Sale of artwork: {$artwork->title}");
+                $this->wallet->debit($userId, $totalCents, \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $this->correlationId(), null, null, null);
 
-                $order = ArtOrder::create([
+                $this->wallet->credit($artwork->gallery_id ?? $artwork->user_id, $totalCents - $commissionCents, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $this->correlationId(), null, null, ['artwork_id' => $artwork->id]);
+
+                $artwork->update(['status' => 'sold', 'correlation_id' => $this->correlationId()]);
+
+                return ArtOrder::create([
                     'user_id' => $userId,
                     'artwork_id' => $artwork->id,
-                    'type' => $type,
                     'total_cents' => $totalCents,
-                    'status' => 'paid',
-                    'correlation_id' => $this->correlationId,
+                    'commission_cents' => $commissionCents,
+                    'type' => $type,
+                    'correlation_id' => $this->correlationId(),
                 ]);
-
-                $artwork->update(['status' => 'sold']);
-
-                Log::channel('audit')->info('Art order processed', [
-                    'order_id' => $order->id,
-                    'amount' => $totalCents,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                return $order;
-            }, 5);
-        }
-
-        /**
-         * Get verified galleries for the current tenant.
-         */
-        public function getVerifiedGalleries(): Collection
-        {
-            return ArtGallery::where('is_verified', true)
-                ->withCount('artworks')
-                ->orderByDesc('rating')
-                ->get();
+            });
         }
 }

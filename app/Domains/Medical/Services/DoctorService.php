@@ -2,17 +2,15 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DoctorService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class DoctorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createDoctor(
             int $tenantId,
@@ -23,20 +21,13 @@ final class DoctorService extends Model
             int $experienceYears,
             ?string $bio,
             ?string $licenseNumber,
-            ?string $correlationId = null,
-        ): MedicalDoctor {
+            ?string $correlationId = null
+    ): MedicalDoctor {
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use (
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use (
                     $tenantId,
                     $clinicId,
                     $userId,
@@ -45,8 +36,8 @@ final class DoctorService extends Model
                     $experienceYears,
                     $bio,
                     $licenseNumber,
-                    $correlationId,
-                ) {
+                    $correlationId
+    ) {
                     $doctor = MedicalDoctor::create([
                         'tenant_id' => $tenantId,
                         'clinic_id' => $clinicId,
@@ -60,7 +51,7 @@ final class DoctorService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Medical doctor created', [
+                    $this->logger->info('Medical doctor created', [
                         'doctor_id' => $doctor->id,
                         'clinic_id' => $clinicId,
                         'specialization' => $specialization,
@@ -70,7 +61,7 @@ final class DoctorService extends Model
                     return $doctor;
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create doctor', [
+                $this->logger->error('Failed to create doctor', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -81,23 +72,16 @@ final class DoctorService extends Model
         public function updateDoctor(
             MedicalDoctor $doctor,
             array $data,
-            ?string $correlationId = null,
-        ): MedicalDoctor {
+            ?string $correlationId = null
+    ): MedicalDoctor {
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($doctor, $data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($doctor, $data, $correlationId) {
                     $doctor->update([...$data, 'correlation_id' => $correlationId]);
 
-                    Log::channel('audit')->info('Medical doctor updated', [
+                    $this->logger->info('Medical doctor updated', [
                         'doctor_id' => $doctor->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -105,7 +89,7 @@ final class DoctorService extends Model
                     return $doctor;
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update doctor', [
+                $this->logger->error('Failed to update doctor', [
                     'doctor_id' => $doctor->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

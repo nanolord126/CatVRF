@@ -2,15 +2,6 @@
 
 namespace App\Filament\Tenant\Resources\Stationery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class StationeryProductResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Select, RichEditor, FileUpload, Toggle, TagsInput, Hidden, Grid};
     use Filament\Forms\Form;
     use Filament\Resources\Resource;
     use Filament\Tables;

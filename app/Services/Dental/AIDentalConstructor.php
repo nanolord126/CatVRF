@@ -2,37 +2,50 @@
 
 namespace App\Services\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIDentalConstructor extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Models\Dental\DentalTreatmentPlan;
+use App\Models\Dental\DentalService as DentalModel;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class AIDentalConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private \App\Services\FraudControlService $fraudControl,
-            private PricingService $pricingService,
-            private string $correlation_id = ''
-        ) {
-            $this->correlation_id = empty($correlation_id) ? (string) Str::uuid() : $correlation_id;
-        }
+        private readonly Request $request,
+        private \App\Services\FraudControlService $fraud,
+        private PricingService $pricingService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Analyze a smile photo and suggest a dental treatment plan.
          */
         public function analyzeSmile(string $photoPath, array $clientWishes, int $budget): array
         {
-            return DB::transaction(function () use ($photoPath, $clientWishes, $budget) {
+            return $this->db->transaction(function () use ($photoPath, $clientWishes, $budget) {
                 // 1. Audit Check
-                Log::channel('audit')->info('AI Dental Smile Analysis started', [
+                $this->logger->channel('audit')->info('AI Dental Smile Analysis started', [
                     'photo' => $photoPath,
                     'budget' => $budget,
                     'correlation_id' => $this->correlation_id,
                 ]);
 
                 // 2. Fraud Check (Medical Privacy/AI Rate Limiting)
-                $this->fraudControl->check(['operation' => 'ai_dental_analysis', 'budget' => $budget]);
+                $this->fraud->check((int) $this->guard->id(), 'ai_dental_analysis', $this->request->ip());
 
                 // 3. AI Photo Logic (MOCKED for Vision AI API)
                 // In Production: Integration with OpenAI / Stable Diffusion
@@ -58,7 +71,7 @@ final class AIDentalConstructor extends Model
                         'is_within_budget' => $totalBudget <= $budget,
                         'steps_count' => count($suggestedServices),
                     ],
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ];
             });
         }
@@ -98,13 +111,13 @@ final class AIDentalConstructor extends Model
         public function generatePreview(string $originalPhotoPath, array $treatmentServices): string
         {
             // MOCKED AI Photo Generation Logic (DALL-E / Stable Diffusion)
-            Log::channel('audit')->info('AI Dental Preview generated', [
+            $this->logger->channel('audit')->info('AI Dental Preview generated', [
                 'original' => $originalPhotoPath,
                 'services' => count($treatmentServices),
-                'correlation_id' => $this->correlation_id,
+                'correlation_id' => $this->correlationId(),
             ]);
 
-            return "/storage/ai_previews/dental_{$this->correlation_id}.jpg";
+            return "/storage/ai_previews/dental_{$this->correlationId()}.jpg";
         }
 
         /**
@@ -112,7 +125,7 @@ final class AIDentalConstructor extends Model
          */
         public function refinePlan(int $planId, array $newWishes, int $newBudget): DentalTreatmentPlan
         {
-            return DB::transaction(function () use ($planId, $newWishes, $newBudget) {
+            return $this->db->transaction(function () use ($planId, $newWishes, $newBudget) {
                 $plan = DentalTreatmentPlan::findOrFail($planId);
 
                 // Re-fetch analysis from metadata or audit
@@ -121,10 +134,10 @@ final class AIDentalConstructor extends Model
 
                 $suggestedServices = $this->matchServicesWithAnalysis($analysis, $newBudget);
 
-                Log::channel('audit')->info('Refining Dental Treatment Plan with AI', [
+                $this->logger->channel('audit')->info('Refining Dental Treatment Plan with AI', [
                     'plan_id' => $planId,
                     'new_budget' => $newBudget,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $plan->update([

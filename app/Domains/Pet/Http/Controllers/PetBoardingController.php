@@ -2,35 +2,33 @@
 
 namespace App\Domains\Pet\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetBoardingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PetBoardingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly BoardingService $boardingService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
             try {
-                $reservations = PetBoardingReservation::where('owner_id', auth()->id())
-                    ->orWhere('clinic_id', auth()->user()->clinics->pluck('id'))
+                $reservations = PetBoardingReservation::where('owner_id', $request->user()?->id)
+                    ->orWhere('clinic_id', $request->user()->clinics->pluck('id'))
                     ->with(['clinic', 'owner'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reservations,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Failed to get reservations', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to get reservations', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reservations',
                     'correlation_id' => Str::uuid(),
@@ -46,13 +44,13 @@ final class PetBoardingController extends Model
 
                 $this->authorize('view', $reservation);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reservation,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Reservation not found',
                     'correlation_id' => Str::uuid(),
@@ -63,7 +61,7 @@ final class PetBoardingController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $reservation = $this->boardingService->createReservation(
@@ -71,21 +69,21 @@ final class PetBoardingController extends Model
                     $correlationId
                 );
 
-                Log::channel('audit')->info('Pet boarding reservation created', [
+                $this->logger->info('Pet boarding reservation created', [
                     'correlation_id' => $correlationId,
                     'reservation_id' => $reservation->id ?? null,
                     'tenant_id'      => $reservation->tenant_id ?? null,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reservation,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::error('Failed to create reservation', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to create reservation', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create reservation',
                     'correlation_id' => Str::uuid(),
@@ -96,7 +94,7 @@ final class PetBoardingController extends Model
         public function update(Request $request, $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $reservation = PetBoardingReservation::findOrFail($id);
@@ -109,21 +107,21 @@ final class PetBoardingController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Pet boarding reservation updated', [
+                $this->logger->info('Pet boarding reservation updated', [
                     'correlation_id' => $correlationId,
                     'reservation_id' => $reservation->id,
                     'tenant_id'      => $reservation->tenant_id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'before'         => $before,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reservation,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update reservation',
                     'correlation_id' => Str::uuid(),
@@ -134,7 +132,7 @@ final class PetBoardingController extends Model
         public function destroy($id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $reservation = PetBoardingReservation::findOrFail($id);
@@ -142,20 +140,20 @@ final class PetBoardingController extends Model
 
                 $reservation->delete();
 
-                Log::channel('audit')->info('Pet boarding reservation deleted', [
+                $this->logger->info('Pet boarding reservation deleted', [
                     'correlation_id' => $correlationId,
                     'reservation_id' => $reservation->id,
                     'tenant_id'      => $reservation->tenant_id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Reservation deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete reservation',
                     'correlation_id' => Str::uuid(),
@@ -170,23 +168,23 @@ final class PetBoardingController extends Model
                 $this->authorize('cancel', $reservation);
                 $correlationId = Str::uuid()->toString();
 
-                $this->fraudControlService->check(auth()->id() ?? 0, 'boarding_cancel', 0, request()->ip(), null, $correlationId);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'boarding_cancel', amount: 0, correlationId: $correlationId ?? '');
 
                 $reservation = $this->boardingService->cancelReservation($reservation, $correlationId);
 
-                Log::channel('audit')->info('Pet boarding reservation cancelled', [
+                $this->logger->info('Pet boarding reservation cancelled', [
                     'correlation_id' => $correlationId,
                     'reservation_id' => $reservation->id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reservation,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to cancel reservation',
                     'correlation_id' => Str::uuid(),
@@ -204,13 +202,13 @@ final class PetBoardingController extends Model
                     'avg_commission' => PetBoardingReservation::where('payment_status', 'paid')->avg('commission_amount'),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Unauthorized',
                     'correlation_id' => Str::uuid(),

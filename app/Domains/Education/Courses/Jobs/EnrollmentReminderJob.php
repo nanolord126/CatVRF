@@ -2,19 +2,18 @@
 
 namespace App\Domains\Education\Courses\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class EnrollmentReminderJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class EnrollmentReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private ?string $correlationId;
 
-        public function __construct(string $correlationId = '')
+        public function __construct(string $correlationId = '', private readonly LoggerInterface $logger)
         {
             $this->correlationId = $correlationId;
             $this->onQueue('notifications');
@@ -24,7 +23,7 @@ final class EnrollmentReminderJob extends Model
         public function handle(): void
         {
             try {
-                Log::channel('audit')->info('Running enrollment reminder job', [
+                $this->logger->info('Running enrollment reminder job', [
                     'correlation_id' => $this->correlationId,
                 ]);
 
@@ -39,12 +38,12 @@ final class EnrollmentReminderJob extends Model
                             new EnrollmentReminderNotification($enrollment)
                         );
 
-                        Log::channel('audit')->info('Reminder sent to student', [
+                        $this->logger->info('Reminder sent to student', [
                             'enrollment_id' => $enrollment->id,
                             'correlation_id' => $this->correlationId,
                         ]);
                     } catch (Throwable $e) {
-                        Log::channel('audit')->error('Failed to send reminder', [
+                        $this->logger->error('Failed to send reminder', [
                             'enrollment_id' => $enrollment->id,
                             'error' => $e->getMessage(),
                             'correlation_id' => $this->correlationId,
@@ -52,12 +51,12 @@ final class EnrollmentReminderJob extends Model
                     }
                 }
 
-                Log::channel('audit')->info('Enrollment reminder job completed', [
+                $this->logger->info('Enrollment reminder job completed', [
                     'reminders_sent' => $stalledEnrollments->count(),
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Enrollment reminder job failed', [
+                $this->logger->error('Enrollment reminder job failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -67,6 +66,6 @@ final class EnrollmentReminderJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(6);
+            return Carbon::now()->addHours(6);
         }
 }

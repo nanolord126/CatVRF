@@ -2,17 +2,17 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class FreelanceJobController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FreelanceJobController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -29,18 +29,18 @@ final class FreelanceJobController extends Model
 
                 $jobs = $query->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $jobs,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing jobs', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing jobs', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list jobs',
                     'correlation_id' => Str::uuid(),
@@ -53,19 +53,19 @@ final class FreelanceJobController extends Model
             try {
                 $job = FreelanceJob::with('proposals')->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $job,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error showing job', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error showing job', [
                     'job_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Job not found',
                     'correlation_id' => Str::uuid(),
@@ -76,14 +76,14 @@ final class FreelanceJobController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $job = FreelanceJob::create([
                         'tenant_id' => tenant()->id,
-                        'client_id' => auth()->id(),
+                        'client_id' => $request->user()?->id,
                         'title' => ($validated['title'] ?? null),
                         'description' => ($validated['description'] ?? null),
                         'categories' => ($validated['categories'] ?? []),
@@ -94,32 +94,32 @@ final class FreelanceJobController extends Model
                         'budget_max' => ($validated['budget_max'] ?? null),
                         'duration_days' => ($validated['duration_days'] ?? null),
                         'status' => 'open',
-                        'posted_at' => now(),
+                        'posted_at' => Carbon::now(),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Freelance job posted', [
+                    $this->logger->info('Freelance job posted', [
                         'job_id' => $job->id,
-                        'client_id' => auth()->id(),
+                        'client_id' => $request->user()?->id,
                         'budget_min' => ($validated['budget_min'] ?? null),
                         'budget_max' => ($validated['budget_max'] ?? null),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $job,
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error posting job', [
-                    'client_id' => auth()->id(),
+            } catch (\Throwable $e) {
+                $this->logger->error('Error posting job', [
+                    'client_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to post job',
                     'correlation_id' => Str::uuid(),
@@ -130,7 +130,7 @@ final class FreelanceJobController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $job = FreelanceJob::findOrFail($id);
@@ -138,31 +138,31 @@ final class FreelanceJobController extends Model
                 $this->authorize('update', $job);
 
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $job, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $job, $correlationId) {
                     $job->update($request->only([
                         'title', 'description', 'categories', 'skills_required',
                         'budget_min', 'budget_max', 'duration_days',
                     ]));
 
-                    Log::channel('audit')->info('Freelance job updated', [
+                    $this->logger->info('Freelance job updated', [
                         'job_id' => $job->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $job,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error updating job', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error updating job', [
                     'job_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update job',
                     'correlation_id' => Str::uuid(),
@@ -173,34 +173,34 @@ final class FreelanceJobController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $job = FreelanceJob::findOrFail($id);
 
                 $this->authorize('delete', $job);
 
-                return DB::transaction(function () use ($job, $correlationId) {
+                return $this->db->transaction(function () use ($job, $correlationId) {
                     $job->delete();
 
-                    Log::channel('audit')->info('Freelance job deleted', [
+                    $this->logger->info('Freelance job deleted', [
                         'job_id' => $job->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error deleting job', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error deleting job', [
                     'job_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete job',
                     'correlation_id' => Str::uuid(),
@@ -216,27 +216,27 @@ final class FreelanceJobController extends Model
 
                 $this->authorize('close', $job);
 
-                return DB::transaction(function () use ($job, $correlationId) {
+                return $this->db->transaction(function () use ($job, $correlationId) {
                     $job->update(['status' => 'closed']);
 
-                    Log::channel('audit')->info('Freelance job closed', [
+                    $this->logger->info('Freelance job closed', [
                         'job_id' => $job->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error closing job', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error closing job', [
                     'job_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to close job',
                     'correlation_id' => Str::uuid(),
@@ -247,22 +247,22 @@ final class FreelanceJobController extends Model
         public function myJobs(): JsonResponse
         {
             try {
-                $jobs = FreelanceJob::where('client_id', auth()->id())
+                $jobs = FreelanceJob::where('client_id', $request->user()?->id)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $jobs,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing my jobs', [
-                    'client_id' => auth()->id(),
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing my jobs', [
+                    'client_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list jobs',
                     'correlation_id' => Str::uuid(),
@@ -276,9 +276,9 @@ final class FreelanceJobController extends Model
                 $totalJobs = FreelanceJob::count();
                 $openJobs = FreelanceJob::where('status', 'open')->count();
                 $completedJobs = FreelanceJob::where('status', 'closed')->count();
-                $totalBudget = FreelanceJob::sum(DB::raw('(budget_min + budget_max) / 2'));
+                $totalBudget = FreelanceJob::sum($this->db->raw('(budget_min + budget_max) / 2'));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'total_jobs' => $totalJobs,
@@ -288,13 +288,13 @@ final class FreelanceJobController extends Model
                     ],
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error getting freelance stats', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error getting freelance stats', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get stats',
                     'correlation_id' => Str::uuid(),

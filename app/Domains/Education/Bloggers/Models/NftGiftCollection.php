@@ -2,12 +2,13 @@
 
 namespace App\Domains\Education\Bloggers\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class NftGiftCollection extends Model
-{
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+{
     use HasFactory;
 
         protected $table = 'nft_gift_collections';
@@ -36,6 +37,22 @@ final class NftGiftCollection extends Model
             'updated_at' => 'datetime',
         ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
+
         protected $hidden = ['ton_collection_address', 'correlation_id'];
 
         public function gifts(): HasMany
@@ -46,8 +63,8 @@ final class NftGiftCollection extends Model
         public function isActive(): bool
         {
             return $this->status === 'active' &&
-                (! $this->started_at || $this->started_at <= now()) &&
-                (! $this->ended_at || $this->ended_at >= now());
+                (! $this->started_at || $this->started_at <= Carbon::now()) &&
+                (! $this->ended_at || $this->ended_at >= Carbon::now());
         }
 
         public function isFull(): bool

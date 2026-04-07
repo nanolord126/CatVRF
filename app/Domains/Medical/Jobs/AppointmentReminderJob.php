@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentReminderJob extends Model
+use Psr\Log\LoggerInterface;
+final class AppointmentReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
@@ -30,7 +27,7 @@ final class AppointmentReminderJob extends Model
         public function __construct(
             private readonly int $appointmentId,
             private readonly string $reminderType,
-            private readonly string $correlationId
+            private readonly string $correlationId, private readonly LoggerInterface $logger
         ) {
         }
 
@@ -38,7 +35,7 @@ final class AppointmentReminderJob extends Model
          * Обработка задачи отправки уведомления.
          *
          * @return void
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function handle(): void
         {
@@ -46,7 +43,7 @@ final class AppointmentReminderJob extends Model
             $appointment = Appointment::with(['patient', 'doctor', 'clinic'])->find($this->appointmentId);
 
             if (!$appointment) {
-                Log::channel('audit')->warning('Reminder Job: Appointment not found. Skipping.', [
+                $this->logger->warning('Reminder Job: Appointment not found. Skipping.', [
                     'appointment_id' => $this->appointmentId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -59,7 +56,7 @@ final class AppointmentReminderJob extends Model
             }
 
             try {
-                Log::channel('audit')->info("Initializing Medical Reminder ({$this->reminderType})", [
+                $this->logger->info("Initializing Medical Reminder ({$this->reminderType})", [
                     'correlation_id' => $this->correlationId,
                     'appointment_uuid' => $appointment->uuid,
                     'patient_id' => $appointment->patient_id,
@@ -70,14 +67,14 @@ final class AppointmentReminderJob extends Model
                 // $appointment->patient->notify(new \App\Domains\Medical\Notifications\VisitReminder($appointment, $this->reminderType, $this->correlationId));
 
                 // Лог выполнения для ФЗ-152 (факт уведомления о мед-услуге)
-                Log::channel('audit')->info("Medical Reminder Sent Successfully", [
+                $this->logger->info("Medical Reminder Sent Successfully", [
                     'correlation_id' => $this->correlationId,
                     'type' => $this->reminderType,
                     'recipient' => $appointment->patient->phone ?? $appointment->patient->email,
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error("Failed to send Medical Reminder", [
+                $this->logger->error("Failed to send Medical Reminder", [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

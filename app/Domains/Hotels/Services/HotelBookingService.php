@@ -1,146 +1,247 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Booking;
+use App\Domains\Hotels\Models\Hotel;
+use App\Domains\Hotels\Models\Room;
+use App\Models\B2BContract;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class HotelBookingService extends Model
+/**
+ * Сервис бронирования отелей.
+ * Layer 3: Services — CatVRF 2026
+ *
+ * Создание, подтверждение и отмена бронирований.
+ * Ценообразование B2C/B2B, FraudCheck, Wallet, Audit.
+ *
+ * @package App\Domains\Hotels\Services
+ */
+final readonly class HotelBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControl,
-            private readonly WalletService $wallet,
-            private readonly PaymentService $payment,
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $this->correlationId ?: (string) Str::uuid();
-        }
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        /**
-         * Создать бронирование номера.
-         *
-         * @throws \Exception
-         */
-        public function initiateBooking(array $data): Booking
-        {
-            Log::channel('audit')->info('Hotel booking initiated', [
-                'correlation_id' => $this->correlationId,
-                'data' => $data,
-            ]);
+    /**
+     * Создать бронирование номера.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @throws \DomainException
+     */
+    public function initiateBooking(array $data, int $tenantId, string $correlationId): Booking
+    {
+        $userId = (int) $this->guard->id();
 
-            // 1. ПЕРВАЯ ПРОВЕРКА: FraudControl
-            $this->fraudControl->checkOperation('hotel_booking_init', $data);
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'hotel_booking_init',
+            amount: (int) ($data['total_price'] ?? 0),
+            ipAddress: null,
+            deviceFingerprint: null,
+            correlationId: $correlationId,
+        );
 
-            return DB::transaction(function () use ($data) {
-                $room = Room::findOrFail($data['room_id']);
-                $hotel = $room->hotel;
+        return $this->db->transaction(function () use ($data, $tenantId, $userId, $correlationId) {
+            $room = Room::lockForUpdate()->findOrFail($data['room_id']);
+            $hotel = $room->hotel;
 
-                // 2. ВТОРАЯ ПРОВЕРКА: Наличие
-                if (!$room->is_available || $room->total_stock <= 0) {
-                    throw new \Exception('Room is not available or out of stock');
-                }
-
-                // 3. ТРЕТЬЯ ПРОВЕРКА: Минимальное количество ночей
-                $checkIn = Carbon::parse($data['check_in']);
-                $checkOut = Carbon::parse($data['check_out']);
-                $nights = (int) $checkIn->diffInDays($checkOut);
-
-                if ($nights < $room->min_stay_days) {
-                    throw new \Exception("Minimum stay for this room is {$room->min_stay_days} nights");
-                }
-
-                // 4. ЦЕНООБРАЗОВАНИЕ (B2B/B2C)
-                $totalPrice = $this->calculateTotalPrice($room, $nights, $data['is_b2b'] ?? false, $data['contract_id'] ?? null);
-
-                // 5. СОЗДАНИЕ БРОНИРОВАНИЯ
-                $booking = Booking::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => (int) tenant('id'),
-                    'business_group_id' => $hotel->business_group_id,
-                    'hotel_id' => $hotel->id,
-                    'room_id' => $room->id,
-                    'user_id' => (int) auth()->id(),
-                    'check_in' => $checkIn,
-                    'check_out' => $checkOut,
-                    'status' => 'pending',
-                    'total_price' => $totalPrice,
-                    'currency' => 'RUB',
-                    'payment_status' => 'pending',
-                    'is_b2b' => (bool) ($data['is_b2b'] ?? false),
-                    'contract_id' => $data['contract_id'] ?? null,
-                    'correlation_id' => $this->correlationId,
-                    'metadata' => [
-                        'nights' => $nights,
-                        'price_per_night' => $totalPrice / $nights,
-                    ],
-                ]);
-
-                // 6. ХОЛД В ИНВЕНТАРЕ
-                $room->decrement('total_stock');
-
-                Log::channel('audit')->info('Hotel booking created', [
-                    'booking_id' => $booking->id,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                return $booking;
-            });
-        }
-
-        /**
-         * Подтвердить бронирование (после оплаты).
-         */
-        public function confirmBooking(int $bookingId, string $paymentId): void
-        {
-            DB::transaction(function () use ($bookingId, $paymentId) {
-                $booking = Booking::findOrFail($bookingId);
-
-                if ($booking->status !== 'pending') {
-                    throw new \Exception('Booking is already processed');
-                }
-
-                $booking->update([
-                    'status' => 'confirmed',
-                    'payment_status' => 'paid',
-                    'metadata' => array_merge($booking->metadata ?? [], [
-                        'payment_id' => $paymentId,
-                        'confirmed_at' => now()->toIso8601String(),
-                    ]),
-                    'payout_at' => now()->addDays(4), // КАНОН: 4 дня после выселения (payout_at в будущем)
-                ]);
-
-                Log::channel('audit')->info('Hotel booking confirmed', [
-                    'booking_id' => $booking->id,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
-        }
-
-        /**
-         * Рассчитать полную стоимость.
-         */
-        private function calculateTotalPrice(Room $room, int $nights, bool $isB2B, ?int $contractId): int
-        {
-            $price = $isB2B ? $room->base_price_b2b : $room->base_price_b2c;
-
-            if ($isB2B && $contractId) {
-                $contract = B2BContract::find($contractId);
-                if ($contract && $contract->isValid()) {
-                    $price = (int) ($price * (1 - $contract->discount_percent / 100));
-                }
+            if (!$room->is_available || $room->total_stock <= 0) {
+                throw new \DomainException('Room is not available or out of stock');
             }
 
-            return $price * $nights;
+            $checkIn = Carbon::parse($data['check_in']);
+            $checkOut = Carbon::parse($data['check_out']);
+            $nights = (int) $checkIn->diffInDays($checkOut);
+
+            if ($nights < ($room->min_stay_days ?? 1)) {
+                throw new \DomainException("Minimum stay for this room is {$room->min_stay_days} nights");
+            }
+
+            $isB2B = (bool) ($data['is_b2b'] ?? false);
+            $contractId = $data['contract_id'] ?? null;
+            $totalPrice = $this->calculateTotalPrice($room, $nights, $isB2B, $contractId);
+
+            $booking = Booking::create([
+                'uuid'              => (string) Str::uuid(),
+                'tenant_id'         => $tenantId,
+                'business_group_id' => $hotel->business_group_id,
+                'hotel_id'          => $hotel->id,
+                'room_id'           => $room->id,
+                'user_id'           => $userId,
+                'check_in'          => $checkIn,
+                'check_out'         => $checkOut,
+                'status'            => 'pending',
+                'total_price'       => $totalPrice,
+                'currency'          => 'RUB',
+                'payment_status'    => 'pending',
+                'is_b2b'            => $isB2B,
+                'contract_id'       => $contractId,
+                'correlation_id'    => $correlationId,
+                'metadata'          => [
+                    'nights'          => $nights,
+                    'price_per_night' => $totalPrice / $nights,
+                ],
+            ]);
+
+            $room->decrement('total_stock');
+
+            $this->audit->log(
+                action: 'hotel_booking_created',
+                subjectType: Booking::class,
+                subjectId: $booking->id,
+                old: [],
+                new: $booking->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Hotel booking created', [
+                'booking_id'     => $booking->id,
+                'hotel_id'       => $hotel->id,
+                'room_id'        => $room->id,
+                'total_price'    => $totalPrice,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Подтвердить бронирование после оплаты.
+     */
+    public function confirmBooking(int $bookingId, string $paymentId, string $correlationId): void
+    {
+        $this->db->transaction(function () use ($bookingId, $paymentId, $correlationId) {
+            $booking = Booking::lockForUpdate()->findOrFail($bookingId);
+
+            if ($booking->status !== 'pending') {
+                throw new \DomainException('Booking is already processed');
+            }
+
+            $oldData = $booking->toArray();
+
+            $booking->update([
+                'status'         => 'confirmed',
+                'payment_status' => 'paid',
+                'metadata'       => array_merge($booking->metadata ?? [], [
+                    'payment_id'   => $paymentId,
+                    'confirmed_at' => Carbon::now()->toIso8601String(),
+                ]),
+                'payout_at' => Carbon::now()->addDays(4),
+            ]);
+
+            $this->audit->log(
+                action: 'hotel_booking_confirmed',
+                subjectType: Booking::class,
+                subjectId: $bookingId,
+                old: $oldData,
+                new: $booking->fresh()->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Hotel booking confirmed', [
+                'booking_id'     => $bookingId,
+                'payment_id'     => $paymentId,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
+
+    /**
+     * Отменить бронирование и вернуть сток.
+     */
+    public function cancelBooking(int $bookingId, string $reason, string $correlationId): void
+    {
+        $userId = (int) $this->guard->id();
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'hotel_booking_cancel',
+            amount: 0,
+            ipAddress: null,
+            deviceFingerprint: null,
+            correlationId: $correlationId,
+        );
+
+        $this->db->transaction(function () use ($bookingId, $reason, $correlationId) {
+            $booking = Booking::lockForUpdate()->findOrFail($bookingId);
+
+            if (!in_array($booking->status, ['pending', 'confirmed'], true)) {
+                throw new \DomainException('Booking cannot be cancelled in status: ' . $booking->status);
+            }
+
+            $oldData = $booking->toArray();
+
+            $booking->update([
+                'status'   => 'cancelled',
+                'metadata' => array_merge($booking->metadata ?? [], [
+                    'cancel_reason'  => $reason,
+                    'cancelled_at'   => Carbon::now()->toIso8601String(),
+                ]),
+            ]);
+
+            $room = Room::findOrFail($booking->room_id);
+            $room->increment('total_stock');
+
+            if ($booking->payment_status === 'paid') {
+                $this->wallet->credit(
+                    walletId: $booking->user_id,
+                    amount: $booking->total_price,
+                    reason: 'hotel_booking_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->audit->log(
+                action: 'hotel_booking_cancelled',
+                subjectType: Booking::class,
+                subjectId: $bookingId,
+                old: $oldData,
+                new: $booking->fresh()->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Hotel booking cancelled', [
+                'booking_id'     => $bookingId,
+                'reason'         => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
+
+    /**
+     * Рассчитать полную стоимость проживания с учётом B2B-скидок.
+     */
+    private function calculateTotalPrice(Room $room, int $nights, bool $isB2B, ?int $contractId): int
+    {
+        $pricePerNight = $isB2B
+            ? ($room->base_price_b2b ?? $room->base_price_b2c)
+            : $room->base_price_b2c;
+
+        if ($isB2B && $contractId !== null) {
+            $contract = B2BContract::find($contractId);
+
+            if ($contract !== null && $contract->isValid()) {
+                $pricePerNight = (int) ($pricePerNight * (1 - $contract->discount_percent / 100));
+            }
         }
 
-        /**
-         * Извлечение correlation_id
-         */
-        public function getCorrelationId(): string
-        {
-            return $this->correlationId;
-        }
+        return $pricePerNight * $nights;
+    }
 }

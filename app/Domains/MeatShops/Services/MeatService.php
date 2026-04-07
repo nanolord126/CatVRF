@@ -2,19 +2,20 @@
 
 namespace App\Domains\MeatShops\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MeatService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MeatService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание заказа на мясо/мясные наборы.
@@ -24,21 +25,16 @@ final class MeatService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting - защита от спама заказами
-            if (RateLimiter::tooManyAttempts("meat:order:".auth()->id(), 3)) {
+            if ($this->rateLimiter->tooManyAttempts("meat:order:".$this->guard->id(), 3)) {
                 throw new \RuntimeException("Too many orders. Wait for cooldown.", 429);
             }
-            RateLimiter::hit("meat:order:".auth()->id(), 3600);
+            $this->rateLimiter->hit("meat:order:".$this->guard->id(), 3600);
 
-            return DB::transaction(function () use ($supplierId, $items, $correlationId) {
+            return $this->db->transaction(function () use ($supplierId, $items, $correlationId) {
                 $supplier = MeatSupplier::findOrFail($supplierId);
 
                 // 2. Fraud Check - проверка поставщика и клиента
-                $this->fraud->check([
-                    "user_id" => auth()->id(),
-                    "operation_type" => "meat_order",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["supplier_id" => $supplierId]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 $totalPrice = 0;
                 foreach ($items as $item) {
@@ -58,14 +54,14 @@ final class MeatService extends Model
                     "uuid" => (string) Str::uuid(),
                     "tenant_id" => $supplier->tenant_id,
                     "supplier_id" => $supplierId,
-                    "client_id" => auth()->id(),
+                    "client_id" => $this->guard->id(),
                     "status" => "pending_butcher", // Передано мяснику на разделку
                     "total_price_kopecks" => $totalPrice,
                     "correlation_id" => $correlationId,
                     "tags" => ["halal:yes", "fresh:premium", "vacuum_packed:yes"]
                 ]);
 
-                Log::channel("audit")->info("Meat: order sent to butcher", ["order_id" => $order->id, "total" => $totalPrice]);
+                $this->logger->info("Meat: order sent to butcher", ["order_id" => $order->id, "total" => $totalPrice]);
 
                 return $order;
             });
@@ -79,7 +75,7 @@ final class MeatService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = MeatOrder::findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $finalWeightGrams, $correlationId) {
+            $this->db->transaction(function () use ($order, $finalWeightGrams, $correlationId) {
                 // Корректировка цены по реальному весу (если отличается от планового)
                 $product = MeatProduct::find($order->product_id);
                 $finalPrice = $finalWeightGrams * ($product->price_per_gram ?? 0);
@@ -99,7 +95,7 @@ final class MeatService extends Model
                     sourceId: $order->id
                 );
 
-                Log::channel("audit")->info("Meat: order weighed and ready", ["order_id" => $order->id, "weight" => $finalWeightGrams]);
+                $this->logger->info("Meat: order weighed and ready", ["order_id" => $order->id, "weight" => $finalWeightGrams]);
             });
         }
 
@@ -111,7 +107,7 @@ final class MeatService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = MeatOrder::with("supplier")->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $total = $order->total_price_kopecks;
                 $fee = (int) ($total * 0.14);
                 $payout = $total - $fee;
@@ -124,9 +120,7 @@ final class MeatService extends Model
                     correlationId: $correlationId
                 );
 
-                $order->update(["status" => "completed", "payout_released_at" => now()]);
-
-                Log::channel("audit")->info("Meat: final payout", ["order_id" => $order->id, "payout" => $payout]);
+                $order->update(["status" => "completed", \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["order_id" => $order->id, "payout" => $payout]);
             });
         }
 }

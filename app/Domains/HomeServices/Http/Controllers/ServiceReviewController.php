@@ -2,18 +2,16 @@
 
 namespace App\Domains\HomeServices\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ServiceReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final readonly class ServiceReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private ReviewService $reviewService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private ReviewService $reviewService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function byContractor(int $contractorId): JsonResponse
         {
@@ -23,9 +21,9 @@ final class ServiceReviewController extends Model
                     ->with(['reviewer', 'job'])
                     ->paginate(10);
 
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
             }
         }
 
@@ -37,32 +35,32 @@ final class ServiceReviewController extends Model
                     ->with(['reviewer'])
                     ->paginate(10);
 
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
             }
         }
 
         public function myReviews(): JsonResponse
         {
             try {
-                $reviews = ServiceReview::where('reviewer_id', auth()->id())
+                $reviews = ServiceReview::where('reviewer_id', $request->user()?->id)
                     ->with(['contractor', 'job'])
                     ->paginate(10);
 
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch reviews'], 500);
             }
         }
 
         public function store(): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'contractor_id' => 'required|integer|exists:contractors,id',
                     'rating' => 'required|integer|min:1|max:5',
                     'title' => 'required|string|max:255',
@@ -70,9 +68,9 @@ final class ServiceReviewController extends Model
                     'job_id' => 'nullable|integer|exists:service_jobs,id',
                 ]);
 
-                $review = \DB::transaction(fn() => $this->reviewService->createReview(
+                $review = $this->db->transaction(fn() => $this->reviewService->createReview(
                     $validated['contractor_id'],
-                    auth()->id(),
+                    $request->user()?->id,
                     $validated['rating'],
                     $validated['title'],
                     $validated['content'],
@@ -80,36 +78,36 @@ final class ServiceReviewController extends Model
                     $correlationId
                 ));
 
-                Log::channel('audit')->info('HomeService review created', [
+                $this->logger->info('HomeService review created', [
                     'correlation_id' => $correlationId,
                     'review_id'      => $review->id ?? null,
                     'contractor_id'  => $validated['contractor_id'],
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'rating'         => $validated['rating'],
                 ]);
 
-                return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to submit review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to submit review'], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $review = ServiceReview::findOrFail($id);
                 $this->authorize('update', $review);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'sometimes|integer|min:1|max:5',
                     'title' => 'sometimes|string',
                     'content' => 'sometimes|string',
                 ]);
 
-                $review = \DB::transaction(fn() => $this->reviewService->updateReview(
+                $review = $this->db->transaction(fn() => $this->reviewService->updateReview(
                     $review,
                     $validated['rating'] ?? $review->rating,
                     $validated['title'] ?? $review->title,
@@ -117,9 +115,9 @@ final class ServiceReviewController extends Model
                     $correlationId
                 ));
 
-                return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to update review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to update review'], 500);
             }
         }
 
@@ -131,9 +129,9 @@ final class ServiceReviewController extends Model
 
                 $review->delete();
 
-                return response()->json(['success' => true, 'message' => 'Review deleted', 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Review deleted', 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to delete review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to delete review'], 500);
             }
         }
 }

@@ -2,90 +2,60 @@
 
 namespace App\Filament\Tenant\Resources\Party\PartyOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListPartyOrders extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use App\Filament\Tenant\Resources\Party\PartyOrderResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class ListPartyOrders
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Party\PartyOrderResource\Pages
+ */
+final class ListPartyOrders extends ListRecords
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static ?string $resource = PartyOrderResource::class;
+    protected static string $resource = PartyOrderResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                CreateAction::make()
-                    ->label('New Order')
-                    ->icon('heroicon-o-shopping-cart'),
-            ];
-        }
-
-        protected function getTableQuery(): Builder
-        {
-            $query = parent::getTableQuery();
-
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-
-            return $query;
-        }
-
-        public function mount(): void
-        {
-            parent::mount();
-
-            Log::channel('audit')->info('PartyOrder registry viewed', [
-                'tenant_id' => tenant()->id ?? null,
-                'user_id' => auth()->id() ?? null,
-            ]);
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('New Order')
+                ->icon('heroicon-o-shopping-cart'),
+        ];
     }
 
-    /**
-     * CreatePartyOrder Page.
-     */
-    final class CreatePartyOrder extends \Filament\Resources\Pages\CreateRecord
+    protected function getTableQuery(): Builder
     {
-        protected static ?string $resource = PartyOrderResource::class;
+        $query = parent::getTableQuery();
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['tenant_id'] = tenant()->id ?? null;
-            $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
-            return $data;
+        if (function_exists('tenant') && tenant()) {
+            $query->where('tenant_id', tenant()->id);
         }
 
-        protected function afterCreate(): void
-        {
-            Log::channel('audit')->info('New PartyOrder created', [
-                'order_id' => $this->record->id,
-                'event_date' => $this->record->event_date,
-                'correlation_id' => $this->record->correlation_id,
-            ]);
-        }
+        return $query;
     }
 
-    /**
-     * EditPartyOrder Page.
-     */
-    final class EditPartyOrder extends \Filament\Resources\Pages\EditRecord
+    public function mount(): void
     {
-        protected static ?string $resource = PartyOrderResource::class;
+        parent::mount();
 
-        protected function mutateFormDataBeforeSave(array $data): array
-        {
-            $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
-            return $data;
-        }
-
-        protected function afterSave(): void
-        {
-            Log::channel('audit')->info('PartyOrder updated', [
-                'order_id' => $this->record->id,
-                'status' => $this->record->status,
-                'correlation_id' => $this->record->correlation_id,
-            ]);
-        }
+        $this->logger->info('PartyOrder registry viewed', [
+            'tenant_id' => tenant()->id ?? null,
+            'user_id' => $this->guard->id() ?? null,
+        ]);
+    }
 }

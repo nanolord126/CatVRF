@@ -1,21 +1,186 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\ConstructionAndRepair\AdvancedManufacturing\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\ConstructionAndRepair\AdvancedManufacturing\Models\ManufacturingProject;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Carbon;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class AdvancedManufacturingService extends Model
+final readonly class AdvancedManufacturingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createProject(int $engineerId,$projectType,$hoursSpent,$dueDate,string $correlationId=""):ManufacturingProject{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("mfg:proj:".auth()->id(),15))throw new \RuntimeException("Too many",429);RateLimiter::hit("mfg:proj:".auth()->id(),3600);
-    return DB::transaction(function()use($engineerId,$projectType,$hoursSpent,$dueDate,$correlationId){$e=ManufacturingEngineer::findOrFail($engineerId);$total=(int)($e->price_kopecks_per_hour*$hoursSpent);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'mfg','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$p=ManufacturingProject::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'engineer_id'=>$engineerId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','project_type'=>$projectType,'hours_spent'=>$hoursSpent,'due_date'=>$dueDate,'tags'=>['mfg'=>true]]);Log::channel('audit')->info('Manufacturing project created',['project_id'=>$p->id,'correlation_id'=>$correlationId]);return $p;});
+    public function createProject(
+        int $engineerId,
+        string $projectType,
+        int $hoursSpent,
+        string $dueDate,
+        string $correlationId = '',
+    ): ManufacturingProject {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $guardId = $this->guard->id() ?? 0;
+
+        if ($this->rateLimiter->tooManyAttempts('mfg:proj:' . $guardId, 15)) {
+            throw new \RuntimeException('Too many attempts', 429);
+        }
+        $this->rateLimiter->hit('mfg:proj:' . $guardId, 3600);
+
+        return $this->db->transaction(function () use ($engineerId, $projectType, $hoursSpent, $dueDate, $correlationId, $guardId) {
+            $this->fraud->check(
+                userId: $guardId,
+                operationType: 'mfg',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $total = $hoursSpent * 500_00;
+            $payoutKopecks = $total - (int) ($total * 0.14);
+
+            $project = ManufacturingProject::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => tenant()->id,
+                'engineer_id' => $engineerId,
+                'client_id' => $guardId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'project_type' => $projectType,
+                'hours_spent' => $hoursSpent,
+                'due_date' => $dueDate,
+                'tags' => ['mfg' => true],
+            ]);
+
+            $this->logger->info('Manufacturing project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeProject(int $projectId,string $correlationId=""):ManufacturingProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=ManufacturingProject::findOrFail($projectId);if($p->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$p->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$p->payout_kopecks,'mfg_payout',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Manufacturing project completed',['project_id'=>$p->id]);return $p;});}
-    public function cancelProject(int $projectId,string $correlationId=""):ManufacturingProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=ManufacturingProject::findOrFail($projectId);if($p->status==='completed')throw new \RuntimeException("Cannot cancel",400);$p->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($p->payment_status==='completed')$this->wallet->credit(tenant()->id,$p->total_kopecks,'mfg_refund',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Manufacturing project cancelled',['project_id'=>$p->id]);return $p;});}
-    public function getProject(int $projectId):ManufacturingProject{return ManufacturingProject::findOrFail($projectId);}
-    public function getUserProjects(int $clientId){return ManufacturingProject::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): ManufacturingProject
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId) {
+            $project = ManufacturingProject::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Payment not completed', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'manufacturing_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Manufacturing project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): ManufacturingProject
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId) {
+            $project = ManufacturingProject::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed project', 400);
+            }
+
+            $previousPaymentStatus = $project->payment_status;
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousPaymentStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'manufacturing_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('Manufacturing project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): ManufacturingProject
+    {
+        return ManufacturingProject::findOrFail($projectId);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, ManufacturingProject>
+     */
+    public function getUserProjects(int $clientId): \Illuminate\Database\Eloquent\Collection
+    {
+        return ManufacturingProject::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
+
+    private const VERSION = '1.0.0';
+
+    private const MAX_RETRIES = 3;
+
+    private const CACHE_TTL = 3600;
+
+    private function getComponentIdentifier(): string
+    {
+        return static::class . '@' . self::VERSION;
+    }
+
+    private function handleError(\Throwable $exception, int $attempt = 1): bool
+    {
+        if ($attempt >= self::MAX_RETRIES) {
+            return false;
+        }
+
+        return true;
+    }
 }

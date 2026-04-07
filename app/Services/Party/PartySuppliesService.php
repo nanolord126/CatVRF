@@ -2,19 +2,37 @@
 
 namespace App\Services\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PartySuppliesService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use App\Models\Party\PartyProduct;
+use App\Models\Party\PartyOrder;
+use App\Models\Party\PartyTheme;
+use Illuminate\Database\Eloquent\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class PartySuppliesService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraudControl,
+        private readonly Request $request,
+            private FraudControlService $fraud,
             private WalletService $wallet,
-            private string $correlationId
-        ) {}
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        }
 
         /**
          * Get active products filtered by seasonal theme and category.
@@ -43,18 +61,18 @@ final class PartySuppliesService extends Model
          */
         public function createOrder(array $data): PartyOrder
         {
-            Log::channel('audit')->info('Initializing PartyOrder creation', [
-                'correlation_id' => $this->correlationId,
+            $this->logger->channel('audit')->info('Initializing PartyOrder creation', [
+                'correlation_id' => $this->correlationId(),
                 'user_id' => $data['user_id'] ?? null,
                 'store_id' => $data['party_store_id'],
             ]);
 
-            return DB::transaction(function () use ($data) {
-                $this->fraudControl->check($data);
+            return $this->db->transaction(function () use ($data) {
+                $this->fraud->check((int) $this->guard->id(), 'party_order_create', $this->request->ip());
 
                 $order = new PartyOrder();
                 $order->fill($data);
-                $order->correlation_id = $this->correlationId;
+                $order->correlation_id = $this->correlationId();
                 $order->status = 'pending';
                 $order->payment_status = 'unpaid';
 
@@ -74,9 +92,9 @@ final class PartySuppliesService extends Model
 
                 $order->save();
 
-                Log::channel('audit')->info('Order successfully created', [
+                $this->logger->channel('audit')->info('Order successfully created', [
                     'order_uuid' => $order->uuid,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $order;
@@ -88,7 +106,7 @@ final class PartySuppliesService extends Model
          */
         public function processPayment(int $orderId, int $amountCents): bool
         {
-            return DB::transaction(function () use ($orderId, $amountCents) {
+            return $this->db->transaction(function () use ($orderId, $amountCents) {
                 $order = PartyOrder::lockForUpdate()->findOrFail($orderId);
 
                 if ($order->payment_status === 'paid') {
@@ -96,29 +114,15 @@ final class PartySuppliesService extends Model
                 }
 
                 // Credit wallet if payment is successful (simulation)
-                $this->wallet->credit($order->party_store_id, $amountCents, 'order_payment', $this->correlationId);
+                $this->wallet->credit($order->party_store_id, $amountCents, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $this->correlationId(), null, null, ['order_id' => $order->id]);
 
-                $order->payment_status = $amountCents >= $order->total_cents ? 'paid' : 'partially_paid';
-                $order->save();
+                $order->update([
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                    'correlation_id' => $this->correlationId(),
+                ]);
 
                 return true;
             });
-        }
-
-        /**
-         * Get seasonal themes available now.
-         */
-        public function getActiveThemes(): Collection
-        {
-            $now = now();
-            return PartyTheme::where('is_active', true)
-                ->where(function ($query) use ($now) {
-                    $query->where('is_seasonal', false)
-                        ->orWhere(function ($q) use ($now) {
-                            $q->whereDate('season_start', '<=', $now)
-                              ->whereDate('season_end', '>=', $now);
-                        });
-                })
-                ->get();
         }
 }

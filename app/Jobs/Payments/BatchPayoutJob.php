@@ -7,9 +7,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 final class BatchPayoutJob implements ShouldQueue
 {
@@ -17,7 +19,10 @@ final class BatchPayoutJob implements ShouldQueue
 
     private string $correlationId;
 
-    public function __construct()
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
     {
         $this->correlationId = Str::uuid()->toString();
         $this->onQueue('payouts');
@@ -36,8 +41,8 @@ final class BatchPayoutJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            DB::transaction(function () {
-                $pendingBatchPayouts = DB::table('payment_transactions')
+            $this->db->transaction(function () {
+                $pendingBatchPayouts = $this->db->table('payment_transactions')
                     ->where('status', 'pending_batch')
                     ->where('tenant_id', filament()->getTenant()->id)
                     ->orderBy('created_at')
@@ -48,7 +53,7 @@ final class BatchPayoutJob implements ShouldQueue
                     try {
                         $this->processSinglePayout($payout);
 
-                        Log::channel('audit')->info('Batch payout processed', [
+                        $this->logger->channel('audit')->info('Batch payout processed', [
                             'correlation_id' => $this->correlationId,
                             'payment_transaction_id' => $payout->id,
                             'amount' => $payout->amount,
@@ -56,22 +61,22 @@ final class BatchPayoutJob implements ShouldQueue
                         ]);
                     } catch (\Exception $e) {
                         if ($payout->retry_count < 3) {
-                            DB::table('payment_transactions')
+                            $this->db->table('payment_transactions')
                                 ->where('id', $payout->id)
                                 ->increment('retry_count');
 
-                            Log::channel('audit')->warning('Batch payout retry scheduled', [
+                            $this->logger->channel('audit')->warning('Batch payout retry scheduled', [
                                 'correlation_id' => $this->correlationId,
                                 'payment_transaction_id' => $payout->id,
                                 'retry_count' => $payout->retry_count + 1,
                                 'error' => $e->getMessage(),
                             ]);
                         } else {
-                            DB::table('payment_transactions')
+                            $this->db->table('payment_transactions')
                                 ->where('id', $payout->id)
                                 ->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
-                            Log::channel('audit')->error('Batch payout failed after retries', [
+                            $this->logger->channel('audit')->error('Batch payout failed after retries', [
                                 'correlation_id' => $this->correlationId,
                                 'payment_transaction_id' => $payout->id,
                                 'error' => $e->getMessage(),
@@ -81,7 +86,14 @@ final class BatchPayoutJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Batch payout job failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Batch payout job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

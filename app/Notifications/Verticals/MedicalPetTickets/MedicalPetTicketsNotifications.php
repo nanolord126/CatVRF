@@ -8,8 +8,8 @@ use App\Notifications\BaseSmsNotification;
 
 final class AppointmentScheduledNotification extends BaseMailableNotification
 {
-    protected string $type = 'medical.appointment.scheduled';
-    protected string $template = 'emails.medical.appointment_scheduled';
+    private string $type = 'medical.appointment.scheduled';
+    private string $template = 'emails.medical.appointment_scheduled';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -20,7 +20,7 @@ final class AppointmentScheduledNotification extends BaseMailableNotification
 
 final class DoctorChangedNotification extends BasePushNotification
 {
-    protected string $type = 'medical.doctor.changed';
+    private string $type = 'medical.doctor.changed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -35,7 +35,7 @@ final class DoctorChangedNotification extends BasePushNotification
 
 final class PrescriptionReadyNotification extends BaseSmsNotification
 {
-    protected string $type = 'medical.prescription.ready';
+    private string $type = 'medical.prescription.ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -45,8 +45,8 @@ final class PrescriptionReadyNotification extends BaseSmsNotification
 
 final class LabResultReadyNotification extends BaseMailableNotification
 {
-    protected string $type = 'medical.lab_result.ready';
-    protected string $template = 'emails.medical.lab_result_ready';
+    private string $type = 'medical.lab_result.ready';
+    private string $template = 'emails.medical.lab_result_ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -59,8 +59,8 @@ namespace App\Notifications\Verticals\MedicalPetTickets;
 
 final class ServiceBookedNotification extends BaseMailableNotification
 {
-    protected string $type = 'pet.service.booked';
-    protected string $template = 'emails.pet.service_booked';
+    private string $type = 'pet.service.booked';
+    private string $template = 'emails.pet.service_booked';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -71,7 +71,7 @@ final class ServiceBookedNotification extends BaseMailableNotification
 
 final class ServiceReminderNotification extends BaseSmsNotification
 {
-    protected string $type = 'pet.service.reminder';
+    private string $type = 'pet.service.reminder';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -81,7 +81,7 @@ final class ServiceReminderNotification extends BaseSmsNotification
 
 final class ServiceCompletedNotification extends BasePushNotification
 {
-    protected string $type = 'pet.service.completed';
+    private string $type = 'pet.service.completed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -99,8 +99,8 @@ namespace App\Notifications\Verticals\MedicalPetTickets;
 
 final class TicketPurchasedNotification extends BaseMailableNotification
 {
-    protected string $type = 'tickets.ticket.purchased';
-    protected string $template = 'emails.tickets.ticket_purchased';
+    private string $type = 'tickets.ticket.purchased';
+    private string $template = 'emails.tickets.ticket_purchased';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -111,7 +111,7 @@ final class TicketPurchasedNotification extends BaseMailableNotification
 
 final class EventReminderNotification extends BasePushNotification
 {
-    protected string $type = 'tickets.event.reminder';
+    private string $type = 'tickets.event.reminder';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -128,8 +128,8 @@ final class EventReminderNotification extends BasePushNotification
 
 final class EventCancelledNotification extends BaseMailableNotification
 {
-    protected string $type = 'tickets.event.cancelled';
-    protected string $template = 'emails.tickets.event_cancelled';
+    private string $type = 'tickets.event.cancelled';
+    private string $template = 'emails.tickets.event_cancelled';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {

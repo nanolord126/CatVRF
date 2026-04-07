@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
@@ -6,53 +8,66 @@ use App\Filament\Tenant\Resources\Beauty\BeautySalonResource;
 use App\Services\FraudControlService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * Редактирование салона красоты. Filament Page.
+ *
+ * Сервисы резолвятся через app().
+ * Нет constructor injection, нет Facades.
+ * FraudControlService::check() + correlation_id + audit-лог.
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\Pages
+ */
 final class EditBeautySalon extends EditRecord
 {
     protected static string $resource = BeautySalonResource::class;
 
     protected function beforeSave(): void
     {
+        $logger = app(LoggerInterface::class);
         $correlationId = $this->data['correlation_id'] ?? (string) Str::uuid();
+        $tenantId = filament()->getTenant()?->id;
 
-        // 1. Audit Log: Start Saving Process
-        Log::channel('audit')->info('Filament Resource: EditBeautySalon Starting', [
-            'tenant_id' => tenant('id'),
-            'id' => $this->record->id,
+        $logger->info('Filament Resource: EditBeautySalon Starting', [
+            'tenant_id'      => $tenantId,
+            'id'             => $this->record->id,
             'correlation_id' => $correlationId,
-            'data' => $this->data
+            'data'           => $this->data,
         ]);
 
-        // 2. Fraud Check (КАНОН 2026)
         try {
-            FraudControlService::check(
-                userId: auth()->id(),
-                operationType: 'update_beauty_salon',
-                correlationId: $correlationId,
+            app(FraudControlService::class)->check(
+                userId: filament()->auth()->id() ?? 0,
+                operationType: 'mutation',
                 amount: 0,
-                metadata: $this->data
+                correlationId: $correlationId,
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Fraud Check Failed: EditBeautySalon Blocked', [
-                'tenant_id' => tenant('id'),
-                'id' => $this->record->id,
+            $logger->error('Fraud Check Failed: EditBeautySalon Blocked', [
+                'tenant_id'      => $tenantId,
+                'id'             => $this->record->id,
                 'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
+                'error'          => $e->getMessage(),
             ]);
 
-            Notification::make()->title('Ошибка безопасности: Фрод-контроль')->danger()->send();
+            Notification::make()
+                ->title('Ошибка безопасности: Фрод-контроль')
+                ->danger()
+                ->send();
             $this->halt();
         }
     }
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Filament Resource: EditBeautySalon Completed', [
-            'id' => $this->record->id,
-            'tenant_id' => tenant('id'),
-            'correlation_id' => $this->record->correlation_id ?? (string) Str::uuid()
+        $logger = app(LoggerInterface::class);
+
+        $logger->info('Filament Resource: EditBeautySalon Completed', [
+            'id'             => $this->record->id,
+            'tenant_id'      => filament()->getTenant()?->id,
+            'correlation_id' => $this->record->correlation_id ?? (string) Str::uuid(),
         ]);
     }
 }

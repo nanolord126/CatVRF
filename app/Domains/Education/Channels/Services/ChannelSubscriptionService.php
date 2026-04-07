@@ -2,18 +2,22 @@
 
 namespace App\Domains\Education\Channels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ChannelSubscriptionService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class ChannelSubscriptionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly ChannelService $channelService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Подписаться на канал.
@@ -30,16 +34,16 @@ final class ChannelSubscriptionService extends Model
 
             // Rate limit: не более 20 подписок/мин
             $rateLimitKey = "channel_sub_user:{$userId}";
-            if (RateLimiter::tooManyAttempts($rateLimitKey, 20)) {
+            if ($this->rateLimiter->tooManyAttempts($rateLimitKey, 20)) {
                 throw new \RuntimeException('Слишком быстро. Подождите немного.');
             }
-            RateLimiter::hit($rateLimitKey, 60);
+            $this->rateLimiter->hit($rateLimitKey, 60);
 
             if ($channel->isArchived()) {
                 throw new \RuntimeException('Канал архивирован. Подписка недоступна.');
             }
 
-            return DB::transaction(function () use ($userId, $channel, $visibilityPreference, $correlationId): ChannelSubscriber {
+            return $this->db->transaction(function () use ($userId, $channel, $visibilityPreference, $correlationId): ChannelSubscriber {
                 $subscriber = ChannelSubscriber::where('channel_id', $channel->id)
                     ->where('user_id', $userId)
                     ->first();
@@ -49,12 +53,12 @@ final class ChannelSubscriptionService extends Model
                     if ($subscriber->unsubscribed_at !== null) {
                         $subscriber->update([
                             'unsubscribed_at'       => null,
-                            'subscribed_at'         => now(),
+                            'subscribed_at'         => Carbon::now(),
                             'visibility_preference' => $visibilityPreference,
                             'correlation_id'        => $correlationId,
                         ]);
 
-                        DB::table('business_channels')
+                        $this->db->table('business_channels')
                             ->where('id', $channel->id)
                             ->increment('subscribers_count');
                     }
@@ -67,16 +71,16 @@ final class ChannelSubscriptionService extends Model
                     'user_id'               => $userId,
                     'visibility_preference' => $visibilityPreference,
                     'correlation_id'        => $correlationId,
-                    'subscribed_at'         => now(),
+                    'subscribed_at'         => Carbon::now(),
                 ]);
 
-                DB::table('business_channels')
+                $this->db->table('business_channels')
                     ->where('id', $channel->id)
                     ->increment('subscribers_count');
 
-                Cache::forget("channel_subs:{$channel->id}");
+                cache()->forget("channel_subs:{$channel->id}");
 
-                Log::channel('audit')->info('User subscribed to channel', [
+                $this->logger->info('User subscribed to channel', [
                     'correlation_id' => $correlationId,
                     'user_id'        => $userId,
                     'channel_id'     => $channel->id,
@@ -99,20 +103,20 @@ final class ChannelSubscriptionService extends Model
         ): void {
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            DB::transaction(function () use ($userId, $channel, $correlationId): void {
+            $this->db->transaction(function () use ($userId, $channel, $correlationId): void {
                 $updated = ChannelSubscriber::where('channel_id', $channel->id)
                     ->where('user_id', $userId)
                     ->whereNull('unsubscribed_at')
-                    ->update(['unsubscribed_at' => now()]);
+                    ->update(['unsubscribed_at' => Carbon::now()]);
 
                 if ($updated > 0) {
-                    DB::table('business_channels')
+                    $this->db->table('business_channels')
                         ->where('id', $channel->id)
-                        ->decrement('subscribers_count', 1, ['subscribers_count' => DB::raw('GREATEST(subscribers_count - 1, 0)')]);
+                        ->decrement('subscribers_count', 1, ['subscribers_count' => $this->db->raw('GREATEST(subscribers_count - 1, 0)')]);
 
-                    Cache::forget("channel_subs:{$channel->id}");
+                    cache()->forget("channel_subs:{$channel->id}");
 
-                    Log::channel('audit')->info('User unsubscribed from channel', [
+                    $this->logger->info('User unsubscribed from channel', [
                         'correlation_id' => $correlationId,
                         'user_id'        => $userId,
                         'channel_id'     => $channel->id,
@@ -127,7 +131,7 @@ final class ChannelSubscriptionService extends Model
          */
         public function isSubscribed(int $userId, int $channelId): bool
         {
-            return Cache::remember(
+            return cache()->remember(
                 "is_subscribed:{$userId}:{$channelId}",
                 60,
                 fn () => ChannelSubscriber::where('channel_id', $channelId)
@@ -157,9 +161,9 @@ final class ChannelSubscriptionService extends Model
          */
         public function getSubscribersCount(BusinessChannel $channel): int
         {
-            return Cache::remember(
+            return cache()->remember(
                 "channel_subs:{$channel->id}",
-                config('channels.cache.subs_ttl', 300),
+                $this->config->get('channels.cache.subs_ttl', 300),
                 fn () => ChannelSubscriber::where('channel_id', $channel->id)
                     ->whereNull('unsubscribed_at')
                     ->count()
@@ -185,7 +189,7 @@ final class ChannelSubscriptionService extends Model
                 ->whereIn('channel_id', $subscribedChannelIds)
                 ->where('status', 'published')
                 ->whereNotNull('published_at')
-                ->where('published_at', '<=', now())
+                ->where('published_at', '<=', Carbon::now())
                 ->when($audience !== 'all', fn ($q) => $q->whereIn('visibility', [$audience, 'all']))
                 ->with(['media', 'channel:id,name,slug,avatar_url'])
                 ->orderByDesc('published_at')

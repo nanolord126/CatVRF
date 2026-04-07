@@ -2,14 +2,9 @@
 
 namespace App\Domains\Medical\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class B2BMedicalPolicy extends Model
+final class B2BMedicalPolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function viewAny(User $user): Response
         {
             return $user->is_business

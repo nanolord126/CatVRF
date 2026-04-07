@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ElectronicsProductResource extends Model
+final class ElectronicsProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ElectronicsProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cpu-chip';
@@ -129,31 +126,15 @@ final class ElectronicsProductResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronicsProduct::route('/'),
-                'create' => Pages\\CreateElectronicsProduct::route('/create'),
-                'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListElectronicsProduct::route('/'),
-                'create' => Pages\\CreateElectronicsProduct::route('/create'),
-                'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronicsProduct::route('/'),
-                'create' => Pages\\CreateElectronicsProduct::route('/create'),
-                'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
+                'index' => Pages\ListElectronicsProduct::route('/'),
+                'create' => Pages\CreateElectronicsProduct::route('/create'),
+                'edit' => Pages\EditElectronicsProduct::route('/{record}/edit'),
+                'view' => Pages\ViewElectronicsProduct::route('/{record}'),
             ];
         }
 }

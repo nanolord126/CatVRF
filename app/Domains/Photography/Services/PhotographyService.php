@@ -2,82 +2,70 @@
 
 namespace App\Domains\Photography\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotographyService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+use App\Domains\Photography\Models\Photographer;
+use App\Domains\Photography\Models\PhotoStudio;
+use Illuminate\Support\Str;
+
+final readonly class PhotographyService
 {
-    use HasFactory;
+    public function __construct(private \App\Services\FraudControlService $fraud,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Общий скоринг популярности фотографа (ML Simulation)
-         */
-        public function calculatePhotographerScore(int $photographerId): float
-        {
-            $photographer = Photographer::findOrFail($photographerId);
+     * Общий скоринг популярности фотографа (ML Simulation)
+     */
+    public function calculatePhotographerScore(int $photographerId): float
+    {
+        $photographer = Photographer::findOrFail($photographerId);
 
-            // ML-like scoring based on experience and bookings count (60 lines target)
-            $experienceWeight = 0.4;
-            $ratingWeight = 0.4;
-            $availabilityWeight = 0.2;
+        $experienceWeight = 0.4;
+        $ratingWeight = 0.4;
+        $availabilityWeight = 0.2;
 
-            $baseScore = $photographer->experience_years * $experienceWeight;
+        $baseScore = $photographer->experience_years * $experienceWeight;
+        $ratingScore = 5.0 * $ratingWeight;
+        $availabilityScore = $photographer->is_available ? 1.0 * $availabilityWeight : 0;
 
-            // Mocking complexity for 60 lines
-            $ratingScore = 5.0 * $ratingWeight;
-            $availabilityScore = $photographer->is_available ? 1.0 * $availabilityWeight : 0;
+        $totalScore = $baseScore + $ratingScore + $availabilityScore;
 
-            $totalScore = $baseScore + $ratingScore + $availabilityScore;
+        $this->logger->info('Photographer score recalculated', [
+            'photographer_id' => $photographerId,
+            'experience' => $photographer->experience_years,
+            'total_score' => $totalScore,
+            'correlation_id' => $this->request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
 
-            Log::channel('audit')->info('Photographer score recalculated', [
-                'photographer_id' => $photographerId,
-                'experience' => $photographer->experience_years,
-                'total_score' => $totalScore
-            ]);
+        return $totalScore;
+    }
 
-            return min(5.0, (float)$totalScore);
-        }
+    /**
+     * Проверка доступности студии (с учетом бронирований)
+     */
+    public function isStudioAvailable(int $studioId, string $startsAt, string $endsAt): bool
+    {
+        $studio = PhotoStudio::findOrFail($studioId);
 
-        /**
-         * Проверка доступности студии (с учетом бронирований)
-         */
-        public function isStudioAvailable(int $studioId, string $startsAt, string $endsAt): bool
-        {
-            try {
-                $studio = PhotoStudio::findOrFail($studioId);
+        $overlapCount = $this->db->table('photography_bookings')
+            ->where('studio_id', $studioId)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($startsAt, $endsAt) {
+                $q->whereBetween('starts_at', [$startsAt, $endsAt])
+                  ->orWhereBetween('ends_at', [$startsAt, $endsAt]);
+            })
+            ->count();
 
-                // Check for overlapping bookings via database query
-                $overlapCount = DB::table('photography_bookings')
-                    ->where('studio_id', $studioId)
-                    ->where('status', '!=', 'cancelled')
-                    ->where(function($query) use ($startsAt, $endsAt) {
-                        $query->where(function($q) use ($startsAt, $endsAt) {
-                            $q->where('starts_at', '>=', $startsAt)
-                              ->where('starts_at', '<', $endsAt);
-                        })->orWhere(function($q) use ($startsAt, $endsAt) {
-                            $q->where('ends_at', '>', $startsAt)
-                              ->where('ends_at', '<=', $endsAt);
-                        });
-                    })->count();
+        $this->logger->info('Studio availability checked', [
+            'studio_id' => $studioId,
+            'available' => $overlapCount === 0,
+            'correlation_id' => $this->request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
 
-                $isAvailable = $overlapCount === 0;
-
-                Log::channel('audit')->info('Studio availability check', [
-                    'studio_id' => $studioId,
-                    'starts' => $startsAt,
-                    'ends' => $endsAt,
-                    'is_available' => $isAvailable
-                ]);
-
-                return $isAvailable;
-
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to check studio availability', [
-                    'studio_id' => $studioId,
-                    'error' => $e->getMessage()
-                ]);
-                return false;
-            }
-        }
+        return $overlapCount === 0;
+    }
 }

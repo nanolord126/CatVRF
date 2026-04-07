@@ -2,33 +2,47 @@
 
 namespace App\Domains\Sports\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SportVenueService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+/**
+ * Class SportVenueService
+ *
+ * Part of the Sports vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Domains\Sports\Services
+ */
+final readonly class SportVenueService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+    public function __construct(private FraudControlService $fraud,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createVenue(array $data, int $tenantId, string $correlationId): SportVenue
         {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $correlationId = $correlationId ?: Str::uuid()->toString();
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'sports_venue_create',
+                amount: 0,
+                correlationId: $correlationId
             );
-    DB::transaction(function () use ($data, $tenantId, $correlationId) {
-                Log::channel('audit')->info('Creating sport venue', [
+
+            return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+                $this->logger->info('Creating sport venue', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                 ]);

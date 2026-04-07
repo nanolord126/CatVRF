@@ -2,14 +2,18 @@
 
 namespace App\Domains\Veterinary\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 final class PetVaccination extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'pet_vaccinations';
@@ -38,14 +42,14 @@ final class PetVaccination extends Model
         {
             static::creating(function (PetVaccination $model) {
                 $model->uuid = (string) Str::uuid();
-                if (auth()->check() && !$model->tenant_id) {
-                    $model->tenant_id = auth()->user()->tenant_id;
+                if (function_exists('tenant') && tenant() && !$model->tenant_id) {
+                    $model->tenant_id = tenant()->id;
                 }
             });
 
-            static::addGlobalScope('tenant_id', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+            static::addGlobalScope('tenant_id', function (Builder $builder) {
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
         }

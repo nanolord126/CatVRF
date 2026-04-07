@@ -2,20 +2,18 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeCatalogService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class VapeCatalogService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP.
          */
-        public function __construct(
-            private FraudControlService $fraud,
-        ) {}
+        public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать новый бренд в вертикали Vapes.
@@ -25,13 +23,9 @@ final class VapeCatalogService extends Model
             $correlationId ??= (string) Str::uuid();
 
             // 1. Fraud Check бренда
-            $this->fraud->check([
-                'operation' => 'vape_brand_create',
-                'params' => $params,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vape_brand_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($params, $correlationId) {
+            return $this->db->transaction(function () use ($params, $correlationId) {
 
                 $brand = VapeBrand::create([
                     'name' => $params['name'],
@@ -42,7 +36,7 @@ final class VapeCatalogService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Vape brand created', [
+                $this->logger->info('Vape brand created', [
                     'brand_id' => $brand->id,
                     'name' => $brand->name,
                     'correlation_id' => $correlationId,
@@ -60,13 +54,9 @@ final class VapeCatalogService extends Model
             $correlationId ??= (string) Str::uuid();
 
             // 2. Fraud Check устройства
-            $this->fraud->check([
-                'operation' => 'vape_device_create',
-                'params' => $params,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vape_device_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($params, $correlationId) {
+            return $this->db->transaction(function () use ($params, $correlationId) {
 
                 $device = VapeDevice::create([
                     'vape_brand_id' => $params['vape_brand_id'],
@@ -81,7 +71,7 @@ final class VapeCatalogService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Vape device created', [
+                $this->logger->info('Vape device created', [
                     'device_id' => $device->id,
                     'device_name' => $device->name,
                     'correlation_id' => $correlationId,
@@ -99,13 +89,9 @@ final class VapeCatalogService extends Model
             $correlationId ??= (string) Str::uuid();
 
             // 3. Fraud Check жидкости
-            $this->fraud->check([
-                'operation' => 'vape_liquid_create',
-                'params' => $params,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vape_liquid_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($params, $correlationId) {
+            return $this->db->transaction(function () use ($params, $correlationId) {
 
                 $liquid = VapeLiquid::create([
                     'vape_brand_id' => $params['vape_brand_id'],
@@ -121,7 +107,7 @@ final class VapeCatalogService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Vape liquid created', [
+                $this->logger->info('Vape liquid created', [
                     'liquid_id' => $liquid->id,
                     'liquid_name' => $liquid->name,
                     'correlation_id' => $correlationId,

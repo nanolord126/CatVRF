@@ -2,22 +2,29 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIArtConstructorService extends Model
+use Illuminate\Http\Request;
+use App\Domains\Art\Models\Artwork;
+use App\Services\Inventory\InventoryManagementService;
+use App\Services\RecommendationService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class AIArtConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly \OpenAI\Client $openai, // Using standard OpenAI through Laravel Facade or Service Provider
-            private readonly RecommendationService $recommendation,
-            private readonly InventoryManagementService $inventory,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private \OpenAI\Client $openai,
+        private RecommendationService $recommendation,
+        private InventoryManagementService $inventory,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Analyze an interior photo and match it with available artworks.
@@ -25,10 +32,12 @@ final class AIArtConstructorService extends Model
          */
         public function analyzeInteriorPhoto(UploadedFile $photo, int $userId): array
         {
-            Log::channel('audit')->info('AI Art analysis started', [
+            $correlationId = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+            $this->logger->channel('audit')->info('AI Art analysis started', [
                 'user_id' => $userId,
                 'filename' => $photo->getClientOriginalName(),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
             ]);
 
             try {
@@ -39,19 +48,19 @@ final class AIArtConstructorService extends Model
                 $recommendations = $this->getArtRecommendations($analysis, $userId);
 
                 // 3. Save design construction to profile
-                $this->saveAIConstructionToProfile($userId, $analysis, $recommendations);
+                $this->saveAIConstructionToProfile($userId, $analysis, $recommendations, $correlationId);
 
                 return [
                     'success' => true,
                     'analysis' => $analysis,
                     'recommendations' => $recommendations,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Art analysis failed', [
+                $this->logger->channel('audit')->error('AI Art analysis failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 throw $e;
@@ -99,16 +108,16 @@ final class AIArtConstructorService extends Model
         /**
          * Record a historical trace for user analytics.
          */
-        private function saveAIConstructionToProfile(int $userId, array $analysis, Collection $recommendations): void
+        private function saveAIConstructionToProfile(int $userId, array $analysis, Collection $recommendations, string $correlationId): void
         {
-            \Illuminate\Support\Facades\DB::table('user_ai_designs')->insert([
+            $this->db->table('user_ai_designs')->insert([
                 'user_id' => $userId,
                 'vertical' => 'art',
                 'design_data' => json_encode([
                     'analysis' => $analysis,
                     'recommendations' => $recommendations->toArray(),
                 ]),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

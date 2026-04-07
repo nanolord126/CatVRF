@@ -19,7 +19,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique()->index();
             $table->string('name');
             $table->text('address')->nullable();
-            $table->point('geo_point')->nullable()->spatialIndex();
+            $table->geometry('geo_point')->nullable()->spatialIndex();
             $table->json('schedule')->comment('Operating hours: {"Mon": "10:00-19:00", ...}');
             $table->float('rating', 3, 2)->default(0);
             $table->integer('review_count')->default(0);
@@ -167,3 +167,5 @@ return new class extends Migration
         Schema::dropIfExists('beauty_salons');
     }
 };
+
+

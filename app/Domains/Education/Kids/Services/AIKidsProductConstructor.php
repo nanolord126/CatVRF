@@ -2,20 +2,16 @@
 
 namespace App\Domains\Education\Kids\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIKidsProductConstructor extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIKidsProductConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param Client $openai
          */
         public function __construct(
-            private Client $openai,
-        ) {}
+            private Client $openai, private readonly LoggerInterface $logger) {}
 
         /**
          * Build a personalized toy collection based on age and budget.
@@ -29,8 +25,8 @@ final class AIKidsProductConstructor extends Model
         ): Collection {
             $cacheKey = "kids_recommendations:age_{$ageMonths}:budget_{$budgetKopecks}:pref_{$preference}";
 
-            return Cache::remember($cacheKey, 3600, function () use ($ageMonths, $budgetKopecks, $preference, $correlationId) {
-                Log::channel('audit')->info('AI Product Recommendation started', [
+            return cache()->remember($cacheKey, 3600, function () use ($ageMonths, $budgetKopecks, $preference, $correlationId) {
+                $this->logger->info('AI Product Recommendation started', [
                     'age' => $ageMonths,
                     'budget' => $budgetKopecks,
                     'correlation_id' => $correlationId
@@ -62,7 +58,7 @@ final class AIKidsProductConstructor extends Model
 
                 $resultIds = json_decode($response->choices[0]->message->content, true)['ids'] ?? [];
 
-                Log::channel('audit')->info('AI Product Recommendation finished', [
+                $this->logger->info('AI Product Recommendation finished', [
                     'ids' => $resultIds,
                     'correlation_id' => $correlationId
                 ]);

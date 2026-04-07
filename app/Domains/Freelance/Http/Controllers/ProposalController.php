@@ -2,45 +2,43 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProposalController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ProposalController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ProposalService $proposalService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $proposal = $this->proposalService->submitProposal(
                     jobId: $request->input('job_id'),
-                    freelancerId: auth()->user()->freelancer->id ?? 0,
+                    freelancerId: $request->user()->freelancer->id ?? 0,
                     data: $request->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']),
                     correlationId: $correlationId,
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $proposal,
                     'correlation_id' => $correlationId,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error submitting proposal', [
-                    'freelancer_id' => auth()->user()->freelancer->id ?? null,
+            } catch (\Throwable $e) {
+                $this->logger->error('Error submitting proposal', [
+                    'freelancer_id' => $request->user()->freelancer->id ?? null,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to submit proposal',
                     'correlation_id' => Str::uuid(),
@@ -51,7 +49,7 @@ final class ProposalController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $proposal = FreelanceProposal::findOrFail($id);
@@ -60,24 +58,24 @@ final class ProposalController extends Model
 
                 $proposal->update($request->only(['proposed_amount', 'estimated_days', 'proposal_text']));
 
-                Log::channel('audit')->info('Proposal updated', [
+                $this->logger->info('Proposal updated', [
                     'proposal_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $proposal,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error updating proposal', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error updating proposal', [
                     'proposal_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update proposal',
                     'correlation_id' => Str::uuid(),
@@ -88,7 +86,7 @@ final class ProposalController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $proposal = FreelanceProposal::findOrFail($id);
@@ -97,18 +95,18 @@ final class ProposalController extends Model
 
                 $this->proposalService->withdrawProposal($id, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error deleting proposal', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error deleting proposal', [
                     'proposal_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete proposal',
                     'correlation_id' => Str::uuid(),
@@ -126,19 +124,19 @@ final class ProposalController extends Model
 
                 $contract = $this->proposalService->acceptProposal($id, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $contract,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error accepting proposal', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error accepting proposal', [
                     'proposal_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to accept proposal',
                     'correlation_id' => Str::uuid(),
@@ -156,18 +154,18 @@ final class ProposalController extends Model
 
                 $this->proposalService->rejectProposal($id, null, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error rejecting proposal', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error rejecting proposal', [
                     'proposal_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to reject proposal',
                     'correlation_id' => Str::uuid(),
@@ -179,21 +177,21 @@ final class ProposalController extends Model
         {
             try {
                 $proposals = FreelanceProposal::whereHas('freelancer', function ($q) {
-                    $q->where('user_id', auth()->id());
+                    $q->where('user_id', $request->user()?->id);
                 })->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $proposals,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing my proposals', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing my proposals', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list proposals',
                     'correlation_id' => Str::uuid(),
@@ -206,19 +204,19 @@ final class ProposalController extends Model
             try {
                 $proposals = FreelanceProposal::where('job_id', $jobId)->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $proposals,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing job proposals', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing job proposals', [
                     'job_id' => $jobId,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list proposals',
                     'correlation_id' => Str::uuid(),

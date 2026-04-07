@@ -2,19 +2,22 @@
 
 namespace App\Domains\Logistics\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Shipment extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'shipments';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'business_group_id',
             'courier_service_id',
@@ -49,11 +52,11 @@ final class Shipment extends Model
             'cancelled_at' => 'datetime',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check()) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }

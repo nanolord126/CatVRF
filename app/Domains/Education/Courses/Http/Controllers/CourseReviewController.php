@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Courses\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CourseReviewController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CourseReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function indexByCourse(int $id): JsonResponse
         {
@@ -23,16 +23,17 @@ final class CourseReviewController extends Model
                     ->orderByDesc('published_at')
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list course reviews', [
+                $this->logger->error('Failed to list course reviews', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list course reviews',
                 ], 500);
@@ -41,22 +42,15 @@ final class CourseReviewController extends Model
 
         public function store(int $courseId): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -66,10 +60,10 @@ final class CourseReviewController extends Model
             try {
                 $course = Course::findOrFail($courseId);
                 $enrollment = Enrollment::where('course_id', $courseId)
-                    ->where('student_id', auth()->id())
+                    ->where('student_id', $request->user()?->id)
                     ->firstOrFail();
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'required|integer|min:1|max:5',
                     'title' => 'required|string|max:255',
                     'content' => 'required|string|max:2000',
@@ -77,17 +71,17 @@ final class CourseReviewController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                $review = DB::transaction(function () use ($course, $enrollment, $validated, $courseId, $correlationId) {
+                $review = $this->db->transaction(function () use ($course, $enrollment, $validated, $courseId, $correlationId) {
                     $review = CourseReview::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'course_id' => $courseId,
-                        'student_id' => auth()->id(),
+                        'student_id' => $request->user()?->id,
                         'enrollment_id' => $enrollment->id,
                         'rating' => $validated['rating'],
                         'title' => $validated['title'],
                         'content' => $validated['content'],
                         'verified_purchase' => true,
-                        'published_at' => now(),
+                        'published_at' => Carbon::now(),
                         'correlation_id' => $correlationId,
                     ]);
 
@@ -101,21 +95,22 @@ final class CourseReviewController extends Model
                     return $review;
                 });
 
-                \Log::channel('audit')->info('Review created', [
+                $this->logger->info('Review created', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create review', [
+                $this->logger->error('Failed to create review', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create review',
                 ], 500);
@@ -125,20 +120,21 @@ final class CourseReviewController extends Model
         public function myReviews(): JsonResponse
         {
             try {
-                $reviews = CourseReview::where('student_id', auth()->id())
+                $reviews = CourseReview::where('student_id', $request->user()?->id)
                     ->with(['course'])
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list my reviews', [
+                $this->logger->error('Failed to list my reviews', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list my reviews',
                 ], 500);
@@ -147,22 +143,15 @@ final class CourseReviewController extends Model
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -173,7 +162,7 @@ final class CourseReviewController extends Model
                 $review = CourseReview::findOrFail($id);
                 $this->authorize('update', $review);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'rating' => 'sometimes|integer|min:1|max:5',
                     'title' => 'sometimes|string|max:255',
                     'content' => 'sometimes|string|max:2000',
@@ -182,21 +171,22 @@ final class CourseReviewController extends Model
                 $correlationId = Str::uuid()->toString();
                 $review->update($validated + ['correlation_id' => $correlationId]);
 
-                \Log::channel('audit')->info('Review updated', [
+                $this->logger->info('Review updated', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update review', [
+                $this->logger->error('Failed to update review', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update review',
                 ], 500);
@@ -212,21 +202,22 @@ final class CourseReviewController extends Model
                 $correlationId = Str::uuid()->toString();
                 $review->delete();
 
-                \Log::channel('audit')->info('Review deleted', [
+                $this->logger->info('Review deleted', [
                     'review_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Review deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to delete review', [
+                $this->logger->error('Failed to delete review', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete review',
                 ], 500);

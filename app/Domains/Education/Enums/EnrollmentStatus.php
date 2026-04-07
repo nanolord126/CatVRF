@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ *  — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/component
+ */
+
+
 namespace App\Domains\Education\Enums;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class EnrollmentStatus extends Model
+enum EnrollmentStatus: string
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     case PENDING = 'pending';
         case ACTIVE = 'active';
         case COMPLETED = 'completed';

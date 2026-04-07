@@ -4,12 +4,13 @@ namespace App\Domains\WeddingPlanning\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class WeddingBooking extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'wedding_bookings';
 
         protected $fillable = [

@@ -2,17 +2,15 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FreelancerController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FreelancerController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -21,18 +19,18 @@ final class FreelancerController extends Model
                     ->where('is_verified', true)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $freelancers,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing freelancers', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing freelancers', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list freelancers',
                     'correlation_id' => Str::uuid(),
@@ -45,19 +43,19 @@ final class FreelancerController extends Model
             try {
                 $freelancer = Freelancer::with(['services', 'reviews'])->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $freelancer,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error showing freelancer', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error showing freelancer', [
                     'freelancer_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Freelancer not found',
                     'correlation_id' => Str::uuid(),
@@ -71,10 +69,10 @@ final class FreelancerController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $freelancer = Freelancer::create([
                         'tenant_id' => tenant()->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'full_name' => ($validated['full_name'] ?? null),
                         'bio' => ($validated['bio'] ?? null),
                         'hourly_rate' => ($validated['hourly_rate'] ?? null),
@@ -85,26 +83,26 @@ final class FreelancerController extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Freelancer registered', [
+                    $this->logger->info('Freelancer registered', [
                         'freelancer_id' => $freelancer->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $freelancer,
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error registering freelancer', [
-                    'user_id' => auth()->id(),
+            } catch (\Throwable $e) {
+                $this->logger->error('Error registering freelancer', [
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to register freelancer',
                     'correlation_id' => Str::uuid(),
@@ -115,7 +113,7 @@ final class FreelancerController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $freelancer = Freelancer::findOrFail($id);
@@ -123,32 +121,32 @@ final class FreelancerController extends Model
                 $this->authorize('update', $freelancer);
 
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $freelancer, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $freelancer, $correlationId) {
                     $freelancer->update($request->only([
                         'full_name', 'bio', 'hourly_rate', 'skills', 'languages',
                         'experience_years', 'portfolio_url', 'website',
                     ]));
 
-                    Log::channel('audit')->info('Freelancer updated', [
+                    $this->logger->info('Freelancer updated', [
                         'freelancer_id' => $freelancer->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $freelancer,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error updating freelancer', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error updating freelancer', [
                     'freelancer_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update freelancer',
                     'correlation_id' => Str::uuid(),
@@ -159,35 +157,35 @@ final class FreelancerController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $freelancer = Freelancer::findOrFail($id);
 
                 $this->authorize('delete', $freelancer);
 
-                return DB::transaction(function () use ($freelancer, $correlationId) {
+                return $this->db->transaction(function () use ($freelancer, $correlationId) {
                     $freelancer->delete();
 
-                    Log::channel('audit')->info('Freelancer deleted', [
+                    $this->logger->info('Freelancer deleted', [
                         'freelancer_id' => $freelancer->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error deleting freelancer', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error deleting freelancer', [
                     'freelancer_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete freelancer',
                     'correlation_id' => Str::uuid(),
@@ -203,18 +201,18 @@ final class FreelancerController extends Model
                     ->limit(20)
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $topFreelancers,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error getting top freelancers', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error getting top freelancers', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get top freelancers',
                     'correlation_id' => Str::uuid(),
@@ -228,28 +226,28 @@ final class FreelancerController extends Model
                 $correlationId = Str::uuid()->toString();
                 $freelancer = Freelancer::findOrFail($id);
 
-                return DB::transaction(function () use ($freelancer, $correlationId) {
+                return $this->db->transaction(function () use ($freelancer, $correlationId) {
                     $freelancer->update(['is_verified' => true]);
 
-                    Log::channel('audit')->info('Freelancer verified by admin', [
+                    $this->logger->info('Freelancer verified by admin', [
                         'freelancer_id' => $freelancer->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $freelancer,
                         'correlation_id' => $correlationId,
                     ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error verifying freelancer', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error verifying freelancer', [
                     'freelancer_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to verify freelancer',
                     'correlation_id' => Str::uuid(),

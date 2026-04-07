@@ -5,19 +5,16 @@ namespace Modules\Inventory\Notifications;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class LowStockNotification extends Model
-{
-    use HasFactory;
+use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Notification;
+use Modules\Inventory\Models\Product;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+final class LowStockNotification extends Notification
+{
     use Queueable;
-    
-        public function __construct(protected Product $product) {
-        /**
-         * Инициализировать класс
-         */
-        public function __construct()
-        {
+
+    public function __construct(protected Product $product)
+    {
             // TODO: инициализация
         }
     }

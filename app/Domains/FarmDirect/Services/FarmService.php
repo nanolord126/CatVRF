@@ -2,193 +2,248 @@
 
 namespace App\Domains\FarmDirect\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\FarmDirect\Models\Farm;
+use App\Domains\FarmDirect\Models\FarmOrder;
+use App\Domains\FarmDirect\Models\FarmProduct;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\Inventory\InventoryManagementService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FarmService extends Model
+final readonly class FarmService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.12;
+    private const RATE_LIMIT_KEY = 'farm:order:';
+    private const RATE_LIMIT_MAX = 15;
+    private const RATE_LIMIT_DECAY = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private InventoryManagementService $inventory,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        public function createOrder(int $farmId, array $items, array $data, string $correlationId = ""): FarmOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создать заказ у фермера.
+     */
+    public function createOrder(int $farmId, array $items, string $deliveryAddress, string $correlationId = ''): FarmOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
 
-            if (RateLimiter::tooManyAttempts("farm:order:".auth()->id(), 10)) {
-                throw new \RuntimeException("Too many orders", 429);
+        return $this->db->transaction(function () use ($farmId, $items, $deliveryAddress, $correlationId, $userId): FarmOrder {
+            $farm = Farm::findOrFail($farmId);
+            $total = 0;
+
+            foreach ($items as $item) {
+                $product = FarmProduct::where('id', $item['product_id'])
+                    ->where('farm_id', $farmId)
+                    ->firstOrFail();
+
+                if ($product->stock < $item['quantity']) {
+                    throw new \RuntimeException("Not enough stock for product: {$product->id}", 400);
+                }
+
+                $total += $product->price_kopecks * $item['quantity'];
             }
-            RateLimiter::hit("farm:order:".auth()->id(), 3600);
 
-            return DB::transaction(function () use ($farmId, $items, $data, $correlationId) {
-                $farm = Farm::findOrFail($farmId);
-                $total = 0;
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'farm_order',
+                amount: $total,
+                correlationId: $correlationId,
+            );
 
-                foreach ($items as $item) {
-                    $product = FarmProduct::where('id', $item['product_id'])
-                        ->where('farm_id', $farmId)->firstOrFail();
-                    $itemTotal = $product->price_kopecks * $item['quantity'];
-                    $total += $itemTotal;
+            $payoutKopecks = $total - (int) ($total * self::COMMISSION_RATE);
 
-                    if ($product->available_quantity < $item['quantity']) {
-                        throw new \RuntimeException("Product not available", 400);
-                    }
-                }
+            $order = FarmOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'farm_id' => $farmId,
+                'client_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'items_json' => $items,
+                'delivery_address' => $deliveryAddress,
+                'tags' => ['farm_direct' => true],
+            ]);
 
-                $fraud = $this->fraud->check([
-                    'user_id' => auth()->id() ?? 0,
-                    'operation_type' => 'farm_order_create',
-                    'correlation_id' => $correlationId,
-                    'amount' => $total,
-                    'ip_address' => request()->ip(),
-                ]);
+            foreach ($items as $item) {
+                $this->inventory->reserve(
+                    productId: $item['product_id'],
+                    quantity: $item['quantity'],
+                    orderId: $order->id,
+                    correlationId: $correlationId,
+                );
+            }
 
-                if ($fraud['decision'] === 'block') {
-                    Log::channel('audit')->error('Farm order blocked by fraud', [
-                        'user_id' => auth()->id(),
-                        'score' => $fraud['score'],
-                        'correlation_id' => $correlationId,
-                    ]);
-                    throw new \RuntimeException("Security block", 403);
-                }
+            $this->audit->log(
+                action: 'farm_order_created',
+                subjectType: FarmOrder::class,
+                subjectId: $order->id,
+                old: [],
+                new: $order->toArray(),
+                correlationId: $correlationId,
+            );
 
-                $order = FarmOrder::create([
-                    'uuid' => Str::uuid(),
-                    'tenant_id' => tenant()->id,
-                    'farm_id' => $farmId,
-                    'client_id' => auth()->id() ?? 0,
-                    'correlation_id' => $correlationId,
-                    'delivery_address' => $data['delivery_address'],
-                    'delivery_datetime' => $data['delivery_datetime'],
-                    'status' => 'pending_payment',
-                    'total_kopecks' => $total,
-                    'commission_kopecks' => (int) ($total * 0.12),
-                    'payout_kopecks' => $total - (int) ($total * 0.12),
-                    'payment_status' => 'pending',
-                    'items_json' => $items,
-                    'tags' => ['farm_direct' => true, 'total_items' => count($items), 'delivery_date' => now()->toDateString()],
-                ]);
+            $this->logger->info('Farm order created', [
+                'order_id' => $order->id,
+                'farm_id' => $farmId,
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel('audit')->info('Farm order created', [
-                    'order_id' => $order->id,
-                    'farm_id' => $farmId,
-                    'total_kopecks' => $total,
-                    'items_count' => count($items),
-                    'correlation_id' => $correlationId,
-                ]);
+            return $order;
+        });
+    }
 
-                return $order;
-            });
-        }
+    /**
+     * Завершить заказ и выплатить фермеру.
+     */
+    public function completeOrder(int $orderId, string $correlationId = ''): FarmOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-        public function completeOrder(int $orderId, string $correlationId = ""): FarmOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+        return $this->db->transaction(function () use ($orderId, $correlationId): FarmOrder {
+            $order = FarmOrder::findOrFail($orderId);
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
-                $order = FarmOrder::findOrFail($orderId);
+            if ($order->payment_status !== 'completed') {
+                throw new \RuntimeException('Order payment not completed', 400);
+            }
 
-                if ($order->payment_status !== 'completed') {
-                    throw new \RuntimeException("Order not paid", 400);
-                }
+            foreach ($order->items_json as $item) {
+                FarmProduct::findOrFail($item['product_id'])->decrement('stock', $item['quantity']);
+            }
 
-                if ($order->status !== 'pending_payment') {
-                    throw new \RuntimeException("Order has incorrect status", 400);
-                }
+            $order->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
 
-                foreach ($order->items_json as $item) {
-                    $product = FarmProduct::findOrFail($item['product_id']);
-                    $product->decrement('available_quantity', $item['quantity']);
-                }
+            $this->wallet->credit(
+                walletId: $order->tenant_id,
+                amount: $order->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['order_id' => $order->id, 'farm_id' => $order->farm_id],
+            );
 
-                $order->update([
-                    'status' => 'completed',
-                    'correlation_id' => $correlationId,
-                    'tags' => array_merge($order->tags ?? [], ['completed_at' => now()->toIso8601String()]),
-                ]);
+            $this->audit->log(
+                action: 'farm_order_completed',
+                subjectType: FarmOrder::class,
+                subjectId: $order->id,
+                old: ['status' => 'pending_payment'],
+                new: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
 
-                $this->wallet->credit(tenant()->id, $order->payout_kopecks, 'farm_payout', [
-                    'correlation_id' => $correlationId,
-                    'order_id' => $order->id,
-                ]);
+            return $order;
+        });
+    }
 
-                Log::channel('audit')->info('Farm order completed and payout credited', [
-                    'order_id' => $order->id,
-                    'farm_id' => $order->farm_id,
-                    'payout_kopecks' => $order->payout_kopecks,
-                    'correlation_id' => $correlationId,
-                ]);
+    /**
+     * Отменить заказ и вернуть оплату.
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): FarmOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-                return $order;
-            });
-        }
+        return $this->db->transaction(function () use ($orderId, $correlationId): FarmOrder {
+            $order = FarmOrder::findOrFail($orderId);
 
-        public function cancelOrder(int $orderId, string $correlationId = ""): FarmOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed order', 400);
+            }
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
-                $order = FarmOrder::findOrFail($orderId);
+            $previousStatus = $order->payment_status;
 
-                if ($order->status === 'completed') {
-                    throw new \RuntimeException("Cannot cancel completed order", 400);
-                }
+            foreach ($order->items_json as $item) {
+                $this->inventory->release(
+                    productId: $item['product_id'],
+                    quantity: $item['quantity'],
+                    orderId: $order->id,
+                    correlationId: $correlationId,
+                );
+            }
 
-                $order->update([
-                    'status' => 'cancelled',
-                    'payment_status' => 'refunded',
-                    'correlation_id' => $correlationId,
-                    'tags' => array_merge($order->tags ?? [], ['cancelled_at' => now()->toIso8601String()]),
-                ]);
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
 
-                if ($order->payment_status === 'completed') {
-                    $this->wallet->credit(tenant()->id, $order->total_kopecks, 'farm_refund', [
-                        'correlation_id' => $correlationId,
-                        'order_id' => $order->id,
-                    ]);
-                }
+            if ($previousStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: $order->tenant_id,
+                    amount: $order->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['order_id' => $order->id],
+                );
+            }
 
-                Log::channel('audit')->info('Farm order cancelled', [
-                    'order_id' => $order->id,
-                    'farm_id' => $order->farm_id,
-                    'correlation_id' => $correlationId,
-                ]);
+            $this->audit->log(
+                action: 'farm_order_cancelled',
+                subjectType: FarmOrder::class,
+                subjectId: $order->id,
+                old: ['status' => $previousStatus],
+                new: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
 
-                return $order;
-            });
-        }
+            return $order;
+        });
+    }
 
-        public function getOrder(int $orderId): FarmOrder
-        {
-            return FarmOrder::with(['farm'])->findOrFail($orderId);
-        }
+    /**
+     * Получить заказ по идентификатору.
+     */
+    public function getOrder(int $orderId): FarmOrder
+    {
+        return FarmOrder::findOrFail($orderId);
+    }
 
-        public function getUserOrders(int $clientId, int $limit = 10)
-        {
-            return FarmOrder::where('client_id', $clientId)
-                ->orderBy('created_at', 'desc')
-                ->take($limit)
-                ->get();
-        }
+    /**
+     * Получить список заказов клиента.
+     */
+    public function getUserOrders(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return FarmOrder::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 
-        public function getFarmOrders(int $farmId, int $limit = 20)
-        {
-            return FarmOrder::where('farm_id', $farmId)
-                ->orderBy('delivery_datetime', 'desc')
-                ->take($limit)
-                ->get();
-        }
+    /**
+     * Получить заказы конкретного фермера.
+     */
+    public function getFarmOrders(int $farmId, int $limit = 20): \Illuminate\Database\Eloquent\Collection
+    {
+        return FarmOrder::where('farm_id', $farmId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 
-        public function getFarmProducts(int $farmId)
-        {
-            return FarmProduct::where('farm_id', $farmId)
-                ->where('available_quantity', '>', 0)
-                ->orderBy('name')
-                ->get();
-        }
+    /**
+     * Получить каталог товаров фермера.
+     */
+    public function getFarmProducts(int $farmId): \Illuminate\Database\Eloquent\Collection
+    {
+        return FarmProduct::where('farm_id', $farmId)
+            ->where('stock', '>', 0)
+            ->orderBy('name')
+            ->get();
+    }
 }

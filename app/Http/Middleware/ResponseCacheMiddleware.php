@@ -2,14 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class ResponseCacheMiddleware extends Model
+final class ResponseCacheMiddleware
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const CACHEABLE_METHODS = ['GET', 'HEAD'];
         private const CACHE_TTL_MINUTES = 10;
 
@@ -21,15 +24,15 @@ final class ResponseCacheMiddleware extends Model
 
             $cacheKey = $this->generateCacheKey($request);
 
-            if (Cache::has($cacheKey)) {
-                return Cache::get($cacheKey);
+            if ($this->cache->has($cacheKey)) {
+                return $this->cache->get($cacheKey);
             }
 
             $response = $next($request);
 
             if ($response->isSuccessful()) {
-                $userId = auth()->id() ?? 'guest';
-                Cache::tags(["response_{$userId}"])->put(
+                $userId = $this->guard->id() ?? 'guest';
+                $this->cache->tags(["response_{$userId}"])->put(
                     $cacheKey,
                     $response,
                     now()->addMinutes(self::CACHE_TTL_MINUTES)
@@ -43,12 +46,12 @@ final class ResponseCacheMiddleware extends Model
         {
             return in_array($request->getMethod(), self::CACHEABLE_METHODS, true)
                 && !$request->has('no-cache')
-                && auth()->check();
+                && $this->guard->check();
         }
 
         private function generateCacheKey(Request $request): string
         {
-            $userId = auth()->id() ?? 'guest';
+            $userId = $this->guard->id() ?? 'guest';
             $urlHash = md5($request->fullUrl());
 
             return "response_{$userId}_{$urlHash}";

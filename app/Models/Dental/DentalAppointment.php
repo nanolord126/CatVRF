@@ -2,14 +2,23 @@
 
 namespace App\Models\Dental;
 
+
+
+use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class DentalAppointment extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'dental_appointments';
@@ -44,7 +53,7 @@ final class DentalAppointment extends Model
         {
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+                $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
                 if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
                     $model->tenant_id = tenant()->id;
@@ -100,7 +109,7 @@ final class DentalAppointment extends Model
          */
         public function getObfuscatedNotes(): string
         {
-            if (request()->user()?->can('view_medical_notes', $this)) {
+            if ($this->request->user()?->can('view_medical_notes', $this)) {
                 return $this->internal_notes ?? '';
             }
 
@@ -115,7 +124,7 @@ final class DentalAppointment extends Model
             $oldStatus = $this->status;
             $this->update(['status' => $newStatus]);
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Appointment status changed', [
+            $this->logger->info('Appointment status changed', [
                 'appointment_id' => $this->id,
                 'old' => $oldStatus,
                 'new' => $newStatus,

@@ -2,27 +2,29 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicRentalService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MusicRentalService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Rental an instrument.
          */
         public function rentalInstrument(int $instrumentId, Carbon $startsAt, Carbon $endsAt, int $userId): MusicBooking
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($instrumentId, $startsAt, $endsAt, $userId) {
+            return $this->db->transaction(function () use ($instrumentId, $startsAt, $endsAt, $userId) {
                 $instrument = MusicInstrument::lockForUpdate()->findOrFail($instrumentId);
                 $correlationId = (string) Str::uuid();
 
                 if ($instrument->availableStock() <= 0) {
-                    throw new \Exception('Insufficient stock for instrument: ' . $instrument->name);
+                    throw new \RuntimeException('Insufficient stock for instrument: ' . $instrument->name);
                 }
 
                 $instrument->increment('hold_stock');
@@ -40,7 +42,7 @@ final class MusicRentalService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Music instrument rented', [
+                $this->logger->info('Music instrument rented', [
                     'booking_id' => $booking->id,
                     'instrument_id' => $instrumentId,
                     'total_price' => $totalPriceCents,
@@ -56,9 +58,9 @@ final class MusicRentalService extends Model
          */
         public function completeRental(int $bookingId): void
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            DB::transaction(function () use ($bookingId) {
+            $this->db->transaction(function () use ($bookingId) {
                 $booking = MusicBooking::where('bookable_type', MusicInstrument::class)
                     ->where('status', 'confirmed')
                     ->findOrFail($bookingId);
@@ -66,13 +68,13 @@ final class MusicRentalService extends Model
                 $instrument = MusicInstrument::where('id', $booking->bookable_id)->lockForUpdate()->firstOrFail();
 
                 if ($instrument->hold_stock <= 0) {
-                    throw new \Exception('System error: hold stock cannot be less than 0.');
+                    throw new \DomainException('System error: hold stock cannot be less than 0.');
                 }
 
                 $instrument->decrement('hold_stock');
                 $booking->update(['status' => 'completed']);
 
-                Log::channel('audit')->info('Music instrument rental completed', [
+                $this->logger->info('Music instrument rental completed', [
                     'booking_id' => $bookingId,
                     'instrument_id' => $instrument->id,
                     'correlation_id' => $booking->correlation_id,

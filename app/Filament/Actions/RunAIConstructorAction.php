@@ -2,14 +2,19 @@
 
 namespace App\Filament\Actions;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RunAIConstructorAction extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class RunAIConstructorAction extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public static function getDefaultName(): ?string
         {
             return 'run_ai_constructor';
@@ -81,11 +86,11 @@ final class RunAIConstructorAction extends Model
                     ],
                 );
 
-                Log::channel('audit')->info('AI Constructor run from Filament', [
+                $this->logger->info('AI Constructor run from Filament', [
                     'correlation_id' => $result['correlation_id'],
                     'user_id' => $user->id,
                     'type' => $data['type'],
-                    'admin_id' => \auth()->id(),
+                    'admin_id' => $this->guard->id(),
                 ]);
 
                 // Показать результаты
@@ -95,9 +100,9 @@ final class RunAIConstructorAction extends Model
                     ->success()
                     ->send();
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Constructor Filament action failed', [
+                $this->logger->error('AI Constructor Filament action failed', [
                     'error' => $e->getMessage(),
-                    'admin_id' => \auth()->id(),
+                    'admin_id' => $this->guard->id(),
                 ]);
 
                 Notification::make()

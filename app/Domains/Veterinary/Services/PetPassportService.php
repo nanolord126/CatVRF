@@ -2,20 +2,23 @@
 
 namespace App\Domains\Veterinary\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetPassportService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PetPassportService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Зафиксировать результат вакцинации
          */
         public function addVaccination(int $petId, array $data, string $correlationId): PetVaccination
         {
-            return DB::transaction(function () use ($petId, $data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($petId, $data, $correlationId) {
                 $vaccination = PetVaccination::create([
                     'pet_id' => $petId,
                     'veterinarian_id' => $data['veterinarian_id'] ?? null,
@@ -27,7 +30,7 @@ final class PetPassportService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Pet vaccinated', [
+                $this->logger->info('Pet vaccinated', [
                     'pet_id' => $petId,
                     'vaccine' => $data['vaccine_name'],
                     'correlation_id' => $correlationId,
@@ -42,7 +45,7 @@ final class PetPassportService extends Model
          */
         public function addMetric(int $petId, string $type, float $value, string $unit, string $correlationId): PetMetric
         {
-            return DB::transaction(function () use ($petId, $type, $value, $unit, $correlationId) {
+            return $this->db->transaction(function () use ($petId, $type, $value, $unit, $correlationId) {
                 $metric = PetMetric::create([
                     'pet_id' => $petId,
                     'metric_type' => $type,
@@ -57,7 +60,7 @@ final class PetPassportService extends Model
                     Pet::where('id', $petId)->update(['weight' => $value]);
                 }
 
-                Log::channel('audit')->info('Pet metric recorded', [
+                $this->logger->info('Pet metric recorded', [
                     'pet_id' => $petId,
                     'type' => $type,
                     'value' => $value,
@@ -73,13 +76,13 @@ final class PetPassportService extends Model
          */
         public function updatePedigree(int $petId, array $data, string $correlationId): PetPedigree
         {
-            return DB::transaction(function () use ($petId, $data, $correlationId) {
+            return $this->db->transaction(function () use ($petId, $data, $correlationId) {
                 $pedigree = PetPedigree::updateOrCreate(
                     ['pet_id' => $petId],
                     array_merge($data, ['correlation_id' => $correlationId])
                 );
 
-                Log::channel('audit')->info('Pet pedigree updated', [
+                $this->logger->info('Pet pedigree updated', [
                     'pet_id' => $petId,
                     'reg_number' => $data['registration_number'] ?? 'N/A',
                     'correlation_id' => $correlationId,

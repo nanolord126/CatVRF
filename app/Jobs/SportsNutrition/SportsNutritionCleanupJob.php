@@ -2,22 +2,24 @@
 
 namespace App\Jobs\SportsNutrition;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class SportsNutritionCleanupJob extends Model
+final class SportsNutritionCleanupJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
 
         public function __construct(
             private readonly int $tenantId,
-            ?string $correlationId = null
-        ) {
+            ?string $correlationId = null,
+            private readonly LogManager $logger,
+    ) {
             $this->correlationId = $correlationId ?? Str::uuid()->toString();
         }
 
@@ -29,7 +31,7 @@ final class SportsNutritionCleanupJob extends Model
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('Supplement cleanup started', [
+            $this->logger->channel('audit')->info('Supplement cleanup started', [
                 'tenant' => $this->tenantId,
                 'cid' => $this->correlationId
             ]);
@@ -46,7 +48,7 @@ final class SportsNutritionCleanupJob extends Model
                     ->update(['is_published' => false]);
 
                 if ($nearExpiryCount > 0) {
-                    Log::channel('audit')->warning("Supplement near-expiry purge", [
+                    $this->logger->channel('audit')->warning("Supplement near-expiry purge", [
                         'tenant_id' => $this->tenantId,
                         'purged_count' => $nearExpiryCount,
                         'cid' => $this->correlationId
@@ -61,7 +63,7 @@ final class SportsNutritionCleanupJob extends Model
                     ->get();
 
                 foreach ($lowStockItems as $item) {
-                    Log::channel('audit')->warning("CRITICAL LOW STOCK ALERT", [
+                    $this->logger->channel('audit')->warning("CRITICAL LOW STOCK ALERT", [
                         'tenant' => $this->tenantId,
                         'product_sku' => $item->sku,
                         'current_stock' => $item->stock_quantity,
@@ -80,19 +82,19 @@ final class SportsNutritionCleanupJob extends Model
                     ->update(['is_published' => false]);
 
                 if ($outOfStockCount > 0) {
-                    Log::channel('audit')->info("Deactivated out-of-stock items", [
+                    $this->logger->channel('audit')->info("Deactivated out-of-stock items", [
                         'count' => $outOfStockCount,
                         'cid' => $this->correlationId
                     ]);
                 }
 
-                Log::channel('audit')->info('Supplement cleanup finished successfully', [
+                $this->logger->channel('audit')->info('Supplement cleanup finished successfully', [
                     'tenant' => $this->tenantId,
                     'cid' => $this->correlationId
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Supplement cleanup job failed', [
+                $this->logger->channel('audit')->error('Supplement cleanup job failed', [
                     'tenant' => $this->tenantId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

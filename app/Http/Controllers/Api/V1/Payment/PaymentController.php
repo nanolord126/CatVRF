@@ -2,20 +2,29 @@
 
 namespace App\Http\Controllers\Api\V1\Payment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PaymentController extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class PaymentController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
+        private readonly ConfigRepository $config,
             // Payment-specific dependencies
             private readonly FraudControlService $fraudService,
             private readonly PaymentGatewayService $gatewayService,
             private readonly WalletService $walletService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             parent::__construct();
         }
         /**
@@ -36,7 +45,7 @@ final class PaymentController extends Model
                     'tenant_id' => $tenantId,
                 ])->first();
                 if ($existingPayment) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Payment already initiated (idempotent)',
                         'correlation_id' => $correlationId,
@@ -46,23 +55,23 @@ final class PaymentController extends Model
                         ],
                     ], 200);
                 }
-                return DB::transaction(function () use ($request, $correlationId, $tenantId, $idempotencyKey) {
+                return $this->db->transaction(function () use ($request, $correlationId, $tenantId, $idempotencyKey) {
                     // 2. Fraud check перед платежом
                     $fraudResult = $this->fraudService->scoreOperation([
                         'type' => $request->input('operation_type'),
                         'amount' => $request->integer('amount'),
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'ip_address' => $request->ip(),
                         'correlation_id' => $correlationId,
                     ]);
                     if ($fraudResult['decision'] === 'block') {
-                        Log::channel('fraud_alert')->warning('Payment blocked by fraud check', [
+                        $this->logger->channel('fraud_alert')->warning('Payment blocked by fraud check', [
                             'correlation_id' => $correlationId,
-                            'user_id' => auth()->id(),
+                            'user_id' => $this->guard->id(),
                             'amount' => $request->integer('amount'),
                             'ml_score' => $fraudResult['score'],
                         ]);
-                        return response()->json([
+                        return $this->response->json([
                             'success' => false,
                             'message' => 'Payment blocked due to fraud check',
                             'correlation_id' => $correlationId,
@@ -71,7 +80,7 @@ final class PaymentController extends Model
                     // 3. Создать платёж
                     $payment = Payment::create([
                         'tenant_id' => $tenantId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'operation_type' => $request->input('operation_type'),
                         'amount' => $request->integer('amount'),
                         'currency' => $request->input('currency', 'RUB'),
@@ -88,29 +97,29 @@ final class PaymentController extends Model
                         'amount' => $request->integer('amount'),
                         'status' => 'authorized',
                         'ml_score' => $fraudResult['score'],
-                        'ml_version' => config('fraud.model_version', '2026-03-24-v1'),
+                        'ml_version' => $this->config->get('fraud.model_version', '2026-03-24-v1'),
                         'correlation_id' => $correlationId,
                         'uuid' => Str::uuid(),
                     ]);
                     // 5. Hold сумм в кошельке пользователя (если требуется)
                     if ($request->boolean('hold', true)) {
                         $this->walletService->holdAmount(
-                            wallet_id: auth()->user()->wallet_id ?? 1,
+                            wallet_id: $this->guard->user()->wallet_id ?? 1,
                             amount: $request->integer('amount'),
                             reason: 'Payment hold for ' . $request->input('operation_type'),
                             correlation_id: $correlationId,
                         );
                     }
                     // 6. Логирование
-                    Log::channel('audit')->info('Payment initiated', [
+                    $this->logger->channel('audit')->info('Payment initiated', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $payment->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'amount' => $request->integer('amount'),
                         'operation_type' => $request->input('operation_type'),
                         'fraud_score' => $fraudResult['score'],
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Payment initiated successfully',
                         'correlation_id' => $correlationId,
@@ -124,12 +133,19 @@ final class PaymentController extends Model
                     ], 201);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Payment initiation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Payment initiation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Payment initiation failed',
                     'correlation_id' => $correlationId,
@@ -149,17 +165,17 @@ final class PaymentController extends Model
             $correlationId = $request->getCorrelationId();
             $tenantId = $request->getTenantId();
             if ($payment->tenant_id !== $tenantId) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 403);
             }
             try {
-                return DB::transaction(function () use ($payment, $request, $correlationId) {
+                return $this->db->transaction(function () use ($payment, $request, $correlationId) {
                     // Проверить статус платежа
                     if ($payment->status !== 'pending') {
-                        return response()->json([
+                        return $this->response->json([
                             'success' => false,
                             'message' => 'Payment already processed',
                             'correlation_id' => $correlationId,
@@ -195,94 +211,26 @@ final class PaymentController extends Model
                         );
                     }
                     // Логирование
-                    Log::channel('audit')->info('Payment captured', [
+                    $this->logger->channel('audit')->info('Payment captured', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $payment->id,
-                        'amount' => $payment->amount,
-                        'commission' => $commission,
                         'net_amount' => $netAmount,
                     ]);
-                    return response()->json([
+
+                    return $this->response->json([
                         'success' => true,
-                        'message' => 'Payment captured successfully',
+                        'message' => 'Payment captured',
                         'correlation_id' => $correlationId,
-                        'data' => [
-                            'payment_id' => $payment->id,
-                            'status' => 'captured',
-                            'amount' => $payment->amount,
-                            'commission' => $commission,
-                            'net_amount' => $netAmount,
-                        ],
-                    ], 200);
-                });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Payment capture failed', [
-                    'correlation_id' => $correlationId,
-                    'payment_id' => $payment->id,
-                    'error' => $e->getMessage(),
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment capture failed',
-                    'correlation_id' => $correlationId,
-                ], 500);
-            }
-        }
-        /**
-         * POST /api/v1/payments/{id}/refund
-         * Вернуть платёж.
-         *
-         * @return JsonResponse
-         */
-        public function refund(
-            Payment $payment,
-            RefundPaymentRequest $request,
-        ): JsonResponse {
-            $correlationId = $request->getCorrelationId();
-            try {
-                return DB::transaction(function () use ($payment, $request, $correlationId) {
-                    $refundAmount = $request->integer('amount', $payment->amount);
-                    if ($refundAmount > $payment->amount) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Refund amount exceeds payment',
-                            'correlation_id' => $correlationId,
-                        ], 400)->send();
-                    }
-                    $payment->update([
-                        'status' => 'refunded',
-                        'refunded_at' => now(),
                     ]);
-                    // Вернуть средства в кошелёк пользователя
-                    $this->walletService->credit(
-                        wallet_id: auth()->user()->wallet_id ?? 1,
-                        amount: $refundAmount,
-                        reason: 'Refund for ' . $payment->operation_type,
-                        correlation_id: $correlationId,
-                    );
-                    Log::channel('audit')->info('Payment refunded', [
-                        'correlation_id' => $correlationId,
-                        'payment_id' => $payment->id,
-                        'refund_amount' => $refundAmount,
-                    ]);
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Payment refunded successfully',
-                        'correlation_id' => $correlationId,
-                        'data' => [
-                            'payment_id' => $payment->id,
-                            'refund_amount' => $refundAmount,
-                        ],
-                    ], 200);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Payment refund failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('error')->error('Payment capture failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
-                    'message' => 'Refund failed',
+                    'message' => 'Capture failed',
                     'correlation_id' => $correlationId,
                 ], 500);
             }
@@ -293,7 +241,6 @@ final class PaymentController extends Model
         private function getCommissionRateByType(string $operationType): float
         {
             return match ($operationType) {
-                'beauty_appointment' => 14.0,
                 'food_order' => 14.0,
                 'hotel_booking' => 14.0,
                 'taxi_ride' => 15.0,
@@ -306,7 +253,6 @@ final class PaymentController extends Model
         private function getProviderByOperationType(string $operationType, mixed $request): mixed
         {
             return match ($operationType) {
-                'beauty_appointment' => $request->user(),
                 'food_order' => $request->user(),
                 'hotel_booking' => $request->user(),
                 'taxi_ride' => $request->user(),

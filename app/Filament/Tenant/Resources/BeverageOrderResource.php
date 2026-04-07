@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeverageOrderResource extends Model
+final class BeverageOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeverageOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -137,31 +134,15 @@ final class BeverageOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageOrder::route('/'),
-                'create' => Pages\\CreateBeverageOrder::route('/create'),
-                'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeverageOrder::route('/'),
-                'create' => Pages\\CreateBeverageOrder::route('/create'),
-                'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageOrder::route('/'),
-                'create' => Pages\\CreateBeverageOrder::route('/create'),
-                'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageOrder::route('/{record}'),
+                'index' => Pages\ListBeverageOrder::route('/'),
+                'create' => Pages\CreateBeverageOrder::route('/create'),
+                'edit' => Pages\EditBeverageOrder::route('/{record}/edit'),
+                'view' => Pages\ViewBeverageOrder::route('/{record}'),
             ];
         }
 }

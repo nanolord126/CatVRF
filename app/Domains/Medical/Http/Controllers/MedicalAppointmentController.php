@@ -2,65 +2,63 @@
 
 namespace App\Domains\Medical\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalAppointmentController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class MedicalAppointmentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly AppointmentService $appointmentService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly AppointmentService $appointmentService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function services(): JsonResponse
         {
             try {
                 $services = MedicalService::where('is_active', true)->paginate(50);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $services,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch services'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch services'], 500);
             }
         }
 
         public function myAppointments(): JsonResponse
         {
             try {
-                $appointments = MedicalAppointment::where('patient_id', auth()->user()->id)
+                $appointments = MedicalAppointment::where('patient_id', $request->user()->id)
                     ->orderBy('scheduled_at', 'desc')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointments,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch appointments'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch appointments'], 500);
             }
         }
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
 
                 $validated = $request->all();
-                $appointment = DB::transaction(function () use ($validated, $correlationId) {
+                $appointment = $this->db->transaction(function () use ($validated, $correlationId) {
                     return $this->appointmentService->createAppointment(
-                        tenantId: auth()->user()->tenant_id,
+                        tenantId: $request->user()->tenant_id,
                         clinicId: ($validated['clinic_id'] ?? null),
                         doctorId: ($validated['doctor_id'] ?? null),
-                        patientId: auth()->user()->id,
+                        patientId: $request->user()->id,
                         serviceId: ($validated['service_id'] ?? null),
                         scheduledAt: ($validated['scheduled_at'] ?? null),
                         notes: ($validated['notes'] ?? null),
@@ -68,14 +66,14 @@ final class MedicalAppointmentController extends Model
                     );
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointment,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::error('Failed to create appointment', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'error' => 'Failed to create appointment'], 500);
+                $this->logger->error('Failed to create appointment', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to create appointment'], 500);
             }
         }
 
@@ -87,20 +85,20 @@ final class MedicalAppointmentController extends Model
 
                 $this->authorize('view', $appointment);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointment,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Appointment not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Appointment not found'], 404);
             }
         }
 
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $appointment = MedicalAppointment::findOrFail($id);
@@ -112,11 +110,11 @@ final class MedicalAppointmentController extends Model
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Appointment updated', ['appointment_id' => $appointment->id]);
+                $this->logger->info('Appointment updated', ['appointment_id' => $appointment->id]);
 
-                return response()->json(['success' => true, 'data' => $appointment]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $appointment]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Update failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Update failed'], 500);
             }
         }
 
@@ -129,12 +127,12 @@ final class MedicalAppointmentController extends Model
                 $appointment = $this->appointmentService->cancelAppointment(
                     appointment: $appointment,
                     reason: 'Cancelled by patient',
-                    correlationId: request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    correlationId: $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 );
 
-                return response()->json(['success' => true, 'data' => $appointment]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $appointment]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Cancel failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Cancel failed'], 500);
             }
         }
 
@@ -149,9 +147,9 @@ final class MedicalAppointmentController extends Model
                     correlationId: $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 );
 
-                return response()->json(['success' => true, 'data' => $appointment]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $appointment]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Complete failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Complete failed'], 500);
             }
         }
 
@@ -166,30 +164,30 @@ final class MedicalAppointmentController extends Model
                     ->orderBy('recorded_at', 'desc')
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $records,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Not found'], 404);
             }
         }
 
         public function myPrescriptions(): JsonResponse
         {
             try {
-                $prescriptions = MedicalPrescription::where('patient_id', auth()->user()->id)
+                $prescriptions = MedicalPrescription::where('patient_id', $request->user()->id)
                     ->orderBy('issued_at', 'desc')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $prescriptions,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch prescriptions'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch prescriptions'], 500);
             }
         }
 
@@ -200,30 +198,30 @@ final class MedicalAppointmentController extends Model
 
                 $this->authorize('view', MedicalAppointment::find($prescription->appointment_id));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $prescription,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Prescription not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Prescription not found'], 404);
             }
         }
 
         public function myRecords(): JsonResponse
         {
             try {
-                $records = MedicalRecord::where('patient_id', auth()->user()->id)
+                $records = MedicalRecord::where('patient_id', $request->user()->id)
                     ->orderBy('recorded_at', 'desc')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $records,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch records'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch records'], 500);
             }
         }
 
@@ -232,17 +230,17 @@ final class MedicalAppointmentController extends Model
             try {
                 $record = MedicalRecord::findOrFail($id);
 
-                if ($record->patient_id !== auth()->user()->id && !auth()->user()->hasRole('admin')) {
+                if ($record->patient_id !== $request->user()->id && !$request->user()->hasRole('admin')) {
                     abort(403);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $record,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Record not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Record not found'], 404);
             }
         }
 
@@ -251,13 +249,13 @@ final class MedicalAppointmentController extends Model
             try {
                 $appointments = MedicalAppointment::paginate(50);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointments,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch appointments'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch appointments'], 500);
             }
         }
 
@@ -271,14 +269,15 @@ final class MedicalAppointmentController extends Model
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Appointment status updated', [
+                $this->logger->info('Appointment status updated', [
                     'appointment_id' => $appointment->id,
                     'status' => $request->input('status'),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json(['success' => true, 'data' => $appointment]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $appointment]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Update failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Update failed'], 500);
             }
         }
 
@@ -300,13 +299,13 @@ final class MedicalAppointmentController extends Model
                     'by_status' => $appointments->groupBy('status')->map->count(),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Analytics failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Analytics failed'], 500);
             }
         }
 }

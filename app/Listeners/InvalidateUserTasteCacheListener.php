@@ -2,14 +2,30 @@
 
 namespace App\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class InvalidateUserTasteCacheListener extends Model
+/**
+ * Class InvalidateUserTasteCacheListener
+ *
+ * Event listener handling domain event side effects.
+ * Runs asynchronously via queue when ShouldQueue is implemented.
+ * All listeners maintain correlation_id chain.
+ *
+ * @package App\Listeners
+ */
+final class InvalidateUserTasteCacheListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle handle operation.
+     *
+     * @throws \DomainException
+     */
     public function handle(object $event): void
         {
             if (!isset($event->userId)) {
@@ -18,17 +34,27 @@ final class InvalidateUserTasteCacheListener extends Model
 
             try {
                 $cacheTag = "user_taste_{$event->userId}";
-                Cache::store('redis')->tags([$cacheTag])->flush();
+                $this->cache->store('redis')->tags([$cacheTag])->flush();
 
-                Log::channel('audit')->info('User taste cache invalidated', [
+                $this->logger->channel('audit')->info('User taste cache invalidated', [
                     'user_id' => $event->userId,
                     'event' => class_basename($event),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to invalidate user taste cache', [
+                $this->logger->channel('audit')->error('Failed to invalidate user taste cache', [
                     'user_id' => $event->userId ?? null,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
+
+    /**
+     * Get the string representation of this object.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return static::class . '::' . ($this->id ?? 'new');
+    }
 }

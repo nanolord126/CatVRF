@@ -1,18 +1,38 @@
 <?php declare(strict_types=1);
 
+/**
+ * AIConstructorController — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/aiconstructorcontroller
+ * @see https://catvrf.ru/docs/aiconstructorcontroller
+ * @see https://catvrf.ru/docs/aiconstructorcontroller
+ * @see https://catvrf.ru/docs/aiconstructorcontroller
+ */
+
+
 namespace App\Http\Controllers\Api\V1\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class AIConstructorController extends Model
+final class AIConstructorController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly AIConstructorService $constructorService)
+
+    public function __construct(private readonly AIConstructorService $constructorService,
+        private readonly ResponseFactory $response,
+    )
         {
-        }
+
+    }
         public function run(RunConstructorRequest $request): JsonResponse
         {
             $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
@@ -24,15 +44,31 @@ final class AIConstructorController extends Model
                 $correlationId
             );
             if (!$result['success']) {
-                return response()->json([
+                return $this->response->json([
                     'message' => $result['error'],
                     'correlation_id' => $correlationId,
                 ], 422);
             }
-            return response()->json([
+            return $this->response->json([
                 'message' => 'AI Constructor finished successfully.',
                 'data' => $result,
                 'correlation_id' => $correlationId,
             ]);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

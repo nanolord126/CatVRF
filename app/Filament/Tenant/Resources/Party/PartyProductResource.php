@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PartyProductResource extends Model
+final class PartyProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PartyProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-gift';

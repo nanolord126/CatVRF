@@ -1,35 +1,63 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\ConsumableDeducted;
+use App\Services\InventoryManagementService;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
+use App\Services\FraudControlService;
 
-final class UpdateConsumableInventory extends Model
+/**
+ * UpdateConsumableInventory
+ *
+ * Списывает каждый расходник из склада через InventoryManagementService.
+ */
+final class UpdateConsumableInventory implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private InventoryManagementService $inventory,
+        private LoggerInterface            $auditLogger,
+        private FraudControlService $fraud,
+        private \Illuminate\Database\DatabaseManager $db,
+    ) {}
+
     public function handle(ConsumableDeducted $event): void
-        {
-            try {
-                DB::transaction(function () use ($event) {
-                    Log::channel('audit')->info('Consumable inventory updated', [
-                        'appointment_id' => $event->appointmentId,
-                        'consumables_count' => count($event->consumables),
-                        'correlation_id' => $event->correlationId,
-                        'action' => 'consumable_inventory_deducted',
-                    ]);
-                    // foreach ($event->consumables as $consumable) {
-                    //     InventoryService::deduct($consumable['id'], $consumable['quantity']);
-                    // }
-                });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Failed to update consumable inventory', [
-                    'correlation_id' => $event->correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
+    {
+        if (empty($event->consumables)) {
+            return;
         }
+
+        $this->db->transaction(function () use ($event): void {
+            foreach ($event->consumables as $consumable) {
+                $this->inventory->deductStock(
+                    (int) $consumable['id'],
+                    (int) $consumable['quantity'],
+                    'appointment_completed',
+                    'appointment',
+                    $event->appointmentId,
+                );
+            }
+
+            $this->auditLogger->info('Consumable inventory updated via event.', [
+                'appointment_id'    => $event->appointmentId,
+                'consumables_count' => count($event->consumables),
+                'correlation_id'    => $event->correlationId,
+            ]);
+        });
+    }
+
+    public function failed(ConsumableDeducted $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('UpdateConsumableInventory listener failed.', [
+            'appointment_id' => $event->appointmentId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 }

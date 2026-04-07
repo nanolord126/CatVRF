@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Enterprise\Pages;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Enterprise\EnterpriseResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -11,6 +17,11 @@ use Illuminate\Support\Str;
 
 final class EditEnterprise extends EditRecord
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = EnterpriseResource::class;
 
     protected function getHeaderActions(): array
@@ -24,12 +35,12 @@ final class EditEnterprise extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function () use (&$data) {
+        $this->db->transaction(function () use (&$data) {
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            Log::channel('audit')->info('Enterprise updated', [
-                'user_id' => auth()->id(),
+            $this->logger->info('Enterprise updated', [
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'record_id' => $this->record->id,
@@ -41,9 +52,9 @@ final class EditEnterprise extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Enterprise edit page saved', [
+        $this->logger->info('Enterprise edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
+            'user_id' => $this->guard->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

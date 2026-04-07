@@ -2,18 +2,18 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClickHouseService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class ClickHouseService
 {
-    use HasFactory;
+
+    private readonly Client $client;
+        private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    private Client $client;
-        private string $correlationId;
-
-        public function __construct()
+        public function __construct(
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger)
         {
             $this->correlationId = Str::uuid()->toString();
             $this->initializeClient();
@@ -30,16 +30,16 @@ final class ClickHouseService extends Model
 
             $this->client = new Client(
                 [
-                    'host' => config('clickhouse.host', 'localhost'),
-                    'port' => config('clickhouse.port', 8123),
-                    'username' => config('clickhouse.username', 'default'),
-                    'password' => config('clickhouse.password', ''),
-                    'database' => config('clickhouse.database', 'analytics'),
+                    'host' => $this->config->get('clickhouse.host', 'localhost'),
+                    'port' => $this->config->get('clickhouse.port', 8123),
+                    'username' => $this->config->get('clickhouse.username', 'default'),
+                    'password' => $this->config->get('clickhouse.password', ''),
+                    'database' => $this->config->get('clickhouse.database', 'analytics'),
                 ],
-                $settings,
-            );
+                $settings
+    );
 
-            Log::channel('analytics')->debug('[ClickHouse] Client initialized', [
+            $this->logger->debug('[ClickHouse] Client initialized', [
                 'correlation_id' => $this->correlationId,
             ]);
         }
@@ -77,12 +77,12 @@ final class ClickHouseService extends Model
             try {
                 $this->client->insert('ch_geo_events', $rows);
 
-                Log::channel('audit')->info('[ClickHouse] Geo events inserted', [
+                $this->logger->info('[ClickHouse] Geo events inserted', [
                     'count' => count($rows),
                     'correlation_id' => $this->correlationId,
                 ]);
-            } catch (Exception $e) {
-                Log::channel('error')->error('[ClickHouse] Insert geo events failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[ClickHouse] Insert geo events failed', [
                     'error' => $e->getMessage(),
                     'count' => count($rows),
                     'correlation_id' => $this->correlationId,
@@ -128,12 +128,12 @@ final class ClickHouseService extends Model
             try {
                 $this->client->insert('ch_click_events', $rows);
 
-                Log::channel('audit')->info('[ClickHouse] Click events inserted', [
+                $this->logger->info('[ClickHouse] Click events inserted', [
                     'count' => count($rows),
                     'correlation_id' => $this->correlationId,
                 ]);
-            } catch (Exception $e) {
-                Log::channel('error')->error('[ClickHouse] Insert click events failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[ClickHouse] Insert click events failed', [
                     'error' => $e->getMessage(),
                     'count' => count($rows),
                     'correlation_id' => $this->correlationId,
@@ -360,8 +360,8 @@ final class ClickHouseService extends Model
                     'latency_ms' => 0,
                     'correlation_id' => $this->correlationId,
                 ];
-            } catch (Exception $e) {
-                Log::channel('error')->error('[ClickHouse] Health check failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[ClickHouse] Health check failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -385,15 +385,15 @@ final class ClickHouseService extends Model
                 $result = $statement->fetchAll();
                 $executionTime = (microtime(true) - $startTime) * 1000;
 
-                Log::channel('analytics')->debug('[ClickHouse] Query executed', [
+                $this->logger->debug('[ClickHouse] Query executed', [
                     'execution_time_ms' => $executionTime,
                     'result_count' => count($result),
                     'correlation_id' => $this->correlationId,
                 ]);
 
                 return $result;
-            } catch (Exception $e) {
-                Log::channel('error')->error('[ClickHouse] Query execution failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[ClickHouse] Query execution failed', [
                     'error' => $e->getMessage(),
                     'query' => substr($query, 0, 200),
                     'correlation_id' => $this->correlationId,

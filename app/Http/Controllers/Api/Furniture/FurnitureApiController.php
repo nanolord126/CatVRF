@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers\Api\Furniture;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class FurnitureApiController extends Model
+final class FurnitureApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly FurnitureDomainService $furnitureService,
-            private readonly AIInteriorConstructorService $aiService
-        ) {}
+            private readonly AIInteriorConstructorService $aiService,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Search and Filter Furniture Objects.
          */
@@ -43,13 +42,12 @@ final class FurnitureApiController extends Model
                 // Sorting logic
                 $sort = $request->get('sort_by', 'newest');
                 $query = match ($sort) {
-                    'price_asc' => $query->orderBy('price_b2c', 'asc'),
                     'price_desc' => $query->orderBy('price_b2c', 'desc'),
                     'popularity' => $query->orderBy('stock_quantity', 'asc'), // Mocked popularity via stock
                     default => $query->latest(),
                 };
                 $results = $query->paginate($request->get('per_page', 15));
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $results->items(),
@@ -60,7 +58,14 @@ final class FurnitureApiController extends Model
                     ],
                 ]);
             } catch (Exception $e) {
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to fetch catalog.',
                     'correlation_id' => $correlationId,
@@ -92,7 +97,7 @@ final class FurnitureApiController extends Model
                 $result = $this->aiService->generateInteriorSetup($dto);
                 // Hydrate Recommended Products
                 $fullProducts = FurnitureProduct::whereIn('id', $result->recommendedProductIds)->get();
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => [
@@ -103,7 +108,14 @@ final class FurnitureApiController extends Model
                     ],
                 ]);
             } catch (Exception $e) {
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json([
                     'success' => false,
                     'message' => 'AI Interior Calculation Failed.',
                     'error' => $e->getMessage(),

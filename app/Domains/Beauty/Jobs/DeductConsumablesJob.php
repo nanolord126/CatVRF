@@ -1,46 +1,77 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\Appointment;
+use App\Services\InventoryManagementService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+use App\Services\FraudControlService;
 
-final class DeductConsumablesJob extends Model
+/**
+ * DeductConsumablesJob — списывает расходники при завершении записи.
+ */
+final class DeductConsumablesJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(
-            private readonly int $appointmentId,
-            private readonly string $correlationId,
-        ) {}
+    public int $tries   = 3;
+    public int $timeout = 60;
 
-        public function handle(InventoryManagementService $inventory): void
-        {
-            $appointment = Appointment::findOrFail($this->appointmentId);
+    private string $correlationId;
 
-            DB::transaction(function () use ($appointment, $inventory): void {
-                $consumables = $appointment->service->consumables_json ?? [];
+    public function __construct(
+        private int $appointmentId,
+        string $correlationId = '',
+    ) {
+        $this->correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+    }
 
-                foreach ($consumables as $consumable) {
-                    $inventory->deductStock(
-                        $consumable['id'],
-                        $consumable['quantity'],
-                        'appointment_completed',
-                        'appointment',
-                        $appointment->id
-                    );
-                }
+    public function handle(
+        InventoryManagementService $inventory,
+        LoggerInterface            $logger,
+        FraudControlService        $fraud,
+        \Illuminate\Database\DatabaseManager $db,
+    ): void {
+        $appointment = Appointment::with('service')->findOrFail($this->appointmentId);
+        $consumables = $appointment->service->consumables_json ?? [];
 
-                Log::channel('audit')->info('Consumables deducted', [
-                    'appointment_id' => $appointment->id,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
+        if (empty($consumables)) {
+            return;
         }
+
+        $db->transaction(function () use ($appointment, $consumables, $inventory, $logger): void {
+            foreach ($consumables as $consumable) {
+                $inventory->deductStock(
+                    (int) $consumable['id'],
+                    (int) $consumable['quantity'],
+                    'appointment_completed',
+                    'appointment',
+                    $appointment->id,
+                );
+            }
+
+            $logger->info('Consumables deducted.', [
+                'appointment_id' => $appointment->id,
+                'count'          => count($consumables),
+                'correlation_id' => $this->correlationId,
+            ]);
+        });
+    }
+
+    /** @return array<int, string> */
+    public function tags(): array
+    {
+        return ['beauty', 'job:deduct-consumables', "appointment:{$this->appointmentId}"];
+    }
 }

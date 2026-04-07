@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MeatShopResource extends Model
+final class MeatShopResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MeatProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-fire';
@@ -55,22 +52,15 @@ final class MeatShopResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMeatShop::route('/'),
-                'create' => Pages\\CreateMeatShop::route('/create'),
-                'edit' => Pages\\EditMeatShop::route('/{record}/edit'),
-                'view' => Pages\\ViewMeatShop::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMeatShop::route('/'),
-                'create' => Pages\\CreateMeatShop::route('/create'),
-                'edit' => Pages\\EditMeatShop::route('/{record}/edit'),
-                'view' => Pages\\ViewMeatShop::route('/{record}'),
+                'index' => Pages\ListMeatShop::route('/'),
+                'create' => Pages\CreateMeatShop::route('/create'),
+                'edit' => Pages\EditMeatShop::route('/{record}/edit'),
+                'view' => Pages\ViewMeatShop::route('/{record}'),
             ];
         }
 }

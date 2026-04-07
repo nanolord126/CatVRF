@@ -2,35 +2,27 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelTourismService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class TravelTourismService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly TravelTour $tourModel,
             private readonly TravelBooking $bookingModel,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createTour(array $data): TravelTour
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($data) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($data) {
                 $tour = $this->tourModel->create($data);
-                Log::channel('audit')->info('Тур создан', [
+                $this->logger->info('Тур создан', [
                     'tour_id' => $tour->id,
                     'correlation_id' => $data['correlation_id'] ?? null,
                 ]);
@@ -41,18 +33,10 @@ final class TravelTourismService extends Model
         public function bookTour(array $data): TravelBooking
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($data) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($data) {
                 $booking = $this->bookingModel->create($data);
-                Log::channel('audit')->info('Тур забронирован', [
+                $this->logger->info('Тур забронирован', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $data['correlation_id'] ?? null,
                 ]);
@@ -62,7 +46,6 @@ final class TravelTourismService extends Model
 
         public function getAvailableTours(string $destination, string $dateFrom, string $dateTo): Collection
         {
-
 
             return $this->tourModel
                 ->where('destination', $destination)
@@ -75,19 +58,11 @@ final class TravelTourismService extends Model
         public function completeTour(int $bookingId): bool
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($bookingId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($bookingId) {
                 $booking = $this->bookingModel->findOrFail($bookingId);
                 $booking->update(['status' => 'completed']);
-                Log::channel('audit')->info('Тур завершён', ['booking_id' => $bookingId]);
+                $this->logger->info('Тур завершён', ['booking_id' => $bookingId]);
                 return true;
             });
         }
@@ -95,21 +70,14 @@ final class TravelTourismService extends Model
         public function cancelBooking(int $bookingId, string $reason): bool
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($bookingId, $reason) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($bookingId, $reason) {
                 $booking = $this->bookingModel->findOrFail($bookingId);
                 $booking->update(['status' => 'cancelled', 'cancellation_reason' => $reason]);
-                Log::channel('audit')->warning('Бронь отменена', [
+                $this->logger->warning('Бронь отменена', [
                     'booking_id' => $bookingId,
                     'reason' => $reason,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
                 return true;
             });

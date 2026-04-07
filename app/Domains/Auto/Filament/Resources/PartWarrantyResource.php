@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PartWarrantyResource extends Model
+final class PartWarrantyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PartWarranty::class;
 
         protected static ?string $navigationLabel = 'Гарантия на запчасти';
@@ -101,7 +98,6 @@ final class PartWarrantyResource extends Model
                         ->label('Тип')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'manufacturer' => 'success',
                             'dealer' => 'info',
                             'extended' => 'warning',
                             default => 'gray',
@@ -120,7 +116,6 @@ final class PartWarrantyResource extends Model
                         ->label('Претензия')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'none' => 'gray',
                             'pending' => 'warning',
                             'approved' => 'success',
                             'rejected' => 'danger',

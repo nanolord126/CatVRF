@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListDentalClinics extends Model
+
+
+use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\ListRecords;
+
+final class ListDentalClinics extends ListRecords
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = DentalClinicResource::class;
 
         protected function getHeaderActions(): array
@@ -25,10 +33,33 @@ final class ListDentalClinics extends Model
         {
             parent::mount();
 
-            Log::channel('audit')->info('Dental Clinic Directory accessed', [
+            $this->logger->info('Dental Clinic Directory accessed', [
                 'tenant_id' => tenant()->id ?? 'system',
-                'user_id' => auth()->id(),
-                'correlation_id' => request()->header('X-Correlation-ID')
+                'user_id' => $this->guard->id(),
+                'correlation_id' => $this->request->header('X-Correlation-ID')
             ]);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

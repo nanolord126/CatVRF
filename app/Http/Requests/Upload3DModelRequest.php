@@ -2,18 +2,25 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class Upload3DModelRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class Upload3DModelRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests
+ */
+final class Upload3DModelRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
         {
             // SECURITY: Проверка что пользователь имеет право загружать модели
-            return auth()->check() && auth()->user()->can('upload_3d_models');
+            return $this->guard->check() && $this->guard->user()->can('upload_3d_models');
         }
 
         public function rules(): array

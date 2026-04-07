@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Appointment extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'appointments';
@@ -47,8 +46,8 @@ final class Appointment extends Model
             });
 
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
         }

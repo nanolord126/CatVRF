@@ -4,76 +4,20 @@ namespace App\Domains\VeganProducts\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 final class VeganProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'vegan_products';
-
-        /**
-         * All attributes are mass assignable as per CACHE 2026.
-         */
-        protected $fillable = [
-            'uuid', 'tenant_id', 'vegan_store_id', 'vegan_category_id', 'name', 'sku', 'brand',
-            'price', 'b2b_price', 'is_b2b_available', 'nutrition_info', 'allergen_info',
-            'ingredients', 'current_stock', 'hold_stock', 'availability_status', 'images',
-            'shelf_life_days', 'weight_grams', 'correlation_id', 'tags'
-        ];
-
-        /**
-         * Cast attributes to native types for faster access and type safety.
-         */
-        protected $casts = [
-            'nutrition_info' => 'json',
-            'allergen_info' => 'json',
-            'images' => 'json',
-            'tags' => 'json',
-            'price' => 'integer',
-            'b2b_price' => 'integer',
-            'is_b2b_available' => 'boolean',
-            'current_stock' => 'integer',
-            'hold_stock' => 'integer',
-        ];
-
-        /**
-         * Boot logic: Handle UUID and Tenant Scoping.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (VeganProduct $model) {
-                $model->uuid = $model->uuid ?: (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?: (int) optional(tenant())->id;
-            });
-
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                if (tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        /* --- Relationships --- */
-
-        public function store(): BelongsTo
-        {
-            return $this->belongsTo(VeganStore::class, 'vegan_store_id');
-        }
-
-        public function category(): BelongsTo
-        {
-            return $this->belongsTo(VeganCategory::class, 'vegan_category_id');
-        }
-
-        public function reviews(): MorphMany
-        {
-            return $this->morphMany(VeganReview::class, 'reviewable');
-        }
-
-        /* --- Accessors & Scopes --- */
 
         /**
          * Check availability taking hold stock into account.
@@ -167,4 +111,4 @@ final class VeganProduct extends Model
         protected $casts = ['meta' => 'json', 'rating' => 'integer'];
 
         public function reviewable(): \Illuminate\Database\Eloquent\Relations\MorphTo { return $this->morphTo(); }
-}
+    }

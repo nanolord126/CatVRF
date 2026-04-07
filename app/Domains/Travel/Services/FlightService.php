@@ -2,35 +2,26 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FlightService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class FlightService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function bookFlight(
             TravelFlight $flight,
-            string $correlationId = null,
-        ): TravelFlight {
-
+            string $correlationId = null
+    ): TravelFlight {
 
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($flight, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($flight, $correlationId) {
                     $flight->lockForUpdate();
 
                     if ($flight->available_seats <= 0) {
@@ -39,7 +30,7 @@ final class FlightService extends Model
 
                     $flight->decrement('available_seats');
 
-                    Log::channel('audit')->info('Flight booked', [
+                    $this->logger->info('Flight booked', [
                         'flight_id' => $flight->id,
                         'flight_number' => $flight->flight_number,
                         'remaining_seats' => $flight->available_seats,
@@ -53,7 +44,7 @@ final class FlightService extends Model
                     return $flight->refresh();
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Flight booking failed', [
+                $this->logger->error('Flight booking failed', [
                     'flight_id' => $flight->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -66,27 +57,19 @@ final class FlightService extends Model
 
         public function releaseFlight(
             TravelFlight $flight,
-            string $correlationId = null,
-        ): TravelFlight {
-
+            string $correlationId = null
+    ): TravelFlight {
 
             $correlationId ??= $flight->correlation_id ?? Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($flight, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($flight, $correlationId) {
                     $flight->lockForUpdate();
 
                     $flight->increment('available_seats');
 
-                    Log::channel('audit')->info('Flight seat released', [
+                    $this->logger->info('Flight seat released', [
                         'flight_id' => $flight->id,
                         'flight_number' => $flight->flight_number,
                         'available_seats' => $flight->available_seats,
@@ -97,7 +80,7 @@ final class FlightService extends Model
                     return $flight->refresh();
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Flight seat release failed', [
+                $this->logger->error('Flight seat release failed', [
                     'flight_id' => $flight->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

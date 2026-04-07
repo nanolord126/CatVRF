@@ -2,19 +2,18 @@
 
 namespace App\Domains\Hotels\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HotelController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class HotelController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly BookingService $bookingService,
             private readonly PricingService $pricingService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -23,12 +22,12 @@ final class HotelController extends Model
                     ->where('status', 'active')
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $hotels,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
@@ -41,36 +40,36 @@ final class HotelController extends Model
                 $hotel = Hotel::findOrFail($id);
                 $this->authorize('view', $hotel);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $hotel->load(['roomTypes', 'images', 'reviews']),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function store(): JsonResponse
+        public function store(\Illuminate\Http\Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_create', 0, request()->ip(), null, $correlationId);
+            $fraudResult = $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'hotel_create', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Hotel create blocked', [
+                $this->logger->warning('Hotel create blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
-            Log::channel('audit')->info('Hotel create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            $this->logger->info('Hotel create start', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id]);
 
             try {
-                $data = request()->validate([
+                $data = $request->validate([
                     'name'        => 'required|string',
                     'address'     => 'required|string',
                     'star_rating' => 'required|integer|between:1,5',
@@ -80,36 +79,36 @@ final class HotelController extends Model
                 ]);
 
                 $hotel = Hotel::create([
-                    'tenant_id'      => tenant('id'),
+                    'tenant_id'      => tenant()->id,
                     ...$data,
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Hotel created', [
+                $this->logger->info('Hotel created', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'hotel_id'       => $hotel->id,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                Log::error('Hotel create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+                $this->logger->error('Hotel create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
             }
         }
 
-        public function update(string $id): JsonResponse
+        public function update(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_update', 0, request()->ip(), null, $correlationId);
+            $fraudResult = $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'hotel_update', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Hotel update blocked', [
+                $this->logger->warning('Hotel update blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -118,7 +117,7 @@ final class HotelController extends Model
 
                 $before = $hotel->toArray();
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'name'        => 'nullable|string',
                     'address'     => 'nullable|string',
                     'star_rating' => 'nullable|integer|between:1,5',
@@ -128,33 +127,33 @@ final class HotelController extends Model
 
                 $hotel->update($data);
 
-                Log::channel('audit')->info('Hotel updated', [
+                $this->logger->info('Hotel updated', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'hotel_id'       => $id,
                     'before'         => $before,
                     'after'          => $hotel->fresh()->toArray(),
                 ]);
 
-                return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('Hotel update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+                $this->logger->error('Hotel update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
             }
         }
 
-        public function destroy(string $id): JsonResponse
+        public function destroy(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_delete', 0, request()->ip(), null, $correlationId);
+            $fraudResult = $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'hotel_delete', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Hotel destroy blocked', [
+                $this->logger->warning('Hotel destroy blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -163,16 +162,16 @@ final class HotelController extends Model
 
                 $hotel->delete();
 
-                Log::channel('audit')->info('Hotel deleted', [
+                $this->logger->info('Hotel deleted', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'hotel_id'       => $id,
                 ]);
 
-                return response()->json(['success' => true, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('Hotel destroy failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+                $this->logger->error('Hotel destroy failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
             }
         }
 
@@ -188,7 +187,7 @@ final class HotelController extends Model
                 $totalCommission = $bookings->sum('commission_price');
                 $netRevenue = $totalRevenue - $totalCommission;
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'total_revenue' => $totalRevenue,
@@ -198,25 +197,25 @@ final class HotelController extends Model
                     ],
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function verify(string $id): JsonResponse
+        public function verify(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_verify', 0, request()->ip(), null, $correlationId);
+            $fraudResult = $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'hotel_verify', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Hotel verify blocked', [
+                $this->logger->warning('Hotel verify blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -225,16 +224,16 @@ final class HotelController extends Model
 
                 $hotel->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Hotel verified', [
+                $this->logger->info('Hotel verified', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'hotel_id'       => $id,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('Hotel verify failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+                $this->logger->error('Hotel verify failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
             }
         }
 }

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Hotels\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Review;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class ReviewResource extends Model
+final class ReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Review::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-star';
@@ -49,7 +50,8 @@ final class ReviewResource extends Model
                     Tables\Columns\TextColumn::make('rating')
                         ->numeric()
                         ->sortable(),
-                    Tables\Columns\BooleanColumn::make('verified_booking'),
+                    Tables\Columns\IconColumn::make('verified_booking')
+                        ->boolean(),
                     Tables\Columns\TextColumn::make('published_at')
                         ->dateTime()
                         ->sortable(),

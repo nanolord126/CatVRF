@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class VehicleInspectionResource extends Model
+final class VehicleInspectionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = VehicleInspection::class;
 
         protected static ?string $navigationLabel = 'Техосмотр';
@@ -85,7 +82,6 @@ final class VehicleInspectionResource extends Model
                         ->label('Статус')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'passed' => 'success',
                             'failed' => 'danger',
                             'pending' => 'warning',
                             default => 'gray',

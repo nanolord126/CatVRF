@@ -2,6 +2,8 @@
 
 namespace App\Notifications\Channels;
 
+
+use Psr\Log\LoggerInterface;
 use App\Services\EmailService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -17,17 +19,18 @@ use Illuminate\Support\Facades\Log;
  *
  * С помощью Laravel Mail facade
  */
-class EmailChannel
+final class EmailChannel
 {
     /**
      * Инстанс EmailService
      */
-    protected EmailService $emailService;
+    private EmailService $emailService;
 
     /**
      * Конструктор
      */
-    public function __construct(EmailService $emailService)
+    public function __construct(
+        private readonly LoggerInterface $logger,EmailService $emailService)
     {
         $this->emailService = $emailService;
     }
@@ -39,7 +42,7 @@ class EmailChannel
     {
         // Проверить, что объект имеет метод toMail
         if (!method_exists($notification, 'toMail')) {
-            Log::warning('Notification does not have toMail method', [
+            $this->logger->warning('Notification does not have toMail method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -50,7 +53,7 @@ class EmailChannel
             // Получить email address
             $email = $this->getEmail($notifiable);
             if (!$email) {
-                throw new \Exception("No email address found for notifiable: {$notifiable->id}");
+                throw new \RuntimeException("No email address found for notifiable: {$notifiable->id}");
             }
 
             // Получить данные письма
@@ -67,7 +70,7 @@ class EmailChannel
                 tenantId: $notification->getTenantId(),
             );
 
-            Log::channel('audit')->info('Email notification sent', [
+            $this->logger->info('Email notification sent', [
                 'type' => $notification->getType(),
                 'email' => $email,
                 'correlation_id' => $notification->getCorrelationId(),
@@ -75,7 +78,14 @@ class EmailChannel
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('notifications')->error('Failed to send email notification', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send email notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),
@@ -104,6 +114,6 @@ class EmailChannel
             return $notifiable->routeNotificationForEmail();
         }
 
-        return null;
+        return '';
     }
 }

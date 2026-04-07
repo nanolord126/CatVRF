@@ -7,12 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Enrollment extends Model
 {
-    use HasFactory;
+    protected $table = 'education_enrollments';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasUuids, SoftDeletes;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'course_id',
             'student_id',
@@ -37,7 +40,7 @@ final class Enrollment extends Model
 
         public function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant('id') ?? 0));
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant()->id ?? 0));
         }
 
         public function course(): BelongsTo

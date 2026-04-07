@@ -2,17 +2,18 @@
 
 namespace App\Domains\Pharmacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class QualityControlService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class QualityControlService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Проверка маркировки Честный ЗНАК и валидация партии.
@@ -22,20 +23,16 @@ final class QualityControlService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting на запросы к внешним API маркировки
-            if (RateLimiter::tooManyAttempts("quality:check:batch", 100)) {
+            if ($this->rateLimiter->tooManyAttempts("quality:check:batch", 100)) {
                 throw new \RuntimeException("External marking service bottleneck. Try later.", 429);
             }
-            RateLimiter::hit("quality:check:batch", 60);
+            $this->rateLimiter->hit("quality:check:batch", 60);
 
-            return DB::transaction(function () use ($medicineId, $batchNumber, $dataMatrix, $correlationId) {
+            return $this->db->transaction(function () use ($medicineId, $batchNumber, $dataMatrix, $correlationId) {
                 $medicine = Medicine::findOrFail($medicineId);
 
                 // 2. Fraud Check - проверка на поддельные коды маркировки
-                $this->fraud->check([
-                    "operation_type" => "marking_verification",
-                    "meta" => ["medicine_id" => $medicineId, "batch" => $batchNumber],
-                    "correlation_id" => $correlationId
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 // Имитация интеграции с ГИС МТ (Честный ЗНАК)
                 $isValid = $this->simulateGisMtCheck($dataMatrix);
@@ -50,7 +47,7 @@ final class QualityControlService extends Model
                     "tags" => ["gis_mt:checked", "result:" . ($isValid ? "pass" : "fail")]
                 ]);
 
-                Log::channel("audit")->info("Pharmacy: quality check completed", [
+                $this->logger->info("Pharmacy: quality check completed", [
                     "check_id" => $check->id,
                     "medicine" => $medicine->name,
                     "status" => $check->status
@@ -91,7 +88,7 @@ final class QualityControlService extends Model
             ]);
 
             if (!$isValid) {
-                Log::channel("audit")->warning("Pharmacy: cold chain violation!", [
+                $this->logger->warning("Pharmacy: cold chain violation!", [
                     "order_id" => $orderId,
                     "violations" => $violations
                 ]);

@@ -2,25 +2,23 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class BookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private WalletService $wallet,
+
+    public function __construct(private WalletService $wallet,
             private FraudControlService $fraud,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать бронирование с транзакцией и контролем.
          */
         public function createBooking(BookingDto $dto): Booking
         {
-            Log::channel('audit')->info('Travel booking attempt started', [
+            $this->logger->info('Travel booking attempt started', [
                 'user_id' => $dto->userId,
                 'bookable_type' => $dto->bookableType,
                 'bookable_id' => $dto->bookableId,
@@ -28,16 +26,16 @@ final class BookingService extends Model
             ]);
 
             // 1. Предварительная проверка фрода (Слой 6)
-            $this->fraud->check($dto->userId, 'travel_booking', $dto->toArray());
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'travel_booking', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 // 2. Блокировка объекта для проверки наличия мест
                 $bookableClass = $this->resolveBookableClass($dto->bookableType);
                 $bookable = $bookableClass::where('id', $dto->bookableId)->lockForUpdate()->firstOrFail();
 
                 // 3. Проверка на Trip
                 if ($bookable instanceof Trip && !$bookable->isAvailable($dto->slotsCount)) {
-                    throw new \Exception('Недостаточно свободных мест на выбранный выезд');
+                    throw new \RuntimeException('Недостаточно свободных мест на выбранный выезд');
                 }
 
                 // 4. Цена
@@ -62,7 +60,7 @@ final class BookingService extends Model
                     $bookable->increment('booked_slots', $dto->slotsCount);
                 }
 
-                Log::channel('audit')->info('Travel booking created successfully', [
+                $this->logger->info('Travel booking created successfully', [
                     'booking_id' => $booking->id,
                     'total_price' => $totalPrice,
                     'correlation_id' => $dto->correlationId
@@ -77,7 +75,7 @@ final class BookingService extends Model
          */
         public function payBooking(int $bookingId, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingId, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $correlationId) {
                 $booking = Booking::where('id', $bookingId)->lockForUpdate()->firstOrFail();
 
                 if ($booking->status === 'paid') return true;
@@ -86,12 +84,10 @@ final class BookingService extends Model
                 $this->wallet->debit(
                     $booking->user_id,
                     $booking->total_price,
-                    'travel_payment',
-                    [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $correlationId, null, null, [
                         'booking_id' => $booking->id,
                         'correlation_id' => $correlationId
-                    ]
-                );
+                    ]);
 
                 $booking->update([
                     'status' => 'confirmed',
@@ -107,14 +103,14 @@ final class BookingService extends Model
          */
         public function cancelBooking(int $bookingId, string $reason, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingId, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $reason, $correlationId) {
                 $booking = Booking::where('id', $bookingId)->lockForUpdate()->firstOrFail();
 
                 if (in_array($booking->status, ['cancelled', 'completed'])) return false;
 
                 // Возврат
                 if ($booking->payment_status === 'paid') {
-                    $this->wallet->credit($booking->user_id, $booking->total_price, 'travel_refund', [
+                    $this->wallet->credit($booking->user_id, $booking->total_price, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
                         'booking_id' => $booking->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId

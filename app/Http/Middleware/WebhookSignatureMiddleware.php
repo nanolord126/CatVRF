@@ -2,8 +2,12 @@
 
 namespace App\Http\Middleware;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * Webhook Signature Validation Middleware
@@ -27,6 +31,12 @@ use Illuminate\Http\Request;
  */
 final class WebhookSignatureMiddleware
 {
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
+
     /**
      * Handle the request
      *
@@ -43,7 +53,7 @@ final class WebhookSignatureMiddleware
 
         // Validate IP whitelist first
         if (!$this->validateIpWhitelist($request)) {
-            return response()->json([
+            return $this->response->json([
                 'error' => 'IP not whitelisted',
             ], 401);
         }
@@ -52,20 +62,19 @@ final class WebhookSignatureMiddleware
         $gateway = $this->getGatewayFromPath($request->path());
 
         $isValid = match ($gateway) {
-            'tinkoff' => $this->validateTinkoffSignature($request),
             'tochka' => $this->validateTochkaSignature($request),
             'sber' => $this->validateSberSignature($request),
             default => false,
         };
 
         if (!$isValid) {
-            \Log::channel('webhook_errors')->warning('Invalid webhook signature', [
+            $this->logger->channel('webhook_errors')->warning('Invalid webhook signature', [
                 'gateway' => $gateway,
                 'ip' => $request->ip(),
                 'signature' => $request->header('X-Signature', 'missing'),
             ]);
 
-            return response()->json([
+            return $this->response->json([
                 'error' => 'Invalid signature',
             ], 401);
         }
@@ -83,7 +92,7 @@ final class WebhookSignatureMiddleware
     {
         $gateway = $this->getGatewayFromPath($request->path());
         $configKey = "security.webhook_ip_whitelist.{$gateway}";
-        $whitelist = config($configKey, []);
+        $whitelist = $this->config->get($configKey, []);
 
         if (empty($whitelist)) {
             return true; // No whitelist configured, allow
@@ -108,7 +117,7 @@ final class WebhookSignatureMiddleware
             return false;
         }
 
-        $secret = config('security.webhook_secrets.tinkoff', '');
+        $secret = $this->config->get('security.webhook_secrets.tinkoff', '');
         $payload = $request->getContent();
 
         // HMAC-SHA256 validation
@@ -133,7 +142,7 @@ final class WebhookSignatureMiddleware
         }
 
         $jwt = substr($token, 7);
-        $secret = config('security.webhook_secrets.tochka', '');
+        $secret = $this->config->get('security.webhook_secrets.tochka', '');
 
         try {
             // Verify JWT (simplified - use Firebase/JWT in production)
@@ -151,6 +160,13 @@ final class WebhookSignatureMiddleware
 
             return hash_equals($expectedSignature, $signature);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             return false;
         }
     }
@@ -169,7 +185,7 @@ final class WebhookSignatureMiddleware
             return false;
         }
 
-        $secret = config('security.webhook_secrets.sber', '');
+        $secret = $this->config->get('security.webhook_secrets.sber', '');
         $payload = $request->getContent();
 
         // HMAC-SHA256 validation (similar to Tinkoff)

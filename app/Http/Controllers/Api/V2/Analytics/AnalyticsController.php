@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api\V2\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class AnalyticsController extends Model
+final class AnalyticsController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AdvancedAnalyticsService $analyticsService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Advanced Analytics
              // Только авторизованные
              // 1000 light / 100 heavy запросов/час
@@ -32,19 +35,26 @@ final class AnalyticsController extends Model
                     'end_date' => 'required|date_format:Y-m-d|after:start_date',
                 ]);
                 $metrics = $this->analyticsService->getMetricsByPeriod(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     metricType: $validated['metric_type'],
                     startDate: $validated['start_date'],
                     endDate: $validated['end_date'],
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $metrics,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Analytics metrics error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics metrics error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -58,16 +68,23 @@ final class AnalyticsController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $kpis = $this->analyticsService->calculateKPIs(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $kpis,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Analytics KPIs error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics KPIs error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -85,18 +102,25 @@ final class AnalyticsController extends Model
                     'days_ahead' => 'nullable|integer|min:1|max:90',
                 ]);
                 $forecast = $this->analyticsService->predictFutureTrend(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     metricType: $validated['metric_type'],
                     daysAhead: $validated['days_ahead'] ?? 30,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $forecast,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Analytics forecast error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics forecast error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -114,17 +138,24 @@ final class AnalyticsController extends Model
                     'compare_periods' => 'nullable|boolean',
                 ]);
                 $report = $this->analyticsService->generateCustomReport(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     filters: $validated,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $report,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Analytics report error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics report error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -142,18 +173,25 @@ final class AnalyticsController extends Model
                     'period_2' => 'required|in:7_days_ago,30_days_ago,current',
                 ]);
                 $comparison = $this->analyticsService->getComparativeAnalysis(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     period1: $validated['period_1'],
                     period2: $validated['period_2'],
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $comparison,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Analytics comparison error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics comparison error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);

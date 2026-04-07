@@ -2,14 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CheckResourcePolicy extends Model
+final class CheckResourcePolicy
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle an incoming request.
          */
@@ -22,7 +25,7 @@ final class CheckResourcePolicy extends Model
             $user = $request->user();
 
             if (! $user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return $this->response->json(['error' => 'Unauthorized'], 401);
             }
 
             // Extract resource from request
@@ -33,7 +36,7 @@ final class CheckResourcePolicy extends Model
                 $resource = $this->resolveResource($policyClass, $resourceId);
 
                 if (! $resource) {
-                    Log::channel('audit')->warning('Resource not found for policy check', [
+                    $this->logger->channel('audit')->warning('Resource not found for policy check', [
                         'correlation_id' => $request->header('X-Correlation-ID'),
                         'policy_class' => $policyClass,
                         'resource_id' => $resourceId,
@@ -41,12 +44,12 @@ final class CheckResourcePolicy extends Model
                         'ability' => $ability,
                     ]);
 
-                    return response()->json(['error' => 'Resource not found'], 404);
+                    return $this->response->json(['error' => 'Resource not found'], 404);
                 }
 
                 // Authorize with policy
                 if (! Gate::authorize($ability, $resource)) {
-                    Log::channel('audit')->warning('Policy authorization failed', [
+                    $this->logger->channel('audit')->warning('Policy authorization failed', [
                         'correlation_id' => $request->header('X-Correlation-ID'),
                         'policy_class' => $policyClass,
                         'ability' => $ability,
@@ -55,10 +58,10 @@ final class CheckResourcePolicy extends Model
                         'resource_id' => $resourceId,
                     ]);
 
-                    return response()->json(['error' => 'Forbidden - Policy check failed'], 403);
+                    return $this->response->json(['error' => 'Forbidden - Policy check failed'], 403);
                 }
 
-                Log::channel('audit')->debug('Policy authorization granted', [
+                $this->logger->channel('audit')->debug('Policy authorization granted', [
                     'correlation_id' => $request->header('X-Correlation-ID'),
                     'policy_class' => $policyClass,
                     'ability' => $ability,

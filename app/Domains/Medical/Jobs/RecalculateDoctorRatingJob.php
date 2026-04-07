@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RecalculateDoctorRatingJob extends Model
+use Psr\Log\LoggerInterface;
+final class RecalculateDoctorRatingJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
@@ -24,7 +21,7 @@ final class RecalculateDoctorRatingJob extends Model
          */
         public function __construct(
             private readonly int $doctorId,
-            private readonly string $correlationId
+            private readonly string $correlationId, private readonly LoggerInterface $logger
         ) {
         }
 
@@ -42,7 +39,7 @@ final class RecalculateDoctorRatingJob extends Model
             }
 
             try {
-                Log::channel('audit')->info("Recalculating Medical Doctor Rating Stage 1", [
+                $this->logger->info("Recalculating Medical Doctor Rating Stage 1", [
                     'doctor_id' => $this->doctorId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -67,7 +64,7 @@ final class RecalculateDoctorRatingJob extends Model
                     'rating' => $finalRating,
                 ]);
 
-                Log::channel('audit')->info("Medical Doctor Rating Updated Successfully", [
+                $this->logger->info("Medical Doctor Rating Updated Successfully", [
                     'doctor_id' => $this->doctorId,
                     'old_rating' => $doctor->getOriginal('rating'),
                     'new_rating' => $finalRating,
@@ -75,7 +72,7 @@ final class RecalculateDoctorRatingJob extends Model
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error("Failed to recalculate Medical Doctor Rating", [
+                $this->logger->error("Failed to recalculate Medical Doctor Rating", [
                     'doctor_id' => $this->doctorId,
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),

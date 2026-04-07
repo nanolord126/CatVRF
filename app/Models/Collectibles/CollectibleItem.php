@@ -4,12 +4,12 @@ namespace App\Models\Collectibles;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 final class CollectibleItem extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'collectible_items';
 
         protected $fillable = [

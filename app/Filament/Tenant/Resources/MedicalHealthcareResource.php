@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MedicalHealthcareResource extends Model
+final class MedicalHealthcareResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BMedicalHealthcareOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class MedicalHealthcareResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMedicalHealthcare::route('/'),
-                'create' => Pages\\CreateMedicalHealthcare::route('/create'),
-                'edit' => Pages\\EditMedicalHealthcare::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalHealthcare::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMedicalHealthcare::route('/'),
-                'create' => Pages\\CreateMedicalHealthcare::route('/create'),
-                'edit' => Pages\\EditMedicalHealthcare::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalHealthcare::route('/{record}'),
+                'index' => Pages\ListMedicalHealthcare::route('/'),
+                'create' => Pages\CreateMedicalHealthcare::route('/create'),
+                'edit' => Pages\EditMedicalHealthcare::route('/{record}/edit'),
+                'view' => Pages\ViewMedicalHealthcare::route('/{record}'),
             ];
         }
 }

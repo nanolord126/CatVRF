@@ -2,20 +2,18 @@
 
 namespace App\Domains\SportsNutrition\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeAgeVerificationController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class VapeAgeVerificationController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP зависимостью (VapeAgeVerificationService).
          */
         public function __construct(
-            private VapeAgeVerificationService $ageVerifier,
-        ) {}
+            private VapeAgeVerificationService $ageVerifier, private readonly LoggerInterface $logger) {}
 
         /**
          * Инициировать верификацию через ЕСИА/Банк.
@@ -31,20 +29,20 @@ final class VapeAgeVerificationController extends Model
 
                 // 1. Создаем верификацию в ожидании
                 $uuid = $this->ageVerifier->initiateVerification(
-                    userId: auth()->id(),
+                    userId: $request->user()?->id,
                     method: $method,
                     correlationId: $correlationId,
                 );
 
                 // 2. Audit log
-                Log::channel('audit')->info('Vape verification initiate controller', [
-                    'user_id' => auth()->id(),
+                $this->logger->info('Vape verification initiate controller', [
+                    'user_id' => $request->user()?->id,
                     'method' => $method,
                     'verification_uuid' => $uuid,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'verification_uuid' => $uuid,
                     'correlation_id' => $correlationId,
@@ -53,14 +51,14 @@ final class VapeAgeVerificationController extends Model
             } catch (Throwable $e) {
 
                 // 3. Error Log + Trace
-                Log::channel('audit')->error('Vape verification init failure', [
-                    'user_id' => auth()->id(),
+                $this->logger->error('Vape verification init failure', [
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Internal error initiating age verification: ' . $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -87,13 +85,13 @@ final class VapeAgeVerificationController extends Model
                 );
 
                 // 5. Audit log
-                Log::channel('audit')->info('Vape verification complete controller results', [
+                $this->logger->info('Vape verification complete controller results', [
                     'verification_uuid' => $uuid,
                     'is_adult' => $isAdult,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'is_adult' => $isAdult,
                     'correlation_id' => $correlationId,
@@ -101,12 +99,12 @@ final class VapeAgeVerificationController extends Model
 
             } catch (Throwable $e) {
 
-                Log::channel('audit')->error('Vape verification complete failure', [
+                $this->logger->error('Vape verification complete failure', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -119,11 +117,11 @@ final class VapeAgeVerificationController extends Model
          */
         public function check(): JsonResponse
         {
-            $correlationId = request()->header('X-Correlation-ID') ?? (string) Str::uuid();
+            $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
-            $isVerified = $this->ageVerifier->hasAValidVerification(auth()->id());
+            $isVerified = $this->ageVerifier->hasAValidVerification($request->user()?->id);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'is_verified' => $isVerified,
                 'correlation_id' => $correlationId,

@@ -2,22 +2,26 @@
 
 namespace App\Http\Controllers\Api\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DentalApiController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class DentalApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly string $correlationId;
         public function __construct(
+        private readonly Request $request,
             private readonly DentalClinicService $clinicService,
             private readonly DentalAppointmentService $appointmentService,
             private readonly TreatmentPlanService $planService,
-            private readonly DentalSmileConstructorService $smileService
-        ) {
-            $this->correlationId = request()->header('X-Correlation-ID', Str::uuid()->toString());
+            private readonly DentalSmileConstructorService $smileService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {
+            $this->correlationId = $this->request->header('X-Correlation-ID', Str::uuid()->toString());
         }
         /**
          * Получить список клиник в текущем тенанте
@@ -30,7 +34,7 @@ final class DentalApiController extends Model
                     (float) $request->get('lon', 37.6173),
                     (int) $request->get('radius', 10)
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $clinics,
                     'correlation_id' => $this->correlationId,
@@ -47,7 +51,7 @@ final class DentalApiController extends Model
         {
             try {
                 $clinic = $this->clinicService->getClinicWithDentists($id);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $clinic,
                     'correlation_id' => $this->correlationId,
@@ -66,7 +70,7 @@ final class DentalApiController extends Model
                 $appointment = $this->appointmentService->bookAppointment(
                     $request->validated() + ['correlation_id' => $this->correlationId]
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $appointment,
                     'message' => 'Запись успешно создана',
@@ -88,7 +92,7 @@ final class DentalApiController extends Model
                     $photo,
                     $request->user()->id ?? 0
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $analysis,
                     'correlation_id' => $this->correlationId,
@@ -105,7 +109,7 @@ final class DentalApiController extends Model
         {
             try {
                 $plans = $this->planService->getPlansForPatient($request->user()->id);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $plans,
                     'correlation_id' => $this->correlationId,
@@ -117,7 +121,7 @@ final class DentalApiController extends Model
         }
         private function errorResponse(string $message, int $code = 400): JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => $message,
                 'correlation_id' => $this->correlationId,
@@ -125,7 +129,7 @@ final class DentalApiController extends Model
         }
         private function logError(string $method, \Throwable $e): void
         {
-            Log::channel('audit')->error("DentalApi::{$method} failed", [
+            $this->logger->channel('audit')->error("DentalApi::{$method} failed", [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

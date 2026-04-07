@@ -2,17 +2,18 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SurgeService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class SurgeService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const SURGE_CACHE_TTL = 300; // 5 минут
 
-        public function __construct()
+        public function __construct(private readonly FraudControlService $fraud,
+        private \Illuminate\Contracts\Cache\Repository $cache,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
         }
 
@@ -22,12 +23,11 @@ final class SurgeService extends Model
         public function getSurgeMultiplier(string $zoneId, string $correlationId): float
         {
 
-
             $cacheKey = "surge:zone:{$zoneId}";
 
-            $multiplier = Cache::get($cacheKey, 1.0);
+            $multiplier = $this->cache->get($cacheKey, 1.0);
 
-            Log::channel('audit')->info('Surge multiplier retrieved', [
+            $this->logger->info('Surge multiplier retrieved', [
                 'zone_id' => $zoneId,
                 'multiplier' => $multiplier,
                 'correlation_id' => $correlationId,
@@ -42,22 +42,22 @@ final class SurgeService extends Model
         public function recalculateSurges(string $correlationId): array
         {
 
-
             $results = [];
 
             try {
-                DB::transaction(function () use (&$results, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use (&$results, $correlationId) {
                     $zones = TaxiSurgeZone::all();
 
                     foreach ($zones as $zone) {
                         $demandFactor = $this->calculateDemandFactor($zone->id);
                         $multiplier = max(1.0, min(2.5, 1.0 + ($demandFactor * 1.5)));
 
-                        Cache::put("surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
+                        $this->cache->put("surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
 
                         $results[$zone->id] = $multiplier;
 
-                        Log::channel('audit')->info('Surge recalculated', [
+                        $this->logger->info('Surge recalculated', [
                             'zone_id' => $zone->id,
                             'demand_factor' => $demandFactor,
                             'multiplier' => $multiplier,
@@ -65,8 +65,8 @@ final class SurgeService extends Model
                         ]);
                     }
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Surge recalculation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Surge recalculation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
@@ -82,7 +82,7 @@ final class SurgeService extends Model
          */
         private function calculateDemandFactor(string $zoneId): float
         {
-            $rideCount5Min = DB::table('taxi_rides')
+            $rideCount5Min = $this->db->table('taxi_rides')
                 ->where('zone_id', $zoneId)
                 ->where('created_at', '>=', Carbon::now()->subMinutes(5))
                 ->where('status', 'pending')

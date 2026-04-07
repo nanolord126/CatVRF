@@ -2,20 +2,24 @@
 
 namespace App\Domains\Medical\Psychology\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AITherapyConstructorService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AITherapyConstructorService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Создание персонального терапевтического плана.
          */
         public function generateTherapyPlan(array $userData, string $correlationId): array
         {
-            Log::channel('audit')->info('Generating AI Therapy Plan', [
+            $this->logger->info('Generating AI Therapy Plan', [
                 'user_id' => $userData['user_id'] ?? 'anonymous',
                 'correlation_id' => $correlationId,
             ]);
@@ -43,7 +47,7 @@ final class AITherapyConstructorService extends Model
          */
         private function findBestMatches(array $userData): Collection
         {
-            $tenantId = auth()->user()->tenant_id ?? 0;
+            $tenantId = $this->guard->user()->tenant_id ?? 0;
             $psychologists = Psychologist::where('tenant_id', $tenantId)
                 ->where('is_available', true)
                 ->limit(3)
@@ -77,8 +81,9 @@ final class AITherapyConstructorService extends Model
         {
             $session = \App\Domains\Medical\Psychology\Models\PsychologicalSession::findOrFail($sessionId);
 
-            Log::channel('audit')->info('AI Session Vibe Analysis', [
+            $this->logger->info('AI Session Vibe Analysis', [
                 'session_id' => $sessionId,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             // Эмуляция NLP анализа текста или видео/аудио потока

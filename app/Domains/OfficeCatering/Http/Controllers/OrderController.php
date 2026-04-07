@@ -2,17 +2,15 @@
 
 namespace App\Domains\OfficeCatering\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OrderController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class OrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly OfficeCateringService $service,
-        ) {}
+            private readonly OfficeCateringService $service, private readonly LoggerInterface $logger) {}
 
         public function store(CateringOrderStoreRequest $request): JsonResponse
         {
@@ -34,7 +32,7 @@ final class OrderController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'order_id' => $order->id,
                     'uuid' => $order->uuid,
@@ -44,14 +42,14 @@ final class OrderController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\RuntimeException $e) {
-                \Log::channel('audit')->error('Catering order store error', [
+                $this->logger->error('Catering order store error', [
                     'error' => $e->getMessage(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 $code = (int) $e->getCode();
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -64,14 +62,14 @@ final class OrderController extends Model
             try {
                 $order = CateringOrder::findOrFail($orderId);
 
-                if ($order->client_id !== auth()->id() && !auth()->user()->isCateringOwner($order->catering_company_id)) {
-                    return response()->json([
+                if ($order->client_id !== $request->user()?->id && !$request->user()->isCateringOwner($order->catering_company_id)) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'order' => [
                         'id' => $order->id,
@@ -90,14 +88,15 @@ final class OrderController extends Model
                         'created_at' => $order->created_at->toIso8601String(),
                     ],
                 ]);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Catering order show error', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Catering order show error', [
                     'order_id' => $orderId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Order not found',
                 ], 404);
@@ -109,7 +108,7 @@ final class OrderController extends Model
             try {
                 $menus = $this->service->getMenus($companyId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'menus' => $menus->map(fn($m) => [
                         'id' => $m->id,
@@ -120,8 +119,8 @@ final class OrderController extends Model
                         'items' => $m->items_json,
                     ]),
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Menus not found',
                 ], 404);
@@ -135,8 +134,8 @@ final class OrderController extends Model
             try {
                 $order = CateringOrder::findOrFail($orderId);
 
-                if ($order->client_id !== auth()->id()) {
-                    return response()->json([
+                if ($order->client_id !== $request->user()?->id) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                     ], 403);
@@ -144,26 +143,26 @@ final class OrderController extends Model
 
                 $updated = $this->service->cancelOrder($orderId, $correlationId);
 
-                \Log::channel('audit')->info('Catering order cancelled via API', [
+                $this->logger->info('Catering order cancelled via API', [
                     'order_id' => $orderId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Order cancelled',
                     'order' => $updated,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Catering order cancellation error', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Catering order cancellation error', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -174,9 +173,9 @@ final class OrderController extends Model
         public function getUserOrders(): JsonResponse
         {
             try {
-                $orders = $this->service->getUserOrders(auth()->id());
+                $orders = $this->service->getUserOrders($request->user()?->id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'orders' => $orders->map(fn($o) => [
                         'id' => $o->id,
@@ -187,8 +186,8 @@ final class OrderController extends Model
                         'created_at' => $o->created_at->toIso8601String(),
                     ]),
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Orders not found',
                 ], 404);

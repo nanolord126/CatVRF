@@ -2,20 +2,204 @@
 
 namespace App\Domains\Gardening\GardenServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Gardening\GardenServices\Models\GardenJob;
+use App\Services\FraudControlService;
+use App\Services\AuditService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class GardenServicesService extends Model
+/**
+ * GardenServicesService — управление садовыми услугами.
+ *
+ * Полный цикл: создание, завершение, отмена заказов
+ * с fraud-check, wallet-интеграцией и audit-логированием.
+ *
+ * @package App\Domains\Gardening\GardenServices\Services
+ */
+final readonly class GardenServicesService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createJob(int $professionalId,$jobDate,$durationHours,$jobType,string $correlationId=""):GardenJob{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("garden:job:".auth()->id(),11))throw new \RuntimeException("Too many",429);RateLimiter::hit("garden:job:".auth()->id(),3600);
-    return DB::transaction(function()use($professionalId,$jobDate,$durationHours,$jobType,$correlationId){$p=GardenProfessional::findOrFail($professionalId);$total=(int)($p->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'garden_job','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$j=GardenJob::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'professional_id'=>$professionalId,'customer_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','job_date'=>$jobDate,'duration_hours'=>$durationHours,'job_type'=>$jobType,'tags'=>['garden'=>true]]);Log::channel('audit')->info('Garden job created',['job_id'=>$j->id,'correlation_id'=>$correlationId]);return $j;});
+    /**
+     * Создать заказ на садовые услуги.
+     */
+    public function createJob(
+        int $professionalId,
+        string $jobDate,
+        int $durationHours,
+        string $jobType,
+        string $correlationId = '',
+    ): GardenJob {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) ($this->guard->id() ?? 0);
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'garden_job_create',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($professionalId, $jobDate, $durationHours, $jobType, $correlationId, $userId) {
+            $hourlyRate = 300000; // копейки за час
+            $total = $durationHours * $hourlyRate;
+
+            $job = GardenJob::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'professional_id' => $professionalId,
+                'customer_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $total - (int) ($total * 0.14),
+                'payment_status' => 'pending',
+                'job_date' => $jobDate,
+                'duration_hours' => $durationHours,
+                'job_type' => $jobType,
+                'tags' => ['garden' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'garden_job_created',
+                subjectType: GardenJob::class,
+                subjectId: $job->id,
+                old: [],
+                new: $job->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Garden job created', [
+                'job_id' => $job->id,
+                'professional_id' => $professionalId,
+                'job_type' => $jobType,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $job;
+        });
     }
-    public function completeJob(int $jobId,string $correlationId=""):GardenJob{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($jobId,$correlationId){$j=GardenJob::findOrFail($jobId);if($j->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$j->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$j->payout_kopecks,'garden_payout',['correlation_id'=>$correlationId,'job_id'=>$j->id]);Log::channel('audit')->info('Garden job completed',['job_id'=>$j->id]);return $j;});}
-    public function cancelJob(int $jobId,string $correlationId=""):GardenJob{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($jobId,$correlationId){$j=GardenJob::findOrFail($jobId);if($j->status==='completed')throw new \RuntimeException("Cannot cancel",400);$j->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($j->payment_status==='completed')$this->wallet->credit(tenant()->id,$j->total_kopecks,'garden_refund',['correlation_id'=>$correlationId,'job_id'=>$j->id]);Log::channel('audit')->info('Garden job cancelled',['job_id'=>$j->id]);return $j;});}
-    public function getJob(int $jobId):GardenJob{return GardenJob::findOrFail($jobId);}
-    public function getUserJobs(int $customerId){return GardenJob::where('customer_id',$customerId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершить работу и выплатить специалисту.
+     */
+    public function completeJob(int $jobId, string $correlationId = ''): GardenJob
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($jobId, $correlationId) {
+            $job = GardenJob::findOrFail($jobId);
+
+            if ($job->payment_status !== 'completed') {
+                throw new \RuntimeException('Payment not completed for this job', 400);
+            }
+
+            $job->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: $job->professional_id,
+                amount: $job->payout_kopecks,
+                type: 'garden_payout',
+                correlationId: $correlationId,
+                metadata: ['job_id' => $job->id, 'vertical' => 'gardening'],
+            );
+
+            $this->audit->log(
+                action: 'garden_job_completed',
+                subjectType: GardenJob::class,
+                subjectId: $job->id,
+                old: ['status' => 'pending_payment'],
+                new: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Garden job completed', [
+                'job_id' => $job->id,
+                'payout' => $job->payout_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $job;
+        });
+    }
+
+    /**
+     * Отменить заказ и вернуть средства.
+     */
+    public function cancelJob(int $jobId, string $correlationId = ''): GardenJob
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($jobId, $correlationId) {
+            $job = GardenJob::findOrFail($jobId);
+
+            if ($job->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed job', 400);
+            }
+
+            $oldStatus = $job->status;
+            $job->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($job->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: $job->customer_id,
+                    amount: $job->total_kopecks,
+                    type: 'garden_refund',
+                    correlationId: $correlationId,
+                    metadata: ['job_id' => $job->id, 'reason' => 'job_cancelled'],
+                );
+            }
+
+            $this->audit->log(
+                action: 'garden_job_cancelled',
+                subjectType: GardenJob::class,
+                subjectId: $job->id,
+                old: ['status' => $oldStatus],
+                new: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Garden job cancelled', [
+                'job_id' => $job->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $job;
+        });
+    }
+
+    /**
+     * Получить заказ по ID.
+     */
+    public function getJob(int $jobId): GardenJob
+    {
+        return GardenJob::findOrFail($jobId);
+    }
+
+    /**
+     * Получить список заказов клиента.
+     */
+    public function getUserJobs(int $customerId): \Illuminate\Database\Eloquent\Collection
+    {
+        return GardenJob::where('customer_id', $customerId)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+    }
 }

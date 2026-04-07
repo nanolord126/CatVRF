@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class FreshProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'fresh_products';
@@ -62,8 +61,8 @@ final class FreshProduct extends Model
         {
             parent::booted();
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

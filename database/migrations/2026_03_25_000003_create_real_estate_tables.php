@@ -172,3 +172,5 @@ return new class extends Migration
         Schema::dropIfExists('real_estate_properties');
     }
 };
+
+

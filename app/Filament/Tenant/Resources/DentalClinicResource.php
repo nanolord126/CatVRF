@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class DentalClinicResource extends Model
+final class DentalClinicResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = DentalClinic::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -119,31 +116,15 @@ final class DentalClinicResource extends Model
                         ])->columns(3),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentalClinic::route('/'),
-                'create' => Pages\\CreateDentalClinic::route('/create'),
-                'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalClinic::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListDentalClinic::route('/'),
-                'create' => Pages\\CreateDentalClinic::route('/create'),
-                'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalClinic::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentalClinic::route('/'),
-                'create' => Pages\\CreateDentalClinic::route('/create'),
-                'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalClinic::route('/{record}'),
+                'index' => Pages\ListDentalClinic::route('/'),
+                'create' => Pages\CreateDentalClinic::route('/create'),
+                'edit' => Pages\EditDentalClinic::route('/{record}/edit'),
+                'view' => Pages\ViewDentalClinic::route('/{record}'),
             ];
         }
 }

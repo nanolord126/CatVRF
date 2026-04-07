@@ -2,20 +2,28 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\BouquetResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\BouquetResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
 
-final class EditBouquet extends Model
+final class EditBouquet extends EditRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BouquetResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\DeleteAction::make(),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Букет успешно обновлён';
+    }
 }

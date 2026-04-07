@@ -2,29 +2,41 @@
 
 namespace App\Services\ML;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UserTasteAnalyzerService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Models\User;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class UserTasteAnalyzerService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private string $correlationId
-        ) {}
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Запустить полный анализ профиля вкусов пользователя
          */
         public function analyzeAndSaveUserProfile(User $user): void
         {
-            Log::channel('audit')->info("User taste profile analysis started", [
+            $this->logger->channel('audit')->info("User taste profile analysis started", [
                 'user_id' => $user->id,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
-            $profile = DB::transaction(function () use ($user) {
+            $profile = $this->db->transaction(function () use ($user) {
                 // 1. Анализ категорий (просмотры)
                 $viewedCategories = $this->analyzeCategories($user->id);
 
@@ -58,16 +70,16 @@ final class UserTasteAnalyzerService extends Model
                 return $data;
             });
 
-            Log::channel('audit')->info("User taste profile analyzed successfully", [
+            $this->logger->channel('audit')->info("User taste profile analyzed successfully", [
                 'user_id' => $user->id,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
                 'price_range' => $profile['price_range'],
             ]);
         }
 
         private function analyzeCategories(int $userId): array
         {
-            return DB::table('product_views')
+            return $this->db->table('product_views')
                 ->where('user_id', $userId)
                 ->groupBy('product_category')
                 ->selectRaw('product_category, COUNT(*) as count')
@@ -80,7 +92,7 @@ final class UserTasteAnalyzerService extends Model
 
         private function analyzePriceRange(int $userId): string
         {
-            $avgPrice = DB::table('orders')
+            $avgPrice = $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->avg('total_price') ?? 0;
 
@@ -94,7 +106,7 @@ final class UserTasteAnalyzerService extends Model
 
         private function analyzeSizes(int $userId): array
         {
-            return DB::table('order_items')
+            return $this->db->table('order_items')
                 ->join('products', 'order_items.product_id', '=', 'products.id')
                 ->where('order_items.user_id', $userId)
                 ->groupBy('products.size')
@@ -105,7 +117,7 @@ final class UserTasteAnalyzerService extends Model
 
         private function analyzeColors(int $userId): array
         {
-            return DB::table('order_items')
+            return $this->db->table('order_items')
                 ->join('products', 'order_items.product_id', '=', 'products.id')
                 ->where('order_items.user_id', $userId)
                 ->groupBy('products.color')
@@ -116,7 +128,7 @@ final class UserTasteAnalyzerService extends Model
 
         private function analyzeBrands(int $userId): array
         {
-            return DB::table('order_items')
+            return $this->db->table('order_items')
                 ->join('products', 'order_items.product_id', '=', 'products.id')
                 ->where('order_items.user_id', $userId)
                 ->groupBy('products.brand')
@@ -126,4 +138,39 @@ final class UserTasteAnalyzerService extends Model
                 ->pluck('count', 'brand')
                 ->toArray();
         }
+
+    /**
+     * Получить сохранённый профиль вкусов пользователя.
+     * Если профиль ещё не был проанализирован — возвращает null.
+     * AI-конструкторы должны обрабатывать null gracefully.
+     */
+    public function getProfile(int $userId): ?object
+    {
+        $raw = $this->db->table('users')
+            ->where('id', $userId)
+            ->value('taste_profile');
+
+        if ($raw === null) {
+            throw new \DomainException('Operation returned no result');
+        }
+
+        $data = is_string($raw) ? json_decode($raw, false) : (object) $raw;
+
+        // Нормализуем поля для каждой вертикали
+        return (object) [
+            'categories'         => (array) ($data->categories         ?? []),
+            'price_range'        => $data->price_range                 ?? 'mid',
+            'preferred_sizes'    => (array) ($data->preferred_sizes    ?? []),
+            'preferred_colors'   => (array) ($data->preferred_colors   ?? []),
+            'preferred_brands'   => (array) ($data->preferred_brands   ?? []),
+            // вертикальные предпочтения (могут быть null у новых клиентов)
+            'fashion_preferences'  => (array) ($data->fashion_preferences  ?? []),
+            'food_preferences'     => (array) ($data->food_preferences     ?? []),
+            'interior_preferences' => (array) ($data->interior_preferences ?? []),
+            'fitness_preferences'  => (array) ($data->fitness_preferences  ?? []),
+            'hotel_preferences'    => (array) ($data->hotel_preferences    ?? []),
+            'travel_preferences'   => (array) ($data->travel_preferences   ?? []),
+            'analyzed_at'          => $data->analyzed_at                   ?? null,
+        ];
+    }
 }

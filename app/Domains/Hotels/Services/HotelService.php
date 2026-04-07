@@ -1,133 +1,228 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Hotel;
+use App\Domains\Hotels\Models\HotelBooking;
+use App\Domains\Hotels\Models\RoomType;
+use App\Domains\Inventory\Services\InventoryManagementService;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\PaymentService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class HotelService extends Model
+/**
+ * Основной сервис бронирования отелей.
+ *
+ * Layer 3: Services — CatVRF 2026.
+ * Fraud-check, correlation_id, audit logging, DB::transaction обязательны.
+ *
+ * @package App\Domains\Hotels\Services
+ */
+final readonly class HotelService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly PaymentService $payment,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private InventoryManagementService $inventory,
+        private PaymentService $payment,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-        /**
-         * Создание бронирования номера.
-         */
-        public function createBooking(int $userId, int $hotelId, int $roomTypeId, Carbon $checkIn, Carbon $checkOut, string $correlationId = ""): HotelBooking
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создание бронирования номера.
+     *
+     * @param int $userId ID пользователя
+     * @param int $hotelId ID отеля
+     * @param int $roomTypeId ID типа номера
+     * @param Carbon $checkIn Дата заезда
+     * @param Carbon $checkOut Дата выезда
+     * @param int $tenantId ID tenant
+     * @param string $correlationId ID корреляции
+     *
+     * @return HotelBooking Созданное бронирование
+     */
+    public function createBooking(
+        int $userId,
+        int $hotelId,
+        int $roomTypeId,
+        Carbon $checkIn,
+        Carbon $checkOut,
+        int $tenantId,
+        string $correlationId = '',
+    ): HotelBooking {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            // 1. Rate Limiting — защита от ботов-бронировщиков
-            if (RateLimiter::tooManyAttempts("hotel:booking:{$userId}", 3)) {
-                throw new \RuntimeException("Слишком много запросов на бронирование. Попробуйте позже.", 429);
+        // Rate Limiting — защита от ботов-бронировщиков
+        $rateLimitKey = "hotel:booking:{$userId}";
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimitKey, 3)) {
+            throw new \RuntimeException('Слишком много запросов на бронирование. Попробуйте позже.', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimitKey, 3600);
+
+        return $this->db->transaction(function () use ($userId, $hotelId, $roomTypeId, $checkIn, $checkOut, $tenantId, $correlationId): HotelBooking {
+            $hotel = Hotel::findOrFail($hotelId);
+            $roomType = RoomType::where('hotel_id', $hotelId)->findOrFail($roomTypeId);
+            $nights = $checkIn->diffInDays($checkOut);
+
+            if ($nights <= 0) {
+                throw new \DomainException('Некорректный период проживания: дата выезда должна быть позже даты заезда.', 422);
             }
-            RateLimiter::hit("hotel:booking:{$userId}", 3600);
 
-            return DB::transaction(function () use ($userId, $hotelId, $roomTypeId, $checkIn, $checkOut, $correlationId) {
-                $hotel = Hotel::findOrFail($hotelId);
-                $roomType = RoomType::where("hotel_id", $hotelId)->findOrFail($roomTypeId);
-                $nights = $checkIn->diffInDays($checkOut);
+            $totalPriceKopecks = $roomType->price_per_night_kopecks * $nights;
 
-                if ($nights <= 0) {
-                    throw new \RuntimeException("Некорректный период проживания.", 422);
-                }
+            // Валидация доступности через Inventory
+            $available = $this->inventory->getCurrentStock($roomType->id);
 
-                $totalPriceKopecks = $roomType->price_per_night_kopecks * $nights;
+            if ($available <= 0) {
+                throw new \DomainException('Нет свободных номеров данного типа.', 422);
+            }
 
-                // 2. Валидация доступности (через Inventory)
-                $available = $this->inventory->getCurrentStock($roomType->id);
-                if ($available <= 0) {
-                    throw new \RuntimeException("Нет свободных номеров данного типа.", 422);
-                }
+            // Fraud-check с полной сигнатурой
+            $fraudResult = $this->fraud->check(
+                userId: (int) ($this->guard->id() ?? 0),
+                operationType: 'hotel_booking',
+                amount: $totalPriceKopecks,
+                ipAddress: null,
+                deviceFingerprint: null,
+                correlationId: $correlationId,
+            );
 
-                // 3. Fraud Scoring
-                $fraud = $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "hotel_booking",
-                    "amount" => $totalPriceKopecks,
-                    "correlation_id" => $correlationId,
-                    "meta" => ["hotel_id" => $hotelId, "nights" => $nights]
+            if (($fraudResult['decision'] ?? '') === 'block') {
+                $this->logger->warning('Hotel: fraud block', [
+                    'user_id' => $userId,
+                    'score' => $fraudResult['score'] ?? 0,
+                    'correlation_id' => $correlationId,
                 ]);
 
-                if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->warning("Hotel: fraud block", ["user_id" => $userId, "score" => $fraud["score"]]);
-                    throw new \RuntimeException("Бронирование отклонено службой безопасности.", 403);
-                }
+                throw new \RuntimeException('Бронирование отклонено службой безопасности.', 403);
+            }
 
-                // 4. Создание бронировани
-                $booking = HotelBooking::create([
-                    "uuid" => (string) Str::uuid(),
-                    "tenant_id" => $hotel->tenant_id,
-                    "business_group_id" => $hotel->business_group_id,
-                    "user_id" => $userId,
-                    "hotel_id" => $hotelId,
-                    "room_type_id" => $roomTypeId,
-                    "check_in" => $checkIn,
-                    "check_out" => $checkOut,
-                    "total_price" => $totalPriceKopecks,
-                    "status" => "pending",
-                    "correlation_id" => $correlationId,
-                    "tags" => ["vertical:hotels", "migration:none"]
-                ]);
+            // Создание бронирования
+            $booking = HotelBooking::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => $hotel->tenant_id,
+                'business_group_id' => $hotel->business_group_id,
+                'user_id' => $userId,
+                'hotel_id' => $hotelId,
+                'room_type_id' => $roomTypeId,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'total_price' => $totalPriceKopecks,
+                'status' => 'pending',
+                'correlation_id' => $correlationId,
+                'tags' => ['vertical:hotels'],
+            ]);
 
-                // 5. Холд номера в инвентаре
-                $this->inventory->reserveStock(
-                    itemId: $roomType->id,
-                    quantity: 1,
-                    sourceType: "hotel_booking",
-                    sourceId: $booking->id,
-                    correlationId: $correlationId
-                );
+            // Холд номера в инвентаре (резерв на 20 минут по канону)
+            $this->inventory->reserveStock(
+                itemId: $roomType->id,
+                quantity: 1,
+                sourceType: 'hotel_booking',
+                sourceId: $booking->id,
+                correlationId: $correlationId,
+            );
 
-                Log::channel("audit")->info("Hotel: booking created", ["booking_id" => $booking->id, "corr" => $correlationId]);
+            $this->audit->log(
+                action: 'hotel_booking_created',
+                subjectType: HotelBooking::class,
+                subjectId: $booking->id,
+                old: [],
+                new: $booking->toArray(),
+                correlationId: $correlationId,
+            );
 
-                return $booking;
-            });
-        }
+            $this->logger->info('Hotel: booking created', [
+                'booking_id' => $booking->id,
+                'hotel_id' => $hotelId,
+                'total_price' => $totalPriceKopecks,
+                'correlation_id' => $correlationId,
+            ]);
 
-        /**
-         * Подтверждение заезда (Выплата отелю через 4 дня после выезда — КАНОН).
-         */
-        public function confirmCheckIn(int $bookingId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $booking = HotelBooking::findOrFail($bookingId);
+            return $booking;
+        });
+    }
 
-            DB::transaction(function () use ($booking, $correlationId) {
-                $booking->update(["status" => "checked_in"]);
-                // Логика выплаты через PayoutScheduleJob (согласно канону 4 дня)
-                Log::channel("audit")->info("Hotel: guest checked in", ["booking_id" => $booking->id]);
-            });
-        }
+    /**
+     * Подтверждение заезда (выплата отелю через 4 дня после выезда — КАНОН).
+     */
+    public function confirmCheckIn(int $bookingId, string $correlationId = ''): void
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        $booking = HotelBooking::findOrFail($bookingId);
 
-        /**
-         * Отмена бронирования.
-         */
-        public function cancelBooking(int $bookingId, string $reason, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $booking = HotelBooking::findOrFail($bookingId);
+        $this->db->transaction(function () use ($booking, $correlationId): void {
+            $booking->update(['status' => 'checked_in']);
 
-            DB::transaction(function () use ($booking, $reason, $correlationId) {
-                $booking->update(["status" => "cancelled", "meta" => ["cancel_reason" => $reason]]);
+            $this->audit->log(
+                action: 'hotel_checkin_confirmed',
+                subjectType: HotelBooking::class,
+                subjectId: $booking->id,
+                old: ['status' => 'pending'],
+                new: ['status' => 'checked_in'],
+                correlationId: $correlationId,
+            );
 
-                // Снятие резерва из инвентаря
-                $this->inventory->releaseStock(
-                    itemId: $booking->room_type_id,
-                    quantity: 1,
-                    sourceType: "hotel_booking",
-                    sourceId: $booking->id,
-                    correlationId: $correlationId
-                );
+            $this->logger->info('Hotel: guest checked in', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 
-                Log::channel("audit")->info("Hotel: booking cancelled", ["booking_id" => $booking->id, "reason" => $reason]);
-            });
-        }
+    /**
+     * Отмена бронирования.
+     */
+    public function cancelBooking(int $bookingId, string $reason, string $correlationId = ''): void
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        $booking = HotelBooking::findOrFail($bookingId);
+
+        $this->db->transaction(function () use ($booking, $reason, $correlationId): void {
+            $oldStatus = $booking->status;
+
+            $booking->update([
+                'status' => 'cancelled',
+                'meta' => ['cancel_reason' => $reason],
+            ]);
+
+            // Снятие резерва из инвентаря
+            $this->inventory->releaseStock(
+                itemId: $booking->room_type_id,
+                quantity: 1,
+                sourceType: 'hotel_booking',
+                sourceId: $booking->id,
+                correlationId: $correlationId,
+            );
+
+            $this->audit->log(
+                action: 'hotel_booking_cancelled',
+                subjectType: HotelBooking::class,
+                subjectId: $booking->id,
+                old: ['status' => $oldStatus],
+                new: ['status' => 'cancelled', 'reason' => $reason],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Hotel: booking cancelled', [
+                'booking_id' => $booking->id,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 }

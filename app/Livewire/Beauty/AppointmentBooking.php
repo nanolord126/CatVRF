@@ -2,49 +2,53 @@
 
 namespace App\Livewire\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentBooking extends Model
+use Illuminate\Auth\AuthManager;
+use Livewire\Component;
+use Illuminate\Log\LogManager;
+
+final class AppointmentBooking extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly AuthManager $authManager,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     // -------------------------------------------------------------------------
         // Props
         // -------------------------------------------------------------------------
 
-        public int $salonId;
+        private int $salonId;
 
         // -------------------------------------------------------------------------
         // Form fields
         // -------------------------------------------------------------------------
 
         #[Rule('required|integer|min:1', message: 'Выберите мастера')]
-        public ?int $masterId = null;
+        private ?int $masterId = null;
 
         #[Rule('required|integer|min:1', message: 'Выберите услугу')]
-        public ?int $serviceId = null;
+        private ?int $serviceId = null;
 
         #[Rule('required|date|after_or_equal:today', message: 'Выберите дату')]
-        public string $selectedDate = '';
+        private string $selectedDate = '';
 
         #[Rule('required|date_format:H:i', message: 'Выберите время')]
-        public string $selectedTime = '';
+        private string $selectedTime = '';
 
         #[Rule('nullable|string|max:500')]
-        public string $comment = '';
+        private string $comment = '';
 
         // -------------------------------------------------------------------------
         // State
         // -------------------------------------------------------------------------
 
-        public array $availableSlots = [];
-        public array $masters = [];
-        public array $services = [];
-        public ?string $errorMessage = null;
-        public bool $booked = false;
-        public ?int $createdAppointmentId = null;
+        private array $availableSlots = [];
+        private array $masters = [];
+        private array $services = [];
+        private ?string $errorMessage = null;
+        private bool $booked = false;
+        private ?int $createdAppointmentId = null;
 
         // -------------------------------------------------------------------------
         // Mount
@@ -133,17 +137,17 @@ final class AppointmentBooking extends Model
 
         public function bookAppointment(
             AppointmentService $appointmentService,
-            FraudControlService $fraudControlService,
+            FraudControlService $fraud,
         ): void {
             $this->errorMessage = null;
             $correlationId = (string) Str::uuid()->toString();
 
             // Rate limiting — не более 5 бронирований в час с одного пользователя
-            $rateLimitKey = 'beauty:booking:' . Auth::id() . ':' . tenant('id');
+            $rateLimitKey = 'beauty:booking:' . $this->authManager->id() . ':' . tenant('id');
             if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
                 $this->errorMessage = 'Слишком много попыток. Попробуйте позже.';
-                Log::channel('audit')->warning('Beauty: Rate limit exceeded on booking', [
-                    'user_id' => Auth::id(),
+                $this->logger->channel('audit')->warning('Beauty: Rate limit exceeded on booking', [
+                    'user_id' => $this->authManager->id(),
                     'correlation_id' => $correlationId,
                 ]);
                 return;
@@ -154,7 +158,7 @@ final class AppointmentBooking extends Model
 
             // Fraud check (instance-метод, DI через параметр action)
             $fraudResult = $fraudControlService->check(
-                userId: Auth::id(),
+                userId: $this->authManager->id(),
                 operationType: 'appointment_booking',
                 amount: 0,
                 correlationId: $correlationId,
@@ -162,8 +166,8 @@ final class AppointmentBooking extends Model
 
             if ($fraudResult['decision'] === 'block') {
                 $this->errorMessage = 'Бронирование временно недоступно. Обратитесь в поддержку.';
-                Log::channel('audit')->warning('Beauty: Fraud block on booking', [
-                    'user_id' => Auth::id(),
+                $this->logger->channel('audit')->warning('Beauty: Fraud block on booking', [
+                    'user_id' => $this->authManager->id(),
                     'score' => $fraudResult['score'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -189,9 +193,9 @@ final class AppointmentBooking extends Model
                 $this->booked = true;
                 $this->createdAppointmentId = $appointment->id;
 
-                Log::channel('audit')->info('Beauty: Appointment booked via Livewire', [
+                $this->logger->channel('audit')->info('Beauty: Appointment booked via Livewire', [
                     'appointment_id' => $appointment->id,
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->authManager->id(),
                     'salon_id' => $this->salonId,
                     'master_id' => $this->masterId,
                     'service_id' => $this->serviceId,
@@ -203,10 +207,10 @@ final class AppointmentBooking extends Model
 
             } catch (\Exception $e) {
                 $this->errorMessage = 'Не удалось создать запись: ' . $e->getMessage();
-                Log::channel('audit')->error('Beauty: Booking failed in Livewire', [
+                $this->logger->channel('audit')->error('Beauty: Booking failed in Livewire', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->authManager->id(),
                     'correlation_id' => $correlationId,
                 ]);
             }

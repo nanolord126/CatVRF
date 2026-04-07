@@ -2,14 +2,22 @@
 
 namespace App\Domains\HomeServices\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ContractorController extends Model
+
+
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ContractorController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger,
+        private readonly Request $request,) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
         {
             try {
@@ -18,13 +26,13 @@ final class ContractorController extends Model
                     ->with(['serviceListings', 'reviews'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $contractors,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list contractors'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list contractors'], 500);
             }
         }
 
@@ -32,9 +40,9 @@ final class ContractorController extends Model
         {
             try {
                 $contractor = Contractor::with(['serviceListings', 'reviews', 'schedules'])->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $contractor, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $contractor, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Contractor not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Contractor not found'], 404);
             }
         }
 
@@ -43,7 +51,7 @@ final class ContractorController extends Model
             try {
                 $this->authorize('create', Contractor::class);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'company_name' => 'required|string|max:255',
                     'description' => 'required|string',
                     'services' => 'nullable|array',
@@ -55,8 +63,8 @@ final class ContractorController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $contractor = Contractor::create([
-                    'tenant_id' => tenant('id'),
-                    'user_id' => auth()->id(),
+                    'tenant_id' => tenant()->id,
+                    'user_id' => $request->user()?->id,
                     'company_name' => $validated['company_name'],
                     'description' => $validated['description'],
                     'services' => $validated['services'] ?? [],
@@ -66,33 +74,33 @@ final class ContractorController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                \Log::channel('audit')->info('Contractor registered', [
+                $this->logger->info('Contractor registered', [
                     'contractor_id' => $contractor->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $contractor, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $contractor, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Registration failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Registration failed'], 500);
             }
         }
 
         public function myProfile(): JsonResponse
         {
             try {
-                $contractor = Contractor::where('user_id', auth()->id())->firstOrFail();
-                return response()->json(['success' => true, 'data' => $contractor, 'correlation_id' => Str::uuid()]);
+                $contractor = Contractor::where('user_id', $request->user()?->id)->firstOrFail();
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $contractor, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Contractor profile not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Contractor profile not found'], 404);
             }
         }
 
         public function updateProfile(): JsonResponse
         {
             try {
-                $contractor = Contractor::where('user_id', auth()->id())->firstOrFail();
-                $validated = request()->validate([
+                $contractor = Contractor::where('user_id', $request->user()?->id)->firstOrFail();
+                $validated = $request->validate([
                     'company_name' => 'sometimes|string',
                     'description' => 'sometimes|string',
                     'phone' => 'nullable|string',
@@ -103,44 +111,44 @@ final class ContractorController extends Model
                 $correlationId = Str::uuid()->toString();
                 $contractor->update($validated + ['correlation_id' => $correlationId]);
 
-                return response()->json(['success' => true, 'data' => $contractor, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $contractor, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Update failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Update failed'], 500);
             }
         }
 
         public function myEarnings(): JsonResponse
         {
             try {
-                $contractor = Contractor::where('user_id', auth()->id())->firstOrFail();
+                $contractor = Contractor::where('user_id', $request->user()?->id)->firstOrFail();
                 $earnings = ContractorEarning::where('contractor_id', $contractor->id)
                     ->orderByDesc('period_year')
                     ->orderByDesc('period_month')
                     ->paginate(12);
 
-                return response()->json(['success' => true, 'data' => $earnings, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $earnings, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch earnings'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch earnings'], 500);
             }
         }
 
         public function getSchedule(): JsonResponse
         {
             try {
-                $contractor = Contractor::where('user_id', auth()->id())->firstOrFail();
+                $contractor = Contractor::where('user_id', $request->user()?->id)->firstOrFail();
                 $schedule = $contractor->schedules()->get();
 
-                return response()->json(['success' => true, 'data' => $schedule, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $schedule, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch schedule'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch schedule'], 500);
             }
         }
 
         public function updateSchedule(): JsonResponse
         {
             try {
-                $contractor = Contractor::where('user_id', auth()->id())->firstOrFail();
-                $validated = request()->validate([
+                $contractor = Contractor::where('user_id', $request->user()?->id)->firstOrFail();
+                $validated = $request->validate([
                     'schedule' => 'required|array',
                     'schedule.*.day_of_week' => 'required|string',
                     'schedule.*.start_time' => 'required|date_format:H:i',
@@ -148,30 +156,32 @@ final class ContractorController extends Model
                     'schedule.*.is_available' => 'boolean',
                 ]);
 
-                \DB::transaction(function () use ($contractor, $validated) {
+                $this->db->transaction(function () use ($contractor, $validated) {
                     $contractor->schedules()->delete();
                     foreach ($validated['schedule'] as $slot) {
                         $contractor->schedules()->create($slot);
                     }
                 });
 
-                return response()->json(['success' => true, 'message' => 'Schedule updated', 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Schedule updated', 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to update schedule'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to update schedule'], 500);
             }
         }
 
         public function delete(int $id): JsonResponse
         {
+        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+
             try {
                 $contractor = Contractor::findOrFail($id);
                 $this->authorize('delete', $contractor);
 
                 $contractor->delete();
 
-                return response()->json(['success' => true, 'message' => 'Contractor deleted', 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Contractor deleted', 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Deletion failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Deletion failed'], 500);
             }
         }
 }

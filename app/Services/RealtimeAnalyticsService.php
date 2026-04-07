@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class RealtimeAnalyticsService extends Model
+final readonly class RealtimeAnalyticsService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Track event for analytics
          * @param int $tenantId
@@ -39,13 +39,13 @@ final class RealtimeAnalyticsService extends Model
                     cache()->increment($revenueKeyDay, $data['amount'], 86400 * 30); // Keep for 30 days
                 }
 
-                Log::channel('audit')->info('Analytics event tracked', [
+                $this->logger->channel('audit')->info('Analytics event tracked', [
                     'tenant_id' => $tenantId,
                     'event_type' => $eventType,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to track analytics', [
+                $this->logger->channel('audit')->error('Failed to track analytics', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -158,14 +158,14 @@ final class RealtimeAnalyticsService extends Model
                 // Store daily aggregate
                 cache()->put("stats:revenue:day:{$tenantId}:{$date}", $totalRevenue, 86400 * 365);
 
-                Log::channel('audit')->info('Daily stats aggregated', [
+                $this->logger->channel('audit')->info('Daily stats aggregated', [
                     'tenant_id' => $tenantId,
                     'date' => $date,
                     'total_revenue' => $totalRevenue,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to aggregate daily stats', [
+                $this->logger->channel('audit')->error('Failed to aggregate daily stats', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

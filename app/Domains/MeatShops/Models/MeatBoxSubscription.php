@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MeatBoxSubscription extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'meat_box_subscriptions';
@@ -47,7 +46,7 @@ final class MeatBoxSubscription extends Model
             return $this->belongsTo(MeatShop::class, 'meat_shop_id');
         }
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 $query->where('meat_box_subscriptions.tenant_id', tenant()->id);

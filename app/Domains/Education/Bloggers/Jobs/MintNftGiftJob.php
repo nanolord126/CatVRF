@@ -2,14 +2,11 @@
 
 namespace App\Domains\Education\Bloggers\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MintNftGiftJob extends Model
+use Psr\Log\LoggerInterface;
+final class MintNftGiftJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public $tries = 3;
@@ -18,8 +15,7 @@ final class MintNftGiftJob extends Model
 
         public function __construct(
             private readonly int $giftId,
-            private readonly string $correlationId = '',
-        ) {
+            private string $correlationId = '', private readonly LoggerInterface $logger) {
             $this->onQueue('nft-minting');
         }
 
@@ -30,12 +26,12 @@ final class MintNftGiftJob extends Model
             try {
                 $mintingService->mintGift($this->giftId, $this->correlationId);
 
-                Log::channel('bloggers')->info('NFT gift minting completed', [
+                $this->logger->info('NFT gift minting completed', [
                     'gift_id' => $this->giftId,
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('bloggers')->error('NFT minting job failed', [
+                $this->logger->error('NFT minting job failed', [
                     'gift_id' => $this->giftId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
@@ -55,7 +51,7 @@ final class MintNftGiftJob extends Model
 
         public function failed(\Throwable $exception): void
         {
-            Log::channel('bloggers')->error('NFT minting job permanently failed', [
+            $this->logger->error('NFT minting job permanently failed', [
                 'gift_id' => $this->giftId,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $this->correlationId,

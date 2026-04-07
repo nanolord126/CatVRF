@@ -1,205 +1,142 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Confectionery\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Confectionery\DTOs\CreateOrderDto;
+use App\Domains\Confectionery\DTOs\CreateProductDto;
+use App\Domains\Confectionery\Models\BakeryOrder;
+use App\Domains\Confectionery\Models\Cake;
+use App\Domains\Confectionery\Models\ConfectioneryShop;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 
-final class ConfectioneryService extends Model
+/**
+ * Class ConfectioneryService
+ *
+ * Главный сервис вертикали Confectionery (Кондитерские изделия).
+ * Слой 3: Services — CatVRF 2026, 9-layer architecture.
+ *
+ * Обеспечивает CRUD-операции для кондитерских магазинов, товаров и заказов.
+ * Все мутации проходят через FraudControlService::check() + DB::transaction().
+ * Каждое действие логируется с correlation_id.
+ *
+ * @package App\Domains\Confectionery\Services
+ */
+final readonly class ConfectioneryService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * @param FraudControlService $fraud      Сервис проверки на фрод
+     * @param AuditService        $audit      Сервис аудит-логирования
+     * @param LoggerInterface     $logger     PSR-3 логгер
+     */
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private AuditService $audit,
+        private LoggerInterface $logger,
+        private DatabaseManager $db,
+    ) {}
 
-        /**
-         * Создание заказа торта/выпечки (стандартный или кастомный).
-         */
-        public function createOrder(int $shopId, int $cakeId, array $data, string $correlationId = ""): CakeOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Получить список магазинов текущего tenant.
+     *
+     * @param int      $tenantId      Идентификатор tenant
+     * @param int|null $perPage       Количество на страницу (по умолчанию 20)
+     * @param string   $correlationId Идентификатор корреляции запроса
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    public function listShops(int $tenantId, ?int $perPage, string $correlationId): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $this->logger->info('Listing confectionery shops', [
+            'tenant_id' => $tenantId,
+            'correlation_id' => $correlationId,
+        ]);
 
-            if (RateLimiter::tooManyAttempts("cake:order:".auth()->id(), 5)) {
-                throw new \RuntimeException("Too many orders", 429);
-            }
-            RateLimiter::hit("cake:order:".auth()->id(), 3600);
+        return ConfectioneryShop::where('tenant_id', $tenantId)
+            ->orderByDesc('created_at')
+            ->paginate($perPage ?? 20);
+    }
 
-            return DB::transaction(function () use ($shopId, $cakeId, $data, $correlationId) {
-                $shop = ConfectioneryShop::findOrFail($shopId);
-                $cake = Cake::findOrFail($cakeId);
+    /**
+     * Получить магазин по ID с проверкой принадлежности tenant.
+     *
+     * @param int    $shopId        Идентификатор магазина
+     * @param int    $tenantId      Идентификатор tenant
+     * @param string $correlationId Идентификатор корреляции запроса
+     *
+     * @return ConfectioneryShop
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     */
+    public function getShopById(int $shopId, int $tenantId, string $correlationId): ConfectioneryShop
+    {
+        $this->logger->info('Fetching confectionery shop', [
+            'shop_id' => $shopId,
+            'tenant_id' => $tenantId,
+            'correlation_id' => $correlationId,
+        ]);
 
-                $fraud = $this->fraud->check([
-                    'user_id' => auth()->id() ?? 0,
-                    'operation_type' => 'cake_order_create',
-                    'correlation_id' => $correlationId,
-                    'amount' => $cake->price_kopecks,
-                ]);
+        return ConfectioneryShop::where('tenant_id', $tenantId)
+            ->findOrFail($shopId);
+    }
 
-                if ($fraud['decision'] === 'block') {
-                    Log::channel('audit')->error('Cake order blocked', [
-                        'user_id' => auth()->id(),
-                        'score' => $fraud['score'],
-                        'correlation_id' => $correlationId,
-                    ]);
-                    throw new \RuntimeException("Security block", 403);
-                }
+    /**
+     * Получить список товаров (Cake) для данного магазина.
+     *
+     * @param int    $shopId        Идентификатор магазина
+     * @param string $correlationId Идентификатор корреляции запроса
+     *
+     * @return Collection<int, Cake>
+     */
+    public function listProducts(int $shopId, string $correlationId): Collection
+    {
+        $this->logger->info('Listing products for shop', [
+            'shop_id' => $shopId,
+            'correlation_id' => $correlationId,
+        ]);
 
-                // Hold ингредиентов если нужно
-                $this->inventory->reserveStock(
-                    itemId: $cakeId,
-                    quantity: 1,
-                    sourceType: 'cake_order',
-                    sourceId: 0
-                );
+        return Cake::where('confectionery_shop_id', $shopId)
+            ->orderByDesc('created_at')
+            ->get();
+    }
 
-                $order = CakeOrder::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $shop->tenant_id,
-                    'confectionery_shop_id' => $shopId,
-                    'user_id' => auth()->id(),
-                    'cake_id' => $cakeId,
-                    'status' => 'pending_payment',
-                    'total_price_kopecks' => $cake->price_kopecks,
-                    'delivery_date' => $data['delivery_date'] ?? now()->addDays(2),
-                    'message' => $data['message'] ?? '',
-                    'correlation_id' => $correlationId,
-                    'tags' => ['urgent:no', 'custom_design:no'],
-                ]);
+    /**
+     * Создать заказ в кондитерской.
+     *
+     * @param CreateOrderDto $dto DTO с данными заказа
+     *
+     * @return BakeryOrder
+     *
+     * @throws \App\Exceptions\FraudBlockedException
+     */
+    public function createOrder(CreateOrderDto $dto): BakeryOrder
+    {
+        $this->fraud->check(userId: $dto->userId, operationType: 'confectionery_order_create', amount: 0, correlationId: $dto->correlationId);
 
-                Log::channel('audit')->info('Cake order created', [
-                    'order_id' => $order->id,
-                    'cake_id' => $cakeId,
-                    'user_id' => auth()->id(),
-                    'correlation_id' => $correlationId,
-                ]);
+        return $this->db->transaction(function () use ($dto): BakeryOrder {
+            $order = BakeryOrder::create($dto->toArray());
 
-                return $order;
-            });
-        }
+            $this->audit->log(
+                'confectionery_order_created',
+                [
+                    'subject_type' => BakeryOrder::class,
+                    'subject_id'   => $order->id,
+                    'new_values'   => $order->toArray(),
+                ],
+                $dto->correlationId,
+            );
 
-        /**
-         * Создание кастомного торта с дизайном.
-         */
-        public function createCustomCakeDesign(int $shopId, array $designData, string $correlationId = ""): CustomCakeDesign
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+            $this->logger->info('Bakery order created', [
+                'order_id' => $order->id,
+                'correlation_id' => $dto->correlationId,
+            ]);
 
-            return DB::transaction(function () use ($shopId, $designData, $correlationId) {
-                $shop = ConfectioneryShop::findOrFail($shopId);
-
-                $design = CustomCakeDesign::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $shop->tenant_id,
-                    'confectionery_shop_id' => $shopId,
-                    'user_id' => auth()->id(),
-                    'description' => $designData['description'],
-                    'photo_url' => $designData['photo_url'] ?? null,
-                    'estimated_price_kopecks' => $designData['estimated_price'] ?? 50000,
-                    'estimated_time_hours' => $designData['estimated_time'] ?? 24,
-                    'status' => 'submitted',
-                    'correlation_id' => $correlationId,
-                    'tags' => ['custom:true', 'awaiting_approval:true'],
-                ]);
-
-                Log::channel('audit')->info('Custom cake design submitted', [
-                    'design_id' => $design->id,
-                    'user_id' => auth()->id(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $design;
-            });
-        }
-
-        /**
-         * Завершение заказа и выплата кондитерской.
-         */
-        public function completeOrder(int $orderId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = CakeOrder::with('shop')->findOrFail($orderId);
-
-            DB::transaction(function () use ($order, $correlationId) {
-                if ($order->status !== 'ready') {
-                    throw new \RuntimeException("Order must be ready");
-                }
-
-                $order->update([
-                    'status' => 'completed',
-                    'completed_at' => now(),
-                ]);
-
-                // Списание ингредиентов
-                $this->inventory->deductStock(
-                    itemId: $order->cake_id,
-                    quantity: 1,
-                    reason: "Cake order #{$order->id} completed",
-                    sourceType: 'cake_order',
-                    sourceId: $order->id
-                );
-
-                // Выплата (14% комиссия)
-                $total = $order->total_price_kopecks;
-                $platformFee = (int) ($total * 0.14);
-                $payout = $total - $platformFee;
-
-                $this->wallet->credit(
-                    userId: $order->shop->owner_id,
-                    amount: $payout,
-                    type: 'cake_order_payout',
-                    reason: "Cake order #{$order->id} completed",
-                    correlationId: $correlationId
-                );
-
-                Log::channel('audit')->info('Cake order completed', [
-                    'order_id' => $order->id,
-                    'payout_kopecks' => $payout,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-        }
-
-        /**
-         * Получение заказа.
-         */
-        public function getOrder(int $orderId): CakeOrder
-        {
-            return CakeOrder::findOrFail($orderId);
-        }
-
-        /**
-         * Список заказов пользователя.
-         */
-        public function getUserOrders(int $userId, int $limit = 20): \Illuminate\Support\Collection
-        {
-            return CakeOrder::where('user_id', $userId)->orderBy('created_at', 'desc')->limit($limit)->get();
-        }
-
-        /**
-         * Отметить как готово к доставке.
-         */
-        public function markReady(int $orderId, string $correlationId = ""): CakeOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = CakeOrder::findOrFail($orderId);
-
-            return DB::transaction(function () use ($order, $correlationId) {
-                if ($order->status !== 'in_production') {
-                    throw new \RuntimeException("Order not in production");
-                }
-
-                $order->update(['status' => 'ready']);
-
-                Log::channel('audit')->info('Cake order marked ready', [
-                    'order_id' => $order->id,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $order;
-            });
-        }
+            return $order;
+        });
+    }
 }

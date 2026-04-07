@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ComplianceIntegration extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
 
         protected $table = 'compliance_integrations';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'type',
             'inn',
@@ -53,13 +55,20 @@ final class ComplianceIntegration extends Model
         public function getApiTokenAttribute(): ?string
         {
             if (empty($this->attributes['api_token_encrypted'])) {
-                return null;
+                throw new \DomainException('Entity not found');
             }
 
             try {
                 return $this->crypt->decryptString($this->attributes['api_token_encrypted']);
             } catch (\Exception $e) {
-                return null;
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                throw new \DomainException('Unexpected null value');
             }
         }
 }

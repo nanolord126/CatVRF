@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class WellnessCenterResource extends Model
+final class WellnessCenterResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = WellnessCenter::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -163,22 +160,15 @@ final class WellnessCenterResource extends Model
                         ->columnSpanFull(),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListWellnessCenter::route('/'),
-                'create' => Pages\\CreateWellnessCenter::route('/create'),
-                'edit' => Pages\\EditWellnessCenter::route('/{record}/edit'),
-                'view' => Pages\\ViewWellnessCenter::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListWellnessCenter::route('/'),
-                'create' => Pages\\CreateWellnessCenter::route('/create'),
-                'edit' => Pages\\EditWellnessCenter::route('/{record}/edit'),
-                'view' => Pages\\ViewWellnessCenter::route('/{record}'),
+                'index' => Pages\ListWellnessCenter::route('/'),
+                'create' => Pages\CreateWellnessCenter::route('/create'),
+                'edit' => Pages\EditWellnessCenter::route('/{record}/edit'),
+                'view' => Pages\ViewWellnessCenter::route('/{record}'),
             ];
         }
 }

@@ -2,30 +2,62 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditBooking extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\BookingResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+/**
+ * Class EditBooking
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditBooking extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = BookingResource::class;
 
-    final class EditBooking extends EditRecord
+    public function getTitle(): string
     {
-        protected static string $resource = BookingResource::class;
+        return 'Редактирование бронирования';
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit Booking';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            ViewAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Удалить бронирование?')
+                ->modalDescription('Бронирование будет удалено без возможности восстановления.')
+                ->modalSubmitActionLabel('Удалить'),
+        ];
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = $data['correlation_id'] ?? (string) Str::uuid();
+
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('Booking updated', [
+            'booking_id' => $this->record->id ?? null,
+            'tenant_id' => $this->record->tenant_id ?? null,
+            'correlation_id' => $this->record->correlation_id ?? null,
+        ]);
+    }
 }

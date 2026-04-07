@@ -2,14 +2,11 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class EntertainmentEventResource extends Model
+final class EntertainmentEventResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = EntertainmentEvent::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -58,8 +55,7 @@ final class EntertainmentEventResource extends Model
                         ->money('RUB'),
                     Tables\Columns\TextColumn::make('event_date_start')
                         ->sortable(),
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->colors(['pending' => 'warning', 'completed' => 'success', 'cancelled' => 'danger']),
+                    Tables\Columns\TextColumn::make('status')->badge(),
                 ])
                 ->filters([
                     Tables\Filters\TrashedFilter::make(),

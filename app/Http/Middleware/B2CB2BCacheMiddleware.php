@@ -1,18 +1,43 @@
 <?php declare(strict_types=1);
 
+/**
+ * B2CB2BCacheMiddleware — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ * @see https://catvrf.ru/docs/b2cb2bcachemiddleware
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class B2CB2BCacheMiddleware extends Model
+final class B2CB2BCacheMiddleware
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(Request $request, Closure $next)
         {
-            $userId = auth()->id();
+            $userId = $this->guard->id();
 
             if (!$userId) {
                 return $next($request);
@@ -21,7 +46,7 @@ final class B2CB2BCacheMiddleware extends Model
             $cacheKey = "user_{$userId}_b2b_mode";
             $cacheTag = "user_b2c_b2b_{$userId}";
 
-            $isB2B = Cache::tags([$cacheTag])->remember($cacheKey, now()->addHour(), function () use ($request) {
+            $isB2B = $this->cache->tags([$cacheTag])->remember($cacheKey, now()->addHour(), function () use ($request) {
                 return $request->has('inn') && $request->has('business_card_id');
             });
 
@@ -30,4 +55,20 @@ final class B2CB2BCacheMiddleware extends Model
 
             return $next($request);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

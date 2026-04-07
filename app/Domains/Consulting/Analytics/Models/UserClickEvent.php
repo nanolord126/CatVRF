@@ -8,12 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 final class UserClickEvent extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'user_click_events';
         public $timestamps = false;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'user_id',
             'page_url',

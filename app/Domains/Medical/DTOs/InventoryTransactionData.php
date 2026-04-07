@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class InventoryTransactionData extends Model
+final readonly class InventoryTransactionData
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param int $itemId ID расходника
          * @param int $tenantId Клиника
@@ -29,10 +26,10 @@ final class InventoryTransactionData extends Model
             public string $sourceType,
             public int $sourceId,
             public string $correlationId,
-            public string $reason = '',
-            public ?int $userId = null,
-        ) {
-        }
+            private string $reason = '',
+            private ?int $userId = null,
+        ) {}
+
 
         /**
          * Создание DTO для резерва под запись к врачу
@@ -49,7 +46,8 @@ final class InventoryTransactionData extends Model
             int $tenantId,
             int $quantity,
             int $appointmentId,
-            string $correlationId
+            string $correlationId,
+            int $userId = 0,
         ): self {
             return new self(
                 itemId: $itemId,
@@ -60,7 +58,7 @@ final class InventoryTransactionData extends Model
                 sourceId: $appointmentId,
                 correlationId: $correlationId,
                 reason: "Hold for Appointment #{$appointmentId}",
-                userId: auth()->id() ?? 0
+                userId: $userId,
             );
         }
 
@@ -79,7 +77,8 @@ final class InventoryTransactionData extends Model
             int $tenantId,
             int $quantity,
             int $appointmentId,
-            string $correlationId
+            string $correlationId,
+            int $userId = 0,
         ): self {
             return new self(
                 itemId: $itemId,
@@ -90,7 +89,7 @@ final class InventoryTransactionData extends Model
                 sourceId: $appointmentId,
                 correlationId: $correlationId,
                 reason: "Final deduction for Appointment #{$appointmentId}",
-                userId: auth()->id() ?? 0
+                userId: $userId,
             );
         }
 

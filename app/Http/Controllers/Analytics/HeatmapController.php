@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class HeatmapController extends Model
+final class HeatmapController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly HeatmapGeneratorService $heatmapService;
-        public function __construct(HeatmapGeneratorService $heatmapService)
+        public function __construct(HeatmapGeneratorService $heatmapService,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    )
         {
             $this->heatmapService = $heatmapService;
         }
@@ -27,11 +31,11 @@ final class HeatmapController extends Model
             try {
                 // SECURITY: Проверка прав доступа
                 if (!Gate::allows('view_heatmaps')) {
-                    Log::channel('audit')->warning('Доступ к тепловой карте запрещён', [
+                    $this->logger->channel('audit')->warning('Доступ к тепловой карте запрещён', [
                         'correlation_id' => (string)$correlationId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'message' => 'Доступ запрещён',
                         'correlation_id' => (string)$correlationId,
                     ], 403);
@@ -53,22 +57,29 @@ final class HeatmapController extends Model
                     fromDate: $fromDate,
                     toDate: $toDate,
                 );
-                Log::channel('audit')->info('Гео-тепловая карта запрошена', [
+                $this->logger->channel('audit')->info('Гео-тепловая карта запрошена', [
                     'correlation_id' => (string)$correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'tenant_id' => $validated['tenant_id'],
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => (string)$correlationId,
                     'heatmap' => $heatmap,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Ошибка при получении гео-тепловой карты', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Ошибка при получении гео-тепловой карты', [
                     'correlation_id' => (string)$correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'message' => 'Ошибка при генерации карты',
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -86,11 +97,11 @@ final class HeatmapController extends Model
             try {
                 // SECURITY: Проверка прав доступа
                 if (!Gate::allows('view_heatmaps')) {
-                    Log::channel('audit')->warning('Доступ к клик-карте запрещён', [
+                    $this->logger->channel('audit')->warning('Доступ к клик-карте запрещён', [
                         'correlation_id' => (string)$correlationId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'message' => 'Доступ запрещён',
                         'correlation_id' => (string)$correlationId,
                     ], 403);
@@ -110,22 +121,29 @@ final class HeatmapController extends Model
                     fromDate: $fromDate,
                     toDate: $toDate,
                 );
-                Log::channel('audit')->info('Клик-тепловая карта запрошена', [
+                $this->logger->channel('audit')->info('Клик-тепловая карта запрошена', [
                     'correlation_id' => (string)$correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'page_url' => $validated['page_url'],
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => (string)$correlationId,
                     'heatmap' => $heatmap,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Ошибка при получении клик-тепловой карты', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Ошибка при получении клик-тепловой карты', [
                     'correlation_id' => (string)$correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'message' => 'Ошибка при генерации карты',
                     'correlation_id' => (string)$correlationId,
                 ], 500);

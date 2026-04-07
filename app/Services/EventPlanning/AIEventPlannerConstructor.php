@@ -2,14 +2,21 @@
 
 namespace App\Services\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\EventPlanning\EventService as EventServiceModel;
+use App\Models\EventPlanning\EventVenue;
 
-final class AIEventPlannerConstructor extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AIEventPlannerConstructor
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Analyze and Generate a complex wedding/event plan.
          * Includes logic: AI-matching, budget allocation, and tier-based selection.
@@ -24,7 +31,7 @@ final class AIEventPlannerConstructor extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Audit Start (Canon 2026: Traceable logic)
-            Log::channel('audit')->info('[AIPlanner] Generating Plan', [
+            $this->logger->channel('audit')->info('[AIPlanner] Generating Plan', [
                 'correlation_id' => $correlationId,
                 'guest_count' => $guestCount,
                 'theme' => $theme,
@@ -45,13 +52,13 @@ final class AIEventPlannerConstructor extends Model
                 ->limit(3)
                 ->get();
 
-            $matchingDecor = EventService::where('category', 'decor')
+            $matchingDecor = EventServiceModel::where('category', 'decor')
                 ->where('base_price', '<=', $decorAllocation)
                 ->where('tags', 'LIKE', "%{$theme}%")
                 ->limit(5)
                 ->get();
 
-            $matchingEntertainment = EventService::whereIn('category', ['hosting', 'music'])
+            $matchingEntertainment = EventServiceModel::whereIn('category', ['hosting', 'music'])
                 ->where('base_price', '<=', $entertainmentAllocation)
                 ->limit(5)
                 ->get();
@@ -79,7 +86,7 @@ final class AIEventPlannerConstructor extends Model
             ];
 
             // 5. Final Audit Log
-            Log::channel('audit')->info('[AIPlanner] Plan Generated', [
+            $this->logger->channel('audit')->info('[AIPlanner] Plan Generated', [
                 'correlation_id' => $correlationId,
                 'score' => $recommendationScore,
                 'venue' => $plan['selected_venue']?->name ?? 'None',

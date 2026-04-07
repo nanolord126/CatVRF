@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class SportsNutritionProductResource extends Model
+final class SportsNutritionProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = SportsNutritionProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-beaker';
         protected static ?string $navigationGroup = 'Health & Fitness';
@@ -147,22 +144,15 @@ final class SportsNutritionProductResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListSportsNutritionProduct::route('/'),
-                'create' => Pages\\CreateSportsNutritionProduct::route('/create'),
-                'edit' => Pages\\EditSportsNutritionProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewSportsNutritionProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListSportsNutritionProduct::route('/'),
-                'create' => Pages\\CreateSportsNutritionProduct::route('/create'),
-                'edit' => Pages\\EditSportsNutritionProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewSportsNutritionProduct::route('/{record}'),
+                'index' => Pages\ListSportsNutritionProduct::route('/'),
+                'create' => Pages\CreateSportsNutritionProduct::route('/create'),
+                'edit' => Pages\EditSportsNutritionProduct::route('/{record}/edit'),
+                'view' => Pages\ViewSportsNutritionProduct::route('/{record}'),
             ];
         }
 }

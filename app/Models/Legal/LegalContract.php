@@ -2,12 +2,15 @@
 
 namespace App\Models\Legal;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class LegalContract extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
 
         protected $table = 'legal_contracts';

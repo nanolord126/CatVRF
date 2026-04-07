@@ -2,15 +2,12 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIDeliveryOptimizer extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIDeliveryOptimizer
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private string $correlationId = '')
+
+    public function __construct(private string $correlationId = '', private readonly LoggerInterface $logger)
         {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
@@ -20,7 +17,7 @@ final class AIDeliveryOptimizer extends Model
          */
         public function optimizeRoute(DeliveryOrder $order): array
         {
-            Log::channel('audit')->info('AI Route Optimization started', [
+            $this->logger->info('AI Route Optimization started', [
                 'order_uuid' => $order->uuid,
                 'correlation_id' => $this->correlationId
             ]);

@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AuthController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class AuthController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Create new personal access token
          * POST /api/v1/auth/tokens
@@ -51,14 +59,14 @@ final class AuthController extends Model
         public function store(TokenCreateRequest $request): JsonResponse
         {
             $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
-            $this->fraudControlService->check(0, 'token_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(0, 'token_store', 0, $request->ip(), null, $correlationId);
             try {
                 // Validate credentials
-                $user = DB::table('users')
+                $user = $this->db->table('users')
                     ->where('email', $request->email)
                     ->first();
                 if (!$user || !$this->hash->check($request->password, $user->password)) {
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Invalid credentials',
                         'correlation_id' => $correlationId,
                     ], 401);
@@ -69,23 +77,23 @@ final class AuthController extends Model
                     $request->abilities ?? ['*'],
                     now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
                 );
-                Log::channel('audit')->info('Token created', [
+                $this->logger->channel('audit')->info('Token created', [
                     'user_id' => $user->id,
                     'token_name' => $request->name,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'token' => $token->plainTextToken,
                     'type' => 'Bearer',
                     'expires_at' => $token->accessToken->expires_at,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Token creation failed', [
+                $this->logger->channel('audit')->error('Token creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Token creation failed',
                     'correlation_id' => $correlationId ?? Str::uuid()->toString(),
                 ], 500);
@@ -99,9 +107,9 @@ final class AuthController extends Model
         {
             try {
                 $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-                $user = auth()->user();
+                $user = $this->guard->user();
                 if (!$user) {
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Unauthorized',
                         'correlation_id' => $correlationId,
                     ], 401);
@@ -109,7 +117,7 @@ final class AuthController extends Model
                 // Revoke old token
                 $oldTokenId = $user->currentAccessToken()->id ?? null;
                 if ($oldTokenId) {
-                    DB::table('personal_access_tokens')
+                    $this->db->table('personal_access_tokens')
                         ->where('id', $oldTokenId)
                         ->update(['revoked' => true]);
                 }
@@ -119,22 +127,22 @@ final class AuthController extends Model
                     $user->currentAccessToken()->abilities ?? ['*'],
                     now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
                 );
-                Log::channel('audit')->info('Token refreshed', [
+                $this->logger->channel('audit')->info('Token refreshed', [
                     'user_id' => $user->id,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'token' => $newToken->plainTextToken,
                     'type' => 'Bearer',
                     'expires_at' => $newToken->accessToken->expires_at,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Token refresh failed', [
+                $this->logger->channel('audit')->error('Token refresh failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Token refresh failed',
                     'correlation_id' => $correlationId ?? Str::uuid()->toString(),
                 ], 500);
@@ -146,36 +154,36 @@ final class AuthController extends Model
          */
         public function destroy(int $tokenId): JsonResponse
         {
-            $correlationId = request()->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'token_destroy', 0, request()->ip(), null, $correlationId);
+            $correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
+            $this->fraud->check($this->guard->id() ?? 0, 'token_destroy', 0, $this->request->ip(), null, $correlationId);
             try {
-                $user = auth()->user();
+                $user = $this->guard->user();
                 if (!$user) {
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Unauthorized',
                         'correlation_id' => $correlationId,
                     ], 401);
                 }
                 // Revoke token
-                DB::table('personal_access_tokens')
+                $this->db->table('personal_access_tokens')
                     ->where('id', $tokenId)
                     ->where('tokenable_id', $user->id)
                     ->update(['revoked' => true]);
-                Log::channel('audit')->info('Token revoked', [
+                $this->logger->channel('audit')->info('Token revoked', [
                     'user_id' => $user->id,
                     'token_id' => $tokenId,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'message' => 'Token revoked',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Token revocation failed', [
+                $this->logger->channel('audit')->error('Token revocation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Token revocation failed',
                     'correlation_id' => $correlationId ?? Str::uuid()->toString(),
                 ], 500);
@@ -187,19 +195,19 @@ final class AuthController extends Model
          */
         public function index(): JsonResponse
         {
-            $user = auth()->user();
-            $correlationId = request()->header('X-Correlation-ID') ?? Str::uuid()->toString();
+            $user = $this->guard->user();
+            $correlationId = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             if (!$user) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 401);
             }
-            $tokens = DB::table('personal_access_tokens')
+            $tokens = $this->db->table('personal_access_tokens')
                 ->where('tokenable_id', $user->id)
                 ->select('id', 'name', 'created_at', 'expires_at', 'revoked')
                 ->get();
-            return response()->json([
+            return $this->response->json([
                 'tokens' => $tokens,
                 'correlation_id' => $correlationId,
             ]);

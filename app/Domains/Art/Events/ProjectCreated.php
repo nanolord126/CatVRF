@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+
 use App\Domains\Art\Models\Project;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-
 final class ProjectCreated
 {
     use Dispatchable;
@@ -18,14 +17,8 @@ final class ProjectCreated
     public function __construct(
         public readonly Project $project,
         public readonly string $correlationId,
-        public readonly array $context = [],
-    ) {
-        Log::channel('audit')->info('ProjectCreated event dispatched', [
-            'correlation_id' => $this->correlationId,
-            'project_id' => $this->project->id,
-            'tenant_id' => $this->project->tenant_id,
-        ]);
-    }
+        public array $context = [],
+    ) {}
 
     public static function dispatch(Project $project, string $correlationId, array $context = []): void
     {

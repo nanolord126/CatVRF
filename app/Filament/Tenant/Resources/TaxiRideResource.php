@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TaxiRideResource extends Model
+final class TaxiRideResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = TaxiRide::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-map-pin';
@@ -58,22 +55,15 @@ final class TaxiRideResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListTaxiRide::route('/'),
-                'create' => Pages\\CreateTaxiRide::route('/create'),
-                'edit' => Pages\\EditTaxiRide::route('/{record}/edit'),
-                'view' => Pages\\ViewTaxiRide::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListTaxiRide::route('/'),
-                'create' => Pages\\CreateTaxiRide::route('/create'),
-                'edit' => Pages\\EditTaxiRide::route('/{record}/edit'),
-                'view' => Pages\\ViewTaxiRide::route('/{record}'),
+                'index' => Pages\ListTaxiRide::route('/'),
+                'create' => Pages\CreateTaxiRide::route('/create'),
+                'edit' => Pages\EditTaxiRide::route('/{record}/edit'),
+                'view' => Pages\ViewTaxiRide::route('/{record}'),
             ];
         }
 }

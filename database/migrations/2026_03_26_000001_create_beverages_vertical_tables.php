@@ -179,3 +179,5 @@ return new class extends Migration
         Schema::dropIfExists('beverage_shops');
     }
 };
+
+

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TravelResource extends Model
+final class TravelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BTravelOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class TravelResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListTravel::route('/'),
-                'create' => Pages\\CreateTravel::route('/create'),
-                'edit' => Pages\\EditTravel::route('/{record}/edit'),
-                'view' => Pages\\ViewTravel::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListTravel::route('/'),
-                'create' => Pages\\CreateTravel::route('/create'),
-                'edit' => Pages\\EditTravel::route('/{record}/edit'),
-                'view' => Pages\\ViewTravel::route('/{record}'),
+                'index' => Pages\ListTravel::route('/'),
+                'create' => Pages\CreateTravel::route('/create'),
+                'edit' => Pages\EditTravel::route('/{record}/edit'),
+                'view' => Pages\ViewTravel::route('/{record}'),
             ];
         }
 }

@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\Api\V1\WeddingPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class WeddingPublicController extends Model
+final class WeddingPublicController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly WeddingService $weddingService;
         private readonly AIWeddingPlannerConstructor $aiConstructor;
         public function __construct(
             WeddingService $weddingService,
-            AIWeddingPlannerConstructor $aiConstructor
-        ) {
+            AIWeddingPlannerConstructor $aiConstructor,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {
             $this->weddingService = $weddingService;
             $this->aiConstructor = $aiConstructor;
             // PRODUCTION-READY 2026 CANON: Middleware для Wedding Planning вертикали
@@ -48,17 +49,17 @@ final class WeddingPublicController extends Model
                     $query->where('min_price', '<=', (int) $request->get('min_price_max'));
                 }
                 $vendors = $query->orderByDesc('rating')->paginate(15);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $vendors,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Vendors Error', [
+                $this->logger->channel('audit')->error('API Vendors Error', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['error' => 'Internal Server Error'], 500);
+                return $this->response->json(['error' => 'Internal Server Error'], 500);
             }
         }
         /**
@@ -92,19 +93,19 @@ final class WeddingPublicController extends Model
                 );
                 // 3. Сохраняем AI план в метаданные или логи
                 $wedding->update(['tags' => array_unique(array_merge($wedding->tags ?? [], ['ai_generated', $request->get('style') ?? 'classic']))]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'wedding_uuid' => $wedding->uuid,
                     'ai_plan' => $aiPlan,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Constructor Init Error', [
+                $this->logger->channel('audit')->error('Constructor Init Error', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to initialize constructor: ' . $e->getMessage(),
                 ], 422);
@@ -120,7 +121,7 @@ final class WeddingPublicController extends Model
                 ->where('tenant_id', tenant()->id)
                 ->with(['bookings.bookable', 'planner', 'contracts'])
                 ->firstOrFail();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $wedding,
             ]);
@@ -145,18 +146,18 @@ final class WeddingPublicController extends Model
                     (int) $request->get('amount'),
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'booking_id' => $booking->id,
                     'status' => $booking->status,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Booking Creation Failed', [
+                $this->logger->channel('audit')->warning('Booking Creation Failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['error' => $e->getMessage()], 400);
+                return $this->response->json(['error' => $e->getMessage()], 400);
             }
         }
 }

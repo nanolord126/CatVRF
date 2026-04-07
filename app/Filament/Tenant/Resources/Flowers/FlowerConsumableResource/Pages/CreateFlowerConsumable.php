@@ -2,22 +2,30 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\FlowerConsumableResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\FlowerConsumableResource;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
-final class CreateFlowerConsumable extends Model
+final class CreateFlowerConsumable extends CreateRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FlowerConsumableResource::class;
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['uuid'] = (string) Str::uuid();
-            $data['tenant_id'] = tenant()->id ?? null;
-            $data['correlation_id'] = (string) Str::uuid();
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['uuid'] = (string) Str::uuid();
+        $data['tenant_id'] = filament()->getTenant()?->id;
+        $data['correlation_id'] = (string) Str::uuid();
 
-            return $data;
-        }
+        return $data;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Расходный материал успешно создан';
+    }
 }

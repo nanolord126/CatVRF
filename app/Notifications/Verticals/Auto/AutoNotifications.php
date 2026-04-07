@@ -2,15 +2,12 @@
 
 namespace App\Notifications\Verticals\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 
 final class RideAcceptedNotification extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected string $type = 'auto.ride.accepted';
+    private string $type = 'auto.ride.accepted';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -23,7 +20,7 @@ final class RideAcceptedNotification extends Model
      */
     final class DriverArrivingNotification extends BasePushNotification
     {
-        protected string $type = 'auto.driver.arriving';
+        private string $type = 'auto.driver.arriving';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -42,7 +39,7 @@ final class RideAcceptedNotification extends Model
      */
     final class RideStartedNotification extends BasePushNotification
     {
-        protected string $type = 'auto.ride.started';
+        private string $type = 'auto.ride.started';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -59,8 +56,8 @@ final class RideAcceptedNotification extends Model
      */
     final class RideCompletedNotification extends BaseMailableNotification
     {
-        protected string $type = 'auto.ride.completed';
-        protected string $template = 'emails.auto.ride_completed';
+        private string $type = 'auto.ride.completed';
+        private string $template = 'emails.auto.ride_completed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -74,7 +71,7 @@ final class RideAcceptedNotification extends Model
      */
     final class RideRatingRequestNotification extends BasePushNotification
     {
-        protected string $type = 'auto.ride.rating_request';
+        private string $type = 'auto.ride.rating_request';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -93,8 +90,8 @@ final class RideAcceptedNotification extends Model
      */
     final class ServiceBookingConfirmedNotification extends BaseMailableNotification
     {
-        protected string $type = 'auto.service_booking.confirmed';
-        protected string $template = 'emails.auto.service_booking_confirmed';
+        private string $type = 'auto.service_booking.confirmed';
+        private string $template = 'emails.auto.service_booking_confirmed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -108,7 +105,7 @@ final class RideAcceptedNotification extends Model
      */
     final class ServiceReminderNotification extends BaseSmsNotification
     {
-        protected string $type = 'auto.service.reminder';
+        private string $type = 'auto.service.reminder';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -121,7 +118,7 @@ final class RideAcceptedNotification extends Model
      */
     final class WashBookingConfirmedNotification extends BasePushNotification
     {
-        protected string $type = 'auto.wash.booking.confirmed';
+        private string $type = 'auto.wash.booking.confirmed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -137,8 +134,8 @@ final class RideAcceptedNotification extends Model
      */
     final class PayoutProcessedNotification extends BaseMailableNotification
     {
-        protected string $type = 'auto.payout.processed';
-        protected string $template = 'emails.auto.payout_processed';
+        private string $type = 'auto.payout.processed';
+        private string $template = 'emails.auto.payout_processed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {

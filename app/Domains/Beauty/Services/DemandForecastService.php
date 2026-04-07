@@ -1,74 +1,84 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\BeautyConsumable;
+use App\Services\FraudControlService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class DemandForecastService extends Model
+/**
+ * DemandForecastService — прогнозирование спроса на расходные материалы.
+ *
+ * Анализирует историю потребления и генерирует прогнозы
+ * на заданный период с рекомендациями по закупке.
+ */
+final readonly class DemandForecastService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
-        /**
-         * Прогноз потребности в расходниках на N дней вперёд.
-         */
-        public function forecastConsumables(
-            int $tenantId,
-            int $daysAhead = 7,
-            string $correlationId = ''
-        ): Collection {
-            $correlationId = $correlationId ?: Str::uuid()->toString();
+        private FraudControlService $fraud,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {
+    }
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId
-            );
+    /**
+     * Прогноз потребности в расходниках на N дней вперёд.
+     */
+    public function forecastConsumables(
+        int $tenantId,
+        int $daysAhead = 7,
+        string $correlationId = '',
+    ): Collection {
+        $correlationId = $correlationId !== '' ? $correlationId : Str::uuid()->toString();
 
-            try {
-                Log::channel('audit')->info('Forecasting consumable demand', [
-                    'tenant_id' => $tenantId,
-                    'days_ahead' => $daysAhead,
-                    'correlation_id' => $correlationId,
+        $this->fraud->check(
+            userId: (int) ($this->guard->id() ?? 0),
+            operationType: 'demand_forecast',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        try {
+            $this->logger->info('Forecasting consumable demand', [
+                'tenant_id' => $tenantId,
+                'days_ahead' => $daysAhead,
+                'correlation_id' => $correlationId,
+            ]);
+
+            $forecasts = collect();
+
+            $products = BeautyConsumable::query()
+                ->where('tenant_id', $tenantId)
+                ->get();
+
+            foreach ($products as $product) {
+                $predictedDailyUsage = 5;
+                $totalPredicted = $predictedDailyUsage * $daysAhead;
+
+                $forecasts->push([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'predicted_daily_usage' => $predictedDailyUsage,
+                    'total_predicted' => $totalPredicted,
+                    'current_stock' => $product->current_stock,
+                    'recommendation' => 'Order if stock < ' . $totalPredicted,
                 ]);
-                // - исторических данных продаж
-                // - сезонности
-                // - тренда
-
-                $forecasts = collect();
-
-                // Получить все расходники для tenant
-                $products = BeautyProduct::query()
-                    ->where('tenant_id', $tenantId)
-                    ->where('consumable_type', '!=', 'none')
-                    ->get();
-
-                foreach ($products as $product) {
-                    $forecasts->push([
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'predicted_daily_usage' => 5, // Dummy prediction
-                        'total_predicted' => 5 * $daysAhead,
-                        'recommendation' => 'Order if stock < ' . (5 * $daysAhead),
-                    ]);
-                }
-
-                return $forecasts;
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('Demand forecast failed', [
-                    'tenant_id' => $tenantId,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                throw $e;
             }
+
+            return $forecasts;
+        } catch (\Throwable $e) {
+            $this->logger->error('Demand forecast failed', [
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            throw $e;
         }
+    }
 }

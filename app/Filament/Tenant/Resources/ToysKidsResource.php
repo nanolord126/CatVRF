@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ToysKidsResource extends Model
+final class ToysKidsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ToyOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class ToysKidsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListToysKids::route('/'),
-                'create' => Pages\\CreateToysKids::route('/create'),
-                'edit' => Pages\\EditToysKids::route('/{record}/edit'),
-                'view' => Pages\\ViewToysKids::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListToysKids::route('/'),
-                'create' => Pages\\CreateToysKids::route('/create'),
-                'edit' => Pages\\EditToysKids::route('/{record}/edit'),
-                'view' => Pages\\ViewToysKids::route('/{record}'),
+                'index' => Pages\ListToysKids::route('/'),
+                'create' => Pages\CreateToysKids::route('/create'),
+                'edit' => Pages\EditToysKids::route('/{record}/edit'),
+                'view' => Pages\ViewToysKids::route('/{record}'),
             ];
         }
 }

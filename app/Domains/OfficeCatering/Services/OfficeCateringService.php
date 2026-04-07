@@ -2,35 +2,36 @@
 
 namespace App\Domains\OfficeCatering\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OfficeCateringService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class OfficeCateringService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         public function createOrder(int $companyId, int $menuId, array $data, string $correlationId = ""): CateringOrder
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            if (RateLimiter::tooManyAttempts("catering:order:".auth()->id(), 10)) {
+            if ($this->rateLimiter->tooManyAttempts("catering:order:".$this->guard->id(), 10)) {
                 throw new \RuntimeException("Too many orders", 429);
             }
-            RateLimiter::hit("catering:order:".auth()->id(), 3600);
+            $this->rateLimiter->hit("catering:order:".$this->guard->id(), 3600);
 
-            return DB::transaction(function () use ($companyId, $menuId, $data, $correlationId) {
+            return $this->db->transaction(function () use ($companyId, $menuId, $data, $correlationId) {
                 $company = CateringCompany::findOrFail($companyId);
                 $menu = CateringMenu::where('id', $menuId)->where('catering_company_id', $companyId)->firstOrFail();
 
                 if ($data['person_count'] < $company->min_person_count || $data['person_count'] > $company->max_person_count) {
-                    Log::channel('audit')->warning('Catering order person count out of range', [
+                    $this->logger->warning('Catering order person count out of range', [
                         'company_id' => $companyId,
                         'person_count' => $data['person_count'],
                         'min' => $company->min_person_count,
@@ -42,17 +43,11 @@ final class OfficeCateringService extends Model
 
                 $total = $menu->price_kopecks * $data['person_count'];
 
-                $fraud = $this->fraud->check([
-                    'user_id' => auth()->id() ?? 0,
-                    'operation_type' => 'catering_order_create',
-                    'correlation_id' => $correlationId,
-                    'amount' => $total,
-                    'ip_address' => request()->ip(),
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'catering_order_create', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud['decision'] === 'block') {
-                    Log::channel('audit')->error('Catering order blocked by fraud', [
-                        'user_id' => auth()->id(),
+                    $this->logger->error('Catering order blocked by fraud', [
+                        'user_id' => $this->guard->id(),
                         'score' => $fraud['score'],
                         'correlation_id' => $correlationId,
                     ]);
@@ -63,7 +58,7 @@ final class OfficeCateringService extends Model
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant()->id,
                     'catering_company_id' => $companyId,
-                    'client_id' => auth()->id() ?? 0,
+                    'client_id' => $this->guard->id() ?? 0,
                     'correlation_id' => $correlationId,
                     'office_name' => $data['office_name'],
                     'office_address' => $data['office_address'],
@@ -79,7 +74,7 @@ final class OfficeCateringService extends Model
                     'tags' => ['office_catering' => true, 'person_count' => $data['person_count'], 'delivery_date' => now()->toDateString()],
                 ]);
 
-                Log::channel('audit')->info('Catering order created', [
+                $this->logger->info('Catering order created', [
                     'order_id' => $order->id,
                     'company_id' => $companyId,
                     'total_kopecks' => $total,
@@ -95,7 +90,7 @@ final class OfficeCateringService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
+            return $this->db->transaction(function () use ($orderId, $correlationId) {
                 $order = CateringOrder::findOrFail($orderId);
 
                 if ($order->payment_status !== 'completed') {
@@ -115,12 +110,9 @@ final class OfficeCateringService extends Model
                 $company = $order->company;
                 $payout = $order->payout_kopecks;
 
-                $this->wallet->credit(tenant()->id, $payout, 'catering_payout', [
+                $this->wallet->credit(tenant()->id, $payout, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'correlation_id' => $correlationId,
-                    'order_id' => $order->id,
-                ]);
-
-                Log::channel('audit')->info('Catering order completed and payout credited', [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'order_id' => $order->id,
                     'company_id' => $company->id,
                     'payout_kopecks' => $payout,
@@ -135,7 +127,7 @@ final class OfficeCateringService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
+            return $this->db->transaction(function () use ($orderId, $correlationId) {
                 $order = CateringOrder::findOrFail($orderId);
 
                 if ($order->status === 'completed') {
@@ -150,13 +142,9 @@ final class OfficeCateringService extends Model
                 ]);
 
                 if ($order->payment_status === 'completed') {
-                    $this->wallet->credit(tenant()->id, $order->total_kopecks, 'catering_refund', [
+                    $this->wallet->credit(tenant()->id, $order->total_kopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
                         'correlation_id' => $correlationId,
-                        'order_id' => $order->id,
-                    ]);
-                }
-
-                Log::channel('audit')->info('Catering order cancelled', [
+                        \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
                     'order_id' => $order->id,
                     'company_id' => $order->catering_company_id,
                     'correlation_id' => $correlationId,

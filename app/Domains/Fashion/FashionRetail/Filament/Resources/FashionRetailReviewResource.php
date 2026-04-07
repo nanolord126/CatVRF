@@ -1,15 +1,28 @@
 <?php declare(strict_types=1);
 
+/**
+ * FashionRetailReviewResource — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/fashionretailreviewresource
+ */
+
+
 namespace App\Domains\Fashion\FashionRetail\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FashionRetailReviewResource extends Model
+final class FashionRetailReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FashionRetailReview::class;
 
         protected static ?string $navigationGroup = 'Fashion Retail';
@@ -41,13 +54,15 @@ final class FashionRetailReviewResource extends Model
                 TextColumn::make('user.name')->searchable(),
                 TextColumn::make('rating')->numeric(),
                 TextColumn::make('title')->searchable(),
-                BadgeColumn::make('status')->colors([
-                    'pending' => 'warning',
-                    'approved' => 'success',
-                    'rejected' => 'danger',
-                ]),
+                TextColumn::make('status')->badge(),
                 TextColumn::make('helpful_count')->numeric(),
                 TextColumn::make('created_at')->dateTime(),
             ])->filters([])->actions([])->bulkActions([]);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

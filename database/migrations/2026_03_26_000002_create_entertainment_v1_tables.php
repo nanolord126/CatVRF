@@ -162,3 +162,5 @@ return new class extends Migration
         Schema::dropIfExists('entertainment_venues');
     }
 };
+
+

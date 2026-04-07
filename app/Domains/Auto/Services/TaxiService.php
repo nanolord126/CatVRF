@@ -2,20 +2,25 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class TaxiService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TaxiService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Создание поездки (Booking).
          */
         public function createRide(int $passengerId, array $data, string $correlationId): TaxiRide
         {
-            return DB::transaction(function () use ($passengerId, $data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($passengerId, $data, $correlationId) {
                 $data['uuid'] = (string) Str::uuid();
                 $data['tenant_id'] = tenant()->id;
                 $data['passenger_id'] = $passengerId;
@@ -24,7 +29,7 @@ final class TaxiService extends Model
 
                 $ride = TaxiRide::create($data);
 
-                Log::channel('audit')->info('Taxi ride searching driver', [
+                $this->logger->info('Taxi ride searching driver', [
                     'ride_uuid' => $ride->uuid,
                     'passenger_id' => $passengerId,
                     'pickup' => $data['pickup_point'] ?? 'N/A',
@@ -40,19 +45,19 @@ final class TaxiService extends Model
          */
         public function assignDriver(TaxiRide $ride, Vehicle $vehicle, int $driverId, string $correlationId): void
         {
-            DB::transaction(function () use ($ride, $vehicle, $driverId, $correlationId) {
+            $this->db->transaction(function () use ($ride, $vehicle, $driverId, $correlationId) {
                 $ride->update([
                     'driver_id' => $driverId,
                     'vehicle_id' => $vehicle->id,
                     'status' => 'accepted',
                     'correlation_id' => $correlationId,
-                    'accepted_at' => now(),
+                    'accepted_at' => Carbon::now(),
                 ]);
 
                 // Резервация автомобиля под поездку
                 $vehicle->update(['status' => 'busy']);
 
-                Log::channel('audit')->info('Taxi ride accepted', [
+                $this->logger->info('Taxi ride accepted', [
                     'ride_uuid' => $ride->uuid,
                     'vehicle_uuid' => $vehicle->uuid,
                     'driver_id' => $driverId,
@@ -66,10 +71,10 @@ final class TaxiService extends Model
          */
         public function completeRide(TaxiRide $ride, string $correlationId): void
         {
-            DB::transaction(function () use ($ride, $correlationId) {
+            $this->db->transaction(function () use ($ride, $correlationId) {
                 $ride->update([
                     'status' => 'finished',
-                    'finished_at' => now(),
+                    'finished_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -78,7 +83,7 @@ final class TaxiService extends Model
                     $ride->vehicle->update(['status' => 'active']);
                 }
 
-                Log::channel('audit')->info('Taxi ride completed', [
+                $this->logger->info('Taxi ride completed', [
                     'ride_uuid' => $ride->uuid,
                     'final_cost' => $ride->total_cost_kopecks,
                     'correlation_id' => $correlationId,
@@ -91,7 +96,7 @@ final class TaxiService extends Model
          */
         public function cancelRide(TaxiRide $ride, string $reason, string $correlationId): void
         {
-            DB::transaction(function () use ($ride, $reason, $correlationId) {
+            $this->db->transaction(function () use ($ride, $reason, $correlationId) {
                 if (in_array($ride->status, ['finished', 'cancelled'])) {
                     return;
                 }
@@ -106,7 +111,7 @@ final class TaxiService extends Model
                     $ride->vehicle->update(['status' => 'active']);
                 }
 
-                Log::channel('audit')->warning('Taxi ride cancelled', [
+                $this->logger->warning('Taxi ride cancelled', [
                     'ride_uuid' => $ride->uuid,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,

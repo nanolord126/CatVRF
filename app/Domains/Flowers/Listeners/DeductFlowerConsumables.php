@@ -2,14 +2,16 @@
 
 namespace App\Domains\Flowers\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductFlowerConsumables extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductFlowerConsumables
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Обработка создания заказа
          */
@@ -18,7 +20,9 @@ final class DeductFlowerConsumables extends Model
             $order = $event->order;
             $correlationId = $event->correlation_id;
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($order, $correlationId) {
                 // 1. Списание цветов (Inventory)
                 $items = $order->items_json ?? [];
                 foreach ($items as $item) {
@@ -26,7 +30,7 @@ final class DeductFlowerConsumables extends Model
                         $product = FlowerProduct::find($item['product_id']);
                         if ($product) {
                             $product->decrement('current_stock', (int)$item['quantity']);
-                            Log::channel('audit')->info('Flower Inventory Deducted', [
+                            $this->logger->info('Flower Inventory Deducted', [
                                 'product_id' => $product->id,
                                 'quantity' => $item['quantity'],
                                 'order_id' => $order->id,
@@ -42,7 +46,7 @@ final class DeductFlowerConsumables extends Model
                 $packaging = FlowerConsumable::where('name', 'LIKE', '%Упаковка%')->first();
                 if ($packaging) {
                     $packaging->decrement('current_stock', 1);
-                    Log::channel('audit')->info('Flower Consumable Deducted', [
+                    $this->logger->info('Flower Consumable Deducted', [
                         'consumable_id' => $packaging->id,
                         'quantity' => 1,
                         'order_id' => $order->id,
@@ -54,7 +58,7 @@ final class DeductFlowerConsumables extends Model
                 $ribbon = FlowerConsumable::where('name', 'LIKE', '%Лента%')->first();
                 if ($ribbon) {
                     $ribbon->decrement('current_stock', 3); // 3 метра ленты
-                    Log::channel('audit')->info('Flower Ribbon Consumable Deducted', [
+                    $this->logger->info('Flower Ribbon Consumable Deducted', [
                         'consumable_id' => $ribbon->id,
                         'quantity' => 3,
                         'correlation_id' => $correlationId,

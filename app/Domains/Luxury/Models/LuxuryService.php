@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class LuxuryService extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'luxury_services';
@@ -33,7 +32,7 @@ final class LuxuryService extends Model
             'is_concierge_exclusive' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 $model->uuid = (string) Str::uuid();
@@ -53,4 +52,27 @@ final class LuxuryService extends Model
         {
             return $this->belongsTo(LuxuryBrand::class, 'brand_id');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

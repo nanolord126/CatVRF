@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeverageShopResource extends Model
+final class BeverageShopResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeverageShop::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cup-straw';
@@ -100,31 +97,15 @@ final class BeverageShopResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageShop::route('/'),
-                'create' => Pages\\CreateBeverageShop::route('/create'),
-                'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageShop::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeverageShop::route('/'),
-                'create' => Pages\\CreateBeverageShop::route('/create'),
-                'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageShop::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageShop::route('/'),
-                'create' => Pages\\CreateBeverageShop::route('/create'),
-                'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageShop::route('/{record}'),
+                'index' => Pages\ListBeverageShop::route('/'),
+                'create' => Pages\CreateBeverageShop::route('/create'),
+                'edit' => Pages\EditBeverageShop::route('/{record}/edit'),
+                'view' => Pages\ViewBeverageShop::route('/{record}'),
             ];
         }
 }

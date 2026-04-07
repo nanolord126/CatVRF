@@ -2,14 +2,15 @@
 
 namespace App\Domains\Consulting\Analytics\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HeatmapUpdateEvent extends Model
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class HeatmapUpdateEvent
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithSockets;
         use SerializesModels;
@@ -17,17 +18,17 @@ final class HeatmapUpdateEvent extends Model
         /**
          * @var int Tenant ID for broadcast channel scoping
          */
-        public int $tenantId;
+        private int $tenantId;
 
         /**
          * @var string Heatmap type: 'geo' or 'click'
          */
-        public string $heatmapType;
+        private string $heatmapType;
 
         /**
          * @var string|null Vertical filter (e.g., 'beauty', 'food')
          */
-        public ?string $vertical;
+        public readonly ?string $vertical;
 
         /**
          * @var array Heatmap data payload
@@ -44,17 +45,17 @@ final class HeatmapUpdateEvent extends Model
          *     stats: {total_clicks, unique_users, avg_clicks_per_user, most_clicked}
          *   }
          */
-        public array $data;
+        private array $data;
 
         /**
          * @var string Correlation ID for request tracing
          */
-        public string $correlationId;
+        private string $correlationId;
 
         /**
          * @var string|null User ID who triggered the update (optional)
          */
-        public ?string $userId;
+        public readonly ?string $userId;
 
         /**
          * Create a new event instance.
@@ -74,7 +75,7 @@ final class HeatmapUpdateEvent extends Model
             array $data,
             ?string $vertical = null,
             ?string $userId = null,
-            ?string $correlationId = null
+            ?string $correlationId = null, public readonly Request $request, public readonly LoggerInterface $logger
         ) {
             // Validate heatmap type
             if (!\in_array($heatmapType, ['geo', 'click'], true)) {
@@ -83,11 +84,12 @@ final class HeatmapUpdateEvent extends Model
 
             // Validate data structure
             if (empty($data) || !isset($data['points'], $data['stats']) && !isset($data['clicks'], $data['stats'])) {
-                \Log::channel('audit')->warning('HeatmapUpdateEvent: Invalid data structure', [
+                $this->logger->warning('HeatmapUpdateEvent: Invalid data structure', [
                     'heatmap_type' => $heatmapType,
                     'has_points' => isset($data['points']),
                     'has_clicks' => isset($data['clicks']),
                     'has_stats' => isset($data['stats']),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
 
@@ -99,7 +101,7 @@ final class HeatmapUpdateEvent extends Model
             $this->correlationId = $correlationId ?? "heatmap-{$this->generateTraceId()}";
 
             // Log event creation
-            \Log::channel('audit')->info('HeatmapUpdateEvent created', [
+            $this->logger->info('HeatmapUpdateEvent created', [
                 'tenant_id' => $this->tenantId,
                 'heatmap_type' => $this->heatmapType,
                 'vertical' => $this->vertical,
@@ -142,7 +144,7 @@ final class HeatmapUpdateEvent extends Model
                 'data' => $this->data,
                 'correlation_id' => $this->correlationId,
                 'user_id' => $this->userId,
-                'timestamp' => \now()->toIso8601String(),
+                'timestamp' => \Carbon::now()->toIso8601String(),
             ];
         }
 
@@ -163,7 +165,7 @@ final class HeatmapUpdateEvent extends Model
          */
         private function generateTraceId(): string
         {
-            return \now()->timestamp . '-' . Str::random(8);
+            return \Carbon::now()->timestamp . '-' . Str::random(8);
         }
 
         /**

@@ -1,15 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Models;
 
+
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class WellnessProgram extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'wellness_programs';
@@ -75,7 +76,7 @@ final class WellnessProgram extends Model
          */
         public function scopeActive(Builder $query): Builder
         {
-           return $query->where('end_at', '>', now());
+           return $query->where('end_at', '>', Carbon::now());
         }
 
         /**

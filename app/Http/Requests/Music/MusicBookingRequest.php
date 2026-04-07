@@ -2,20 +2,29 @@
 
 namespace App\Http\Requests\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicBookingRequest extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class MusicBookingRequest extends FormRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Determine if the user is authorized to make this request.
          */
         public function authorize(): bool
         {
-            FraudControlService::check();
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->guard->id(),
+                operationType: 'mutation',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
             return true;
         }
 

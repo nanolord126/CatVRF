@@ -2,14 +2,15 @@
 
 namespace App\Filament\Tenant\Resources\Flowers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\Bouquet;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class BouquetResource extends Model
+final class BouquetResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Bouquet::class;
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
         protected static ?string $navigationGroup = 'Flowers';
@@ -72,7 +73,7 @@ final class BouquetResource extends Model
                         Forms\Components\TextInput::make('tenant_id')
                             ->disabled()
                             ->dehydrated(false)
-                            ->default(fn () => tenant()->id ?? null),
+                            ->default(fn () => filament()->getTenant()?->id),
                     ])->columns(2),
             ]);
         }

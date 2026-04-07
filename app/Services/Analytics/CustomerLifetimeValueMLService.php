@@ -2,14 +2,21 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CustomerLifetimeValueMLService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class CustomerLifetimeValueMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 86400; // 24 часа
         private const CHURN_THRESHOLD = 0.7; // 70% вероятности = клиент в риске
 
@@ -23,7 +30,7 @@ final class CustomerLifetimeValueMLService extends Model
         {
             $cacheKey = "ltv:user:{$userId}";
 
-            return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
                 try {
                     // Получаем исторические данные
                     $history = $this->getUserPurchaseHistory($userId);
@@ -47,10 +54,11 @@ final class CustomerLifetimeValueMLService extends Model
                     return max(0.0, $ltv);
 
                 } catch (\Throwable $e) {
-                    Log::channel('analytics_errors')->error('LTV calculation failed', [
+                    $this->logger->channel('analytics_errors')->error('LTV calculation failed', [
                         'user_id' => $userId,
-                        'error' => $e->getMessage()
-                    ]);
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return 0.0;
                 }
             });
@@ -94,10 +102,11 @@ final class CustomerLifetimeValueMLService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Churn prediction failed', [
+                $this->logger->channel('analytics_errors')->error('Churn prediction failed', [
                     'user_id' => $userId,
-                    'error' => $e->getMessage()
-                ]);
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return [
                     'churn_probability' => 0.0,
                     'churn_risk_level' => 'unknown',
@@ -115,7 +124,7 @@ final class CustomerLifetimeValueMLService extends Model
          */
         public function segmentCustomersByValue(int $tenantId): array
         {
-            $users = DB::table('users')
+            $users = $this->db->table('users')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
                 ->pluck('id');
@@ -160,7 +169,7 @@ final class CustomerLifetimeValueMLService extends Model
          */
         private function getUserPurchaseHistory(int $userId): array
         {
-            $purchases = DB::table('orders')
+            $purchases = $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->where('status', 'completed')
                 ->orderBy('created_at')
@@ -244,7 +253,7 @@ final class CustomerLifetimeValueMLService extends Model
         private function predictCustomerLifetime(int $userId, float $retentionRate): float
         {
             $accountAgeMonths = \Carbon\Carbon::parse(
-                DB::table('users')->find($userId)->created_at
+                $this->db->table('users')->find($userId)->created_at
             )->diffInMonths(now());
 
             // Формула: средняя жизненная ценность клиента = месяцы активности
@@ -268,7 +277,7 @@ final class CustomerLifetimeValueMLService extends Model
             $daysSinceLastPurchase = (int)$now->diffInDays(\Carbon\Carbon::parse($lastPurchaseDate));
 
             $last30Days = $now->copy()->subDays(30)->startOfDay();
-            $purchasesLast30Days = DB::table('orders')
+            $purchasesLast30Days = $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $last30Days)
                 ->count();
@@ -367,7 +376,7 @@ final class CustomerLifetimeValueMLService extends Model
          */
         private function getUserAgeInDays(int $userId): int
         {
-            $createdAt = DB::table('users')->find($userId)?->created_at;
+            $createdAt = $this->db->table('users')->find($userId)?->created_at;
 
             if (!$createdAt) {
                 return 0;

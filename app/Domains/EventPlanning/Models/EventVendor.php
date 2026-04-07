@@ -2,12 +2,13 @@
 
 namespace App\Domains\EventPlanning\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class EventVendor extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory;
 
         protected $table = 'event_planning_vendors';
@@ -43,7 +44,7 @@ final class EventVendor extends Model
                     $model->uuid = (string) Str::uuid();
                 }
                 if (empty($model->tenant_id)) {
-                    $model->tenant_id = tenant()->id ?? auth()->user()?->current_tenant_id ?? 1;
+                    $model->tenant_id = tenant()->id ?? $this->guard->user()?->current_tenant_id ?? 1;
                 }
             });
 
@@ -106,7 +107,6 @@ final class EventVendor extends Model
         public function getVerticalLabelAttribute(): string
         {
             return match ($this->vertical) {
-                'food' => 'Рестораны и Кейтеринг',
                 'photo' => 'Фотография и Видео',
                 'beauty' => 'Красота и Стилисты',
                 'auto' => 'Транспорт и Логистика',

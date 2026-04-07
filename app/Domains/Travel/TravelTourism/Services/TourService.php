@@ -2,41 +2,31 @@
 
 namespace App\Domains\Travel\TravelTourism\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TourService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TourService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventoryService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createTour(array $data): TravelTour
         {
 
-
-            Log::channel('audit')->info('TourService: Creating tour', [
+            $this->logger->info('TourService: Creating tour', [
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
                 'tour_operator_id' => $data['tour_operator_id'],
-                'tenant_id' => filament()->getTenant()->id,
+                'tenant_id' => tenant()->id,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(fn () => TravelTour::create([
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(fn () => TravelTour::create([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tenant_id' => filament()->getTenant()->id,
+                'tenant_id' => tenant()->id,
                 'tour_operator_id' => $data['tour_operator_id'],
                 'name' => $data['name'],
                 'description' => $data['description'] ?? '',
@@ -60,23 +50,15 @@ final class TourService extends Model
         public function updateTourDetails(int $tourId, array $data): bool
         {
 
-
             $tour = TravelTour::findOrFail($tourId);
 
-            Log::channel('audit')->info('TourService: Updating tour details', [
+            $this->logger->info('TourService: Updating tour details', [
                 'correlation_id' => $tour->correlation_id,
                 'tour_id' => $tourId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($tour, $data) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($tour, $data) {
                 $tour->update($data);
                 return true;
             });
@@ -85,18 +67,16 @@ final class TourService extends Model
         public function getToursForDestination(string $country, string $city = ''): Collection
         {
 
-
             return TravelTour::where('destination_country', $country)
                 ->when($city, fn ($q) => $q->where('destination_city', $city))
                 ->where('status', 'active')
-                ->where('current_participants', '<', DB::raw('max_participants'))
+                ->where('current_participants', '<', $this->db->raw('max_participants'))
                 ->orderByDesc('start_date')
                 ->get();
         }
 
         public function getAvailableDates(int $tourId): Collection
         {
-
 
             $tour = TravelTour::findOrFail($tourId);
 
@@ -108,23 +88,15 @@ final class TourService extends Model
         public function publishTour(int $tourId): bool
         {
 
-
             $tour = TravelTour::findOrFail($tourId);
 
-            Log::channel('audit')->info('TourService: Publishing tour', [
+            $this->logger->info('TourService: Publishing tour', [
                 'correlation_id' => $tour->correlation_id,
                 'tour_id' => $tourId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($tour) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($tour) {
                 $tour->update(['status' => 'published']);
                 return true;
             });
@@ -133,23 +105,15 @@ final class TourService extends Model
         public function closeTourRegistration(int $tourId): bool
         {
 
-
             $tour = TravelTour::findOrFail($tourId);
 
-            Log::channel('audit')->info('TourService: Closing tour registration', [
+            $this->logger->info('TourService: Closing tour registration', [
                 'correlation_id' => $tour->correlation_id,
                 'tour_id' => $tourId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($tour) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($tour) {
                 $tour->update(['status' => 'registration_closed']);
                 return true;
             });
@@ -158,23 +122,15 @@ final class TourService extends Model
         public function completeTour(int $tourId): bool
         {
 
-
             $tour = TravelTour::findOrFail($tourId);
 
-            Log::channel('audit')->info('TourService: Completing tour', [
+            $this->logger->info('TourService: Completing tour', [
                 'correlation_id' => $tour->correlation_id,
                 'tour_id' => $tourId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($tour) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($tour) {
                 $tour->update(['status' => 'completed']);
                 return true;
             });

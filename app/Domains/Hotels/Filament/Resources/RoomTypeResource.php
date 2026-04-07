@@ -2,14 +2,15 @@
 
 namespace App\Domains\Hotels\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\RoomType;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class RoomTypeResource extends Model
+final class RoomTypeResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = RoomType::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-window';

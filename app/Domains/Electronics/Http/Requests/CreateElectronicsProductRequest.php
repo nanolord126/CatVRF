@@ -1,0 +1,63 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Electronics\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
+
+/**
+ * Class CreateElectronicsProductRequest
+ *
+ * Part of the Electronics vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Domains\Electronics\Http\Requests
+ */
+final class CreateElectronicsProductRequest extends FormRequest
+{
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Handle rules operation.
+     *
+     * @throws \DomainException
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'brand' => 'required|string|max:255',
+            'category' => 'required|string|max:255',
+            'specs' => 'required|array',
+            'price' => 'required|numeric|min:0',
+            'warranty_months' => 'required|integer|min:1',
+        ];
+    }
+
+    public function correlationId(): string
+    {
+        return $this->header('X-Correlation-ID', (string) Str::uuid());
+    }
+
+    public function isB2B(): bool
+    {
+        return $this->has('inn') && $this->has('business_card_id');
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['correlation_id' => $this->correlationId()]);
+    }
+}

@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class AppointmentPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -20,7 +21,7 @@ final class AppointmentPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($appointment->tenant_id) && $user->tenant_id !== $appointment->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $appointment->tenant_id,
@@ -36,7 +37,7 @@ final class AppointmentPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized appointment view attempt', [
+                $this->logger->warning('Unauthorized appointment view attempt', [
                     'user_id' => $user->id,
                     'appointment_id' => $appointment->id,
                 ]);
@@ -63,7 +64,7 @@ final class AppointmentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -73,7 +74,7 @@ final class AppointmentPolicy extends Model
             $allowed = $user->email_verified_at !== null;
 
             if (!$allowed) {
-                Log::info('Unverified user appointment creation attempt', [
+                $this->logger->info('Unverified user appointment creation attempt', [
                     'user_id' => $user->id,
                 ]);
             }
@@ -91,7 +92,7 @@ final class AppointmentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -111,7 +112,7 @@ final class AppointmentPolicy extends Model
             }
 
             if (!$allowed) {
-                Log::warning('Unauthorized appointment update attempt', [
+                $this->logger->warning('Unauthorized appointment update attempt', [
                     'user_id' => $user->id,
                     'appointment_id' => $appointment->id,
                     'appointment_status' => $appointment->status,
@@ -154,7 +155,7 @@ final class AppointmentPolicy extends Model
             }
 
             if (!$allowed) {
-                Log::warning('Unauthorized appointment cancellation attempt', [
+                $this->logger->warning('Unauthorized appointment cancellation attempt', [
                     'user_id' => $user->id,
                     'appointment_id' => $appointment->id,
                 ]);
@@ -276,7 +277,7 @@ final class AppointmentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -294,7 +295,7 @@ final class AppointmentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -313,7 +314,7 @@ final class AppointmentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

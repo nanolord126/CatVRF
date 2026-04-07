@@ -6,11 +6,11 @@ use Livewire\Component;
 
 final class Property3DViewer extends Component
 {
-    public int $propertyId;
-    public array $propertyData = [];
-    public array $currentRoom = [];
-    public int $currentFloor = 0;
-    public bool $showARView = false;
+    private int $propertyId;
+    private array $propertyData = [];
+    private array $currentRoom = [];
+    private int $currentFloor = 0;
+    private bool $showARView = false;
 
     public function mount(int $propertyId): void
     {

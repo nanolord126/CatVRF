@@ -2,18 +2,15 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class BeautyLookConstructor extends Model
+final readonly class BeautyLookConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
             private RecommendationService $recommendation,
             private \App\Domains\Beauty\Services\BeautyMasterMatchingService $masterMatching,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         public function construct(
             array $analysis,
@@ -68,7 +65,7 @@ final class BeautyLookConstructor extends Model
                     );
                 }
 
-                Log::channel('audit')->info('Beauty construction completed with master matching', [
+                $this->logger->channel('audit')->info('Beauty construction completed with master matching', [
                     'makeup_style' => $makeupStyle,
                     'hairstyle' => $hairstyle,
                     'masters_count' => count($result['suggested_masters'] ?? []),
@@ -76,7 +73,7 @@ final class BeautyLookConstructor extends Model
 
                 return $result;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Beauty construction failed', [
+                $this->logger->channel('audit')->error('Beauty construction failed', [
                     'error' => $e->getMessage(),
                 ]);
                 throw $e;
@@ -150,7 +147,6 @@ final class BeautyLookConstructor extends Model
             $params = [
                 'category' => $category,
                 'limit' => match ($category) {
-                    'makeup' => 6,
                     'haircare' => 4,
                     'tools' => 3,
                     default => 5,

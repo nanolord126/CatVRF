@@ -2,17 +2,17 @@
 
 namespace App\Domains\Pharmacy\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PharmacyOrderStoreRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class PharmacyOrderStoreRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
         public function rules(): array
@@ -37,4 +37,27 @@ final class PharmacyOrderStoreRequest extends Model
                 'items.*.quantity.min' => 'Минимальное количество: 1',
             ];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

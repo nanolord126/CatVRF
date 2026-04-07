@@ -2,124 +2,53 @@
 
 namespace App\Domains\Education\Courses\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Education\Models\Course;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
-final class CourseResource extends Model
+/**
+ * Class CourseResource
+ *
+ * Part of the Education vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Domains\Education\Courses\Filament\Resources
+ */
+final class CourseResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = Course::class;
+    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+    protected static ?string $navigationGroup = 'Обучение';
+    protected static ?string $navigationLabel = 'Курсы';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Textarea, Select, Toggle};
-    use Filament\Forms\Form;
-    use Filament\Resources\Resource;
-    use Filament\Tables\Columns\{TextColumn, IconColumn, BadgeColumn};
-    use Filament\Tables\Filters\SelectFilter;
-    use Filament\Tables\Table;
-    use Filament\Tables\Actions\EditAction;
-    use Filament\Actions\CreateAction;
-
-    final class CourseResource extends Resource
+    public static function form(Form $form): Form
     {
-        protected static ?string $model = Course::class;
-        protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-        protected static ?string $navigationGroup = 'Обучение';
+        return $form->schema([
+            TextInput::make('name')->label('Название')->required(),
+        ]);
+    }
 
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Section::make('Основная информация')
-                        ->schema([
-                            TextInput::make('title')
-                                ->label('Название курса')
-                                ->required()
-                                ->maxLength(255),
-                            Textarea::make('description')
-                                ->label('Описание')
-                                ->required()
-                                ->rows(4),
-                            TextInput::make('category')
-                                ->label('Категория')
-                                ->required(),
-                            Select::make('level')
-                                ->label('Уровень')
-                                ->options([
-                                    'beginner' => 'Начинающий',
-                                    'intermediate' => 'Средний',
-                                    'advanced' => 'Продвинутый',
-                                    'expert' => 'Эксперт',
-                                ])
-                                ->required(),
-                        ]),
-                    Section::make('Детали курса')
-                        ->schema([
-                            TextInput::make('price')
-                                ->label('Цена (копейки)')
-                                ->numeric()
-                                ->required(),
-                            TextInput::make('duration_hours')
-                                ->label('Продолжительность (часы)')
-                                ->numeric()
-                                ->required(),
-                            TextInput::make('thumbnail_url')
-                                ->label('URL миниатюры')
-                                ->url(),
-                        ]),
-                    Section::make('Статус')
-                        ->schema([
-                            Select::make('status')
-                                ->label('Статус')
-                                ->options([
-                                    'draft' => 'Черновик',
-                                    'published' => 'Опубликовано',
-                                    'archived' => 'Архивировано',
-                                ]),
-                            Toggle::make('is_published')
-                                ->label('Опубликовано'),
-                        ]),
-                ]);
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->label('Название')->searchable(),
+                TextColumn::make('created_at')->label('Создан')->dateTime(),
+            ]);
+    }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('title')
-                        ->label('Название')
-                        ->searchable(),
-                    TextColumn::make('category')
-                        ->label('Категория'),
-                    BadgeColumn::make('level')
-                        ->label('Уровень')
-                        ->colors([
-                            'gray' => 'beginner',
-                            'info' => 'intermediate',
-                            'warning' => 'advanced',
-                            'danger' => 'expert',
-                        ]),
-                    TextColumn::make('price')
-                        ->label('Цена'),
-                    IconColumn::make('is_published')
-                        ->label('Опубликовано')
-                        ->boolean(),
-                    TextColumn::make('student_count')
-                        ->label('Студентов'),
-                    TextColumn::make('rating')
-                        ->label('Рейтинг'),
-                ])
-                ->filters([
-                    SelectFilter::make('level')
-                        ->options([
-                            'beginner' => 'Начинающий',
-                            'intermediate' => 'Средний',
-                            'advanced' => 'Продвинутый',
-                            'expert' => 'Эксперт',
-                        ]),
-                    SelectFilter::make('is_published'),
-                ])
-                ->actions([
-                    EditAction::make(),
-                ]);
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Education\Courses\Filament\Resources\CourseResource\Pages\ListCourses::route('/'),
+        ];
+    }
 }

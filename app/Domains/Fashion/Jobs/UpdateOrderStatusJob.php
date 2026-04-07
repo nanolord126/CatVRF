@@ -2,21 +2,19 @@
 
 namespace App\Domains\Fashion\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class UpdateOrderStatusJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class UpdateOrderStatusJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            private readonly int $orderId = 0,
-            private readonly string $status = '',
-            private readonly string $correlationId = '',
-        ) {
+            private int $orderId = 0,
+            private string $status = '',
+            private string $correlationId = '', private readonly LoggerInterface $logger) {
             $this->onQueue('default');
         }
 
@@ -31,18 +29,18 @@ final class UpdateOrderStatusJob extends Model
                 ]);
 
                 if ($this->status === 'shipped') {
-                    $order->update(['shipped_at' => now()]);
+                    $order->update(['shipped_at' => Carbon::now()]);
                 } elseif ($this->status === 'delivered') {
-                    $order->update(['delivered_at' => now()]);
+                    $order->update(['delivered_at' => Carbon::now()]);
                 }
 
-                Log::channel('audit')->info('Fashion order status updated via job', [
+                $this->logger->info('Fashion order status updated via job', [
                     'order_id' => $this->orderId,
                     'status' => $this->status,
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update fashion order status', [
+                $this->logger->error('Failed to update fashion order status', [
                     'order_id' => $this->orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
@@ -54,6 +52,29 @@ final class UpdateOrderStatusJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(4);
+            return Carbon::now()->addHours(4);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

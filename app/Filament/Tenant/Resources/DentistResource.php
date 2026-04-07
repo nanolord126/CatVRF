@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class DentistResource extends Model
+final class DentistResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Dentist::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-identification';
@@ -116,31 +113,15 @@ final class DentistResource extends Model
                         ])->columns(3),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentist::route('/'),
-                'create' => Pages\\CreateDentist::route('/create'),
-                'edit' => Pages\\EditDentist::route('/{record}/edit'),
-                'view' => Pages\\ViewDentist::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListDentist::route('/'),
-                'create' => Pages\\CreateDentist::route('/create'),
-                'edit' => Pages\\EditDentist::route('/{record}/edit'),
-                'view' => Pages\\ViewDentist::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentist::route('/'),
-                'create' => Pages\\CreateDentist::route('/create'),
-                'edit' => Pages\\EditDentist::route('/{record}/edit'),
-                'view' => Pages\\ViewDentist::route('/{record}'),
+                'index' => Pages\ListDentist::route('/'),
+                'create' => Pages\CreateDentist::route('/create'),
+                'edit' => Pages\EditDentist::route('/{record}/edit'),
+                'view' => Pages\ViewDentist::route('/{record}'),
             ];
         }
 }

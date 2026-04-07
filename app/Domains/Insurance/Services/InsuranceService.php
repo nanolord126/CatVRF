@@ -1,21 +1,193 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Insurance\InsuranceServices\Models\InsurancePolicy;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class InsuranceService extends Model
+/**
+ * InsuranceService — корневой сервис страхового домена.
+ *
+ * Оркестрирует создание полисов, оплату и выплаты.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class InsuranceService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createPolicy(int $companyId,$policyType,$coverageAmount,$durationMonths,string $correlationId=""):InsurancePolicy{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("insurance:policy:".auth()->id(),5))throw new \RuntimeException("Too many",429);RateLimiter::hit("insurance:policy:".auth()->id(),3600);
-    return DB::transaction(function()use($companyId,$policyType,$coverageAmount,$durationMonths,$correlationId){$c=InsuranceCompany::findOrFail($companyId);$total=(int)(($coverageAmount/100)*$durationMonths);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'insurance_policy','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$p=InsurancePolicy::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'company_id'=>$companyId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','policy_type'=>$policyType,'coverage_amount'=>$coverageAmount,'duration_months'=>$durationMonths,'tags'=>['insurance'=>true]]);Log::channel('audit')->info('Insurance policy created',['policy_id'=>$p->id,'correlation_id'=>$correlationId]);return $p;});
+    /**
+     * Оформить страховой полис.
+     */
+    public function createPolicy(
+        int    $companyId,
+        string $policyType,
+        int    $premiumKopecks,
+        string $startDate,
+        string $endDate,
+        string $correlationId = '',
+    ): InsurancePolicy {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($companyId, $policyType, $premiumKopecks, $startDate, $endDate, $correlationId): InsurancePolicy {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'insurance_policy',
+                amount: $premiumKopecks,
+                correlationId: $correlationId,
+            );
+
+            $policy = InsurancePolicy::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'company_id'     => $companyId,
+                'client_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'policy_type'    => $policyType,
+                'premium_kopecks' => $premiumKopecks,
+                'payout_kopecks' => $premiumKopecks - (int) ($premiumKopecks * 0.14),
+                'payment_status' => 'pending',
+                'start_date'     => $startDate,
+                'end_date'       => $endDate,
+                'tags'           => ['insurance' => true],
+            ]);
+
+            $this->logger->info('Insurance policy created', [
+                'policy_id'      => $policy->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $policy;
+        });
     }
-    public function completePolicy(int $policyId,string $correlationId=""):InsurancePolicy{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($policyId,$correlationId){$p=InsurancePolicy::findOrFail($policyId);if($p->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$p->update(['status'=>'active','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$p->payout_kopecks,'insurance_payout',['correlation_id'=>$correlationId,'policy_id'=>$p->id]);Log::channel('audit')->info('Insurance policy activated',['policy_id'=>$p->id]);return $p;});}
-    public function cancelPolicy(int $policyId,string $correlationId=""):InsurancePolicy{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($policyId,$correlationId){$p=InsurancePolicy::findOrFail($policyId);if($p->status==='active')throw new \RuntimeException("Cannot cancel active",400);$p->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($p->payment_status==='completed')$this->wallet->credit(tenant()->id,$p->total_kopecks,'insurance_refund',['correlation_id'=>$correlationId,'policy_id'=>$p->id]);Log::channel('audit')->info('Insurance policy cancelled',['policy_id'=>$p->id]);return $p;});}
-    public function getPolicy(int $policyId):InsurancePolicy{return InsurancePolicy::findOrFail($policyId);}
-    public function getUserPolicies(int $clientId){return InsurancePolicy::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Активировать полис после оплаты и выплатить компании.
+     */
+    public function activatePolicy(int $policyId, string $correlationId = ''): InsurancePolicy
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($policyId, $correlationId): InsurancePolicy {
+            $policy = InsurancePolicy::findOrFail($policyId);
+
+            if ($policy->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $policy->update([
+                'status'         => 'active',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $policy->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['policy_id' => $policy->id],
+            );
+
+            $this->logger->info('Insurance policy activated', [
+                'policy_id'      => $policy->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $policy;
+        });
+    }
+
+    /**
+     * Отменить полис и вернуть средства.
+     */
+    public function cancelPolicy(int $policyId, string $correlationId = ''): InsurancePolicy
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($policyId, $correlationId): InsurancePolicy {
+            $policy = InsurancePolicy::findOrFail($policyId);
+
+            if ($policy->status === 'active') {
+                throw new \RuntimeException('Cannot cancel active policy without claim', 400);
+            }
+
+            $wasPaid = $policy->payment_status === 'completed';
+
+            $policy->update([
+                'status'         => 'cancelled',
+                'payment_status' => $wasPaid ? 'refunded' : $policy->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($wasPaid) {
+                $this->wallet->credit(
+                    walletId: tenant()->id,
+                    amount: $policy->premium_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['policy_id' => $policy->id],
+                );
+            }
+
+            $this->logger->info('Insurance policy cancelled', [
+                'policy_id'      => $policy->id,
+                'refunded'       => $wasPaid,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $policy;
+        });
+    }
+
+    /**
+     * Получить полис по ID.
+     */
+    public function getPolicy(int $policyId): InsurancePolicy
+    {
+        return InsurancePolicy::findOrFail($policyId);
+    }
+
+    /**
+     * Получить последние полисы клиента.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, InsurancePolicy>
+     */
+    public function getUserPolicies(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return InsurancePolicy::where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->take($limit)
+            ->get();
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

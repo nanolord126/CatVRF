@@ -2,20 +2,24 @@
 
 namespace App\Domains\Education\Bloggers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class NftMintingService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Cache\RateLimiter;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class NftMintingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const REDIS_LOCK_TIMEOUT = 30;
 
-        public function __construct(
-            private readonly FraudControlService $fraudControl,
+        public function __construct(private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать и минтить NFT подарок
@@ -34,28 +38,23 @@ final class NftMintingService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // Rate limiting
-            if (! $this->rateLimiter->allow('gift:' . $senderUserId, config('bloggers.rate_limit.send_gift'))) {
+            if (! $this->rateLimiter->allow('gift:' . $senderUserId, $this->config->get('bloggers.rate_limit.send_gift'))) {
                 throw new \RuntimeException('Gift rate limit exceeded');
             }
 
             // Fraud check
-            $this->fraudControl->check([
-                'operation_type' => 'nft_gift_send',
-                'user_id' => $senderUserId,
-                'amount' => $giftPriceKopiykas,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'nft_gift_send', amount: 0, correlationId: $correlationId ?? '');
 
             // Validate price
-            $minPrice = config('bloggers.nft_gifts.min_gift_price');
-            $maxPrice = config('bloggers.nft_gifts.max_gift_price');
+            $minPrice = $this->config->get('bloggers.nft_gifts.min_gift_price');
+            $maxPrice = $this->config->get('bloggers.nft_gifts.max_gift_price');
             if ($giftPriceKopiykas < $minPrice || $giftPriceKopiykas > $maxPrice) {
                 throw new \InvalidArgumentException(
                     "Gift price must be between {$minPrice} and {$maxPrice} kopiykas"
                 );
             }
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $streamId,
                 $senderUserId,
                 $recipientUserId,
@@ -64,8 +63,7 @@ final class NftMintingService extends Model
                 $giftPriceKopiykas,
                 $recipientTonAddress,
                 $giftType,
-                $correlationId,
-            ) {
+                $correlationId) {
                 // Create NFT gift record
                 $gift = NftGift::create([
                     'uuid' => (string) Str::uuid(),
@@ -84,7 +82,7 @@ final class NftMintingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('NFT gift created', [
+                $this->logger->info('NFT gift created', [
                     'gift_id' => $gift->id,
                     'sender_id' => $senderUserId,
                     'price' => $giftPriceKopiykas,
@@ -92,10 +90,10 @@ final class NftMintingService extends Model
                 ]);
 
                 // Queue minting job if auto-mint enabled
-                if (config('bloggers.nft_gifts.auto_mint_enabled')) {
+                if ($this->config->get('bloggers.nft_gifts.auto_mint_enabled')) {
                     MintNftGiftJob::dispatch($gift->id, $correlationId)
                         ->onQueue('nft-minting')
-                        ->delay(now()->addSeconds(5));
+                        ->delay(Carbon::now()->addSeconds(5));
                 }
 
                 return $gift;
@@ -120,7 +118,7 @@ final class NftMintingService extends Model
                     throw new \RuntimeException('Another minting process is already running for this gift');
                 }
 
-                return DB::transaction(function () use ($gift, $correlationId, $lockKey) {
+                return $this->db->transaction(function () use ($gift, $correlationId, $lockKey) {
                     $gift->update([
                         'minting_status' => 'minting',
                         'correlation_id' => $correlationId,
@@ -137,13 +135,13 @@ final class NftMintingService extends Model
 
                         $gift->update([
                             'minting_status' => 'minted',
-                            'minted_at' => now(),
+                            'minted_at' => Carbon::now(),
                             'nft_address' => $simulatedNftAddress,
                             'ton_tx_hash' => $simulatedTxHash,
-                            'upgrade_eligible_at' => now()->addDays(14),
+                            'upgrade_eligible_at' => Carbon::now()->addDays(14),
                         ]);
 
-                        Log::channel('audit')->info('NFT gift minted', [
+                        $this->logger->info('NFT gift minted', [
                             'gift_id' => $gift->id,
                             'nft_address' => $simulatedNftAddress,
                             'ton_tx_hash' => $simulatedTxHash,
@@ -157,7 +155,7 @@ final class NftMintingService extends Model
                             'minting_error' => $e->getMessage(),
                         ]);
 
-                        Log::channel('bloggers')->error('NFT minting failed', [
+                        $this->logger->error('NFT minting failed', [
                             'gift_id' => $gift->id,
                             'error' => $e->getMessage(),
                             'correlation_id' => $correlationId,
@@ -184,15 +182,15 @@ final class NftMintingService extends Model
                 throw new \RuntimeException('Gift is not eligible for upgrade yet');
             }
 
-            return DB::transaction(function () use ($gift, $correlationId) {
+            return $this->db->transaction(function () use ($gift, $correlationId) {
 
                 $gift->update([
                     'is_upgraded' => true,
-                    'upgraded_at' => now(),
+                    'upgraded_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('NFT gift upgraded to collector', [
+                $this->logger->info('NFT gift upgraded to collector', [
                     'gift_id' => $gift->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -234,7 +232,7 @@ final class NftMintingService extends Model
         public function getFailedMintAttempts(): \Illuminate\Database\Eloquent\Collection
         {
             return NftGift::where('minting_status', 'failed')
-                ->where('created_at', '>', now()->subHours(24))
+                ->where('created_at', '>', Carbon::now()->subHours(24))
                 ->get();
         }
 }

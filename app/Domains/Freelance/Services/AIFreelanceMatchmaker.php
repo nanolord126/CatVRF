@@ -2,20 +2,20 @@
 
 namespace App\Domains\Freelance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIFreelanceMatchmaker extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIFreelanceMatchmaker
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Подобрать ТОП-5 исполнителей для конкретного заказа.
          */
         public function suggestFreelancers(FreelanceOrder $order): Collection
         {
-            Log::channel('audit')->info('AI Matchmaker: Starting freelancer search', [
+            $this->logger->info('AI Matchmaker: Starting freelancer search', [
                 'order_id' => $order->id,
                 'budget' => $order->budget_kopecks,
                 'correlation_id' => $order->correlation_id

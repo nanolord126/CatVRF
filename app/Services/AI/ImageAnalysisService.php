@@ -2,17 +2,20 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ImageAnalysisService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+
+use OpenAI\Client;
+use Illuminate\Log\LogManager;
+
+final readonly class ImageAnalysisService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private Client $openai,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         /**
          * Анализировать загруженное фото через OpenAI Vision API
@@ -62,7 +65,7 @@ final class ImageAnalysisService extends Model
                 $analysisText = $response->content[0]->text;
                 $analysis = $this->parseAnalysis($analysisText, $context);
 
-                Log::channel('audit')->info('Image analysis completed', [
+                $this->logger->channel('audit')->info('Image analysis completed', [
                     'file_name' => $photo->getClientOriginalName(),
                     'file_size' => $photo->getSize(),
                     'context' => $context,
@@ -71,13 +74,14 @@ final class ImageAnalysisService extends Model
 
                 return $analysis;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Image analysis failed', [
+                $this->logger->channel('audit')->error('Image analysis failed', [
                     'file_name' => $photo->getClientOriginalName() ?? 'unknown',
                     'error' => $e->getMessage(),
                     'context' => $context,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
-                throw new \Exception("Ошибка анализа фото: {$e->getMessage()}");
+                throw new \RuntimeException("Ошибка анализа фото: {$e->getMessage()}");
             }
         }
 
@@ -87,7 +91,6 @@ final class ImageAnalysisService extends Model
         private function buildPrompt(string $userPrompt, array $context): string
         {
             $verticalHint = match ($context['vertical'] ?? null) {
-                'interior' => 'Анализируй интерьер: стиль, цветовая схема, мебель, декор, размер пространства, освещение, функциональность.',
                 'beauty_look' => 'Анализируй внешность: тип лица, цвет кожи, волос, рекомендации макияжа, причёски, украшений.',
                 'outfit' => 'Анализируй текущий наряд и стиль: цвета, фасоны, материалы, аксессуары, возможные комбинации.',
                 'cake' => 'Анализируй пространство, оцени объём, стиль украшения, цветовую палитру.',
@@ -139,10 +142,11 @@ final class ImageAnalysisService extends Model
                     'analysis_timestamp' => now()->toIso8601String(),
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to parse OpenAI response', [
+                $this->logger->channel('audit')->warning('Failed to parse OpenAI response', [
                     'error' => $e->getMessage(),
                     'response_sample' => \substr($responseText, 0, 200),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 // Fallback: базовый анализ
                 return [

@@ -2,14 +2,18 @@
 
 namespace App\Models\Stationery;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
 final class StationeryReview extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'stationery_reviews';
 
         protected $fillable = [
@@ -33,14 +37,14 @@ final class StationeryReview extends Model
         {
             static::creating(function (self $model) {
                 $model->uuid = (string) Str::uuid();
-                if (auth()->check() && empty($model->tenant_id)) {
-                    $model->tenant_id = auth()->user()->tenant_id;
+                if ($this->guard->check() && empty($model->tenant_id)) {
+                    $model->tenant_id = $this->guard->user()->tenant_id;
                 }
             });
 
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if ($this->guard->check()) {
+                    $builder->where('tenant_id', $this->guard->user()->tenant_id);
                 }
             });
         }

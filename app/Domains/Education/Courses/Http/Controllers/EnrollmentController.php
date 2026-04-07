@@ -2,37 +2,29 @@
 
 namespace App\Domains\Education\Courses\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EnrollmentController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class EnrollmentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly EnrollmentService $enrollmentService,
             private readonly ProgressTrackingService $progressService,
-            private readonly FraudControlService $fraudControlService,) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function store(): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -40,7 +32,7 @@ final class EnrollmentController extends Model
             }
 
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'course_id' => 'required|integer|exists:courses,id',
                 ]);
 
@@ -48,20 +40,21 @@ final class EnrollmentController extends Model
 
                 $enrollment = $this->enrollmentService->enrollStudent(
                     $validated['course_id'],
-                    (string) auth()->id(),
+                    (string) $request->user()?->id,
                     $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $enrollment,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to enroll student', [
+                $this->logger->error('Failed to enroll student', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to enroll student',
                 ], 500);
@@ -76,16 +69,17 @@ final class EnrollmentController extends Model
 
                 $this->authorize('view', $enrollment);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $enrollment,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to show enrollment', [
+                $this->logger->error('Failed to show enrollment', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Enrollment not found',
                 ], 404);
@@ -95,20 +89,21 @@ final class EnrollmentController extends Model
         public function myEnrollments(): JsonResponse
         {
             try {
-                $enrollments = Enrollment::where('student_id', auth()->id())
+                $enrollments = Enrollment::where('student_id', $request->user()?->id)
                     ->with(['course', 'certificate'])
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $enrollments,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list enrollments', [
+                $this->logger->error('Failed to list enrollments', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list enrollments',
                 ], 500);
@@ -117,22 +112,15 @@ final class EnrollmentController extends Model
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -143,7 +131,7 @@ final class EnrollmentController extends Model
                 $enrollment = Enrollment::findOrFail($id);
                 $this->authorize('update', $enrollment);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'status' => 'sometimes|in:active,completed,dropped,paused',
                 ]);
 
@@ -158,16 +146,17 @@ final class EnrollmentController extends Model
                     $enrollment->update($validated);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $enrollment,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update enrollment', [
+                $this->logger->error('Failed to update enrollment', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update enrollment',
                 ], 500);
@@ -180,7 +169,7 @@ final class EnrollmentController extends Model
                 $enrollment = Enrollment::findOrFail($id);
                 $this->authorize('update', $enrollment);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'reason' => 'sometimes|string',
                 ]);
 
@@ -191,16 +180,17 @@ final class EnrollmentController extends Model
                     $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Enrollment dropped',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to drop enrollment', [
+                $this->logger->error('Failed to drop enrollment', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to drop enrollment',
                 ], 500);
@@ -218,16 +208,17 @@ final class EnrollmentController extends Model
                     $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $progress,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to get enrollment progress', [
+                $this->logger->error('Failed to get enrollment progress', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get enrollment progress',
                 ], 500);
@@ -244,16 +235,17 @@ final class EnrollmentController extends Model
                     ->with(['student'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $students,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list course students', [
+                $this->logger->error('Failed to list course students', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list course students',
                 ], 500);

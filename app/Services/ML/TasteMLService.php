@@ -2,17 +2,25 @@
 
 namespace App\Services\ML;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TasteMLService extends Model
+use Illuminate\Http\Request;
+use App\Models\ProductEmbedding;
+use App\Models\UserTasteProfile;
+
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class TasteMLService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private readonly \OpenAI\Client $openai,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Получить рекомендации на основе профиля вкуса
@@ -69,7 +77,7 @@ final class TasteMLService extends Model
 
                 return $result;
             } catch (\Throwable $e) {
-                Log::error('Failed to get recommendations by taste', [
+                $this->logger->error('Failed to get recommendations by taste', [
                     'user_id' => $profile->user_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -125,7 +133,7 @@ final class TasteMLService extends Model
                 // Вернуть топ-N
                 return \array_slice($similarities, 0, $limit);
             } catch (\Throwable $e) {
-                Log::error('Failed to get ML recommendations', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to get ML recommendations', ['error' => $e->getMessage()]);
 
                 return [];
             }
@@ -180,7 +188,7 @@ final class TasteMLService extends Model
                 $embedding = $response->embeddings[0]->embedding ?? null;
 
                 if (!$embedding) {
-                    return null;
+                    throw new \DomainException('Operation returned no result');
                 }
 
                 // Сохранить embedding в БД
@@ -200,13 +208,13 @@ final class TasteMLService extends Model
 
                 return $embedding;
             } catch (\Throwable $e) {
-                Log::error('Failed to generate product embedding', [
+                $this->logger->error('Failed to generate product embedding', [
                     'type' => $type,
                     'id' => $id,
                     'error' => $e->getMessage(),
                 ]);
 
-                return null;
+                throw new \RuntimeException('Unable to generate product embedding.', previous: $e);
             }
         }
 
@@ -220,7 +228,7 @@ final class TasteMLService extends Model
             array $mlOutput
         ): void {
             try {
-                DB::table('ml_decision_logs')->insert([
+                $this->db->table('ml_decision_logs')->insert([
                     'user_id' => $userId,
                     'tenant_id' => tenant()->id,
                     'decision_type' => $decisionType,
@@ -230,12 +238,12 @@ final class TasteMLService extends Model
                     'final_decision' => \json_encode($mlOutput),
                     'confidence_score' => 0.0,
                     'ml_version' => 1,
-                    'correlation_id' => \request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->request->header('X-Correlation-ID'),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             } catch (\Throwable $e) {
-                Log::warning('Failed to log ML decision', ['error' => $e->getMessage()]);
+                $this->logger->warning('Failed to log ML decision', ['error' => $e->getMessage()]);
             }
         }
 
@@ -281,7 +289,7 @@ final class TasteMLService extends Model
 
                 return \array_slice($similarities, 0, $limit);
             } catch (\Throwable $e) {
-                Log::error('Failed to get similar products', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to get similar products', ['error' => $e->getMessage()]);
 
                 return [];
             }
@@ -297,7 +305,7 @@ final class TasteMLService extends Model
             if ($profile) {
                 $profile->recordRecommendationView(clicked: true);
 
-                Log::channel('audit')->info('Recommendation clicked', [
+                $this->logger->channel('audit')->info('Recommendation clicked', [
                     'user_id' => $userId,
                     'product_id' => $recommendedProductId,
                     'ctr' => $profile->recommendation_ctr,

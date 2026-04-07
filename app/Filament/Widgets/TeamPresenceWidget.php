@@ -2,20 +2,36 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TeamPresenceWidget extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Widgets\Widget;
+
+/**
+ * Class TeamPresenceWidget
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Widgets
+ */
+final class TeamPresenceWidget extends Widget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $view = 'filament.widgets.team-presence-widget';
 
         public array $teamMembers = [];
         public int $onlineCount = 0;
         public int $totalCount = 0;
 
+        /**
+         * Handle mount operation.
+         *
+         * @throws \DomainException
+         */
         public function mount(): void
         {
             $this->loadData();
@@ -32,7 +48,7 @@ final class TeamPresenceWidget extends Model
                 $this->onlineCount = 0;
                 $this->totalCount = 0;
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load team presence data', [
+                $this->logger->error('Failed to load team presence data', [
                     'error' => $e->getMessage(),
                 ]);
             }

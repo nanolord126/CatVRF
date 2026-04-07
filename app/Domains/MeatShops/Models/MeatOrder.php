@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MeatOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'meat_orders';
@@ -30,7 +29,7 @@ final class MeatOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function product(): BelongsTo
         {
@@ -41,7 +40,7 @@ final class MeatOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isPending(): bool
         {
@@ -52,19 +51,19 @@ final class MeatOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isDelivered(): bool
         {
             return $this->status === 'delivered';
         }
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             parent::booted();
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }

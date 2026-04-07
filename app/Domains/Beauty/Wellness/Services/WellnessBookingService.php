@@ -1,45 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class WellnessBookingService extends Model
+
+
+
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+
+final readonly class WellnessBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly \App\Services\FraudControlService $fraudControl,
-            private readonly \App\Services\WalletService $walletService,
-        ) {}
+        private \App\Services\FraudControlService $fraud,
+        private \App\Services\WalletService $walletService,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
         /**
          * Create a new booking/appointment via the service layer.
          * Includes DB transaction, fraud checks, and audit logging.
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function createAppointment(WellnessAppointmentDto $dto): WellnessAppointment
         {
             $correlationId = $dto->correlation_id ?? (string) Str::uuid();
 
             // 1. Audit Entry
-            Log::channel('audit')->info('Creating Wellness Appointment Init', [
+            $this->logger->info('Creating Wellness Appointment Init', [
                 'center_id' => $dto->center_id,
                 'client_id' => $dto->client_id,
                 'service_id' => $dto->service_id,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 // 2. Fraud Check (Canon 2026 - must be before mutations)
-                $this->fraudControl->check([
-                    'user_id' => $dto->client_id,
-                    'operation' => 'wellness_appointment_create',
-                    'amount' => $dto->price,
-                    'correlation_id' => $correlationId,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'wellness_appointment_create', amount: 0, correlationId: $correlationId ?? '');
 
                 // 3. Availability Check (Optimistic Locking)
                 $this->checkAvailability($dto);
@@ -51,7 +53,7 @@ final class WellnessBookingService extends Model
                 ]));
 
                 // 5. Audit Exit
-                Log::channel('audit')->info('Wellness Appointment Created', [
+                $this->logger->info('Wellness Appointment Created', [
                     'appointment_uuid' => $appointment->uuid,
                     'correlation_id' => $correlationId,
                 ]);
@@ -65,7 +67,7 @@ final class WellnessBookingService extends Model
          */
         public function confirmAppointment(WellnessAppointment $appointment): bool
         {
-            return DB::transaction(function () use ($appointment) {
+            return $this->db->transaction(function () use ($appointment) {
                 // Lock the record for update (Canon 2026)
                 $appointment->lockForUpdate()->find($appointment->id);
 
@@ -74,19 +76,10 @@ final class WellnessBookingService extends Model
                      $this->walletService->hold([
                          'amount' => $appointment->price,
                          'reason' => "Wellness appt hold: {$appointment->uuid}",
-                         'user_id' => $appointment->client_id,
+                         'appointment_uuid' => $appointment->uuid,
                          'correlation_id' => $appointment->correlation_id,
                      ]);
-                     $appointment->payment_status = 'hold';
                 }
-
-                $appointment->status = 'confirmed';
-                $appointment->save();
-
-                Log::channel('audit')->info('Wellness Appointment Confirmed', [
-                    'appointment_uuid' => $appointment->uuid,
-                    'correlation_id' => $appointment->correlation_id,
-                ]);
 
                 return true;
             });
@@ -97,14 +90,15 @@ final class WellnessBookingService extends Model
          */
         public function cancelAppointment(WellnessAppointment $appointment, string $reason): bool
         {
-            return DB::transaction(function () use ($appointment, $reason) {
+            return $this->db->transaction(function () use ($appointment, $reason) {
                 // Check cancellation timeframe (Vertical policy: 24h)
-                $limit = now()->addHours(24);
+                $limit = Carbon::now()->addHours(24);
                 if ($appointment->datetime_start <= $limit) {
                     // Potential penalty logic could go here
-                    Log::channel('audit')->warning('Late cancellation for appointment', [
+                    $this->logger->warning('Late cancellation for appointment', [
                          'appointment_uuid' => $appointment->uuid,
-                         'reason' => $reason
+                         'reason' => $reason,
+                        'correlation_id' => $appointment->correlation_id,
                     ]);
                 }
 
@@ -140,7 +134,7 @@ final class WellnessBookingService extends Model
                 ->exists();
 
             if ($conflict) {
-                throw new \Exception("Specialist is occupied during the requested timeframe.", 409);
+                throw new \DomainException("Specialist is occupied during the requested timeframe.", 409);
             }
         }
 }

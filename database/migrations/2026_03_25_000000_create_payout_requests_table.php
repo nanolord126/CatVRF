@@ -71,3 +71,5 @@ return new class extends Migration
         Schema::dropIfExists('payout_requests');
     }
 };
+
+

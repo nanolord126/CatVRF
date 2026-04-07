@@ -2,14 +2,17 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RealtimeRevenueChartWidget extends Model
+use Illuminate\Cache\CacheManager;
+use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Cache;
+
+final class RealtimeRevenueChartWidget extends ChartWidget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $heading = 'Доход в реальном времени';
         protected static ?int $sort = 2;
         protected int | string | array $columnSpan = 'md';
@@ -31,7 +34,7 @@ final class RealtimeRevenueChartWidget extends Model
                 $hour = now()->subHours($i);
                 $labels[] = $hour->format('H:i');
                 $key = "stats:revenue:hour:{$tenantId}:{$hour->format('Y-m-d-H')}";
-                $data[] = Cache::get($key, 0) / 100; // Convert to rubles
+                $data[] = $this->cache->get($key, 0) / 100; // Convert to rubles
             }
 
             return [

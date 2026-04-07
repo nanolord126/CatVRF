@@ -1,23 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CreateBeautyServiceRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/createbeautyservicerequest
+ */
+
 
 namespace App\Domains\Beauty\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateBeautyServiceRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class CreateBeautyServiceRequest
 {
-    use HasFactory;
+    public function __construct(
+        private Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Проверка прав.
          */
         public function authorize(): bool
         {
             // КАНОН 2026: Fraud check before mutation
-            return FraudControlService::check(
-                userId: auth()->id() ?? 0,
+            return $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
                 operationType: 'beauty_service_create',
                 amount: 0
             );

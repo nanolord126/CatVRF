@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class LuxuryProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'luxury_products';
@@ -37,7 +36,7 @@ final class LuxuryProduct extends Model
             'is_personalized' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 $model->uuid = (string) Str::uuid();

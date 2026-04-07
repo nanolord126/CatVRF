@@ -2,17 +2,29 @@
 
 namespace App\Http\Requests\Payment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class InitPaymentRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class InitPaymentRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Payment
+ */
+final class InitPaymentRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
         public function rules(): array

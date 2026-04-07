@@ -2,14 +2,11 @@
 
 namespace App\Domains\Sports\Fitness\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class GymResource extends Model
+final class GymResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Gym::class;
         protected static ?string $navigationIcon = 'heroicon-o-home';
         protected static ?string $navigationLabel = 'Клубы';
@@ -64,6 +61,6 @@ final class GymResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()?->id);
         }
 }

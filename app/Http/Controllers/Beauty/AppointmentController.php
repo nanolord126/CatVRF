@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class AppointmentController extends Model
+final class AppointmentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AppointmentBookingService $bookingService,
             private readonly AppointmentCancellationService $cancellationService,
-            private readonly AppointmentRescheduleService $rescheduleService
-        ) {
+            private readonly AppointmentRescheduleService $rescheduleService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Beauty вертикали
              // Авторизация обязательна
              // 50 запросов/мин для Beauty
@@ -39,7 +40,7 @@ final class AppointmentController extends Model
                 // 1. Расчет условий отмены
                 $result = $this->cancellationService->calculateRefund($appointment, Carbon::now());
                 if (!$result["is_cancellable"]) {
-                    return response()->json([
+                    return $this->response->json([
                         "success" => false,
                         "message" => $result["reason"] ?? "Отмена невозможна по правилам политики.",
                         "correlation_id" => $correlationId
@@ -47,7 +48,7 @@ final class AppointmentController extends Model
                 }
                 // 2. Выполнение отмены
                 $this->bookingService->cancel($appointment, (string)$request->input("reason", "Cancelled by user"));
-                return response()->json([
+                return $this->response->json([
                     "success" => true,
                     "message" => "Бронирование успешно отменено.",
                     "cancellation_details" => [
@@ -59,12 +60,12 @@ final class AppointmentController extends Model
                     "correlation_id" => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::channel("audit")->error("Failed to cancel appointment", [
+                $this->logger->channel("audit")->error("Failed to cancel appointment", [
                     "uuid" => $uuid,
                     "error" => $e->getMessage(),
                     "correlation_id" => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     "success" => false,
                     "message" => "Не удалось отменить бронирование: " . $e->getMessage(),
                     "correlation_id" => $correlationId
@@ -87,7 +88,7 @@ final class AppointmentController extends Model
                 $newStartTime = Carbon::parse($request->get("new_start_time"));
                 // Выполняем перенос через сервис
                 $rescheduled = $this->bookingService->reschedule($appointment, $newStartTime);
-                return response()->json([
+                return $this->response->json([
                     "success" => true,
                     "message" => "Запись успешно перенесена.",
                     "data" => [
@@ -98,18 +99,18 @@ final class AppointmentController extends Model
                     "correlation_id" => $correlationId,
                 ]);
             } catch (\InvalidArgumentException $e) {
-                return response()->json([
+                return $this->response->json([
                     "success" => false,
                     "message" => $e->getMessage(),
                     "correlation_id" => $correlationId
                 ], 400);
             } catch (\Throwable $e) {
-                Log::channel("audit")->error("Failed to reschedule appointment", [
+                $this->logger->channel("audit")->error("Failed to reschedule appointment", [
                     "uuid" => $uuid,
                     "error" => $e->getMessage(),
                     "correlation_id" => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     "success" => false,
                     "message" => "Ошибка при переносе записи: " . $e->getMessage(),
                     "correlation_id" => $correlationId
@@ -131,7 +132,7 @@ final class AppointmentController extends Model
                     (clone $appointment->datetime_start)->addDay(),
                     Carbon::now()
                 );
-                return response()->json([
+                return $this->response->json([
                     "success" => true,
                     "policy" => $appointment->cancellation_policy,
                     "previews" => [
@@ -146,7 +147,7 @@ final class AppointmentController extends Model
                     ]
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(["success" => false, "message" => $e->getMessage()], 404);
+                return $this->response->json(["success" => false, "message" => $e->getMessage()], 404);
             }
         }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Domains\HomeServices\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BHomeServiceStorefrontResource extends Model
+final class B2BHomeServiceStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BHomeServiceStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-wrench';

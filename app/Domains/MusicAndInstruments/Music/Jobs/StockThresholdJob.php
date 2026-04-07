@@ -2,14 +2,11 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StockThresholdJob extends Model
+use Psr\Log\LoggerInterface;
+final class StockThresholdJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
@@ -17,7 +14,7 @@ final class StockThresholdJob extends Model
          */
         public function __construct(
             public int $instrumentId,
-            public string $correlationId
+            public string $correlationId, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -33,7 +30,7 @@ final class StockThresholdJob extends Model
 
             // Check if stock is below threshold
             if ($instrument->current_stock <= ($instrument->min_stock_threshold ?? 3)) {
-                Log::channel('audit')->warning('Low stock detected for instrument', [
+                $this->logger->warning('Low stock detected for instrument', [
                     'instrument_id' => $instrument->id,
                     'name' => $instrument->name,
                     'stock' => $instrument->current_stock,
@@ -46,7 +43,7 @@ final class StockThresholdJob extends Model
             }
 
             if ($instrument->current_stock === 0) {
-                Log::channel('audit')->critical('Stock exhausted for music instrument', [
+                $this->logger->critical('Stock exhausted for music instrument', [
                     'instrument_id' => $instrument->id,
                     'name' => $instrument->name,
                     'correlation_id' => $this->correlationId,

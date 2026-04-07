@@ -2,25 +2,34 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class WishlistAntiFraudService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class WishlistAntiFraudService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Detect and prevent wishlist manipulation
          * Returns true if operation is safe, false if fraudulent
          */
         public function checkWishlistPayment(int $userId, array $items): bool
         {
-            $correlationId = request()->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid()->toString();
+            $correlationId = $this->request->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid()->toString();
 
             // Check 1: Unusual time pattern
             if ($this->isUnusualTimePattern($userId)) {
-                Log::channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
+                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -29,7 +38,7 @@ final class WishlistAntiFraudService extends Model
 
             // Check 2: Rapid add-to-cart and pay
             if ($this->isRapidAddAndPay($userId)) {
-                Log::channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
+                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -38,7 +47,7 @@ final class WishlistAntiFraudService extends Model
 
             // Check 3: Item price manipulation
             if ($this->isPriceManipulation($items)) {
-                Log::channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
+                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
                     'items' => count($items),
                     'correlation_id' => $correlationId,
                 ]);
@@ -47,7 +56,7 @@ final class WishlistAntiFraudService extends Model
 
             // Check 4: High-value items from unknown sellers
             if ($this->isHighValueFromUnknownSellers($items, $userId)) {
-                Log::channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
+                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -56,7 +65,7 @@ final class WishlistAntiFraudService extends Model
 
             // Check 5: Bulk wishlist payment (>50 items at once)
             if (count($items) > 50) {
-                Log::channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
+                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
                     'user_id' => $userId,
                     'item_count' => count($items),
                     'correlation_id' => $correlationId,
@@ -74,7 +83,7 @@ final class WishlistAntiFraudService extends Model
 
             if ($hour >= 0 && $hour <= 6) {
                 // Check if user ever shops at night
-                $nightPurchases = DB::table('orders')
+                $nightPurchases = $this->db->table('orders')
                     ->where('user_id', $userId)
                     ->whereRaw('HOUR(created_at) BETWEEN 0 AND 6')
                     ->count();
@@ -88,7 +97,7 @@ final class WishlistAntiFraudService extends Model
         private function isRapidAddAndPay(int $userId): bool
         {
             // Get wishlist items added in last 5 minutes
-            $recentWishlist = DB::table('wishlist_items')
+            $recentWishlist = $this->db->table('wishlist_items')
                 ->where('user_id', $userId)
                 ->where('created_at', '>', now()->subMinutes(5))
                 ->count();
@@ -99,7 +108,7 @@ final class WishlistAntiFraudService extends Model
             }
 
             // Check if user is trying to buy those items immediately
-            $recentOrders = DB::table('orders')
+            $recentOrders = $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->where('created_at', '>', now()->subMinutes(10))
                 ->count();
@@ -110,7 +119,7 @@ final class WishlistAntiFraudService extends Model
         private function isPriceManipulation(array $items): bool
         {
             foreach ($items as $item) {
-                $product = DB::table('products')
+                $product = $this->db->table('products')
                     ->where('id', $item['product_id'] ?? null)
                     ->first();
 
@@ -137,7 +146,7 @@ final class WishlistAntiFraudService extends Model
 
                 // Check if user has purchased from this seller before
                 $sellerId = $item['seller_id'] ?? null;
-                $previousPurchases = DB::table('orders')
+                $previousPurchases = $this->db->table('orders')
                     ->where('user_id', $userId)
                     ->where('seller_id', $sellerId)
                     ->count();

@@ -2,16 +2,15 @@
 
 namespace App\Domains\Education\LanguageLearning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class AILearningPathConstructor extends Model
+
+use Psr\Log\LoggerInterface;
+final readonly class AILearningPathConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private LanguagePricingService $pricing
+            private LanguagePricingService $pricing, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -21,7 +20,7 @@ final class AILearningPathConstructor extends Model
          */
         public function constructPath(array $params, int $tenantId, string $correlationId): array
         {
-            Log::channel('audit')->info('AI Learning Path Construction started', [
+            $this->logger->info('AI Learning Path Construction started', [
                 'language' => $params['language'],
                 'weekly_hours' => $params['weekly_hours'],
                 'correlation_id' => $correlationId,
@@ -55,10 +54,10 @@ final class AILearningPathConstructor extends Model
                 'estimated_duration_weeks' => (int)(($enrollment_goal_hours = 120) / max($params['weekly_hours'], 1)),
                 'total_price' => $totalPathPrice,
                 'correlation_id' => $correlationId,
-                'generated_at' => now()->toIso8601String(),
+                'generated_at' => Carbon::now()->toIso8601String(),
             ];
 
-            Log::channel('audit')->info('AI Learning Path generated successfully', [
+            $this->logger->info('AI Learning Path generated successfully', [
                 'total_price' => $totalPathPrice,
                 'correlation_id' => $correlationId,
             ]);

@@ -2,14 +2,17 @@
 
 namespace App\Domains\Taxi\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class SurgeZone extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use LogsActivity;
 
         protected $table = 'taxi_surge_zones';
@@ -41,7 +44,7 @@ final class SurgeZone extends Model
             static::creating(function (SurgeZone $zone) {
                 $zone->uuid = $zone->uuid ?? (string) Str::uuid();
                 $zone->tenant_id = $zone->tenant_id ?? (tenant()->id ?? 1);
-                $zone->correlation_id = $zone->correlation_id ?? request()->header('X-Correlation-ID');
+                $zone->correlation_id = $zone->correlation_id ?? $this->request->header('X-Correlation-ID');
             });
 
             static::addGlobalScope('tenant', function ($query) {

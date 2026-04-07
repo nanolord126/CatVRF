@@ -2,14 +2,23 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AdvancedCachingService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class AdvancedCachingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const TIER_HOT_TTL = 300;        // 5 минут (горячие данные)
         private const TIER_WARM_TTL = 3600;     // 1 час (тёплые)
         private const TIER_COLD_TTL = 86400;    // 24 часа (холодные)
@@ -43,19 +52,19 @@ final class AdvancedCachingService extends Model
 
                 // Определяем реальный TTL по уровню
                 $finalTtl = match ($tier) {
-                    'hot' => self::TIER_HOT_TTL,
                     'cold' => self::TIER_COLD_TTL,
                     default => self::TIER_WARM_TTL,
                 };
 
-                return Cache::put($key, $serialized, $finalTtl);
+                return $this->cache->put($key, $serialized, $finalTtl);
 
             } catch (\Throwable $e) {
-                Log::channel('performance')->warning('Cache set failed', [
+                $this->logger->channel('performance')->warning('Cache set failed', [
                     'key' => $key,
                     'tier' => $tier,
-                    'error' => $e->getMessage()
-                ]);
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
         }
@@ -72,15 +81,15 @@ final class AdvancedCachingService extends Model
                 // Пытаемся получить сжатый вариант
                 $compressedKey = "{$key}:compressed";
 
-                if (Cache::has($compressedKey)) {
-                    $compressed = Cache::get($compressedKey);
+                if ($this->cache->has($compressedKey)) {
+                    $compressed = $this->cache->get($compressedKey);
                     $decompressed = gzuncompress($compressed);
                     return unserialize($decompressed);
                 }
 
                 // Иначе обычный вариант
-                if (Cache::has($key)) {
-                    $data = Cache::get($key);
+                if ($this->cache->has($key)) {
+                    $data = $this->cache->get($key);
                     return unserialize($data);
                 }
 
@@ -89,10 +98,11 @@ final class AdvancedCachingService extends Model
             } catch (\RuntimeException $e) {
                 throw $e;
             } catch (\Throwable $e) {
-                Log::channel('performance')->warning('Cache get failed', [
+                $this->logger->channel('performance')->warning('Cache get failed', [
                     'key' => $key,
-                    'error' => $e->getMessage()
-                ]);
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 throw new \RuntimeException("Cache get failed for key: {$key}", 0, $e);
             }
         }
@@ -144,25 +154,27 @@ final class AdvancedCachingService extends Model
                 $count = 0;
 
                 foreach ($keys as $key) {
-                    if (Cache::forget($key)) {
+                    if ($this->cache->forget($key)) {
                         $count++;
                     }
                     // Забываем и сжатый вариант
-                    Cache::forget("{$key}:compressed");
+                    $this->cache->forget("{$key}:compressed");
                 }
 
-                Log::channel('performance')->info('Cache pattern invalidated', [
+                $this->logger->channel('performance')->info('Cache pattern invalidated', [
                     'pattern' => $pattern,
-                    'keys_cleared' => $count
-                ]);
+                    'keys_cleared' => $count,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return $count;
 
             } catch (\Throwable $e) {
-                Log::channel('performance')->error('Pattern invalidation failed', [
+                $this->logger->channel('performance')->error('Pattern invalidation failed', [
                     'pattern' => $pattern,
-                    'error' => $e->getMessage()
-                ]);
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return 0;
             }
         }
@@ -175,7 +187,7 @@ final class AdvancedCachingService extends Model
          */
         public function getSize(string $key): int
         {
-            $data = Cache::get($key);
+            $data = $this->cache->get($key);
             return $data ? strlen($data) : 0;
         }
 
@@ -199,9 +211,10 @@ final class AdvancedCachingService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('performance')->warning('Failed to get cache stats', [
-                    'error' => $e->getMessage()
-                ]);
+                $this->logger->channel('performance')->warning('Failed to get cache stats', [
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return [];
             }
         }
@@ -217,10 +230,10 @@ final class AdvancedCachingService extends Model
         {
             foreach ($tags as $tag) {
                 $tagKey = "tag:{$tag}";
-                $existingKeys = Cache::get($tagKey, []);
+                $existingKeys = $this->cache->get($tagKey, []);
                 if (!in_array($key, $existingKeys)) {
                     $existingKeys[] = $key;
-                    Cache::put($tagKey, $existingKeys, self::TIER_COLD_TTL);
+                    $this->cache->put($tagKey, $existingKeys, self::TIER_COLD_TTL);
                 }
             }
         }
@@ -237,10 +250,11 @@ final class AdvancedCachingService extends Model
                 $redis = Redis::connection();
                 return $redis->keys($pattern);
             } catch (\Throwable $e) {
-                Log::channel('performance')->warning('Key search failed', [
+                $this->logger->channel('performance')->warning('Key search failed', [
                     'pattern' => $pattern,
-                    'error' => $e->getMessage()
-                ]);
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return [];
             }
         }

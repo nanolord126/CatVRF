@@ -2,16 +2,19 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class JobService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class JobService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createJob(
             int $serviceListingId,
@@ -21,17 +24,9 @@ final class JobService extends Model
             string $correlationId
         ): ServiceJob {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($serviceListingId, $clientId, $address, $description, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($serviceListingId, $clientId, $address, $description, $correlationId) {
                     $listing = \App\Domains\HomeServices\Models\ServiceListing::findOrFail($serviceListingId);
 
                     $baseAmount = $listing->base_price;
@@ -39,7 +34,7 @@ final class JobService extends Model
                     $totalAmount = $baseAmount + $commissionAmount;
 
                     $job = ServiceJob::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'service_listing_id' => $serviceListingId,
                         'contractor_id' => $listing->contractor_id,
                         'client_id' => $clientId,
@@ -55,7 +50,7 @@ final class JobService extends Model
 
                     ServiceJobCreated::dispatch($job, $correlationId);
 
-                    \Log::channel('audit')->info('Service job created', [
+                    $this->logger->info('Service job created', [
                         'job_id' => $job->id,
                         'contractor_id' => $listing->contractor_id,
                         'client_id' => $clientId,
@@ -66,7 +61,7 @@ final class JobService extends Model
                     return $job;
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create service job', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                $this->logger->error('Failed to create service job', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
                 throw $e;
             }
         }
@@ -74,31 +69,23 @@ final class JobService extends Model
         public function completeJob(ServiceJob $job, string $correlationId): void
         {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($job, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($job, $correlationId) {
                     $job->update([
                         'status' => 'completed',
-                        'completed_at' => now(),
+                        'completed_at' => Carbon::now(),
                         'payment_status' => 'paid',
                         'correlation_id' => $correlationId,
                     ]);
 
-                    \Log::channel('audit')->info('Service job completed', [
+                    $this->logger->info('Service job completed', [
                         'job_id' => $job->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to complete job', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to complete job', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }
@@ -106,31 +93,23 @@ final class JobService extends Model
         public function cancelJob(ServiceJob $job, string $reason, string $correlationId): void
         {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($job, $reason, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($job, $reason, $correlationId) {
                     $job->update([
                         'status' => 'cancelled',
                         'correlation_id' => $correlationId,
                         'notes' => $reason,
                     ]);
 
-                    \Log::channel('audit')->info('Service job cancelled', [
+                    $this->logger->info('Service job cancelled', [
                         'job_id' => $job->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to cancel job', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to cancel job', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }

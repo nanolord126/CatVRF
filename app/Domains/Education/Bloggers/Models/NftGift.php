@@ -2,14 +2,17 @@
 
 namespace App\Domains\Education\Bloggers\Models;
 
+use Carbon\Carbon;
+
+use Illuminate\Config\Repository as ConfigRepository;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class NftGift extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'nft_gifts';
@@ -114,7 +117,7 @@ final class NftGift extends Model
                 return false;
             }
 
-            return $this->minted_at && now()->diffInDays($this->minted_at) >= 14;
+            return $this->minted_at && Carbon::now()->diffInDays($this->minted_at) >= 14;
         }
 
         public function getTonExplorerUrl(): string
@@ -123,7 +126,7 @@ final class NftGift extends Model
                 return '';
             }
 
-            $network = config('bloggers.ton.network') === 'mainnet' ? 'tonviewer.com' : 'testnet.tonviewer.com';
+            $network = $this->config->get('bloggers.ton.network') === 'mainnet' ? 'tonviewer.com' : 'testnet.tonviewer.com';
 
             return "https://{$network}/transaction/{$this->ton_tx_hash}";
         }

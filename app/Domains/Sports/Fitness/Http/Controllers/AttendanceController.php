@@ -2,26 +2,25 @@
 
 namespace App\Domains\Sports\Fitness\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AttendanceController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class AttendanceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly AttendanceService $attendanceService) {}
+
+    public function __construct(private readonly AttendanceService $attendanceService, private readonly LoggerInterface $logger) {}
 
         public function checkIn(int $scheduleId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $attendance = $this->attendanceService->recordCheckIn($scheduleId, auth()->id(), $correlationId);
+                $attendance = $this->attendanceService->recordCheckIn($scheduleId, $request->user()?->id, $correlationId);
 
-                return response()->json(['success' => true, 'data' => $attendance, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $attendance, 'correlation_id' => $correlationId], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to check in', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                $this->logger->error('Failed to check in', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
@@ -33,35 +32,35 @@ final class AttendanceController extends Model
 
                 $this->attendanceService->recordCheckOut($attendance, $correlationId);
 
-                return response()->json(['success' => true, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'correlation_id' => $correlationId]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
         public function myAttendance(): JsonResponse
         {
             try {
-                $attendance = Attendance::where('member_id', auth()->id())
+                $attendance = Attendance::where('member_id', $request->user()?->id)
                     ->with(['classSchedule'])
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $attendance, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $attendance, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
             }
         }
 
         public function myMetrics(): JsonResponse
         {
             try {
-                $metrics = PerformanceMetric::where('member_id', auth()->id())
+                $metrics = PerformanceMetric::where('member_id', $request->user()?->id)
                     ->orderByDesc('metric_date')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $metrics, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $metrics, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
             }
         }
 
@@ -69,30 +68,30 @@ final class AttendanceController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                request()->validate([
+                $request->validate([
                     'metric_date' => 'required|date',
                     'calories_burned' => 'nullable|numeric',
                     'workout_duration_minutes' => 'nullable|numeric',
                 ]);
 
                 $metric = PerformanceMetric::create([
-                    'tenant_id' => tenant('id'),
-                    'member_id' => auth()->id(),
-                    'metric_date' => request('metric_date'),
-                    'classes_attended' => request('classes_attended', 0),
-                    'calories_burned' => request('calories_burned', 0),
-                    'workout_duration_minutes' => request('workout_duration_minutes', 0),
-                    'body_weight' => request('body_weight'),
-                    'body_fat_percentage' => request('body_fat_percentage'),
-                    'muscle_mass' => request('muscle_mass'),
+                    'tenant_id' => tenant()?->id,
+                    'member_id' => $request->user()?->id,
+                    'metric_date' => $request->input('metric_date'),
+                    'classes_attended' => $request->input('classes_attended', 0),
+                    'calories_burned' => $request->input('calories_burned', 0),
+                    'workout_duration_minutes' => $request->input('workout_duration_minutes', 0),
+                    'body_weight' => $request->input('body_weight'),
+                    'body_fat_percentage' => $request->input('body_fat_percentage'),
+                    'muscle_mass' => $request->input('muscle_mass'),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Metric recorded', ['metric_id' => $metric->id, 'member_id' => auth()->id(), 'correlation_id' => $correlationId]);
+                $this->logger->info('Metric recorded', ['metric_id' => $metric->id, 'member_id' => $request->user()?->id, 'correlation_id' => $correlationId]);
 
-                return response()->json(['success' => true, 'data' => $metric, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $metric, 'correlation_id' => $correlationId], 201);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
@@ -103,9 +102,9 @@ final class AttendanceController extends Model
                     ->orderByDesc('metric_date')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $metrics, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $metrics, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
             }
         }
 }

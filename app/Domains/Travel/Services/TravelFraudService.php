@@ -2,18 +2,14 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelFraudService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TravelFraudService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $baseFraud,
+
+    public function __construct(private FraudControlService $baseFraud,
             private RateLimiterService $rateLimiter,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Проверка операции бронирования на фрод (ML Scoring).
@@ -22,7 +18,7 @@ final class TravelFraudService extends Model
         {
             $correlationId = $context['correlation_id'] ?? (string) \Illuminate\Support\Str::uuid();
 
-            Log::channel('fraud_alert')->info('Booking fraud check initiated', [
+            $this->logger->info('Booking fraud check initiated', [
                 'user_id' => $userId,
                 'bookable_id' => $bookableId,
                 'bookable_type' => $bookableType,
@@ -44,7 +40,7 @@ final class TravelFraudService extends Model
             $this->logFraudAttempt($userId, $bookableId, $bookableType, $mlScore, $correlationId, $context);
 
             if ($mlScore > 0.85) {
-                Log::channel('fraud_alert')->emergency('HIGH FRAUD SCORE DETECTED - FORCED BLOCK', [
+                $this->logger->emergency('HIGH FRAUD SCORE DETECTED - FORCED BLOCK', [
                     'user_id' => $userId,
                     'score' => $mlScore,
                     'correlation_id' => $correlationId
@@ -84,7 +80,7 @@ final class TravelFraudService extends Model
 
         private function logFraudAttempt(int $userId, int $bookableId, string $bookableType, float $score, string $correlationId, array $context): void
         {
-            DB::table('fraud_attempts')->insert([
+            $this->db->table('fraud_attempts')->insert([
                 'user_id' => $userId,
                 'tenant_id' => tenant()->id ?? 1,
                 'operation_type' => 'travel_booking',

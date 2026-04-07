@@ -2,14 +2,13 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ComplianceManagementService extends Model
+
+use Illuminate\Support\Str;
+
+final readonly class ComplianceManagementService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Поддерживаемые стандарты соответствия
          */
@@ -75,7 +74,6 @@ final class ComplianceManagementService extends Model
         private static function checkFramework(string $framework, string $region): array
         {
             $requirements = match ($framework) {
-                'gdpr' => self::getGDPRRequirements(),
                 'ccpa' => self::getCCPARequirements(),
                 'fz_152' => self::getFZ152Requirements(),
                 'pci_dss' => self::getPCIDSSRequirements(),

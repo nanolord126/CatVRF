@@ -2,14 +2,23 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HealthCheckController extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use App\Http\Controllers\Controller;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class HealthCheckController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Get overall system health status
          *
@@ -23,32 +32,47 @@ final class HealthCheckController extends Model
             $components = [];
             // Check database connectivity
             try {
-                DB::connection()->getPdo();
+                $this->db->connection()->getPdo();
                 $components['database'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } catch (\Exception $e) {
-                $components['database'] = ['status' => 'error', 'message' => 'Connection failed', 'checked_at' => $timestamp];
-                $status = 'degraded';
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
             }
             // Check Redis connectivity (rate limiting, cache)
             try {
                 Redis::ping();
                 $components['redis'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } catch (\Exception $e) {
-                $components['redis'] = ['status' => 'error', 'message' => 'Connection failed', 'checked_at' => $timestamp];
-                $status = 'degraded';
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
             }
             // Check Cache system
             try {
-                Cache::put('health_check_test', 'ok', 60);
-                $cached = Cache::get('health_check_test');
+                $this->cache->put('health_check_test', 'ok', 60);
+                $cached = $this->cache->get('health_check_test');
                 if ($cached === 'ok') {
                     $components['cache'] = ['status' => 'ok', 'checked_at' => $timestamp];
                 } else {
-                    throw new \Exception('Cache get/put failed');
+                    throw new \RuntimeException('Cache get/put failed');
                 }
             } catch (\Exception $e) {
-                $components['cache'] = ['status' => 'error', 'message' => 'Get/put failed', 'checked_at' => $timestamp];
-                $status = 'degraded';
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
             }
             // Check Sanctum token model
             try {
@@ -60,7 +84,7 @@ final class HealthCheckController extends Model
                         'checked_at' => $timestamp
                     ];
                 } else {
-                    throw new \Exception('PersonalAccessToken model not found');
+                    throw new \RuntimeException('PersonalAccessToken model not found');
                 }
             } catch (\Exception $e) {
                 $components['sanctum'] = ['status' => 'error', 'message' => $e->getMessage(), 'checked_at' => $timestamp];
@@ -83,11 +107,11 @@ final class HealthCheckController extends Model
             }
             // Response code based on status
             $httpCode = $status === 'ok' ? 200 : 503;
-            return response()->json([
+            return $this->response->json([
                 'status' => $status,
                 'timestamp' => $timestamp,
                 'components' => $components,
-                'environment' => config('app.env'),
+                'environment' => $this->config->get('app.env'),
                 'version' => '1.0.0',
             ], $httpCode);
         }

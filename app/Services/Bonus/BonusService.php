@@ -2,6 +2,8 @@
 
 namespace App\Services\Bonus;
 
+
+use Illuminate\Http\Request;
 use App\Models\BonusTransaction;
 use App\Models\Wallet;
 use App\Services\FraudControlService;
@@ -20,9 +22,9 @@ use Throwable;
  *
  * Требования:
  * 1. FraudControlService::check() перед каждой выдачей бонусов
- * 2. DB::transaction() для атомарности
+ * 2. $this->db->transaction() для атомарности
  * 3. correlation_id для трейсирования
- * 4. Log::channel('audit') для всех операций
+ * 4. $this->logger->channel('audit') для всех операций
  * 5. Exception handling с полным backtrace
  * 6. Бонусы имеют период холда (14 дней по умолчанию)
  * 7. После холда → зачисляются на wallet через WalletService
@@ -33,10 +35,12 @@ final readonly class BonusService
     private const HOLD_PERIOD_DAYS = 14;
 
     public function __construct(
+        private readonly Request $request,
         private ConnectionInterface $db,
         private LogManager $log,
         private FraudControlService $fraud,
         private WalletService $wallet,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -77,11 +81,11 @@ final readonly class BonusService
                 'amount' => $amount,
                 'user_id' => $userId,
                 'bonus_type' => $type,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Bonus: Award initiated', [
+            $this->logger->channel('audit')->info('Bonus: Award initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -89,7 +93,7 @@ final readonly class BonusService
             ]);
 
             // 2. DATABASE TRANSACTION
-            $bonus = DB::transaction(function () use (
+            $bonus = $this->db->transaction(function () use (
                 $userId, $tenantId, $amount, $type, $sourceType, $sourceId, $correlationId, $metadata
             ) {
                 $wallet = Wallet::where('tenant_id', $tenantId)
@@ -114,7 +118,7 @@ final readonly class BonusService
             });
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Bonus: Award succeeded', [
+            $this->logger->channel('audit')->info('Bonus: Award succeeded', [
                 'correlation_id' => $correlationId,
                 'bonus_id' => $bonus->id,
                 'user_id' => $userId,
@@ -124,8 +128,15 @@ final readonly class BonusService
 
             return $bonus;
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Bonus: Award failed', [
+            $this->logger->channel('audit')->error('Bonus: Award failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -149,7 +160,7 @@ final readonly class BonusService
         $unlockedCount = 0;
 
         try {
-            Log::channel('audit')->info('Bonus: Unlock expired holds started', [
+            $this->logger->channel('audit')->info('Bonus: Unlock expired holds started', [
                 'correlation_id' => $correlationId,
             ]);
 
@@ -160,7 +171,7 @@ final readonly class BonusService
 
             foreach ($pendingBonuses as $bonus) {
                 try {
-                    DB::transaction(function () use ($bonus, $correlationId) {
+                    $this->db->transaction(function () use ($bonus, $correlationId) {
                         // 1. UPDATE status
                         $bonus->update([
                             'status' => 'credited',
@@ -182,7 +193,7 @@ final readonly class BonusService
                         );
 
                         // 3. LOG
-                        Log::channel('audit')->info('Bonus: Hold unlocked', [
+                        $this->logger->channel('audit')->info('Bonus: Hold unlocked', [
                             'correlation_id' => $correlationId,
                             'bonus_id' => $bonus->id,
                             'amount' => $bonus->amount,
@@ -191,7 +202,7 @@ final readonly class BonusService
 
                     $unlockedCount++;
                 } catch (\Exception $e) {
-                    Log::channel('audit')->error('Bonus: Unlock failed', [
+                    $this->logger->channel('audit')->error('Bonus: Unlock failed', [
                         'correlation_id' => $correlationId,
                         'bonus_id' => $bonus->id,
                         'error' => $e->getMessage(),
@@ -199,14 +210,14 @@ final readonly class BonusService
                 }
             }
 
-            Log::channel('audit')->info('Bonus: Unlock expired holds completed', [
+            $this->logger->channel('audit')->info('Bonus: Unlock expired holds completed', [
                 'correlation_id' => $correlationId,
                 'unlocked_count' => $unlockedCount,
             ]);
 
             return $unlockedCount;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Bonus: Unlock process failed', [
+            $this->logger->channel('audit')->error('Bonus: Unlock process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -244,11 +255,11 @@ final readonly class BonusService
                 'amount' => $amount,
                 'user_id' => $userId,
                 'reason' => $reason,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Bonus: Spending initiated', [
+            $this->logger->channel('audit')->info('Bonus: Spending initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -265,14 +276,21 @@ final readonly class BonusService
             );
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Bonus: Spending succeeded', [
+            $this->logger->channel('audit')->info('Bonus: Spending succeeded', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Bonus: Spending failed', [
+            $this->logger->channel('audit')->error('Bonus: Spending failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -333,14 +351,14 @@ final readonly class BonusService
                     'correlation_id' => $correlationId,
                 ]);
 
-            Log::channel('audit')->info('Bonus: Expired bonuses processed', [
+            $this->logger->channel('audit')->info('Bonus: Expired bonuses processed', [
                 'correlation_id' => $correlationId,
                 'expired_count' => $expiredCount,
             ]);
 
             return $expiredCount;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Bonus: Expiry process failed', [
+            $this->logger->channel('audit')->error('Bonus: Expiry process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

@@ -2,12 +2,13 @@
 
 namespace App\Domains\Travel\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class TravelAgency extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory;
         use SoftDeletes;
 
@@ -53,7 +54,7 @@ final class TravelAgency extends Model
         public function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check()) {
+                if (function_exists('tenant') && tenant()) {
                     $query->where('tenant_id', tenant()->id);
                 }
             });

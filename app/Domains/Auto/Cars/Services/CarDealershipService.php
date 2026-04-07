@@ -2,17 +2,19 @@
 
 namespace App\Domains\Auto\Cars\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CarDealershipService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class CarDealershipService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly string $correlationId = ''
-        ) {
+
+    public function __construct(private readonly \App\Services\FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             if (empty($this->correlationId)) {
                 $this->correlationId = (string) Str::uuid();
             }
@@ -23,13 +25,13 @@ final class CarDealershipService extends Model
          */
         public function placeOrder(int $carId, int $clientId, int $amount): CarOrder
         {
-            Log::channel('audit')->info('Attempting to place car order', [
+            $this->logger->info('Attempting to place car order', [
                 'car_id' => $carId,
                 'client_id' => $clientId,
                 'correlation_id' => $this->correlationId
             ]);
 
-            return DB::transaction(function () use ($carId, $clientId, $amount) {
+            return $this->db->transaction(function () use ($carId, $clientId, $amount) {
                 // 1. Поиск авто с блокировкой
                 $car = Car::lockForUpdate()->findOrFail($carId);
 
@@ -38,12 +40,7 @@ final class CarDealershipService extends Model
                 }
 
                 // 2. Fraud Check (по Канону 2026)
-                FraudControlService::check([
-                    'type' => 'car_order',
-                    'amount' => $amount,
-                    'client_id' => $clientId,
-                    'correlation_id' => $this->correlationId
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'car_order', amount: 0, correlationId: $correlationId ?? '');
 
                 // 3. Создание заказа
                 $order = CarOrder::create([
@@ -61,7 +58,7 @@ final class CarDealershipService extends Model
                     'correlation_id' => $this->correlationId
                 ]);
 
-                Log::channel('audit')->info('Car order placed successfully', [
+                $this->logger->info('Car order placed successfully', [
                     'order_id' => $order->id,
                     'correlation_id' => $this->correlationId
                 ]);

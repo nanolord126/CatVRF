@@ -2,18 +2,15 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RecommendationService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class RecommendationService
 {
-    use HasFactory;
+
+    public function __construct(private string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private string $correlationId = ''
-        ) {
-        }
+    }
 
         private function getCorrelationId(): string
         {
@@ -27,7 +24,7 @@ final class RecommendationService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('recommend')->info('Generating entertainment recommendations', [
+            $this->logger->info('Generating entertainment recommendations', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -36,7 +33,7 @@ final class RecommendationService extends Model
             $preferredTypes = Booking::where('user_id', $userId)
                 ->join('entertainment_events', 'entertainment_bookings.event_id', '=', 'entertainment_events.id')
                 ->join('entertainment_venues', 'entertainment_events.venue_id', '=', 'entertainment_venues.id')
-                ->select('entertainment_venues.type', DB::raw('count(*) as count'))
+                ->select('entertainment_venues.type', $this->db->raw('count(*) as count'))
                 ->groupBy('entertainment_venues.type')
                 ->orderBy('count', 'desc')
                 ->pluck('type')
@@ -57,7 +54,7 @@ final class RecommendationService extends Model
             // 3. Расчёт Confidence Score (заглушка для ML-модели)
             $confidenceScore = !empty($preferredTypes) ? 0.85 : 0.45;
 
-            Log::channel('recommend')->info('Recommendations generated', [
+            $this->logger->info('Recommendations generated', [
                 'user_id' => $userId,
                 'count' => $results->count(),
                 'confidence_score' => $confidenceScore,
@@ -77,7 +74,7 @@ final class RecommendationService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('recommend')->info('Generating similar venues (Look-alike)', [
+            $this->logger->info('Generating similar venues (Look-alike)', [
                 'base_venue_uuid' => $venue->uuid,
                 'correlation_id' => $correlationId,
             ]);
@@ -89,7 +86,7 @@ final class RecommendationService extends Model
                 ->limit($limit)
                 ->get();
 
-            Log::channel('recommend')->info('Look-alike venues found', [
+            $this->logger->info('Look-alike venues found', [
                 'count' => $results->count(),
                 'correlation_id' => $correlationId,
             ]);

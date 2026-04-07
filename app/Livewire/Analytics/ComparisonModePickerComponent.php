@@ -2,20 +2,16 @@
 
 namespace App\Livewire\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class ComparisonModePickerComponent extends Model
+final class ComparisonModePickerComponent extends Component
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $period1From = '';
-        public string $period1To = '';
-        public string $period2From = '';
-        public string $period2To = '';
-        public bool $isComparison = false;
-        public array $presets = [];
+    private string $period1From = '';
+        private string $period1To = '';
+        private string $period2From = '';
+        private string $period2To = '';
+        private bool $isComparison = false;
+        private array $presets = [];
 
         public function mount(): void
         {

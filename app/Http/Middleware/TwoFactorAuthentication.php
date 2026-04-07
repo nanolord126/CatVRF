@@ -2,14 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class TwoFactorAuthentication extends Model
+final class TwoFactorAuthentication
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Проверяет 2FA и историю устройств.
          *
@@ -39,13 +42,13 @@ final class TwoFactorAuthentication extends Model
                 if (!$knownDevice) {
                     // Новое устройство — требуем 2FA
                     if (!session('two_factor_verified')) {
-                        Log::channel('audit')->warning('Попытка доступа с неверифицированного устройства', [
+                        $this->logger->channel('audit')->warning('Попытка доступа с неверифицированного устройства', [
                             'user_id' => $user->id,
                             'device_id' => $deviceId,
                             'correlation_id' => $correlationId,
                         ]);
 
-                        return response()->json([
+                        return $this->response->json([
                             'error' => '2FA требуется',
                             'code' => 'two_factor_required',
                         ], 403);
@@ -67,13 +70,20 @@ final class TwoFactorAuthentication extends Model
 
                 return $next($request);
             } catch (Exception $e) {
-                Log::channel('audit')->error('Ошибка при проверке 2FA', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Ошибка при проверке 2FA', [
                     'user_id' => $user->id ?? null,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Ошибка аутентификации',
                 ], 500);
             }

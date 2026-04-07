@@ -2,17 +2,17 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class AutoServiceOrderController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class AutoServiceOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -20,17 +20,17 @@ final class AutoServiceOrderController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $orders = AutoServiceOrder::query()
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()->id)
                     ->with(['service', 'client'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $orders,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при получении заказов',
                 ], 500);
@@ -39,22 +39,15 @@ final class AutoServiceOrderController extends Model
 
         public function store(Request $request): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -73,9 +66,9 @@ final class AutoServiceOrderController extends Model
                 ]);
 
                 $validated = $request->all();
-                $order = DB::transaction(function () use ($validated, $correlationId) {
+                $order = $this->db->transaction(function () use ($validated, $correlationId) {
                     $order = AutoServiceOrder::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'client_id' => ($validated['client_id'] ?? null),
                         'car_brand' => ($validated['car_brand'] ?? null),
                         'car_model' => ($validated['car_model'] ?? null),
@@ -86,7 +79,7 @@ final class AutoServiceOrderController extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Service order created', [
+                    $this->logger->info('Service order created', [
                         'order_id' => $order->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -94,13 +87,13 @@ final class AutoServiceOrderController extends Model
                     return $order;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $order,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании заказа',
                 ], 500);
@@ -109,7 +102,7 @@ final class AutoServiceOrderController extends Model
 
         public function show(AutoServiceOrder $order): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $order->load(['service', 'client']),
             ]);
@@ -122,16 +115,17 @@ final class AutoServiceOrderController extends Model
 
                 $order->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->info('Service order cancelled', [
+                $this->logger->info('Service order cancelled', [
                     'order_id' => $order->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ отменён',
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при отмене заказа',
                 ], 500);
@@ -143,19 +137,20 @@ final class AutoServiceOrderController extends Model
             try {
                 $order->update([
                     'status' => 'completed',
-                    'completed_at' => now(),
+                    'completed_at' => Carbon::now(),
                 ]);
 
-                Log::channel('audit')->info('Service order completed', [
+                $this->logger->info('Service order completed', [
                     'order_id' => $order->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ завершён',
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при завершении заказа',
                 ], 500);
@@ -165,11 +160,11 @@ final class AutoServiceOrderController extends Model
         public function listServices(Request $request): JsonResponse
         {
             $services = AutoService::query()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', tenant()->id)
                 ->select(['id', 'name', 'price', 'duration_minutes'])
                 ->get();
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $services,
             ]);

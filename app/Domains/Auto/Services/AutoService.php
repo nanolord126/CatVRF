@@ -2,27 +2,30 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AutoService
 {
-    use HasFactory;
+    public function __construct(private \App\Services\FraudControlService $fraud,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Регистрация нового ТС в системе.
          */
         public function registerVehicle(array $data, string $correlationId): Vehicle
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 $data['correlation_id'] = $correlationId;
                 $data['uuid'] = (string) Str::uuid();
                 $data['status'] = 'active';
 
                 $vehicle = Vehicle::create($data);
 
-                Log::channel('audit')->info('Vehicle registered', [
+                $this->logger->info('Vehicle registered', [
                     'uuid' => $vehicle->uuid,
                     'correlation_id' => $correlationId,
                     'brand' => $vehicle->brand,
@@ -39,14 +42,14 @@ final class AutoService extends Model
          */
         public function updateStatus(Vehicle $vehicle, string $newStatus, string $correlationId): void
         {
-            DB::transaction(function () use ($vehicle, $newStatus, $correlationId) {
+            $this->db->transaction(function () use ($vehicle, $newStatus, $correlationId) {
                 $oldStatus = $vehicle->status;
                 $vehicle->update([
                     'status' => $newStatus,
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Vehicle status changed', [
+                $this->logger->info('Vehicle status changed', [
                     'uuid' => $vehicle->uuid,
                     'old_status' => $oldStatus,
                     'new_status' => $newStatus,
@@ -60,14 +63,14 @@ final class AutoService extends Model
          */
         public function assignToFleet(Vehicle $vehicle, int $fleetId, string $correlationId): void
         {
-            DB::transaction(function () use ($vehicle, $fleetId, $correlationId) {
+            $this->db->transaction(function () use ($vehicle, $fleetId, $correlationId) {
                 $vehicle->update([
                     'business_group_id' => $fleetId,
                     'type' => 'fleet',
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Vehicle assigned to fleet', [
+                $this->logger->info('Vehicle assigned to fleet', [
                     'uuid' => $vehicle->uuid,
                     'fleet_id' => $fleetId,
                     'correlation_id' => $correlationId,

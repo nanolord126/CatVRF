@@ -2,16 +2,13 @@
 
 namespace App\Notifications\Verticals\RealEstate;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 
 final class PropertyListedNotification extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected string $type = 'realestate.property.listed';
-        protected string $template = 'emails.realestate.property_listed';
+    private string $type = 'realestate.property.listed';
+        private string $template = 'emails.realestate.property_listed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -22,8 +19,8 @@ final class PropertyListedNotification extends Model
 
     final class ViewingConfirmedNotification extends BaseMailableNotification
     {
-        protected string $type = 'realestate.viewing.confirmed';
-        protected string $template = 'emails.realestate.viewing_confirmed';
+        private string $type = 'realestate.viewing.confirmed';
+        private string $template = 'emails.realestate.viewing_confirmed';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -34,8 +31,8 @@ final class PropertyListedNotification extends Model
 
     final class OfferMadeNotification extends BaseMailableNotification
     {
-        protected string $type = 'realestate.offer.made';
-        protected string $template = 'emails.realestate.offer_made';
+        private string $type = 'realestate.offer.made';
+        private string $template = 'emails.realestate.offer_made';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -46,8 +43,8 @@ final class PropertyListedNotification extends Model
 
     final class OfferAcceptedNotification extends BaseMailableNotification
     {
-        protected string $type = 'realestate.offer.accepted';
-        protected string $template = 'emails.realestate.offer_accepted';
+        private string $type = 'realestate.offer.accepted';
+        private string $template = 'emails.realestate.offer_accepted';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {
@@ -58,7 +55,7 @@ final class PropertyListedNotification extends Model
 
     final class ReviewRequestNotification extends BasePushNotification
     {
-        protected string $type = 'realestate.review.request';
+        private string $type = 'realestate.review.request';
 
         public function __construct(int $userId, int $tenantId, array $data = [])
         {

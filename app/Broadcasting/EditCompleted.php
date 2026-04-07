@@ -2,6 +2,10 @@
 
 namespace App\Broadcasting;
 
+
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Psr\Log\LoggerInterface;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,15 +20,17 @@ final class EditCompleted implements ShouldBroadcast
     use SerializesModels;
 
     public function __construct(
-        public readonly int $userId,
-        public readonly int $tenantId,
-        public readonly string $documentType,
-        public readonly int $documentId,
-        public readonly string $userName,
-        public readonly array $editData,
-        public readonly string $correlationId,
+        private readonly ConfigRepository $config,
+        private readonly LoggerInterface $logger,
+        private readonly int $userId,
+        private readonly int $tenantId,
+        private readonly string $documentType,
+        private readonly int $documentId,
+        private readonly string $userName,
+        private readonly array $editData,
+        private readonly string $correlationId,
     ) {
-        Log::channel('audit')->info('EditCompleted event broadcasted', [
+        $this->logger->info('EditCompleted event broadcasted', [
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,
@@ -62,6 +68,6 @@ final class EditCompleted implements ShouldBroadcast
 
     public function broadcastWhen(): bool
     {
-        return config('broadcasting.connections.pusher.enabled', true);
+        return $this->config->get('broadcasting.connections.pusher.enabled', true);
     }
 }

@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\Accounting\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\Accounting\Models\AccountingService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class AccountingServiceService extends Model
+final readonly class AccountingServiceService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createRequest(int $accountantId,$serviceType,string $correlationId=""):AccountingServiceModel{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("accounting:service:".auth()->id(),15))throw new \RuntimeException("Too many",429);RateLimiter::hit("accounting:service:".auth()->id(),3600);
-    return DB::transaction(function()use($accountantId,$serviceType,$correlationId){$a=Accountant::findOrFail($accountantId);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'accounting_service','correlation_id'=>$correlationId,'amount'=>$a->price_kopecks_per_service]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$s=AccountingServiceModel::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'accountant_id'=>$accountantId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$a->price_kopecks_per_service,'payout_kopecks'=>$a->price_kopecks_per_service-(int)($a->price_kopecks_per_service*0.14),'payment_status'=>'pending','service_type'=>$serviceType,'request_date'=>now(),'tags'=>['accounting'=>true]]);Log::channel('audit')->info('Accounting service requested',['service_id'=>$s->id,'correlation_id'=>$correlationId]);return $s;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): AccountingService {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'accounting:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): AccountingService {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'accounting_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = AccountingService::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['accounting' => true],
+            ]);
+
+            $this->logger->info('AccountingServiceService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeService(int $serviceId,string $correlationId=""):AccountingServiceModel{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($serviceId,$correlationId){$s=AccountingServiceModel::findOrFail($serviceId);if($s->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$s->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$s->payout_kopecks,'accounting_payout',['correlation_id'=>$correlationId,'service_id'=>$s->id]);Log::channel('audit')->info('Accounting service completed',['service_id'=>$s->id]);return $s;});}
-    public function cancelService(int $serviceId,string $correlationId=""):AccountingServiceModel{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($serviceId,$correlationId){$s=AccountingServiceModel::findOrFail($serviceId);if($s->status==='completed')throw new \RuntimeException("Cannot cancel",400);$s->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($s->payment_status==='completed')$this->wallet->credit(tenant()->id,$s->total_kopecks,'accounting_refund',['correlation_id'=>$correlationId,'service_id'=>$s->id]);Log::channel('audit')->info('Accounting service cancelled',['service_id'=>$s->id]);return $s;});}
-    public function getService(int $serviceId):AccountingServiceModel{return AccountingServiceModel::findOrFail($serviceId);}
-    public function getUserServices(int $clientId){return AccountingServiceModel::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): AccountingService
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): AccountingService {
+            $project = AccountingService::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('AccountingServiceService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): AccountingService
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): AccountingService {
+            $project = AccountingService::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('AccountingServiceService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): AccountingService
+    {
+        return AccountingService::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return AccountingService::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

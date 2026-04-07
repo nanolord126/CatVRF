@@ -2,23 +2,24 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PersonalGrowthConstructorService extends Model
+use Illuminate\Http\Request;
+use App\Services\RecommendationService;
+
+
+use Illuminate\Support\Str;
+use Throwable;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class PersonalGrowthConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    /**
-         * Конструктор с зависимостями.
-         */
-        public function __construct(
-            private \App\Services\RecommendationService $recommendationService,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $this->correlationId ?: (string) Str::uuid();
-        }
+    public function __construct(
+        private readonly Request $request,
+        private RecommendationService $recommendationService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Создать персональный план роста (AI-генерация).
@@ -30,10 +31,12 @@ final class PersonalGrowthConstructorService extends Model
          */
         public function generateGrowthPlan(\App\Models\User $user, array $input): array
         {
-            Log::channel('audit')->info('AI Growth Constructor: Starting plan generation', [
+            $correlationId = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+            $this->logger->channel('audit')->info('AI Growth Constructor: Starting plan generation', [
                 'user_id' => $user->id,
                 'goals_count' => count($input['goals'] ?? []),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
             ]);
 
             try {
@@ -41,7 +44,6 @@ final class PersonalGrowthConstructorService extends Model
                 $tasteProfile = $user->taste_profile ?? [];
 
                 // 2. Симуляция запроса к LLM (OpenAI или GigaChat Pro)
-                // Здесь мы строим промпт на основе метаданных
                 $analysisResult = $this->analyzeGoalsWithAI($user, $input, $tasteProfile);
 
                 // 3. Подбор релевантных программ и коучей через RecommendationService
@@ -51,7 +53,7 @@ final class PersonalGrowthConstructorService extends Model
                     context: [
                         'focus_areas' => $input['focus_areas'] ?? [],
                         'intensity' => $input['intensity'] ?? 'balanced',
-                        'correlation_id' => $this->correlationId,
+                        'correlation_id' => $correlationId,
                     ]
                 );
 
@@ -66,24 +68,24 @@ final class PersonalGrowthConstructorService extends Model
                         'type' => class_basename($item),
                         'match_score' => rand(85, 99) / 100,
                     ]),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ];
 
                 // 5. Сохранение конструкции в БД
-                $this->saveAIConstruction($user, $input, $finalPlan);
+                $this->saveAIConstruction($user, $input, $finalPlan, $correlationId);
 
-                Log::channel('audit')->info('AI Growth Constructor: Plan successfully generated', [
+                $this->logger->channel('audit')->info('AI Growth Constructor: Plan successfully generated', [
                     'user_id' => $user->id,
                     'suggestions_count' => count($finalPlan['suggested_verticals']),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return $finalPlan;
 
             } catch (Throwable $e) {
-                Log::channel('audit')->error('AI Growth Constructor Error', [
+                $this->logger->channel('audit')->error('AI Growth Constructor Error', [
                     'error' => $e->getMessage(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 throw $e;
@@ -110,16 +112,16 @@ final class PersonalGrowthConstructorService extends Model
         /**
          * Сохранение сессии генерации (Канон: Все AI-конструкции сохраняются).
          */
-        private function saveAIConstruction(\App\Models\User $user, array $input, array $plan): void
+        private function saveAIConstruction(\App\Models\User $user, array $input, array $plan, string $correlationId): void
         {
-            DB::table('user_ai_designs')->insert([
+            $this->db->table('user_ai_designs')->insert([
                 'user_id' => $user->id,
                 'vertical' => 'pd',
                 'design_data' => json_encode([
                     'input' => $input,
                     'result' => $plan,
                 ]),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

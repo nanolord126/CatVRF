@@ -1,86 +1,68 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CalculateAgencyEarningsJob extends Model
+use Psr\Log\LoggerInterface;
+use App\Domains\Travel\Models\TravelAgency;
+use App\Services\WalletService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use App\Services\FraudControlService;
+
+final class CalculateAgencyEarningsJob implements ShouldQueue
 {
-    use HasFactory;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    public int $tries = 3;
+    public int $maxExceptions = 3;
 
-        public int $tries = 3;
-        public int $maxExceptions = 3;
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(private readonly int $agencyId,
+        private readonly string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {
 
-        public function __construct(
-            public ?int $agencyId = null,
-            public ?string $period = 'monthly',
+    }
 
-        ) {}
+    /**
+     * Execute the job.
+     */
+    public function handle(WalletService $walletService): void
+    {
+        $correlationId = $this->correlationId;
+        $this->logger->info(
+            '[CalculateAgencyEarningsJob] Started.',
+            ['correlation_id' => $correlationId]
+        );
 
-        public function handle(): void
-        {
-            try {
-                DB::transaction(function () {
-                    $agency = TravelAgency::findOrFail($this->agencyId);
+        try {
+            $this->db->transaction(function () use ($walletService, $correlationId) {
+                $agency = TravelAgency::findOrFail($this->agencyId);
 
-                    $startDate = match ($this->period) {
-                        'daily' => now()->startOfDay(),
-                        'weekly' => now()->startOfWeek(),
-                        'monthly' => now()->startOfMonth(),
-                        default => now()->startOfMonth(),
-                    };
+                // Dummy logic for earning calculation
+                $earnings = $agency->bookings()->where('status', 'completed')->sum('price') * 0.1;
 
-                    $endDate = match ($this->period) {
-                        'daily' => now()->endOfDay(),
-                        'weekly' => now()->endOfWeek(),
-                        'monthly' => now()->endOfMonth(),
-                        default => now()->endOfMonth(),
-                    };
-
-                    $totalCommission = $agency->bookings()
-                        ->whereBetween('booked_at', [$startDate, $endDate])
-                        ->where('status', '!=', 'cancelled')
-                        ->sum('commission_amount');
-
-                    $totalTourRevenue = $agency->tours()
-                        ->whereBetween('created_at', [$startDate, $endDate])
-                        ->sum('total_amount');
-
-                    Log::channel('audit')->info('Agency earnings calculated', [
+                if ($earnings > 0) {
+                    $walletService->credit(
+                        $agency->wallet->id,
+                        (int) ($earnings * 100),
+                        \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,
+                    $correlationId, null, null, [
                         'agency_id' => $this->agencyId,
-                        'agency_name' => $agency->name,
-                        'period' => $this->period,
-                        'total_commission' => $totalCommission,
-                        'total_revenue' => $totalTourRevenue,
-                        'timestamp' => now(),
-                    ]);
-                });
-            } catch (Throwable $e) {
-                Log::channel('audit')->error('Agency earnings calculation failed', [
+                        \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'agency_id' => $this->agencyId,
-                    'period' => $this->period,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $correlationId,
                 ]);
 
-                throw $e;
-            }
+            $this->fail($e);
         }
-
-        public function tags(): array
-        {
-            return ['travel', 'earnings', 'agency'];
-        }
-
-        public function retryUntil(): \DateTime
-        {
-            return now()->addDays(7);
-        }
+    }
 }

@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api\HomeAppliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ApplianceRepairApiController extends Model
+final class ApplianceRepairApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly ApplianceRepairService $repairService
-        ) {}
+            private readonly ApplianceRepairService $repairService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Создание заявки на ремонт.
          */
@@ -22,7 +25,7 @@ final class ApplianceRepairApiController extends Model
             try {
                 // 1. Создание базового заказа (с валидацией)
                 $order = ApplianceRepairOrder::create([
-                    'client_id' => auth()->id() ?? $request->get('client_id'),
+                    'client_id' => $this->guard->id() ?? $request->get('client_id'),
                     'appliance_type' => $request->get('appliance_type'),
                     'brand_name' => $request->get('brand_name'),
                     'model_number' => $request->get('model_number'),
@@ -33,24 +36,24 @@ final class ApplianceRepairApiController extends Model
                     'correlation_id' => $correlationId,
                     'tags' => ['api_source', $request->boolean('is_b2b') ? 'b2b_client' : 'b2c_client']
                 ]);
-                Log::channel('audit')->info('HomeAppliance repair order created via API', [
+                $this->logger->channel('audit')->info('HomeAppliance repair order created via API', [
                     'order_uuid' => $order->uuid,
                     'is_b2b' => $order->is_b2b,
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'order_uuid' => $order->uuid,
                     'status' => $order->status,
                     'correlation_id' => $correlationId
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create repair order', [
+                $this->logger->channel('audit')->error('Failed to create repair order', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Не удалось создать заявку. Повторите попытку позже.',
                     'correlation_id' => $correlationId
@@ -63,7 +66,7 @@ final class ApplianceRepairApiController extends Model
         public function show(string $uuid): JsonResponse
         {
             $order = ApplianceRepairOrder::where('uuid', $uuid)->firstOrFail();
-            return response()->json([
+            return $this->response->json([
                 'order_uuid' => $order->uuid,
                 'status' => $order->status,
                 'total_cost' => $order->total_cost_kopecks,

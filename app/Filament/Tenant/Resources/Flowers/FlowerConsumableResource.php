@@ -2,14 +2,15 @@
 
 namespace App\Filament\Tenant\Resources\Flowers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\FlowerConsumable;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class FlowerConsumableResource extends Model
+final class FlowerConsumableResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = FlowerConsumable::class;
         protected static ?string $navigationIcon = 'heroicon-o-scissor';
         protected static ?string $navigationGroup = 'Flowers';

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MasterResource extends Model
+final class MasterResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Master::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-group';
@@ -50,22 +47,15 @@ final class MasterResource extends Model
                     ->default(true),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMaster::route('/'),
-                'create' => Pages\\CreateMaster::route('/create'),
-                'edit' => Pages\\EditMaster::route('/{record}/edit'),
-                'view' => Pages\\ViewMaster::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMaster::route('/'),
-                'create' => Pages\\CreateMaster::route('/create'),
-                'edit' => Pages\\EditMaster::route('/{record}/edit'),
-                'view' => Pages\\ViewMaster::route('/{record}'),
+                'index' => Pages\ListMaster::route('/'),
+                'create' => Pages\CreateMaster::route('/create'),
+                'edit' => Pages\EditMaster::route('/{record}/edit'),
+                'view' => Pages\ViewMaster::route('/{record}'),
             ];
         }
 }

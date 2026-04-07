@@ -2,24 +2,27 @@
 
 namespace App\Domains\Fashion\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductOrderCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductOrderCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(OrderPlaced $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $wallet = Wallet::where('tenant_id', $event->order->tenant_id)
                         ->lockForUpdate()
                         ->first();
 
                     if (! $wallet) {
-                        throw new \Exception('Wallet not found');
+                        throw new \RuntimeException('Wallet not found');
                     }
 
                     $commissionAmount = intval($event->order->commission_amount * 100);
@@ -37,7 +40,7 @@ final class DeductOrderCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Order commission deducted', [
+                    $this->logger->info('Order commission deducted', [
                         'order_id' => $event->order->id,
                         'fashion_store_id' => $event->order->fashion_store_id,
                         'customer_id' => $event->order->customer_id,
@@ -46,7 +49,7 @@ final class DeductOrderCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct order commission', [
+                $this->logger->error('Failed to deduct order commission', [
                     'order_id' => $event->order->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

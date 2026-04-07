@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StationerySubscriptionResource extends Model
+final class StationerySubscriptionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StationerySubscription::class;
         protected static ?string $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
         protected static ?string $navigationGroup = 'Stationery Hub';
@@ -99,22 +96,15 @@ final class StationerySubscriptionResource extends Model
                 ])->columns(2),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStationerySubscription::route('/'),
-                'create' => Pages\\CreateStationerySubscription::route('/create'),
-                'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
-                'view' => Pages\\ViewStationerySubscription::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStationerySubscription::route('/'),
-                'create' => Pages\\CreateStationerySubscription::route('/create'),
-                'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
-                'view' => Pages\\ViewStationerySubscription::route('/{record}'),
+                'index' => Pages\ListStationerySubscription::route('/'),
+                'create' => Pages\CreateStationerySubscription::route('/create'),
+                'edit' => Pages\EditStationerySubscription::route('/{record}/edit'),
+                'view' => Pages\ViewStationerySubscription::route('/{record}'),
             ];
         }
 }

@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\CloudStorage\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\CloudStorage\Models\StorageSubscription;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class CloudStorageService extends Model
+final readonly class CloudStorageService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createSubscription(int $providerId,$planType,$monthCount,string $correlationId=""):StorageSubscription{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("storage:sub:".auth()->id(),11))throw new \RuntimeException("Too many",429);RateLimiter::hit("storage:sub:".auth()->id(),3600);
-    return DB::transaction(function()use($providerId,$planType,$monthCount,$correlationId){$p=StorageProvider::findOrFail($providerId);$total=(int)($p->price_kopecks_per_month*$monthCount);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'cloud_storage','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$s=StorageSubscription::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'provider_id'=>$providerId,'user_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','plan_type'=>$planType,'start_date'=>now(),'end_date'=>now()->addMonths($monthCount),'storage_gb'=>$p->storage_gb,'tags'=>['cloud'=>true]]);Log::channel('audit')->info('Cloud storage subscription created',['subscription_id'=>$s->id,'correlation_id'=>$correlationId]);return $s;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): StorageSubscription {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'cloud_storage:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): StorageSubscription {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'cloud_storage_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = StorageSubscription::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['cloudstorage' => true],
+            ]);
+
+            $this->logger->info('CloudStorageService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeSubscription(int $subscriptionId,string $correlationId=""):StorageSubscription{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($subscriptionId,$correlationId){$s=StorageSubscription::findOrFail($subscriptionId);if($s->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$s->update(['status'=>'active','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$s->payout_kopecks,'storage_payout',['correlation_id'=>$correlationId,'subscription_id'=>$s->id]);Log::channel('audit')->info('Cloud storage subscription activated',['subscription_id'=>$s->id]);return $s;});}
-    public function cancelSubscription(int $subscriptionId,string $correlationId=""):StorageSubscription{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($subscriptionId,$correlationId){$s=StorageSubscription::findOrFail($subscriptionId);if($s->status==='active')throw new \RuntimeException("Cannot cancel",400);$s->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($s->payment_status==='completed')$this->wallet->credit(tenant()->id,$s->total_kopecks,'storage_refund',['correlation_id'=>$correlationId,'subscription_id'=>$s->id]);Log::channel('audit')->info('Cloud storage subscription cancelled',['subscription_id'=>$s->id]);return $s;});}
-    public function getSubscription(int $subscriptionId):StorageSubscription{return StorageSubscription::findOrFail($subscriptionId);}
-    public function getUserSubscriptions(int $userId){return StorageSubscription::where('user_id',$userId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): StorageSubscription
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): StorageSubscription {
+            $project = StorageSubscription::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('CloudStorageService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): StorageSubscription
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): StorageSubscription {
+            $project = StorageSubscription::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('CloudStorageService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): StorageSubscription
+    {
+        return StorageSubscription::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return StorageSubscription::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

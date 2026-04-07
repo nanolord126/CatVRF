@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class FashionRetailReview extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'fashion_retail_reviews';

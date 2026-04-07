@@ -2,14 +2,20 @@
 
 namespace App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CreateVehicleRental extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateVehicleRental extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = VehicleRentalResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -19,15 +25,10 @@ final class CreateVehicleRental extends Model
             $data['uuid'] = Str::uuid()->toString();
             $data['correlation_id'] = $correlationId;
 
-            $fraudCheck = app(FraudControlService::class)->check([
-                'operation_type' => 'vehicle_rental',
-                'user_id' => auth()->id(),
-                'amount' => $data['total_price'] ?? 0,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vehicle_rental', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudCheck['blocked']) {
-                throw new \Exception('Операция заблокирована системой безопасности');
+                throw new \RuntimeException('Операция заблокирована системой безопасности');
             }
 
             return $data;
@@ -35,8 +36,8 @@ final class CreateVehicleRental extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
-                Log::channel('audit')->info('VehicleRental created', [
+            $this->db->transaction(function () {
+                $this->logger->info('VehicleRental created', [
                     'correlation_id' => $this->record->correlation_id,
                     'rental_id' => $this->record->id,
                 ]);
@@ -54,4 +55,27 @@ final class CreateVehicleRental extends Model
                 ->title('Аренда оформлена')
                 ->send();
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

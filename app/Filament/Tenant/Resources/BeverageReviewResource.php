@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeverageReviewResource extends Model
+final class BeverageReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeverageReview::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-bottom-center-text';
@@ -91,31 +88,15 @@ final class BeverageReviewResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageReview::route('/'),
-                'create' => Pages\\CreateBeverageReview::route('/create'),
-                'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageReview::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeverageReview::route('/'),
-                'create' => Pages\\CreateBeverageReview::route('/create'),
-                'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageReview::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageReview::route('/'),
-                'create' => Pages\\CreateBeverageReview::route('/create'),
-                'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageReview::route('/{record}'),
+                'index' => Pages\ListBeverageReview::route('/'),
+                'create' => Pages\CreateBeverageReview::route('/create'),
+                'edit' => Pages\EditBeverageReview::route('/{record}/edit'),
+                'view' => Pages\ViewBeverageReview::route('/{record}'),
             ];
         }
 }

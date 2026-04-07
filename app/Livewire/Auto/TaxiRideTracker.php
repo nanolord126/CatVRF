@@ -2,29 +2,44 @@
 
 namespace App\Livewire\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class TaxiRideTracker extends Model
+/**
+ * Class TaxiRideTracker
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Auto
+ */
+final class TaxiRideTracker extends Component
 {
-    use HasFactory;
+    private string $rideId;
+        private string $driverName = '';
+        private string $vehicleLicense = '';
+        private float $driverLat = 0;
+        private float $driverLon = 0;
+        private float $destinationLat = 0;
+        private float $destinationLon = 0;
+        private string $eta = '5 min';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $rideId;
-        public string $driverName = '';
-        public string $vehicleLicense = '';
-        public float $driverLat = 0;
-        public float $driverLon = 0;
-        public float $destinationLat = 0;
-        public float $destinationLon = 0;
-        public string $eta = '5 min';
-
+        /**
+         * Handle mount operation.
+         *
+         * @throws \DomainException
+         */
         public function mount(string $rideId): void
         {
             $this->rideId = $rideId;
             $this->loadRideInfo();
         }
 
+        /**
+         * Handle loadRideInfo operation.
+         *
+         * @throws \DomainException
+         */
         public function loadRideInfo(): void
         {
             // In real app, fetch from database and real-time location service

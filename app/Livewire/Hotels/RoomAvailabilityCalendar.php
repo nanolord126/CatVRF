@@ -2,19 +2,24 @@
 
 namespace App\Livewire\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class RoomAvailabilityCalendar extends Model
+/**
+ * Class RoomAvailabilityCalendar
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Hotels
+ */
+final class RoomAvailabilityCalendar extends Component
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public int $hotelId;
-        public string $startDate;
-        public string $endDate;
-        public array $availableRooms = [];
-        public int $selectedRoomId = 0;
+    private int $hotelId;
+        private string $startDate;
+        private string $endDate;
+        private array $availableRooms = [];
+        private int $selectedRoomId = 0;
 
         public function mount(int $hotelId): void
         {

@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Courier extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'couriers';
@@ -56,7 +55,6 @@ final class Courier extends Model
         public function getStatusColor(): string
         {
             return match ($this->status) {
-                'online' => 'success',
                 'busy' => 'warning',
                 default => 'gray',
             };
@@ -65,20 +63,20 @@ final class Courier extends Model
         /**
          * Глобальная изоляция по tenant_id
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (empty($model->tenant_id) && function_exists('filament') && filament()->getTenant()) {
-                    $model->tenant_id = filament()->getTenant()->id;
+                if (empty($model->tenant_id) && tenant()) {
+                    $model->tenant_id = tenant()->id;
                 }
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('filament') && filament()->getTenant()) {
-                    $query->where('tenant_id', filament()->getTenant()->id);
+                if (tenant()) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

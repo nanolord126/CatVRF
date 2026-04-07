@@ -2,6 +2,10 @@
 
 namespace App\Console\Commands;
 
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 use App\Jobs\CacheWarmers\WarmPopularProductsJob;
 use App\Jobs\CacheWarmers\WarmUserTasteProfileJob;
 use App\Jobs\CacheWarmers\WarmVerticalStatsJob;
@@ -12,6 +16,11 @@ use Illuminate\Support\Str;
 
 final class WarmCacheCommand extends Command
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected $signature = 'cache:warm
         {--vertical= : Warm cache for a specific vertical}
         {--user-id= : Warm user-specific taste profile cache}
@@ -28,7 +37,7 @@ final class WarmCacheCommand extends Command
         if ($userId) {
             WarmUserTasteProfileJob::dispatch((int) $userId);
 
-            Log::channel('audit')->info('Cache warming queued for user taste profile', [
+            $this->logger->info('Cache warming queued for user taste profile', [
                 'user_id' => (int) $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -40,7 +49,7 @@ final class WarmCacheCommand extends Command
             WarmPopularProductsJob::dispatch((string) $vertical);
             WarmVerticalStatsJob::dispatch((string) $vertical);
 
-            Log::channel('audit')->info('Cache warming queued for vertical', [
+            $this->logger->info('Cache warming queued for vertical', [
                 'vertical' => $vertical,
                 'correlation_id' => $correlationId,
             ]);
@@ -49,14 +58,14 @@ final class WarmCacheCommand extends Command
         }
 
         if (!$userId && !$vertical) {
-            $verticals = DB::table('verticals')->distinct()->pluck('code')->all();
+            $verticals = $this->db->table('verticals')->distinct()->pluck('code')->all();
 
             foreach ($verticals as $v) {
                 WarmPopularProductsJob::dispatch($v);
                 WarmVerticalStatsJob::dispatch($v);
             }
 
-            Log::channel('audit')->info('Cache warming queued for all verticals', [
+            $this->logger->info('Cache warming queued for all verticals', [
                 'count' => count($verticals),
                 'correlation_id' => $correlationId,
             ]);

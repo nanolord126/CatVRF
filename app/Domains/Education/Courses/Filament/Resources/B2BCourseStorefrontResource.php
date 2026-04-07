@@ -2,14 +2,11 @@
 
 namespace App\Domains\Education\Courses\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BCourseStorefrontResource extends Model
+final class B2BCourseStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BCourseStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-academic-cap';

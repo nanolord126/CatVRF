@@ -40,4 +40,20 @@ final class VideoProject extends Model
         'due_date' => 'datetime',
         'tags' => 'json',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 }

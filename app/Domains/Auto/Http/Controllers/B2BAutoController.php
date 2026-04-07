@@ -2,45 +2,43 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BAutoController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BAutoController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function storefronts(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id;
+                $tenantId = $request->user()?->tenant_id;
 
                 $page = (int) $request->query('page', 1);
 
-                Log::channel('audit')->info('B2B Auto: storefronts list', [
+                $this->logger->info('B2B Auto: storefronts list', [
                     'tenant_id'      => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
                 // Placeholder — подключается реальная модель B2BAutoStorefront после создания
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'data'           => [],
                     'meta'           => ['page' => $page, 'total' => 0],
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: storefronts error', [
+                $this->logger->error('B2B Auto: storefronts error', [
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['success' => false, 'message' => 'Ошибка загрузки витрин', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки витрин', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -48,17 +46,17 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId   = auth()->id();
-                $tenantId = auth()->user()?->tenant_id;
+                $userId   = $request->user()?->id;
+                $tenantId = $request->user()?->tenant_id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'b2b_auto_storefront_create',
                     amount: 0,
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -70,28 +68,28 @@ final class B2BAutoController extends Model
                     'min_order_amount'   => 'nullable|integer|min:1000',
                 ]);
 
-                DB::transaction(function () use ($validated, $tenantId, $correlationId): void {
-                    Log::channel('audit')->info('B2B Auto: Storefront created', [
+                $this->db->transaction(function () use ($validated, $tenantId, $correlationId): void {
+                    $this->logger->info('B2B Auto: Storefront created', [
                         'inn'            => $validated['inn'],
                         'tenant_id'      => $tenantId,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'message'        => 'Витрина создана',
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: createStorefront error', [
+                $this->logger->error('B2B Auto: createStorefront error', [
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['success' => false, 'message' => 'Ошибка создания витрины', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка создания витрины', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -99,17 +97,17 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId   = auth()->id();
-                $tenantId = auth()->user()?->tenant_id;
+                $userId   = $request->user()?->id;
+                $tenantId = $request->user()?->tenant_id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'b2b_auto_order',
                     amount: (int) $request->input('amount', 0),
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -119,8 +117,8 @@ final class B2BAutoController extends Model
                     'description'   => 'nullable|string|max:1000',
                 ]);
 
-                DB::transaction(function () use ($validated, $tenantId, $correlationId): void {
-                    Log::channel('audit')->info('B2B Auto: Order created', [
+                $this->db->transaction(function () use ($validated, $tenantId, $correlationId): void {
+                    $this->logger->info('B2B Auto: Order created', [
                         'storefront_id'  => $validated['storefront_id'],
                         'amount'         => $validated['amount'],
                         'tenant_id'      => $tenantId,
@@ -128,20 +126,20 @@ final class B2BAutoController extends Model
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'message'        => 'Заказ создан',
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: createOrder error', [
+                $this->logger->error('B2B Auto: createOrder error', [
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['success' => false, 'message' => 'Ошибка создания заказа', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка создания заказа', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -149,24 +147,24 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id;
+                $tenantId = $request->user()?->tenant_id;
 
-                Log::channel('audit')->info('B2B Auto: myB2BOrders', [
+                $this->logger->info('B2B Auto: myB2BOrders', [
                     'tenant_id'      => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'data'           => [],
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: myB2BOrders error', [
+                $this->logger->error('B2B Auto: myB2BOrders error', [
                     'error'          => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -174,20 +172,20 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id;
+                $tenantId = $request->user()?->tenant_id;
 
-                DB::transaction(function () use ($id, $tenantId, $correlationId): void {
-                    Log::channel('audit')->info('B2B Auto: Order approved', [
+                $this->db->transaction(function () use ($id, $tenantId, $correlationId): void {
+                    $this->logger->info('B2B Auto: Order approved', [
                         'order_id'       => $id,
                         'tenant_id'      => $tenantId,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'message' => 'Заказ подтверждён', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ подтверждён', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: approveOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('B2B Auto: approveOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -195,12 +193,12 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id;
+                $tenantId = $request->user()?->tenant_id;
 
                 $reason = $request->validate(['reason' => 'required|string|max:500'])['reason'];
 
-                DB::transaction(function () use ($id, $reason, $tenantId, $correlationId): void {
-                    Log::channel('audit')->info('B2B Auto: Order rejected', [
+                $this->db->transaction(function () use ($id, $reason, $tenantId, $correlationId): void {
+                    $this->logger->info('B2B Auto: Order rejected', [
                         'order_id'       => $id,
                         'reason'         => $reason,
                         'tenant_id'      => $tenantId,
@@ -208,12 +206,12 @@ final class B2BAutoController extends Model
                     ]);
                 });
 
-                return response()->json(['success' => true, 'message' => 'Заказ отклонён', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ отклонён', 'correlation_id' => $correlationId]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: rejectOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('B2B Auto: rejectOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -221,17 +219,17 @@ final class B2BAutoController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                DB::transaction(function () use ($id, $correlationId): void {
-                    Log::channel('audit')->info('B2B Auto: INN verified', [
+                $this->db->transaction(function () use ($id, $correlationId): void {
+                    $this->logger->info('B2B Auto: INN verified', [
                         'storefront_id'  => $id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'message' => 'ИНН подтверждён', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'ИНН подтверждён', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B Auto: verifyInn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('B2B Auto: verifyInn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 }

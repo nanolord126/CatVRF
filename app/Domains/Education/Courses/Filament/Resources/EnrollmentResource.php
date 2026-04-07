@@ -2,95 +2,53 @@
 
 namespace App\Domains\Education\Courses\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Education\Models\Enrollment;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
-final class EnrollmentResource extends Model
+/**
+ * Class EnrollmentResource
+ *
+ * Part of the Education vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Domains\Education\Courses\Filament\Resources
+ */
+final class EnrollmentResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = Enrollment::class;
+    protected static ?string $navigationIcon = 'heroicon-o-user-plus';
+    protected static ?string $navigationGroup = 'Обучение';
+    protected static ?string $navigationLabel = 'Записи';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, Select, TextInput};
-    use Filament\Forms\Form;
-    use Filament\Resources\Resource;
-    use Filament\Tables\Columns\{TextColumn, BadgeColumn, NumericColumn};
-    use Filament\Tables\Filters\SelectFilter;
-    use Filament\Tables\Table;
-    use Filament\Tables\Actions\EditAction;
-
-    final class EnrollmentResource extends Resource
+    public static function form(Form $form): Form
     {
-        protected static ?string $model = Enrollment::class;
-        protected static ?string $navigationIcon = 'heroicon-o-user-group';
-        protected static ?string $navigationGroup = 'Обучение';
+        return $form->schema([
+            TextInput::make('name')->label('Название')->required(),
+        ]);
+    }
 
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Section::make('Запись')
-                        ->schema([
-                            Select::make('course_id')
-                                ->label('Курс')
-                                ->relationship('course', 'title')
-                                ->required()
-                                ->disabled(),
-                            Select::make('student_id')
-                                ->label('Студент')
-                                ->relationship('student', 'name')
-                                ->required()
-                                ->disabled(),
-                            Select::make('status')
-                                ->label('Статус')
-                                ->options([
-                                    'active' => 'Активно',
-                                    'completed' => 'Завершено',
-                                    'dropped' => 'Отклонено',
-                                    'paused' => 'На паузе',
-                                ])
-                                ->required(),
-                        ]),
-                    Section::make('Прогресс')
-                        ->schema([
-                            TextInput::make('progress_percent')
-                                ->label('Прогресс (%)')
-                                ->numeric()
-                                ->disabled(),
-                            TextInput::make('total_watch_time_seconds')
-                                ->label('Время просмотра (сек)')
-                                ->numeric()
-                                ->disabled(),
-                        ]),
-                ]);
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->label('Название')->searchable(),
+                TextColumn::make('created_at')->label('Создан')->dateTime(),
+            ]);
+    }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('course.title')
-                        ->label('Курс'),
-                    TextColumn::make('student.name')
-                        ->label('Студент'),
-                    BadgeColumn::make('status')
-                        ->label('Статус')
-                        ->colors([
-                            'info' => 'active',
-                            'success' => 'completed',
-                            'danger' => 'dropped',
-                            'warning' => 'paused',
-                        ]),
-                    NumericColumn::make('progress_percent')
-                        ->label('Прогресс (%)'),
-                    TextColumn::make('enrolled_at')
-                        ->label('Записано')
-                        ->dateTime(),
-                ])
-                ->filters([
-                    SelectFilter::make('status'),
-                ])
-                ->actions([
-                    EditAction::make(),
-                ]);
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Education\Courses\Filament\Resources\EnrollmentResource\Pages\ListEnrollments::route('/'),
+        ];
+    }
 }

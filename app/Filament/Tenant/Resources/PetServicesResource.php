@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PetServicesResource extends Model
+final class PetServicesResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BPetServicesOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +103,15 @@ final class PetServicesResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPetServices::route('/'),
-                'create' => Pages\\CreatePetServices::route('/create'),
-                'edit' => Pages\\EditPetServices::route('/{record}/edit'),
-                'view' => Pages\\ViewPetServices::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPetServices::route('/'),
-                'create' => Pages\\CreatePetServices::route('/create'),
-                'edit' => Pages\\EditPetServices::route('/{record}/edit'),
-                'view' => Pages\\ViewPetServices::route('/{record}'),
+                'index' => Pages\ListPetServices::route('/'),
+                'create' => Pages\CreatePetServices::route('/create'),
+                'edit' => Pages\EditPetServices::route('/{record}/edit'),
+                'view' => Pages\ViewPetServices::route('/{record}'),
             ];
         }
 }

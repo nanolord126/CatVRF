@@ -2,19 +2,22 @@
 
 namespace App\Services\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DentalService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class DentalService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private \App\Services\FraudControlService $fraudControl,
+            private \App\Services\FraudControlService $fraud,
             private PricingService $pricingService,
-            private string $correlation_id = ''
-        ) {
+            private string $correlation_id = '',
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {
             $this->correlation_id = empty($correlation_id) ? (string) Str::uuid() : $correlation_id;
         }
 
@@ -35,12 +38,12 @@ final class DentalService extends Model
          */
         public function createService(array $data): DentalModel
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 // 1. Fraud Check
-                $this->fraudControl->check(['operation' => 'create_dental_service', 'data' => $data]);
+                $this->fraud->check(['operation' => 'create_dental_service', 'data' => $data]);
 
                 // 2. Audit Log
-                Log::channel('audit')->info('Creating dental service', [
+                $this->logger->channel('audit')->info('Creating dental service', [
                     'name' => $data['name'],
                     'clinic_id' => $data['clinic_id'],
                     'correlation_id' => $this->correlation_id,
@@ -65,11 +68,11 @@ final class DentalService extends Model
          */
         public function updateService(int $id, array $data): DentalModel
         {
-            return DB::transaction(function () use ($id, $data) {
+            return $this->db->transaction(function () use ($id, $data) {
                 $service = DentalModel::findOrFail($id);
 
                 // Audit
-                Log::channel('audit')->info('Updating dental service', [
+                $this->logger->channel('audit')->info('Updating dental service', [
                     'service_id' => $id,
                     'old_price' => $service->base_price,
                     'new_price' => $data['base_price'] ?? $service->base_price,
@@ -102,9 +105,9 @@ final class DentalService extends Model
          */
         public function deactivateService(int $id): bool
         {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $service = DentalModel::findOrFail($id);
-                Log::channel('audit')->warning('Deactivating dental service', [
+                $this->logger->channel('audit')->warning('Deactivating dental service', [
                     'service_id' => $id,
                     'correlation_id' => $this->correlation_id,
                 ]);

@@ -2,27 +2,32 @@
 
 namespace App\Domains\Education\LanguageLearning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class LessonService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class LessonService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Запуск занятия и создание комнаты WebRTC.
          */
         public function startLesson(int $lessonId, string $correlationId): LanguageVideoCall
         {
-            return DB::transaction(function () use ($lessonId, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($lessonId, $correlationId) {
                 $lesson = LanguageLesson::findOrFail($lessonId);
 
                 if ($lesson->status !== 'scheduled') {
-                    throw new \Exception('Lesson cannot be started from current status: ' . $lesson->status);
+                    throw new \DomainException('Lesson cannot be started from current status: ' . $lesson->status);
                 }
 
-                Log::channel('audit')->info('Starting language lesson', [
+                $this->logger->info('Starting language lesson', [
                     'lesson_id' => $lessonId,
                     'topic' => $lesson->topic,
                     'correlation_id' => $correlationId,
@@ -38,7 +43,7 @@ final class LessonService extends Model
                     'lesson_id' => $lessonId,
                     'room_id' => 'room_' . Str::random(12),
                     'provider' => 'internal',
-                    'started_at' => now(),
+                    'started_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -51,11 +56,11 @@ final class LessonService extends Model
          */
         public function endLesson(int $lessonId, string $correlationId): void
         {
-            DB::transaction(function () use ($lessonId, $correlationId) {
+            $this->db->transaction(function () use ($lessonId, $correlationId) {
                 $lesson = LanguageLesson::findOrFail($lessonId);
                 $call = $lesson->videoCall;
 
-                Log::channel('audit')->info('Ending language lesson', [
+                $this->logger->info('Ending language lesson', [
                     'lesson_id' => $lessonId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -67,7 +72,7 @@ final class LessonService extends Model
 
                 if ($call) {
                     $call->update([
-                        'ended_at' => now(),
+                        'ended_at' => Carbon::now(),
                         'correlation_id' => $correlationId,
                     ]);
                 }
@@ -81,7 +86,7 @@ final class LessonService extends Model
         {
             $lesson = LanguageLesson::findOrFail($lessonId);
 
-            Log::channel('audit')->info('Assigning homework for lesson', [
+            $this->logger->info('Assigning homework for lesson', [
                 'lesson_id' => $lessonId,
                 'correlation_id' => $correlationId,
             ]);

@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\SecurityConsulting\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\SecurityConsulting\Models\SecurityAudit;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class SecurityConsultingService extends Model
+final readonly class SecurityConsultingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createAudit(int $consultantId,$auditType,$consultationHours,$dueDate,string $correlationId=""):SecurityAudit{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("sec:audit:".auth()->id(),4))throw new \RuntimeException("Too many",429);RateLimiter::hit("sec:audit:".auth()->id(),3600);
-    return DB::transaction(function()use($consultantId,$auditType,$consultationHours,$dueDate,$correlationId){$c=SecurityConsultant::findOrFail($consultantId);$total=(int)($c->price_kopecks_per_hour*$consultationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'security_audit','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$a=SecurityAudit::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'consultant_id'=>$consultantId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','audit_type'=>$auditType,'consultation_hours'=>$consultationHours,'due_date'=>$dueDate,'tags'=>['security'=>true]]);Log::channel('audit')->info('Security audit created',['audit_id'=>$a->id,'correlation_id'=>$correlationId]);return $a;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): SecurityAudit {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'security_consulting:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): SecurityAudit {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'security_consulting_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = SecurityAudit::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['securityconsulting' => true],
+            ]);
+
+            $this->logger->info('SecurityConsultingService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeAudit(int $auditId,string $correlationId=""):SecurityAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$a=SecurityAudit::findOrFail($auditId);if($a->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$a->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$a->payout_kopecks,'sec_payout',['correlation_id'=>$correlationId,'audit_id'=>$a->id]);Log::channel('audit')->info('Security audit completed',['audit_id'=>$a->id]);return $a;});}
-    public function cancelAudit(int $auditId,string $correlationId=""):SecurityAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$a=SecurityAudit::findOrFail($auditId);if($a->status==='completed')throw new \RuntimeException("Cannot cancel",400);$a->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($a->payment_status==='completed')$this->wallet->credit(tenant()->id,$a->total_kopecks,'sec_refund',['correlation_id'=>$correlationId,'audit_id'=>$a->id]);Log::channel('audit')->info('Security audit cancelled',['audit_id'=>$a->id]);return $a;});}
-    public function getAudit(int $auditId):SecurityAudit{return SecurityAudit::findOrFail($auditId);}
-    public function getUserAudits(int $clientId){return SecurityAudit::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): SecurityAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): SecurityAudit {
+            $project = SecurityAudit::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('SecurityConsultingService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): SecurityAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): SecurityAudit {
+            $project = SecurityAudit::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('SecurityConsultingService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): SecurityAudit
+    {
+        return SecurityAudit::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return SecurityAudit::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

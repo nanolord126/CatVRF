@@ -2,14 +2,11 @@
 
 namespace App\Domains\Pet\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetProductResource extends Model
+final class PetProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetProduct::class;
 
         protected static ?string $slug = 'pet-products';
@@ -70,7 +67,7 @@ final class PetProductResource extends Model
                         ->money('RUB'),
                     TextColumn::make('current_stock')
                         ->numeric(),
-                    BooleanColumn::make('is_active'),
+                    IconColumn::make('is_active')->boolean(),
                 ])
                 ->filters([
                     //

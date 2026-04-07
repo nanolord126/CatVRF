@@ -1,32 +1,73 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\MasterRatingUpdated;
+use App\Domains\Beauty\Jobs\RecalculateSalonRatingJob;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class HandleMasterRatingUpdatedListener extends Model
+/**
+ * HandleMasterRatingUpdatedListener — CatVRF 2026.
+ *
+ * Инвалидирует кэш рейтинга мастера и запускает пересчёт рейтинга салона.
+ * Runs asynchronously via queue (ShouldQueue).
+ * Maintains correlation_id chain.
+ *
+ * @package App\Domains\Beauty\Listeners
+ */
+final class HandleMasterRatingUpdatedListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private Dispatcher $bus,
+        private CacheRepository $cache,
+        private LoggerInterface $auditLogger,
+    ) {}
+
     public function handle(MasterRatingUpdated $event): void
-        {
-            $master = $event->master;
+    {
+        $this->cache->forget("master_rating:{$event->masterId}");
+        $this->cache->forget("master_reviews:{$event->masterId}");
 
-            // Invalidate master rating cache
-            Cache::forget("master_rating:{$master->id}");
+        $this->bus->dispatch(new RecalculateSalonRatingJob($event->correlationId));
 
-            // Trigger salon rating recalculation
-            if ($master->salon_id) {
-                RecalculateSalonRatingJob::dispatch($event->correlationId);
-            }
+        $this->auditLogger->info('MasterRatingUpdated handled.', [
+            'master_id'      => $event->masterId,
+            'old_rating'     => $event->oldRating,
+            'new_rating'     => $event->newRating,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            Log::channel('audit')->info('MasterRatingUpdated event handled', [
-                'master_id' => $master->id,
-                'old_rating' => $event->oldRating,
-                'new_rating' => $event->newRating,
-                'correlation_id' => $event->correlationId,
-            ]);
-        }
+    public function failed(MasterRatingUpdated $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('HandleMasterRatingUpdatedListener failed.', [
+            'master_id'      => $event->masterId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
+
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(MasterRatingUpdated $event): bool
+    {
+        return $event->masterId > 0;
+    }
+
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-events';
+    }
 }

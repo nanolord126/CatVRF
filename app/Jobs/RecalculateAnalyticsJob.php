@@ -2,29 +2,28 @@
 
 namespace App\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
 
-final class RecalculateAnalyticsJob extends Model
+final class RecalculateAnalyticsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
         public int $tries = 3;
         public int $timeout = 3600;  // 1 hour
 
         public function __construct(
-            public readonly int $tenantId,
-        ) {
+            private readonly int $tenantId,
+        private readonly LogManager $logger,
+    ) {
         }
 
         public function handle(AdvancedAnalyticsService $analyticsService): void {
             $correlationId = Str::uuid()->toString();
 
             try {
-                Log::channel('audit')->info('Analytics recalculation started', [
+                $this->logger->channel('audit')->info('Analytics recalculation started', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $this->tenantId,
                 ]);
@@ -45,12 +44,19 @@ final class RecalculateAnalyticsJob extends Model
                     );
                 }
 
-                Log::channel('audit')->info('Analytics recalculation completed', [
+                $this->logger->channel('audit')->info('Analytics recalculation completed', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $this->tenantId,
                 ]);
             } catch (\Exception $e) {
-                Log::error('Analytics recalculation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Analytics recalculation failed', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $this->tenantId,
                     'error' => $e->getMessage(),

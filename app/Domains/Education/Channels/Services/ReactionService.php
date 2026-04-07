@@ -2,17 +2,21 @@
 
 namespace App\Domains\Education\Channels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReactionService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class ReactionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Добавить реакцию на пост.
@@ -34,7 +38,7 @@ final class ReactionService extends Model
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
             // Проверить разрешённый emoji
-            $allowed = config('channels.allowed_reactions', []);
+            $allowed = $this->config->get('channels.allowed_reactions', []);
             if (!array_key_exists($emoji, $allowed)) {
                 throw new \InvalidArgumentException(
                     "Реакция «{$emoji}» недоступна. Используйте только разрешённые смайлы."
@@ -46,12 +50,12 @@ final class ReactionService extends Model
                 ? "reaction_user:{$userId}"
                 : "reaction_session:{$sessionHash}";
 
-            $maxAttempts = config('channels.limits.reactions_per_minute', 30);
+            $maxAttempts = $this->config->get('channels.limits.reactions_per_minute', 30);
 
-            if (RateLimiter::tooManyAttempts($limitKey, $maxAttempts)) {
+            if ($this->rateLimiter->tooManyAttempts($limitKey, $maxAttempts)) {
                 throw new \RuntimeException('Слишком много реакций. Подождите немного.');
             }
-            RateLimiter::hit($limitKey, 60);
+            $this->rateLimiter->hit($limitKey, 60);
 
             // Проверить, не ставил ли уже эту реакцию
             $alreadyReacted = $this->hasReacted($post, $emoji, $userId, $sessionHash);
@@ -65,7 +69,7 @@ final class ReactionService extends Model
             $fraudScore = $this->calculateFraudScore($post, $userId, $sessionHash, $ipAddress);
 
             if ($fraudScore > 0.8) {
-                Log::channel('fraud_alert')->warning('Reaction fraud detected', [
+                $this->logger->warning('Reaction fraud detected', [
                     'correlation_id' => $correlationId,
                     'post_id'        => $post->id,
                     'user_id'        => $userId,
@@ -76,7 +80,7 @@ final class ReactionService extends Model
                 throw new \RuntimeException('Реакция заблокирована системой безопасности.');
             }
 
-            DB::transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $fraudScore, $correlationId): void {
+            $this->db->transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $fraudScore, $correlationId): void {
                 // Записать лог реакции
                 PostReactionLog::create([
                     'post_id'        => $post->id,
@@ -88,33 +92,33 @@ final class ReactionService extends Model
                     'action'         => 'add',
                     'fraud_score'    => $fraudScore,
                     'correlation_id' => $correlationId,
-                    'reacted_at'     => now(),
+                    'reacted_at'     => Carbon::now(),
                 ]);
 
                 // Обновить JSON reactions в посте (атомарно через DB JSON_SET)
                 $current = $post->reactions ?? [];
                 $current[$emoji] = (int) ($current[$emoji] ?? 0) + 1;
 
-                DB::table('posts')
+                $this->db->table('posts')
                     ->where('id', $post->id)
                     ->update([
                         'reactions'       => json_encode($current),
-                        'reactions_count' => DB::raw('reactions_count + 1'),
+                        'reactions_count' => $this->db->raw('reactions_count + 1'),
                     ]);
 
                 // Обновить daily-статистику
-                DB::table('post_stats_daily')->updateOrInsert(
+                $this->db->table('post_stats_daily')->updateOrInsert(
                     ['post_id' => $post->id, 'stat_date' => today()],
                     [
                         'tenant_id'       => $post->tenant_id,
-                        'reactions_total' => DB::raw('reactions_total + 1'),
-                        'updated_at'      => now(),
+                        'reactions_total' => $this->db->raw('reactions_total + 1'),
+                        'updated_at'      => Carbon::now(),
                     ]
                 );
             });
 
             // Инвалидировать кэш поста
-            Cache::forget("post:{$post->id}");
+            cache()->forget("post:{$post->id}");
 
             return $this->getReactions($post->refresh());
         }
@@ -132,7 +136,7 @@ final class ReactionService extends Model
         ): array {
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            DB::transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $correlationId): void {
+            $this->db->transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $correlationId): void {
                 PostReactionLog::create([
                     'post_id'        => $post->id,
                     'tenant_id'      => $post->tenant_id,
@@ -143,7 +147,7 @@ final class ReactionService extends Model
                     'action'         => 'remove',
                     'fraud_score'    => 0.0,
                     'correlation_id' => $correlationId,
-                    'reacted_at'     => now(),
+                    'reacted_at'     => Carbon::now(),
                 ]);
 
                 $current = $post->reactions ?? [];
@@ -155,15 +159,15 @@ final class ReactionService extends Model
                     $current[$emoji] = $val;
                 }
 
-                DB::table('posts')
+                $this->db->table('posts')
                     ->where('id', $post->id)
                     ->update([
                         'reactions'       => json_encode($current),
-                        'reactions_count' => DB::raw('GREATEST(reactions_count - 1, 0)'),
+                        'reactions_count' => $this->db->raw('GREATEST(reactions_count - 1, 0)'),
                     ]);
             });
 
-            Cache::forget("post:{$post->id}");
+            cache()->forget("post:{$post->id}");
 
             return $this->getReactions($post->refresh());
         }
@@ -175,7 +179,7 @@ final class ReactionService extends Model
          */
         public function getReactions(Post $post): array
         {
-            $allowed   = config('channels.allowed_reactions', []);
+            $allowed   = $this->config->get('channels.allowed_reactions', []);
             $reactions = $post->reactions ?? [];
             $result    = [];
 
@@ -222,7 +226,7 @@ final class ReactionService extends Model
 
             // 1. Много реакций с одного IP за 1 час
             $recentFromIp = PostReactionLog::where('ip_address', $ipAddress)
-                ->where('created_at', '>=', now()->subHour())
+                ->where('created_at', '>=', Carbon::now()->subHour())
                 ->count();
 
             if ($recentFromIp > 50) {
@@ -234,7 +238,7 @@ final class ReactionService extends Model
             // 2. Много реакций на один пост за 5 минут
             $recentOnPost = PostReactionLog::where('post_id', $post->id)
                 ->when($userId, fn ($q) => $q->where('user_id', $userId))
-                ->where('created_at', '>=', now()->subMinutes(5))
+                ->where('created_at', '>=', Carbon::now()->subMinutes(5))
                 ->count();
 
             if ($recentOnPost > 5) {
@@ -247,7 +251,7 @@ final class ReactionService extends Model
                     ->orderBy('reacted_at')
                     ->first();
 
-                if ($firstActivity !== null && $firstActivity->reacted_at->diffInMinutes(now()) < 10) {
+                if ($firstActivity !== null && $firstActivity->reacted_at->diffInMinutes(Carbon::now()) < 10) {
                     $score += 0.1;
                 }
             }

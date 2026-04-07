@@ -13,13 +13,6 @@
       0 => 'Bavix\\Wallet\\WalletServiceProvider',
     ),
   ),
-  'bezhansalleh/filament-language-switch' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'BezhanSalleh\\FilamentLanguageSwitch\\FilamentLanguageSwitchServiceProvider',
-    ),
-  ),
   'blade-ui-kit/blade-heroicons' => 
   array (
     'providers' => 
@@ -90,46 +83,11 @@
       0 => 'Filament\\Widgets\\WidgetsServiceProvider',
     ),
   ),
-  'inertiajs/inertia-laravel' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Inertia\\ServiceProvider',
-    ),
-  ),
   'kirschbaum-development/eloquent-power-joins' => 
   array (
     'providers' => 
     array (
       0 => 'Kirschbaum\\PowerJoins\\PowerJoinsServiceProvider',
-    ),
-  ),
-  'knuckleswtf/scribe' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Knuckles\\Scribe\\ScribeServiceProvider',
-    ),
-  ),
-  'laravel-notification-channels/webpush' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'NotificationChannels\\WebPush\\WebPushServiceProvider',
-    ),
-  ),
-  'laravel/fortify' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Laravel\\Fortify\\FortifyServiceProvider',
-    ),
-  ),
-  'laravel/pail' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Laravel\\Pail\\PailServiceProvider',
     ),
   ),
   'laravel/sail' => 
@@ -139,11 +97,11 @@
       0 => 'Laravel\\Sail\\SailServiceProvider',
     ),
   ),
-  'laravel/scout' => 
+  'laravel/sanctum' => 
   array (
     'providers' => 
     array (
-      0 => 'Laravel\\Scout\\ScoutServiceProvider',
+      0 => 'Laravel\\Sanctum\\SanctumServiceProvider',
     ),
   ),
   'laravel/tinker' => 
@@ -162,17 +120,6 @@
     'providers' => 
     array (
       0 => 'Livewire\\LivewireServiceProvider',
-    ),
-  ),
-  'maatwebsite/excel' => 
-  array (
-    'aliases' => 
-    array (
-      'Excel' => 'Maatwebsite\\Excel\\Facades\\Excel',
-    ),
-    'providers' => 
-    array (
-      0 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
     ),
   ),
   'nesbot/carbon' => 
@@ -196,15 +143,11 @@
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
     ),
   ),
-  'pragmarx/google2fa-laravel' => 
+  'pestphp/pest-plugin-laravel' => 
   array (
-    'aliases' => 
-    array (
-      'Google2FA' => 'PragmaRX\\Google2FALaravel\\Facade',
-    ),
     'providers' => 
     array (
-      0 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
+      0 => 'Pest\\Laravel\\PestServiceProvider',
     ),
   ),
   'ryangjchandler/blade-capture-directive' => 
@@ -218,34 +161,29 @@
       0 => 'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirectiveServiceProvider',
     ),
   ),
-  'saade/filament-fullcalendar' => 
+  'spatie/eloquent-sortable' => 
   array (
     'providers' => 
     array (
-      0 => 'Saade\\FilamentFullCalendar\\FilamentFullCalendarServiceProvider',
+      0 => 'Spatie\\EloquentSortable\\EloquentSortableServiceProvider',
     ),
   ),
-  'sentry/sentry-laravel' => 
+  'spatie/laravel-data' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\LaravelData\\LaravelDataServiceProvider',
+    ),
+  ),
+  'spatie/laravel-ignition' => 
   array (
     'aliases' => 
     array (
-      'Sentry' => 'Sentry\\Laravel\\Facade',
+      'Flare' => 'Spatie\\LaravelIgnition\\Facades\\Flare',
     ),
     'providers' => 
     array (
-      0 => 'Sentry\\Laravel\\ServiceProvider',
-      1 => 'Sentry\\Laravel\\Tracing\\ServiceProvider',
-    ),
-  ),
-  'spatie/laravel-health' => 
-  array (
-    'aliases' => 
-    array (
-      'Health' => 'Spatie\\Health\\Facades\\Health',
-    ),
-    'providers' => 
-    array (
-      0 => 'Spatie\\Health\\HealthServiceProvider',
+      0 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
     ),
   ),
   'spatie/laravel-medialibrary' => 
@@ -260,6 +198,34 @@
     'providers' => 
     array (
       0 => 'Spatie\\Permission\\PermissionServiceProvider',
+    ),
+  ),
+  'spatie/laravel-query-builder' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\QueryBuilder\\QueryBuilderServiceProvider',
+    ),
+  ),
+  'spatie/laravel-tags' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\Tags\\TagsServiceProvider',
+    ),
+  ),
+  'spatie/laravel-translatable' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\Translatable\\TranslatableServiceProvider',
+    ),
+  ),
+  'spatie/php-structure-discoverer' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\StructureDiscoverer\\StructureDiscovererServiceProvider',
     ),
   ),
   'stancl/tenancy' => 

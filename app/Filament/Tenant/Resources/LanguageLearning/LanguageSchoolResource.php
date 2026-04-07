@@ -2,14 +2,17 @@
 
 namespace App\Filament\Tenant\Resources\LanguageLearning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LanguageSchoolResource extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Resource;
+
+final class LanguageSchoolResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = LanguageSchool::class;
         protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
         protected static ?string $navigationGroup = 'Language Learning';
@@ -118,7 +121,7 @@ final class LanguageSchoolResource extends Model
                 ->actions([
                     Tables\Actions\EditAction::make()
                         ->before(function ($record) {
-                            Log::channel('audit')->info('Filament: School edit started', [
+                            $this->logger->info('Filament: School edit started', [
                                 'school_id' => $record->id,
                             ]);
                         }),

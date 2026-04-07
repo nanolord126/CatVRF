@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Enterprise;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Models\Enterprise;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -25,6 +31,11 @@ use Illuminate\Support\Str;
 
 final class EnterpriseResource extends Resource
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static ?string $model = Enterprise::class;
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
     protected static ?string $navigationGroup = 'Вертикали';
@@ -113,9 +124,9 @@ final class EnterpriseResource extends Resource
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function()use(&$data){
+        $this->db->transaction(function()use(&$data){
             $data['correlation_id'] = Str::uuid()->toString();
-            Log::channel('audit')->info('Enterprise company action',['user'=>auth()->id(),'correlation_id'=>$data['correlation_id']]);
+            $this->logger->info('Enterprise company action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
         });
         return $data;
     }

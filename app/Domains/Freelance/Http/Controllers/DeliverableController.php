@@ -2,24 +2,21 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeliverableController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class DeliverableController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly DeliverableService $deliverableService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
-
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(Auth::user(), 'deliverable_create', crc32((string)$correlationId));
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'deliverable_create', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $validated = $request->validate([
@@ -30,23 +27,23 @@ final class DeliverableController extends Model
 
                 $deliverable = $this->deliverableService->submitDeliverable(
                     contractId: $request->input('contract_id'),
-                    freelancerId: Auth::user()?->freelancer->id ?? 0,
+                    freelancerId: $request->user()?->freelancer->id ?? 0,
                     data: $validated,
                     correlationId: (string)$correlationId,
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $deliverable,
                     'correlation_id' => $correlationId,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error submitting deliverable', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error submitting deliverable', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to submit deliverable',
                     'correlation_id' => Str::uuid(),
@@ -61,19 +58,19 @@ final class DeliverableController extends Model
 
                 $this->authorize('view', $deliverable);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $deliverable,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error showing deliverable', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error showing deliverable', [
                     'deliverable_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Deliverable not found',
                     'correlation_id' => Str::uuid(),
@@ -91,18 +88,18 @@ final class DeliverableController extends Model
 
                 $this->deliverableService->approveDeliverable($id, (string)$correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error approving deliverable', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error approving deliverable', [
                     'deliverable_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to approve deliverable',
                     'correlation_id' => Str::uuid(),
@@ -124,18 +121,18 @@ final class DeliverableController extends Model
                     (string)$correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error requesting revision', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error requesting revision', [
                     'deliverable_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to request revision',
                     'correlation_id' => Str::uuid(),
@@ -157,18 +154,18 @@ final class DeliverableController extends Model
                     (string)$correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error rejecting deliverable', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error rejecting deliverable', [
                     'deliverable_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to reject deliverable',
                     'correlation_id' => Str::uuid(),
@@ -183,18 +180,19 @@ final class DeliverableController extends Model
                 $deliverables = FreelanceDeliverable::where('contract_id', $contractId)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $deliverables,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing contract deliverables', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing contract deliverables', [
                     'contract_id' => $contractId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list deliverables',
                     'correlation_id' => Str::uuid(),

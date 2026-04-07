@@ -2,20 +2,16 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeRecommendationService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class VapeRecommendationService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP зависимостью (RecommendationService).
          */
         public function __construct(
-            private RecommendationService $recommendation,
-        ) {}
+            private RecommendationService $recommendation, private readonly LoggerInterface $logger) {}
 
         /**
          * Получить персонализированные рекомендации для пользователя.
@@ -27,7 +23,7 @@ final class VapeRecommendationService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            Log::channel('audit')->info('Vape recommendations: get for user', [
+            $this->logger->info('Vape recommendations: get for user', [
                 'user_id' => $userId,
                 'flavor_profile' => $flavorProfile,
                 'correlation_id' => $correlationId,
@@ -52,7 +48,7 @@ final class VapeRecommendationService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            Log::channel('audit')->info('Vape cross-recommendations: get', [
+            $this->logger->info('Vape cross-recommendations: get', [
                 'user_id' => $userId,
                 'current_product_type' => $currentProductType,
                 'correlation_id' => $correlationId,

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Cleaning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CleaningCompanyResource extends Model
+final class CleaningCompanyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CleaningCompany::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';

@@ -1,20 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Modules\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Modules\Analytics\Models\BehavioralEvent;
+use Modules\Common\Services\AbstractTechnicalVerticalService;
 
-final class MarketingAutomationService extends Model
+final class MarketingAutomationService extends AbstractTechnicalVerticalService
 {
-    use HasFactory;
+    public function isEnabled(): bool
+    {
+        return $this->tenant->settings['marketing_automation_enabled'] ?? true;
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    // Dependencies injected via constructor
-        // Add private readonly properties here
-        /**
-         * Кросс-вертикальный апселл: Цветы после отеля.
-         */
+    /**
+     * Кросс-вертикальный апселл: Цветы после отеля.
+     */
         public function triggerHotelToFlowersUpsell(User $user, $hotelBookingId): void
         {
             // 1. Проверяем, не предлагали ли уже

@@ -2,14 +2,20 @@
 
 namespace App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class EditAutoServiceOrder extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditAutoServiceOrder extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoServiceOrderResource::class;
 
         protected function getHeaderActions(): array
@@ -36,12 +42,12 @@ final class EditAutoServiceOrder extends Model
                             ->rows(3),
                     ])
                     ->action(function (array $data) {
-                        DB::transaction(function () use ($data) {
+                        $this->db->transaction(function () use ($data) {
                             $this->record->status = 'completed';
                             $this->record->total_price = (int) $data['final_price'];
                             $this->record->work_description = $data['work_description'];
                             $this->record->notes = $data['notes'] ?? null;
-                            $this->record->completed_at = now();
+                            $this->record->completed_at = Carbon::now();
                             $this->record->save();
 
                             event(new AutoServiceOrderCompleted(
@@ -49,12 +55,12 @@ final class EditAutoServiceOrder extends Model
                                 $this->record->correlation_id
                             ));
 
-                            Log::channel('audit')->info('Auto service order completed', [
+                            $this->logger->info('Auto service order completed', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'order_id' => $this->record->id,
                                 'final_price' => $data['final_price'],
                                 'completed_at' => $this->record->completed_at,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                             ]);
 
                             $this->notification->make()
@@ -67,10 +73,10 @@ final class EditAutoServiceOrder extends Model
 
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('Auto service order deleted', [
+                        $this->logger->info('Auto service order deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'order_id' => $this->record->id,
-                            'user_id' => auth()->id(),
+                            'user_id' => $this->guard->id(),
                         ]);
                     }),
             ];
@@ -78,11 +84,11 @@ final class EditAutoServiceOrder extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('Auto service order updated', [
+            $this->logger->info('Auto service order updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'order_id' => $this->record->id,
                 'status' => $this->record->status,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
         }
 

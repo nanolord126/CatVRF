@@ -2,20 +2,23 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PartsService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PartsService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Сверхважный метод списания запчастей под заказ.
          */
         public function reservePartsForRepair(AutoRepairOrder $order, array $partsData, string $correlationId): void
         {
-            DB::transaction(function () use ($order, $partsData, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($order, $partsData, $correlationId) {
                 foreach ($partsData as $item) {
                     // $item['part_id'], $item['quantity']
                     $part = AutoPart::lockForUpdate()->findOrFail($item['part_id']);
@@ -43,7 +46,7 @@ final class PartsService extends Model
 
                     $part->save();
 
-                    Log::channel('audit')->info('Part reserved for repair', [
+                    $this->logger->info('Part reserved for repair', [
                         'order_uuid' => $order->uuid,
                         'part_sku' => $part->sku,
                         'quantity' => $item['quantity'],
@@ -61,7 +64,7 @@ final class PartsService extends Model
          */
         public function addStock(array $data, string $correlationId): AutoPart
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 $part = AutoPart::updateOrCreate(
                     ['sku' => $data['sku'], 'tenant_id' => tenant()->id],
                     [
@@ -75,7 +78,7 @@ final class PartsService extends Model
                 $part->current_stock += ($data['quantity'] ?? 0);
                 $part->save();
 
-                Log::channel('audit')->info('Stock replenished', [
+                $this->logger->info('Stock replenished', [
                     'sku' => $part->sku,
                     'added' => $data['quantity'],
                     'new_total' => $part->current_stock,

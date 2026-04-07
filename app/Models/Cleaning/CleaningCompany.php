@@ -4,12 +4,14 @@ namespace App\Models\Cleaning;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class CleaningCompany extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'cleaning_companies';
@@ -46,7 +48,7 @@ final class CleaningCompany extends Model
                 $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
             });
 
-            static::addGlobalScope('tenant', function ($query) {
+            static::addGlobalScope('tenant', function (Builder $query) {
                 if (tenant()) {
                     $query->where('tenant_id', tenant()->id);
                 }

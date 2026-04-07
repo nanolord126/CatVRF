@@ -2,17 +2,17 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class VehicleInspectionController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class VehicleInspectionController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -25,18 +25,18 @@ final class VehicleInspectionController extends Model
                     ->with(['client', 'vehicle', 'inspector'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $inspections,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection index failed', [
+                $this->logger->error('Vehicle inspection index failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve vehicle inspections',
                     'correlation_id' => $correlationId,
@@ -59,12 +59,9 @@ final class VehicleInspectionController extends Model
             ]);
 
             try {
-                $this->fraudControl->check('vehicle_inspection_booking', $request->ip(), [
-                    'user_id' => auth()->id(),
-                    'amount' => $validated['price'],
-                ]);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'amount', amount: 0, correlationId: $correlationId ?? '');
 
-                $inspection = DB::transaction(function () use ($validated, $correlationId) {
+                $inspection = $this->db->transaction(function () use ($validated, $correlationId) {
                     return VehicleInspection::create([
                         ...$validated,
                         'tenant_id' => tenant()->id,
@@ -75,23 +72,23 @@ final class VehicleInspectionController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Vehicle inspection created', [
+                $this->logger->info('Vehicle inspection created', [
                     'correlation_id' => $correlationId,
                     'inspection_id' => $inspection->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $inspection->load(['client', 'vehicle', 'inspector']),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection creation failed', [
+                $this->logger->error('Vehicle inspection creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create vehicle inspection',
                     'correlation_id' => $correlationId,
@@ -101,7 +98,7 @@ final class VehicleInspectionController extends Model
 
         public function show(VehicleInspection $inspection): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $inspection->load(['client', 'vehicle', 'inspector']),
             ]);
@@ -112,33 +109,33 @@ final class VehicleInspectionController extends Model
             $correlationId = Str::uuid()->toString();
 
             try {
-                DB::transaction(function () use ($inspection) {
+                $this->db->transaction(function () use ($inspection) {
                     $inspection->update([
                         'status' => 'completed',
                         'result' => 'passed',
-                        'completed_at' => now(),
-                        'expires_at' => now()->addMonths(12),
+                        'completed_at' => Carbon::now(),
+                        'expires_at' => Carbon::now()->addMonths(12),
                         'certificate_number' => 'CERT-' . Str::uuid()->toString(),
                     ]);
                 });
 
-                Log::channel('audit')->info('Vehicle inspection passed', [
+                $this->logger->info('Vehicle inspection passed', [
                     'correlation_id' => $correlationId,
                     'inspection_id' => $inspection->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $inspection->fresh(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection pass failed', [
+                $this->logger->error('Vehicle inspection pass failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to pass vehicle inspection',
                     'correlation_id' => $correlationId,
@@ -155,32 +152,32 @@ final class VehicleInspectionController extends Model
             ]);
 
             try {
-                DB::transaction(function () use ($inspection, $validated) {
+                $this->db->transaction(function () use ($inspection, $validated) {
                     $inspection->update([
                         'status' => 'completed',
                         'result' => 'failed',
-                        'completed_at' => now(),
+                        'completed_at' => Carbon::now(),
                         'notes' => $validated['notes'],
                     ]);
                 });
 
-                Log::channel('audit')->info('Vehicle inspection failed', [
+                $this->logger->info('Vehicle inspection failed', [
                     'correlation_id' => $correlationId,
                     'inspection_id' => $inspection->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $inspection->fresh(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection fail recording failed', [
+                $this->logger->error('Vehicle inspection fail recording failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to record vehicle inspection failure',
                     'correlation_id' => $correlationId,
@@ -199,27 +196,27 @@ final class VehicleInspectionController extends Model
             ]);
 
             try {
-                DB::transaction(function () use ($inspection, $validated) {
+                $this->db->transaction(function () use ($inspection, $validated) {
                     $inspection->update($validated);
                 });
 
-                Log::channel('audit')->info('Vehicle inspection updated', [
+                $this->logger->info('Vehicle inspection updated', [
                     'correlation_id' => $correlationId,
                     'inspection_id' => $inspection->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $inspection->fresh(['client', 'vehicle', 'inspector']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection update failed', [
+                $this->logger->error('Vehicle inspection update failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update vehicle inspection',
                     'correlation_id' => $correlationId,
@@ -234,23 +231,23 @@ final class VehicleInspectionController extends Model
             try {
                 $inspection->delete();
 
-                Log::channel('audit')->info('Vehicle inspection deleted', [
+                $this->logger->info('Vehicle inspection deleted', [
                     'correlation_id' => $correlationId,
                     'inspection_id' => $inspection->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Vehicle inspection deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle inspection deletion failed', [
+                $this->logger->error('Vehicle inspection deletion failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete vehicle inspection',
                     'correlation_id' => $correlationId,

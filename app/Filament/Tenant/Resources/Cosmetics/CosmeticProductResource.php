@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Cosmetics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CosmeticProductResource extends Model
+final class CosmeticProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CosmeticProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';

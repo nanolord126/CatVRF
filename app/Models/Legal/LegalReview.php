@@ -4,10 +4,13 @@ namespace App\Models\Legal;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 final class LegalReview extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
 
         protected $table = 'legal_reviews';

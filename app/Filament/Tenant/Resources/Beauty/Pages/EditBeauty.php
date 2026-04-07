@@ -1,14 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\BeautyResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * EditBeauty — Filament Page (Layer 9).
+ *
+ * Tenant-scoped salon editing with transaction + audit logging.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\Pages
+ */
 final class EditBeauty extends EditRecord
 {
     protected static string $resource = BeautyResource::class;
@@ -24,16 +34,16 @@ final class EditBeauty extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function () use (&$data) {
+        app(DatabaseManager::class)->transaction(function () use (&$data): void {
             $data['correlation_id'] = Str::uuid()->toString();
-            $data['tenant_id'] = filament()->getTenant()->id;
+            $data['tenant_id']      = filament()->getTenant()?->id;
 
-            Log::channel('audit')->info('Beauty salon updated', [
-                'user_id' => auth()->id(),
+            app(LoggerInterface::class)->info('Beauty salon updated', [
+                'user_id'        => filament()->auth()->id(),
                 'correlation_id' => $data['correlation_id'],
-                'tenant_id' => $data['tenant_id'],
-                'salon_id' => $this->record->id,
-                'salon_name' => $data['name'] ?? null,
+                'tenant_id'      => $data['tenant_id'],
+                'salon_id'       => $this->record->id,
+                'salon_name'     => $data['name'] ?? null,
             ]);
         });
 
@@ -42,9 +52,9 @@ final class EditBeauty extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Beauty edit page saved', [
+        app(LoggerInterface::class)->info('Beauty edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
+            'user_id'   => filament()->auth()->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

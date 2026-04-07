@@ -1,28 +1,41 @@
 <?php declare(strict_types=1);
 
+/**
+ * TriggerVapeMarkingRegistration — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/triggervapemarkingregistration
+ */
+
+
 namespace App\Domains\SportsNutrition\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TriggerVapeMarkingRegistration extends Model
+use Psr\Log\LoggerInterface;
+final class TriggerVapeMarkingRegistration
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         /**
          * Создание слушателя.
          */
-        public function __construct() {}
+        public function __construct(private readonly LoggerInterface $logger) {}
 
         /**
          * Обработка события оплаты.
          */
         public function handle(VapeOrderPaidEvent $event): void
         {
-            Log::channel('audit')->info('Vape order paid listener: sending to marking job', [
+            $this->logger->info('Vape order paid listener: sending to marking job', [
                 'order_id' => $event->orderId,
                 'correlation_id' => $event->correlationId,
             ]);

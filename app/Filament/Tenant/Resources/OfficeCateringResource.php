@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class OfficeCateringResource extends Model
+final class OfficeCateringResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CorporateOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-briefcase';
@@ -54,22 +51,15 @@ final class OfficeCateringResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListOfficeCatering::route('/'),
-                'create' => Pages\\CreateOfficeCatering::route('/create'),
-                'edit' => Pages\\EditOfficeCatering::route('/{record}/edit'),
-                'view' => Pages\\ViewOfficeCatering::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListOfficeCatering::route('/'),
-                'create' => Pages\\CreateOfficeCatering::route('/create'),
-                'edit' => Pages\\EditOfficeCatering::route('/{record}/edit'),
-                'view' => Pages\\ViewOfficeCatering::route('/{record}'),
+                'index' => Pages\ListOfficeCatering::route('/'),
+                'create' => Pages\CreateOfficeCatering::route('/create'),
+                'edit' => Pages\EditOfficeCatering::route('/{record}/edit'),
+                'view' => Pages\ViewOfficeCatering::route('/{record}'),
             ];
         }
 }

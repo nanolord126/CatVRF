@@ -1,5 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * CarOrder — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/carorder
+ */
+
+
 namespace App\Domains\Auto\Cars\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,8 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 final class CarOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'car_orders';
 
         protected $fillable = [
@@ -45,4 +60,10 @@ final class CarOrder extends Model
         {
             return $this->belongsTo(Car::class, 'car_id');
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

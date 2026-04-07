@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FashionRetailResource extends Model
+final class FashionRetailResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BFashionRetailOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +105,15 @@ final class FashionRetailResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashionRetail::route('/'),
-                'create' => Pages\\CreateFashionRetail::route('/create'),
-                'edit' => Pages\\EditFashionRetail::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionRetail::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFashionRetail::route('/'),
-                'create' => Pages\\CreateFashionRetail::route('/create'),
-                'edit' => Pages\\EditFashionRetail::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionRetail::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashionRetail::route('/'),
-                'create' => Pages\\CreateFashionRetail::route('/create'),
-                'edit' => Pages\\EditFashionRetail::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionRetail::route('/{record}'),
+                'index' => Pages\ListFashionRetail::route('/'),
+                'create' => Pages\CreateFashionRetail::route('/create'),
+                'edit' => Pages\EditFashionRetail::route('/{record}/edit'),
+                'view' => Pages\ViewFashionRetail::route('/{record}'),
             ];
         }
 }

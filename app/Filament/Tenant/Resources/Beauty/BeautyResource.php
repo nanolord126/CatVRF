@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeautyResource extends Model
+final class BeautyResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeautySalon::class;
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
         protected static ?string $navigationGroup = 'Вертикали';
@@ -119,9 +117,9 @@ final class BeautyResource extends Model
                 TextColumn::make('city')->label('Город')->searchable(),
                 TextColumn::make('type')->label('Тип')->badge()->color('primary'),
                 TextColumn::make('phone')->label('Телефон')->badge()->color('gray')->limit(15),
-                BadgeColumn::make('is_active')->label('Активен')->colors(['success' => true, 'gray' => false]),
-                BadgeColumn::make('verified')->label('Проверен')->colors(['success' => true, 'gray' => false]),
-                BadgeColumn::make('is_featured')->label('Избранный')->colors(['warning' => true]),
+                IconColumn::make('is_active')->label('Активен')->boolean(),
+                IconColumn::make('verified')->label('Проверен')->boolean(),
+                IconColumn::make('is_featured')->label('Избранный')->boolean(),
                 TextColumn::make('average_rating')->label('Рейтинг')->numeric(decimals: 1)->badge()->color('warning'),
                 TextColumn::make('master_count')->label('Мастеров')->numeric()->badge()->color('secondary'),
                 TextColumn::make('priority')->label('Приоритет')->numeric()->badge(),

@@ -2,14 +2,14 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SurgeService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class SurgeService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Получить коэффициент для точки (lat, lon).
          */
@@ -17,7 +17,7 @@ final class SurgeService extends Model
         {
             $cacheKey = "surge_multiplier_{$tenantId}_{$lat}_{$lon}";
 
-            return Cache::remember($cacheKey, 60, function () use ($lat, $lon, $tenantId) {
+            return $this->cache->remember($cacheKey, 60, function () use ($lat, $lon, $tenantId) {
                 $activeZones = SurgeZone::where('tenant_id', $tenantId)
                     ->where('is_active', true)
                     ->where('expires_at', '>', now())
@@ -31,12 +31,13 @@ final class SurgeService extends Model
                     }
                 }
 
-                Log::channel('audit')->info('Surge multiplier calculated', [
+                $this->logger->info('Surge multiplier calculated', [
                     'tenant_id' => $tenantId,
                     'lat' => $lat,
                     'lon' => $lon,
-                    'multiplier' => $maxMultiplier
-                ]);
+                    'multiplier' => $maxMultiplier,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return $maxMultiplier;
             });
@@ -54,10 +55,11 @@ final class SurgeService extends Model
                 'expires_at' => now()->addMinutes($minutes)
             ]);
 
-            Log::channel('audit')->info('Surge zone activated', [
+            $this->logger->info('Surge zone activated', [
                 'zone_id' => $zoneId,
                 'multiplier' => $multiplier,
-                'expires_at' => $zone->expires_at
+                'expires_at' => $zone->expires_at,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 }

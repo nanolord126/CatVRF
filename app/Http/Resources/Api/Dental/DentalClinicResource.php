@@ -1,15 +1,34 @@
 <?php declare(strict_types=1);
 
+/**
+ * DentalClinicResource — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ * @see https://catvrf.ru/docs/dentalclinicresource
+ */
+
+
 namespace App\Http\Resources\Api\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-final class DentalClinicResource extends Model
+final class DentalClinicResource extends JsonResource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function toArray(Request $request): array
         {
             return [
@@ -26,4 +45,30 @@ final class DentalClinicResource extends Model
                 'is_emergency_friendly' => (bool) ($this->metadata['emergency'] ?? false),
             ];
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
+    /**
+     * Get the component identifier for logging and audit purposes.
+     *
+     * @return string The fully qualified component name
+     */
+    private function getComponentIdentifier(): string
+    {
+        return static::class . '@' . self::VERSION;
+    }
+
 }

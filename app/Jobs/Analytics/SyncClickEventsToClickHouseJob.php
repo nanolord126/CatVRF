@@ -2,14 +2,11 @@
 
 namespace App\Jobs\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class SyncClickEventsToClickHouseJob extends Model
+final class SyncClickEventsToClickHouseJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private string $correlationId;
@@ -17,7 +14,9 @@ final class SyncClickEventsToClickHouseJob extends Model
         public int $tries = 3;
         public array $backoff = [10, 60, 300];
 
-        public function __construct()
+        public function __construct(
+        private readonly LogManager $logger,
+    )
         {
             $this->correlationId = Str::uuid()->toString();
         }
@@ -41,7 +40,7 @@ final class SyncClickEventsToClickHouseJob extends Model
 
                 $duration = microtime(true) - $startTime;
 
-                Log::channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
+                $this->logger->channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
                     'correlation_id' => $this->correlationId,
                     'events_synced' => $totalEvents,
                     'duration_seconds' => round($duration, 2),
@@ -60,7 +59,14 @@ final class SyncClickEventsToClickHouseJob extends Model
                     );
                 }
             } catch (Exception $e) {
-                Log::channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                     'stacktrace' => $e->getTraceAsString(),
@@ -79,12 +85,19 @@ final class SyncClickEventsToClickHouseJob extends Model
                 $ids = $chunk->pluck('id')->toArray();
                 ClickEvent::whereIn('id', $ids)->update(['synced_to_ch' => true]);
 
-                Log::channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
+                $this->logger->channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
                     'count' => count($ids),
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (Exception $e) {
-                Log::channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
                     'error' => $e->getMessage(),
                     'count' => count($chunk),
                     'correlation_id' => $this->correlationId,
@@ -97,7 +110,7 @@ final class SyncClickEventsToClickHouseJob extends Model
 
         public function failed(Exception $exception): void
         {
-            Log::channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
+            $this->logger->channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $this->correlationId,
                 'attempts' => $this->attempts(),

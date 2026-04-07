@@ -2,35 +2,31 @@
 
 namespace App\Domains\ShortTermRentals\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StrBookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class StrBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly StrAvailabilityService $availabilityService,
-            private readonly FraudControlService $fraudControl,
-        ) {}
+
+    public function __construct(private readonly StrAvailabilityService $availabilityService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создание бронирования с холдом залога
          */
         public function createBooking(int $apartmentId, int $userId, Carbon $checkIn, Carbon $checkOut, bool $isB2B = false): StrBooking
         {
-            $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+            $correlationId = $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
             // 1. Предварительная проверка фрода
-            $this->fraudControl->check([
-                'user_id' => $userId,
-                'apartment_id' => $apartmentId,
-                'type' => 'str_booking',
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'str_booking', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($apartmentId, $userId, $checkIn, $checkOut, $isB2B, $correlationId) {
+            return $this->db->transaction(function () use ($apartmentId, $userId, $checkIn, $checkOut, $isB2B, $correlationId) {
                 // 2. Блокуем апартамент на чтение/запись
                 $apartment = StrApartment::lockForUpdate()->findOrFail($apartmentId);
 
@@ -67,7 +63,7 @@ final class StrBookingService extends Model
                 ]);
 
                 // 6. Логирование инициации
-                Log::channel('audit')->info('ShortTermRental Booking Initiated', [
+                $this->logger->info('ShortTermRental Booking Initiated', [
                     'booking_id' => $booking->id,
                     'total_price' => $totalPrice,
                     'deposit_amount' => $depositAmount,
@@ -83,7 +79,7 @@ final class StrBookingService extends Model
          */
         public function confirmPayment(int $bookingId, string $correlationId): void
         {
-            DB::transaction(function () use ($bookingId, $correlationId) {
+            $this->db->transaction(function () use ($bookingId, $correlationId) {
                 $booking = StrBooking::lockForUpdate()->findOrFail($bookingId);
 
                 if ($booking->status !== 'pending') {
@@ -100,7 +96,7 @@ final class StrBookingService extends Model
                 // 7. Очистка кэша доступности
                 $this->availabilityService->invalidateCache($booking->apartment_id);
 
-                Log::channel('audit')->info('ShortTermRental Booking Confirmed & Deposit Held', [
+                $this->logger->info('ShortTermRental Booking Confirmed & Deposit Held', [
                     'booking_id' => $bookingId,
                     'deposit_amount' => $booking->deposit_amount,
                     'correlation_id' => $correlationId,
@@ -116,7 +112,7 @@ final class StrBookingService extends Model
          */
         public function releaseDeposit(int $bookingId, string $correlationId): void
         {
-            DB::transaction(function () use ($bookingId, $correlationId) {
+            $this->db->transaction(function () use ($bookingId, $correlationId) {
                 $booking = StrBooking::lockForUpdate()->findOrFail($bookingId);
 
                 if (!$booking->isDepositHeld()) {
@@ -128,7 +124,7 @@ final class StrBookingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('ShortTermRental Deposit Released', [
+                $this->logger->info('ShortTermRental Deposit Released', [
                     'booking_id' => $bookingId,
                     'amount' => $booking->deposit_amount,
                     'correlation_id' => $correlationId,

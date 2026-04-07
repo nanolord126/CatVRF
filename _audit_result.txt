@@ -1,0 +1,798 @@
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+  AUDIT: catch(\Exception) / catch(Exception) in app/
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+
+TOTAL catch(Exception) blocks: 206
+  тЬЕ ACCEPTABLE: 69
+  тЭМ VIOLATION:  137
+
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  VIOLATIONS (137)
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+
+  [1] app/Filament/Tenant/Resources/Art/ArtworkResource.php:148
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [2] app/Filament/Tenant/Resources/B2BDealResource.php:80
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [3] app/Filament/Tenant/Resources/ListingResource.php:96
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [4] app/Http/Controllers/Account/ConfiguratorController.php:76
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [5] app/Http/Controllers/Analytics/ComparisonHeatmapController.php:213
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [6] app/Http/Controllers/Analytics/CustomMetricController.php:184
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [7] app/Http/Controllers/Analytics/ExportChartController.php:202
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [8] app/Http/Controllers/Analytics/HeatmapController.php:126
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [9] app/Http/Controllers/Analytics/TimeSeriesHeatmapController.php:163
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [10] app/Http/Controllers/Api/AutoPartsOrderController.php:30
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [11] app/Http/Controllers/Api/AutoPartsOrderController.php:52
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [12] app/Http/Controllers/Api/AutoPartsOrderController.php:65
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [13] app/Http/Controllers/Api/ConfectioneryOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [14] app/Http/Controllers/Api/ConfectioneryOrderController.php:50
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [15] app/Http/Controllers/Api/ConfectioneryOrderController.php:68
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [16] app/Http/Controllers/Api/Consulting/ConsultingApiController.php:69
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [17] app/Http/Controllers/Api/Consulting/ConsultingApiController.php:103
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [18] app/Http/Controllers/Api/Consulting/ConsultingApiController.php:126
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [19] app/Http/Controllers/Api/ElectronicsOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [20] app/Http/Controllers/Api/ElectronicsOrderController.php:53
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [21] app/Http/Controllers/Api/ElectronicsOrderController.php:72
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [22] app/Http/Controllers/Api/Entertainment/PublicEventController.php:92
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [23] app/Http/Controllers/Api/EventPlanning/EventPlanningApiController.php:58
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [24] app/Http/Controllers/Api/EventPlanning/EventPlanningApiController.php:106
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [25] app/Http/Controllers/Api/EventPlanning/EventPlanningController.php:38
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [26] app/Http/Controllers/Api/EventPlanning/EventPlanningController.php:67
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [27] app/Http/Controllers/Api/EventPlanning/EventPlanningController.php:89
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [28] app/Http/Controllers/Api/EventPlanning/EventPlanningController.php:106
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [29] app/Http/Controllers/Api/FarmDirectOrderController.php:139
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [30] app/Http/Controllers/Api/Furniture/FurnitureApiController.php:60
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [31] app/Http/Controllers/Api/Furniture/FurnitureApiController.php:103
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [32] app/Http/Controllers/Api/FurnitureOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [33] app/Http/Controllers/Api/FurnitureOrderController.php:51
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [34] app/Http/Controllers/Api/FurnitureOrderController.php:71
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [35] app/Http/Controllers/Api/HealthyFoodDietController.php:26
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [36] app/Http/Controllers/Api/HealthyFoodDietController.php:52
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [37] app/Http/Controllers/Api/HealthyFoodDietController.php:76
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [38] app/Http/Controllers/Api/Insurance/InsuranceApiController.php:41
+      Reason: CATCH_WITHOUT_LOGGING: catches and returns without logging
+      Body:
+        | return $this->errorResponse($e, $correlationId);
+        |             }
+        |         }
+        |         /**
+        |          * Calculate Insurance Premium (POST /api/insurance/calculate).
+        |          */
+        |         public function calculate(Request $request): JsonResponse
+        |         {
+        | ... (72 more lines)
+
+  [39] app/Http/Controllers/Api/Insurance/InsuranceApiController.php:71
+      Reason: CATCH_WITHOUT_LOGGING: catches and returns without logging
+      Body:
+        | return $this->errorResponse($e, $correlationId);
+        |             }
+        |         }
+        |         /**
+        |          * Issue a new policy (POST /api/insurance/policies).
+        |          */
+        |         public function storePolicy(Request $request): JsonResponse
+        |         {
+        | ... (42 more lines)
+
+  [40] app/Http/Controllers/Api/Insurance/InsuranceApiController.php:101
+      Reason: CATCH_WITHOUT_LOGGING: catches and returns without logging
+      Body:
+        | return $this->errorResponse($e, $correlationId);
+        |             }
+        |         }
+        |         /**
+        |          * File a claim (POST /api/insurance/claims).
+        |          */
+        |         public function storeClaim(Request $request): JsonResponse
+        |         {
+        | ... (12 more lines)
+
+  [41] app/Http/Controllers/Api/Insurance/InsuranceApiController.php:137
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [42] app/Http/Controllers/Api/MeatShopsOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [43] app/Http/Controllers/Api/MeatShopsOrderController.php:48
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [44] app/Http/Controllers/Api/OfficeCateringOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [45] app/Http/Controllers/Api/OfficeCateringOrderController.php:48
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [46] app/Http/Controllers/Api/OfficeCateringOrderController.php:67
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [47] app/Http/Controllers/Api/PaymentController.php:39
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [48] app/Http/Controllers/Api/PaymentController.php:92
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [49] app/Http/Controllers/Api/PharmacyOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [50] app/Http/Controllers/Api/PharmacyOrderController.php:48
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [51] app/Http/Controllers/Api/PharmacyOrderController.php:66
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [52] app/Http/Controllers/Api/ToysKidsOrderController.php:27
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [53] app/Http/Controllers/Api/ToysKidsOrderController.php:49
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [54] app/Http/Controllers/Api/V1/Beauty/AppointmentController.php:228
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [55] app/Http/Controllers/Api/V1/Food/OrderController.php:181
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [56] app/Http/Controllers/Api/V1/HealthCheckController.php:89
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [57] app/Http/Controllers/Api/V1/Promo/PromoController.php:137
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [58] app/Http/Controllers/Api/V2/Analytics/AnalyticsController.php:48
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [59] app/Http/Controllers/Api/V2/Analytics/AnalyticsController.php:71
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [60] app/Http/Controllers/Api/V2/Analytics/AnalyticsController.php:100
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [61] app/Http/Controllers/Api/V2/Analytics/AnalyticsController.php:128
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [62] app/Http/Controllers/Api/V2/Analytics/AnalyticsController.php:157
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [63] app/Http/Controllers/Api/V2/Analytics/ExportController.php:124
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [64] app/Http/Controllers/Api/V2/Analytics/ExportController.php:153
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [65] app/Http/Controllers/Api/V2/Analytics/ReportingController.php:169
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [66] app/Http/Controllers/Api/VeganApiController.php:41
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [67] app/Http/Controllers/Api/VeganApiController.php:86
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [68] app/Http/Controllers/Api/VeganApiController.php:145
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [69] app/Http/Controllers/Insurance/InsuranceController.php:131
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [70] app/Http/Controllers/Insurance/InsuranceController.php:163
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [71] app/Http/Controllers/MeshController.php:44
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [72] app/Http/Controllers/MeshController.php:80
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [73] app/Http/Controllers/MeshController.php:115
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [74] app/Http/Controllers/MeshController.php:151
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [75] app/Http/Controllers/MeshController.php:178
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [76] app/Http/Controllers/MeshController.php:204
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [77] app/Http/Controllers/Party/PartySuppliesController.php:100
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [78] app/Http/Controllers/ThreeD/Model3DUploadController.php:163
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [79] app/Http/Livewire/Beauty/AppointmentBookingComponent.php:95
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [80] app/Http/Livewire/Food/OrderTrackingComponent.php:92
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [81] app/Http/Livewire/Hotels/BookingManagementComponent.php:105
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [82] app/Http/Middleware/TwoFactorAuthentication.php:72
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [83] app/Http/Middleware/WebhookSignatureMiddleware.php:162
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [84] app/Jobs/AI/MLRecalculateJob.php:99
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [85] app/Jobs/Analytics/DailyAnalyticsJob.php:70
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [86] app/Jobs/Analytics/DailyAnalyticsJob.php:87
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [87] app/Jobs/Analytics/SyncClickEventsToClickHouseJob.php:61
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [88] app/Jobs/Analytics/SyncClickEventsToClickHouseJob.php:85
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [89] app/Jobs/Analytics/SyncGeoEventsToClickHouseJob.php:61
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [90] app/Jobs/Analytics/SyncGeoEventsToClickHouseJob.php:86
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [91] app/Jobs/Auto/SurgeRecalculationJob.php:66
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [92] app/Jobs/Bonus/BonusUnlockJob.php:47
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [93] app/Jobs/CleanupExpiredBonusesJob.php:160
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [94] app/Jobs/CleanupStreamPeerConnectionsJob.php:65
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [95] app/Jobs/DemandForecastJob.php:170
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [96] app/Jobs/EventPlanning/RecalculateEventProjectBudgetJob.php:74
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [97] app/Jobs/Food/RestaurantIngredientDeductionJob.php:78
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [98] app/Jobs/Insurance/HandlePolicyExpirationJob.php:69
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [99] app/Jobs/Insurance/HandlePolicyExpirationJob.php:85
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [100] app/Jobs/Inventory/LowStockAlertJob.php:67
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [101] app/Jobs/Notifications/SendQueuedNotificationsJob.php:80
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [102] app/Jobs/Payments/BatchPayoutJob.php:88
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [103] app/Jobs/Payments/DailyPayoutJob.php:64
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [104] app/Jobs/PayoutProcessingJob.php:109
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [105] app/Jobs/RecalculateAnalyticsJob.php:51
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [106] app/Jobs/ReleaseHoldJob.php:90
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [107] app/Jobs/SendNotificationJob.php:108
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [108] app/Jobs/SendNotificationJob.php:195
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [109] app/Listeners/Octane/OctaneTickListener.php:69
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [110] app/Listeners/Octane/OctaneTickListener.php:88
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [111] app/Listeners/Octane/ResetRedisConnectionListener.php:45
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [112] app/Livewire/Analytics/TimeSeriesChartComponent.php:492
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [113] app/Livewire/Beauty/AppointmentBooking.php:208
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [114] app/Livewire/Food/B2C/ShoppingCart.php:130
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [115] app/Livewire/Psychology/PsychologicalShowcase.php:42
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [116] app/Models/ComplianceIntegration.php:63
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [117] app/Notifications/Channels/EmailChannel.php:80
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [118] app/Notifications/Channels/PushChannel.php:71
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [119] app/Notifications/Channels/PushChannel.php:87
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [120] app/Notifications/Channels/SmsChannel.php:76
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [121] app/Services/Bonus/BonusService.php:197
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [122] app/Services/Bonus/BonusService.php:277
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [123] app/Services/EmailService.php:77
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [124] app/Services/EmailServiceProvider.php:55
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [125] app/Services/EventPlanning/PackageManagementService.php:82
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [126] app/Services/ImportService.php:31
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [127] app/Services/ImportService.php:64
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [128] app/Services/Insurance/AIRiskAssessmentService.php:98
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [129] app/Services/Insurance/FraudControlService.php:106
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [130] app/Services/Party/AIPartyConstructor.php:79
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [131] app/Services/PaymentGatewayService.php:285
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [132] app/Services/Payout/PayoutService.php:295
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [133] app/Services/Payout/PayoutService.php:383
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [134] app/Services/PushNotificationServiceProvider.php:114
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [135] app/Services/Referral/ReferralService.php:330
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [136] app/Services/SearchService.php:99
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+  [137] app/Services/SmsServiceProvider.php:79
+      Reason: EMPTY_CATCH: silently swallows exception
+      Body:
+        | 
+
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  ACCEPTABLE SUMMARY (69)
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+
+  тЬЕ app/Http/Controllers/Analytics/ComparisonHeatmapController.php:112  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/CustomMetricController.php:95  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/ExportChartController.php:59  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/ExportChartController.php:114  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/ExportChartController.php:157  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/HeatmapController.php:69  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Analytics/TimeSeriesHeatmapController.php:86  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/FarmDirectOrderController.php:35  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/FarmDirectOrderController.php:57  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/FarmDirectOrderController.php:86  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/FarmDirectOrderController.php:113  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Auto/RideController.php:109  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Beauty/AppointmentController.php:96  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Beauty/AppointmentController.php:184  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Food/OrderController.php:102  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Food/OrderController.php:144  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/HealthCheckController.php:37  (health-check endpoint)
+  тЬЕ app/Http/Controllers/Api/V1/HealthCheckController.php:45  (health-check endpoint)
+  тЬЕ app/Http/Controllers/Api/V1/HealthCheckController.php:58  (health-check endpoint)
+  тЬЕ app/Http/Controllers/Api/V1/HealthCheckController.php:74  (health-check endpoint)
+  тЬЕ app/Http/Controllers/Api/V1/Hotels/BookingController.php:105  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Hotels/BookingController.php:149  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Payment/PaymentController.php:135  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Referral/ReferralController.php:62  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V1/Referral/ReferralController.php:153  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ExportController.php:64  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ExportController.php:91  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ReportingController.php:49  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ReportingController.php:72  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ReportingController.php:102  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Api/V2/Analytics/ReportingController.php:126  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Insurance/InsuranceController.php:75  (catch-log-handle)
+  тЬЕ app/Http/Controllers/Internal/WebhookController.php:125  (catch-log-rethrow)
+  тЬЕ app/Http/Controllers/ThreeD/Model3DUploadController.php:107  (catch-log-handle)
+  тЬЕ app/Http/Livewire/Beauty/AppointmentBookingComponent.php:48  (catch-log-handle)
+  тЬЕ app/Http/Livewire/Food/OrderTrackingComponent.php:66  (catch-log-handle)
+  тЬЕ app/Http/Livewire/Hotels/BookingManagementComponent.php:57  (catch-log-rethrow)
+  тЬЕ app/Jobs/BonusAccrualJob.php:89  (job failure handling)
+  тЬЕ app/Jobs/BonusAccrualJob.php:131  (job failure handling)
+  тЬЕ app/Jobs/CleanupExpiredBonusesJob.php:83  (job failure handling)
+  тЬЕ app/Jobs/DemandForecastJob.php:55  (job failure handling)
+  тЬЕ app/Jobs/DemandForecastJob.php:111  (job failure handling)
+  тЬЕ app/Jobs/FraudMLRecalculationJob.php:100  (job failure handling)
+  тЬЕ app/Jobs/LowStockNotificationJob.php:67  (job failure handling)
+  тЬЕ app/Jobs/Notifications/SendQueuedNotificationsJob.php:58  (job failure handling)
+  тЬЕ app/Jobs/Payments/BatchPayoutJob.php:62  (job failure handling)
+  тЬЕ app/Jobs/PayoutProcessingJob.php:129  (job failure handling)
+  тЬЕ app/Jobs/RecommendationQualityJob.php:132  (job failure handling)
+  тЬЕ app/Jobs/ReleaseHoldJob.php:54  (job failure handling)
+  тЬЕ app/Jobs/SendNotificationJob.php:132  (job failure handling)
+  тЬЕ app/Listeners/Octane/OctaneTickListener.php:50  (catch-log-handle)
+  тЬЕ app/Livewire/Analytics/TimeSeriesChartComponent.php:88  (catch-log-rethrow)
+  тЬЕ app/Services/Bonus/BonusService.php:130  (catch-log-rethrow)
+  тЬЕ app/Services/EmailService.php:33  (catch-log-handle)
+  тЬЕ app/Services/EmailService.php:56  (catch-log-handle)
+  тЬЕ app/Services/Insurance/ClaimService.php:84  (catch-log-rethrow)
+  тЬЕ app/Services/Insurance/PolicyService.php:99  (catch-log-rethrow)
+  тЬЕ app/Services/Payment/FiscalService.php:105  (catch-log-rethrow)
+  тЬЕ app/Services/Payment/FiscalService.php:223  (catch-rethrow)
+  тЬЕ app/Services/Payment/FiscalService.php:259  (catch-rethrow)
+  тЬЕ app/Services/Payout/PayoutService.php:115  (catch-log-rethrow)
+  тЬЕ app/Services/Payout/PayoutService.php:214  (catch-log-handle)
+  тЬЕ app/Services/Payout/PayoutService.php:325  (catch-log-rethrow)
+  тЬЕ app/Services/PushNotificationServiceProvider.php:43  (notification channel)
+  тЬЕ app/Services/PushNotificationServiceProvider.php:84  (notification channel)
+  тЬЕ app/Services/Referral/ReferralService.php:121  (catch-log-rethrow)
+  тЬЕ app/Services/Referral/ReferralService.php:203  (catch-log-rethrow)
+  тЬЕ app/Services/Referral/ReferralService.php:252  (catch-log-rethrow)
+  тЬЕ app/Services/Security/IdempotencyService.php:125  (catch-log-rethrow)
+
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+  DONE. Violations: 137 / 206
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР

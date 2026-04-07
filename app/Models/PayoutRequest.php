@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,6 +25,8 @@ final class PayoutRequest extends Model
     protected $table = 'payout_requests';
 
     protected $fillable = [
+        'uuid',
+        'correlation_id',
         'tenant_id',
         'business_group_id',
         'amount',
@@ -47,8 +51,8 @@ final class PayoutRequest extends Model
     protected static function booted()
     {
         static::addGlobalScope('tenant', function ($query) {
-            if (auth()->check() && auth()->user()->tenant_id) {
-                $query->where('tenant_id', auth()->user()->tenant_id);
+            if ($this->guard->check() && $this->guard->user()->tenant_id) {
+                $query->where('tenant_id', $this->guard->user()->tenant_id);
             }
         });
     }

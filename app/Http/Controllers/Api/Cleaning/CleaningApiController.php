@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Api\Cleaning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CleaningApiController extends Model
+final class CleaningApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Constructor with dependency injection.
          */
         public function __construct(
             private readonly CleaningBookingService $bookingService,
-            private readonly AICleaningConstructor $aiConstructor
-        ) {}
+            private readonly AICleaningConstructor $aiConstructor,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * AI Deep Analysis of cleaning area/photo.
          * Generates a recommended service plan.
@@ -39,19 +40,19 @@ final class CleaningApiController extends Model
                     $isCommercial,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'analysis' => $analysis,
                     'offer_id' => Str::random(12),
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('[CleaningAPI] AI Analysis Failed', [
+                $this->logger->channel('audit')->error('[CleaningAPI] AI Analysis Failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'AI Processing failed. Fallback to manual selection.',
                     'error' => $e->getMessage(),
@@ -75,7 +76,7 @@ final class CleaningApiController extends Model
                     'address' => 'required|string',
                 ]);
                 $order = $this->bookingService->createOrder($data, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'order_uuid' => $order->uuid,
@@ -83,11 +84,11 @@ final class CleaningApiController extends Model
                     'message' => 'Order initialized. Please pay the 30% deposit.',
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('[CleaningAPI] Booking Failed', [
+                $this->logger->channel('audit')->error('[CleaningAPI] Booking Failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Cleaning reservation failed.',
                     'error' => $e->getMessage(),
@@ -107,18 +108,18 @@ final class CleaningApiController extends Model
                 ]);
                 $photo = $request->file('after_photo');
                 $result = $this->bookingService->completeJob($orderUuid, $photo, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => $result,
                     'correlation_id' => $correlationId,
                     'message' => 'Cleaning verified. Order closed successfully.',
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('[CleaningAPI] Completion Verification Failed', [
+                $this->logger->channel('audit')->error('[CleaningAPI] Completion Verification Failed', [
                     'order_uuid' => $orderUuid,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Verification failed. Cleaner might need to redo certain spots.',
                     'error' => $e->getMessage(),

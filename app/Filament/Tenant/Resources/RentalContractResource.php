@@ -1,15 +1,37 @@
 <?php declare(strict_types=1);
 
+/**
+ * RentalContractResource — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ * @see https://catvrf.ru/docs/rentalcontractresource
+ */
+
+
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\RealEstate\Models\RentalContract;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
 
-final class RentalContractResource extends Model
+final class RentalContractResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = RentalContract::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document-text';
@@ -39,23 +61,26 @@ final class RentalContractResource extends Model
                                         $listing = \App\Domains\RealEstate\Models\Listing::find($state);
                                         if ($listing) {
                                             $set('rent_amount', $listing->price);
+                                        }
+                                    }
+                                }),
+                        ]),
+                ]);
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListRentalContract::route('/'),
-                'create' => Pages\\CreateRentalContract::route('/create'),
-                'edit' => Pages\\EditRentalContract::route('/{record}/edit'),
-                'view' => Pages\\ViewRentalContract::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListRentalContract::route('/'),
-                'create' => Pages\\CreateRentalContract::route('/create'),
-                'edit' => Pages\\EditRentalContract::route('/{record}/edit'),
-                'view' => Pages\\ViewRentalContract::route('/{record}'),
+                'index' => Pages\ListRentalContract::route('/'),
+                'create' => Pages\CreateRentalContract::route('/create'),
+                'edit' => Pages\EditRentalContract::route('/{record}/edit'),
+                'view' => Pages\ViewRentalContract::route('/{record}'),
             ];
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

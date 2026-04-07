@@ -2,14 +2,11 @@
 
 namespace App\Domains\HomeServices\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ServiceJobResource extends Model
+final class ServiceJobResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ServiceJob::class;
         protected static ?string $navigationIcon = 'heroicon-o-briefcase';
         protected static ?string $navigationLabel = 'Заказы';
@@ -82,6 +79,6 @@ final class ServiceJobResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', tenant()->id);
         }
 }

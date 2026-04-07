@@ -2,30 +2,34 @@
 
 namespace App\Jobs\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class SeasonalDiscountJob extends Model
+final class SeasonalDiscountJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            private string $correlationId
-        ) {}
+            private string $correlationId,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Execute the job.
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('Starting SeasonalDiscountJob', [
+            $this->logger->channel('audit')->info('Starting SeasonalDiscountJob', [
                 'correlation_id' => $this->correlationId,
             ]);
 
-            DB::transaction(function () {
+            $this->db->transaction(function () {
                 $now = now();
 
                 // Get themes ending within 24 hours (for clearance sales)
@@ -45,14 +49,14 @@ final class SeasonalDiscountJob extends Model
                     ->get();
 
                 foreach ($startingThemes as $theme) {
-                    Log::channel('audit')->info("New season theme active: {$theme->name}", [
+                    $this->logger->channel('audit')->info("New season theme active: {$theme->name}", [
                         'theme_id' => $theme->id,
                         'correlation_id' => $this->correlationId,
                     ]);
                 }
             });
 
-            Log::channel('audit')->info('SeasonalDiscountJob completed', [
+            $this->logger->channel('audit')->info('SeasonalDiscountJob completed', [
                 'correlation_id' => $this->correlationId,
             ]);
         }
@@ -79,7 +83,7 @@ final class SeasonalDiscountJob extends Model
                     ])
                 ]);
 
-                Log::channel('audit')->info("Clearance discount applied to festive item", [
+                $this->logger->channel('audit')->info("Clearance discount applied to festive item", [
                     'product_id' => $product->id,
                     'sku' => $product->sku,
                     'price_cents' => $discountedPrice,
@@ -103,7 +107,7 @@ final class SeasonalDiscountJob extends Model
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Starting EventReminderJob', [
+            $this->logger->channel('audit')->info('Starting EventReminderJob', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -115,7 +119,7 @@ final class SeasonalDiscountJob extends Model
                 $this->notifyUser($order);
             }
 
-            Log::channel('audit')->info('EventReminderJob finished', [
+            $this->logger->channel('audit')->info('EventReminderJob finished', [
                 'correlation_id' => $this->correlationId,
                 'reminders_sent' => $upcomingOrders->count(),
             ]);
@@ -124,7 +128,7 @@ final class SeasonalDiscountJob extends Model
         private function notifyUser(\App\Models\Party\PartyOrder $order): void
         {
             // (Simulation of notification delivery via Mail/SMS/Push)
-            Log::channel('audit')->info("Celebration reminder sent to user", [
+            $this->logger->channel('audit')->info("Celebration reminder sent to user", [
                 'order_uuid' => $order->uuid,
                 'user_id' => $order->user_id,
                 'event_date' => $order->event_date,

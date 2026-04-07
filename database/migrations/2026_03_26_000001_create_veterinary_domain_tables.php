@@ -24,7 +24,7 @@ return new class extends Migration
                 
                 $table->string('name')->comment('Название ветеринарной клиники');
                 $table->string('address')->comment('Адрес клиники');
-                $table->point('geo_point')->nullable()->comment('Гео-точка для поиска');
+                $table->geometry('geo_point')->nullable()->comment('Гео-точка для поиска');
                 $table->json('schedule_json')->nullable()->comment('Расписание работы клиники');
                 
                 $table->float('rating')->default(0)->comment('Рейтинг клиники');
@@ -213,3 +213,5 @@ return new class extends Migration
         Schema::dropIfExists('veterinary_clinics');
     }
 };
+
+

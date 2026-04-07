@@ -2,19 +2,21 @@
 
 namespace App\Domains\Veterinary\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GroomingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class GroomingService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
-        }
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+
+    }
 
         private function getCorrelationId(): string
         {
@@ -28,16 +30,16 @@ final class GroomingService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('GroomingService: Booking grooming session', [
+            $this->logger->info('GroomingService: Booking grooming session', [
                 'pet_id' => $petId,
                 'clinic_id' => $clinicId,
                 'at' => $at->format('Y-m-d H:i:s'),
                 'correlation_id' => $correlationId
             ]);
 
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($petId, $clinicId, $at, $price, $correlationId) {
+            return $this->db->transaction(function () use ($petId, $clinicId, $at, $price, $correlationId) {
 
                 // Auto find grooming service for this clinic
                 $service = \App\Domains\Veterinary\Models\VeterinaryService::where('clinic_id', $clinicId)
@@ -61,7 +63,7 @@ final class GroomingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('GroomingService: Session booked', [
+                $this->logger->info('GroomingService: Session booked', [
                     'id' => $appointment->id,
                     'correlation_id' => $correlationId
                 ]);
@@ -77,7 +79,7 @@ final class GroomingService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            DB::transaction(function () use ($appointmentId, $correlationId) {
+            $this->db->transaction(function () use ($appointmentId, $correlationId) {
                 $appointment = VeterinaryAppointment::findOrFail($appointmentId);
                 $appointment->update([
                     'status' => 'completed',
@@ -94,7 +96,7 @@ final class GroomingService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('GroomingService: Session completed and pet tagged', [
+                $this->logger->info('GroomingService: Session completed and pet tagged', [
                     'appointment_id' => $appointmentId,
                     'pet_id' => $pet->id,
                     'correlation_id' => $correlationId

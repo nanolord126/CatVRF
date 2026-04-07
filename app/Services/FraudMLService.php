@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Auto\Models\AutoRepairOrder;
+use App\Domains\Taxi\Models\TaxiRide;
 
-final class FraudMLService extends Model
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class FraudMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Скоринг заказ-наряда СТО.
          * Ищет признаки "завышения цен" или "фиктивных работ".
@@ -36,7 +41,7 @@ final class FraudMLService extends Model
                 $score += 0.4;
             }
 
-            Log::channel('fraud_alert')->info('Repair Order Fraud Score', [
+            $this->logger->channel('fraud_alert')->info('Repair Order Fraud Score', [
                 'order_uuid' => $order->uuid,
                 'score' => $score,
                 'correlation_id' => $correlationId,
@@ -64,7 +69,7 @@ final class FraudMLService extends Model
 
             // 3. Использование одного устройства (fingerprint)
 
-            Log::channel('fraud_alert')->info('Taxi Ride Fraud Score', [
+            $this->logger->channel('fraud_alert')->info('Taxi Ride Fraud Score', [
                 'ride_uuid' => $ride->uuid,
                 'score' => $score,
                 'correlation_id' => $correlationId,

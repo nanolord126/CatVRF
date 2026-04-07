@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BloggerProfileResource extends Model
+final class BloggerProfileResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BloggerProfile::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-circle';
@@ -204,31 +201,15 @@ final class BloggerProfileResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBloggerProfile::route('/'),
-                'create' => Pages\\CreateBloggerProfile::route('/create'),
-                'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
-                'view' => Pages\\ViewBloggerProfile::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBloggerProfile::route('/'),
-                'create' => Pages\\CreateBloggerProfile::route('/create'),
-                'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
-                'view' => Pages\\ViewBloggerProfile::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBloggerProfile::route('/'),
-                'create' => Pages\\CreateBloggerProfile::route('/create'),
-                'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
-                'view' => Pages\\ViewBloggerProfile::route('/{record}'),
+                'index' => Pages\ListBloggerProfile::route('/'),
+                'create' => Pages\CreateBloggerProfile::route('/create'),
+                'edit' => Pages\EditBloggerProfile::route('/{record}/edit'),
+                'view' => Pages\ViewBloggerProfile::route('/{record}'),
             ];
         }
 }

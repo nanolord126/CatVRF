@@ -4,15 +4,18 @@ namespace App\Services;
 
 use App\Models\BalanceTransaction;
 use App\Models\Wallet;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Wallet & Balance Management Service
  * Production 2026 CANON
  *
  * Manages wallet operations: hold, release, credit, debit
- * - Atomic transactions (DB::transaction)
+ * - Atomic transactions ($this->db->transaction)
  * - Optimistic locking (lockForUpdate)
  * - Audit logging on every operation
  * - Correlation ID tracing
@@ -22,6 +25,11 @@ use Illuminate\Support\Facades\Log;
  */
 final class WalletService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     /**
      * Hold (reserve) funds
      *
@@ -34,19 +42,20 @@ final class WalletService
      */
     public function holdAmount(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        $this->fraud->check(new \stdClass());
+        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             // Check balance + hold_stock
             $availableBalance = $wallet->current_balance - $wallet->hold_amount;
             if ($availableBalance < $amount) {
-                Log::channel('audit')->warning('Insufficient funds for hold', [
+                $this->logger->channel('audit')->warning('Insufficient funds for hold', [
                     'correlation_id' => $correlationId,
                     'wallet_id' => $walletId,
                     'requested' => $amount,
                     'available' => $availableBalance,
                 ]);
-                throw new \Exception('Insufficient funds');
+                throw new \DomainException('Insufficient funds');
             }
 
             // Update hold_amount
@@ -65,7 +74,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Hold amount', [
+            $this->logger->channel('audit')->info('Hold amount', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -89,11 +98,11 @@ final class WalletService
      */
     public function releaseHold(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             if ($wallet->hold_amount < $amount) {
-                throw new \Exception('Cannot release more than held');
+                throw new \DomainException('Cannot release more than held');
             }
 
             // Update hold_amount
@@ -112,7 +121,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Release hold', [
+            $this->logger->channel('audit')->info('Release hold', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -135,11 +144,11 @@ final class WalletService
      */
     public function debit(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             if ($wallet->current_balance < $amount) {
-                throw new \Exception('Insufficient balance');
+                throw new \DomainException('Insufficient balance');
             }
 
             // Deduct from balance
@@ -158,7 +167,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Debit funds', [
+            $this->logger->channel('audit')->info('Debit funds', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -182,7 +191,7 @@ final class WalletService
      */
     public function credit(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             // Add to balance
@@ -201,7 +210,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Credit funds', [
+            $this->logger->channel('audit')->info('Credit funds', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,

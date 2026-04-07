@@ -1,16 +1,283 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\RealEstate;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PropertyResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\RealEstate\Domain\Enums\PropertyStatusEnum;
+use App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum;
+use App\Domains\RealEstate\Infrastructure\Eloquent\Models\PropertyModel;
+use App\Filament\Tenant\Resources\RealEstate\PropertyResource\Pages\CreateProperty;
+use App\Filament\Tenant\Resources\RealEstate\PropertyResource\Pages\EditProperty;
+use App\Filament\Tenant\Resources\RealEstate\PropertyResource\Pages\ListProperties;
+use App\Filament\Tenant\Resources\RealEstate\PropertyResource\Pages\ViewProperty;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+
+final class PropertyResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static ?string $model = Property::class;
+    protected static ?string $model = PropertyModel::class;
+
+    protected static ?string $navigationIcon  = 'heroicon-o-home';
+    protected static ?string $navigationGroup = 'Недвижимость';
+    protected static ?string $navigationLabel = 'Объекты';
+    protected static ?string $modelLabel      = 'Объект недвижимости';
+    protected static ?string $pluralModelLabel = 'Объекты недвижимости';
+    protected static ?int    $navigationSort  = 10;
+
+    // ── Form ──────────────────────────────────────────────────────────────────
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Основная информация')
+                ->icon('heroicon-m-home')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('title')
+                        ->label('Название')
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpan(2),
+
+                    Forms\Components\Select::make('type')
+                        ->label('Тип')
+                        ->options(PropertyTypeEnum::options())
+                        ->required()
+                        ->native(false),
+
+                    Forms\Components\Select::make('status')
+                        ->label('Статус')
+                        ->options(PropertyStatusEnum::options())
+                        ->required()
+                        ->native(false),
+
+                    Forms\Components\Textarea::make('description')
+                        ->label('Описание')
+                        ->rows(4)
+                        ->columnSpan(2),
+
+                    Forms\Components\TextInput::make('address')
+                        ->label('Адрес')
+                        ->required()
+                        ->maxLength(500)
+                        ->columnSpan(2),
+                ]),
+
+            Forms\Components\Section::make('Параметры')
+                ->icon('heroicon-m-adjustments-horizontal')
+                ->columns(3)
+                ->schema([
+                    Forms\Components\TextInput::make('price_kopecks')
+                        ->label('Цена (руб)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0)
+                        ->formatStateUsing(static fn (?int $state): ?float => $state !== null ? $state / 100 : null)
+                        ->dehydrateStateUsing(static fn (?float $state): ?int => $state !== null ? (int) round($state * 100) : null)
+                        ->prefix('₽'),
+
+                    Forms\Components\TextInput::make('area_sqm')
+                        ->label('Площадь (м²)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0.1)
+                        ->suffix('м²'),
+
+                    Forms\Components\TextInput::make('rooms')
+                        ->label('Комнат')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(99),
+
+                    Forms\Components\TextInput::make('floor')
+                        ->label('Этаж')
+                        ->numeric()
+                        ->minValue(0),
+
+                    Forms\Components\TextInput::make('total_floors')
+                        ->label('Этажей в доме')
+                        ->numeric()
+                        ->minValue(1),
+
+                    Forms\Components\TextInput::make('correlation_id')
+                        ->label('Correlation ID')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visibleOn('view'),
+                ]),
+
+            Forms\Components\Section::make('Координаты')
+                ->icon('heroicon-m-map-pin')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('latitude')
+                        ->label('Широта')
+                        ->numeric()
+                        ->rules(['min:-90', 'max:90']),
+
+                    Forms\Components\TextInput::make('longitude')
+                        ->label('Долгота')
+                        ->numeric()
+                        ->rules(['min:-180', 'max:180']),
+                ]),
+
+            Forms\Components\Section::make('Фотографии')
+                ->icon('heroicon-m-photo')
+                ->schema([
+                    Forms\Components\Repeater::make('photos')
+                        ->relationship('photos')
+                        ->label('Фото объекта')
+                        ->columns(2)
+                        ->schema([
+                            Forms\Components\FileUpload::make('url')
+                                ->label('Файл')
+                                ->image()
+                                ->directory('real-estate/photos')
+                                ->required(),
+
+                            Forms\Components\TextInput::make('caption')
+                                ->label('Подпись')
+                                ->maxLength(255),
+                        ]),
+                ]),
+
+            Forms\Components\Section::make('Документы')
+                ->icon('heroicon-m-document')
+                ->schema([
+                    Forms\Components\Repeater::make('documents')
+                        ->relationship('documents')
+                        ->label('Документы объекта')
+                        ->columns(2)
+                        ->schema([
+                            Forms\Components\FileUpload::make('url')
+                                ->label('Файл')
+                                ->directory('real-estate/documents')
+                                ->required(),
+
+                            Forms\Components\TextInput::make('name')
+                                ->label('Название документа')
+                                ->required()
+                                ->maxLength(255),
+
+                            Forms\Components\TextInput::make('doc_type')
+                                ->label('Тип документа')
+                                ->maxLength(100)
+                                ->placeholder('Свидетельство, Договор...'),
+                        ]),
+                ]),
+        ]);
+    }
+
+    // ── Table ─────────────────────────────────────────────────────────────────
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(40),
+
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Тип')
+                    ->formatStateUsing(static fn (string $state): string => PropertyTypeEnum::from($state)->label())
+                    ->badge()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->color(static fn (string $state): string => PropertyStatusEnum::from($state)->color())
+                    ->formatStateUsing(static fn (string $state): string => PropertyStatusEnum::from($state)->label())
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('price_kopecks')
+                    ->label('Цена')
+                    ->formatStateUsing(static fn (int $state): string => number_format($state / 100, 0, '.', ' ') . ' ₽')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('area_sqm')
+                    ->label('Площадь')
+                    ->suffix(' м²')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('rooms')
+                    ->label('Комнат')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('address')
+                    ->label('Адрес')
+                    ->searchable()
+                    ->limit(35)
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Создан')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('type')
+                    ->label('Тип')
+                    ->options(PropertyTypeEnum::options()),
+
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Статус')
+                    ->options(PropertyStatusEnum::options()),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    // ── Query ─────────────────────────────────────────────────────────────────
+
+    public static function getEloquentQuery(): Builder
+    {
+        $tenantId = filament()->getTenant()?->id;
+
+        return parent::getEloquentQuery()
+            ->withoutGlobalScope('tenant')
+            ->when($tenantId !== null, static fn (Builder $q) => $q->where('tenant_id', $tenantId))
+            ->with(['photos', 'documents', 'agent']);
+    }
+
+    // ── Pages ─────────────────────────────────────────────────────────────────
+
+    public static function getPages(): array
+    {
+        return [
+            'index'  => ListProperties::route('/'),
+            'create' => CreateProperty::route('/create'),
+            'view'   => ViewProperty::route('/{record}'),
+            'edit'   => EditProperty::route('/{record}/edit'),
+        ];
+    }
+}
+
 
         protected static ?string $navigationIcon = 'heroicon-o-home';
 
@@ -316,7 +583,6 @@ final class PropertyResource extends Model
                 Tables\Columns\BadgeColumn::make('type')
                     ->label('Тип')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'apartment' => 'Квартира',
                         'house' => 'Дом',
                         'land' => 'Участок',
                         'commercial' => 'Коммерция',
@@ -325,7 +591,6 @@ final class PropertyResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'apartment' => 'blue',
                         'house' => 'green',
                         'land' => 'amber',
                         'commercial' => 'purple',
@@ -356,14 +621,12 @@ final class PropertyResource extends Model
                 Tables\Columns\BadgeColumn::make('property_status')
                     ->label('Статус')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'for_sale' => 'На продажу',
                         'for_rent' => 'В аренду',
                         'sold' => 'Продано',
                         'rented' => 'Сдано',
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'for_sale' => 'info',
                         'for_rent' => 'warning',
                         'sold' => 'success',
                         'rented' => 'success',
@@ -486,9 +749,9 @@ final class PropertyResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Property verified', [
+                            $this->logger->info('Property verified', [
                                 'property_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -501,9 +764,9 @@ final class PropertyResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Property featured', [
+                            $this->logger->info('Property featured', [
                                 'property_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -515,9 +778,9 @@ final class PropertyResource extends Model
                     Tables\Actions\DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Property bulk deleted', [
+                                $this->logger->info('Property bulk deleted', [
                                     'property_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -530,9 +793,9 @@ final class PropertyResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Property activated', [
+                                $this->logger->info('Property activated', [
                                     'property_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -547,9 +810,9 @@ final class PropertyResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => false]);
-                                Log::channel('audit')->info('Property deactivated', [
+                                $this->logger->info('Property deactivated', [
                                     'property_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -564,9 +827,9 @@ final class PropertyResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Property bulk verified', [
+                                $this->logger->info('Property bulk verified', [
                                     'property_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

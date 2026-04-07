@@ -2,14 +2,11 @@
 
 namespace App\Domains\Taxi\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TaxiVehicleResource extends Model
+final class TaxiVehicleResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = TaxiVehicle::class;
 
         protected static ?string $navigationLabel = 'Автомобили';

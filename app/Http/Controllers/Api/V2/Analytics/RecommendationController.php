@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers\Api\V2\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class RecommendationController extends Model
+final class RecommendationController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly RecommendationMLService $recommendationService;
-        public function __construct(RecommendationMLService $recommendationService)
+        public function __construct(RecommendationMLService $recommendationService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    )
         {
             $this->recommendationService = $recommendationService;
             // PRODUCTION-READY 2026 CANON: Middleware для ML Recommendations
@@ -37,18 +43,18 @@ final class RecommendationController extends Model
                     'device_type' => $request->get('device_type', 'mobile'),
                 ];
                 $recommendations = $this->recommendationService->getForUser(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     vertical: $vertical,
                     context: $context
                 );
-                Log::channel('audit')->info('Recommendations fetched', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Recommendations fetched', [
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                     'vertical' => $vertical,
                     'count' => $recommendations->count(),
                     'timestamp' => now()->toIso8601String()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'data' => [
                         'count' => $recommendations->count(),
@@ -57,12 +63,12 @@ final class RecommendationController extends Model
                     'timestamp' => now()->toIso8601String()
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Failed to get recommendations', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('analytics_errors')->error('Failed to get recommendations', [
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'error' => 'Failed to generate recommendations'
                 ], 500);
@@ -87,13 +93,13 @@ final class RecommendationController extends Model
                 foreach ($verticals as $vertical) {
                     if ($vertical !== $currentVertical) {
                         $recs = $this->recommendationService->getForUser(
-                            userId: auth()->id(),
+                            userId: $this->guard->id(),
                             vertical: $vertical
                         );
                         $recommendations = $recommendations->merge($recs);
                     }
                 }
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'data' => [
                         'count' => $recommendations->count(),
@@ -101,11 +107,11 @@ final class RecommendationController extends Model
                     ]
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
+                $this->logger->channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'error' => 'Failed to generate cross-vertical recommendations'
                 ], 500);
@@ -122,24 +128,24 @@ final class RecommendationController extends Model
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
             try {
-                \DB::table('recommendation_logs')->insert([
-                    'user_id' => auth()->id(),
-                    'tenant_id' => auth()->user()->tenant_id,
+                $this->db->table('recommendation_logs')->insert([
+                    'user_id' => $this->guard->id(),
+                    'tenant_id' => $this->guard->user()->tenant_id,
                     'recommended_item_id' => $request->get('item_id'),
                     'source' => $request->get('source'), // behavior, geo, embedding, etc.
                     'clicked_at' => now(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'data' => ['tracked' => true]
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Failed to track recommendation click', [
+                $this->logger->channel('analytics_errors')->error('Failed to track recommendation click', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'correlation_id' => $correlationId,
                     'error' => 'Failed to track click'
                 ], 500);

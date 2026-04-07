@@ -2,26 +2,31 @@
 
 namespace App\Domains\Sports\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductPurchaseCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductPurchaseCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(PurchaseCreated $event): void
         {
             try {
-                Log::channel('audit')->info('Processing purchase commission deduction', [
+                $this->logger->info('Processing purchase commission deduction', [
                     'purchase_id' => $event->purchase->id,
                     'commission_amount' => $event->purchase->commission_amount,
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($event) {
                     $wallet = \App\Models\Wallet::lockForUpdate()
                         ->where('tenant_id', $event->purchase->tenant_id)
                         ->firstOrFail();
@@ -41,12 +46,12 @@ final class DeductPurchaseCommissionListener extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Purchase commission deducted successfully', [
+                $this->logger->info('Purchase commission deducted successfully', [
                     'purchase_id' => $event->purchase->id,
                     'correlation_id' => $event->correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct purchase commission', [
+                $this->logger->error('Failed to deduct purchase commission', [
                     'purchase_id' => $event->purchase->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

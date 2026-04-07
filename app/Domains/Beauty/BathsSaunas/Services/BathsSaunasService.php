@@ -1,21 +1,187 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\BathsSaunas\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BathsSaunasService extends Model
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Beauty\BathsSaunas\Models\BathBooking;
+use App\Domains\Beauty\BathsSaunas\Models\Bathhouse;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Collection;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+
+/**
+ * BathsSaunasService — сервис управления бронированием бань и саун.
+ *
+ * Все суммы в копейках. Без статических фасадов.
+ * Идентификатор клиента и tenant передаются явно через параметры.
+ */
+final readonly class BathsSaunasService
 {
-    use HasFactory;
+    private const PLATFORM_COMMISSION = 0.14;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createBooking(int $bathId,$bookingDate,$durationHours,$bathType,string $correlationId=""):BathBooking{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("bath:book:".auth()->id(),12))throw new \RuntimeException("Too many",429);RateLimiter::hit("bath:book:".auth()->id(),3600);
-    return DB::transaction(function()use($bathId,$bookingDate,$durationHours,$bathType,$correlationId){$b=Bathhouse::findOrFail($bathId);$total=(int)($b->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'bath_booking','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$bk=BathBooking::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'bath_id'=>$bathId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','booking_date'=>$bookingDate,'duration_hours'=>$durationHours,'bath_type'=>$bathType,'tags'=>['bath'=>true]]);Log::channel('audit')->info('Bath booking created',['booking_id'=>$bk->id,'correlation_id'=>$correlationId]);return $bk;});
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $walletService,
+        private LoggerInterface $auditLogger,
+        private \Illuminate\Database\DatabaseManager $db,
+        private Guard $guard,
+    ) {}
+
+    /**
+     * Создаёт бронирование бани.
+     *
+     * @throws \RuntimeException При блокировке фрода.
+     */
+    public function createBooking(
+        int    $bathId,
+        string $bookingDate,
+        int    $durationHours,
+        string $bathType,
+        int    $clientId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BathBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        $fraudCheck = $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'bath_booking', amount: 0, correlationId: $correlationId ?? '');
+
+        if (($fraudCheck['decision'] ?? '') === 'block') {
+            throw new \RuntimeException('Операция заблокирована службой безопасности.', 403);
+        }
+
+        return $this->db->transaction(function () use (
+            $bathId, $bookingDate, $durationHours,
+            $bathType, $clientId, $tenantId, $correlationId,
+        ): BathBooking {
+            $bathhouse = Bathhouse::withoutGlobalScopes()->findOrFail($bathId);
+
+            $total  = $bathhouse->calculatePrice($durationHours);
+            $payout = (int) ($total * (1 - self::PLATFORM_COMMISSION));
+
+            $booking = BathBooking::create([
+                'uuid'           => Uuid::uuid4()->toString(),
+                'tenant_id'      => $tenantId,
+                'bath_id'        => $bathId,
+                'client_id'      => $clientId,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $total,
+                'payout_kopecks' => $payout,
+                'payment_status' => 'pending',
+                'booking_date'   => $bookingDate,
+                'duration_hours' => $durationHours,
+                'bath_type'      => $bathType,
+                'tags'           => ['bath' => true],
+            ]);
+
+            $this->auditLogger->info('Bath booking created.', [
+                'booking_id'    => $booking->id,
+                'correlation_id'=> $correlationId,
+                'total_kopecks' => $total,
+            ]);
+
+            return $booking;
+        });
     }
-    public function completeBooking(int $bookingId,string $correlationId=""):BathBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=BathBooking::findOrFail($bookingId);if($b->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$b->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$b->payout_kopecks,'bath_payout',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Bath booking completed',['booking_id'=>$b->id]);return $b;});}
-    public function cancelBooking(int $bookingId,string $correlationId=""):BathBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=BathBooking::findOrFail($bookingId);if($b->status==='completed')throw new \RuntimeException("Cannot cancel",400);$b->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($b->payment_status==='completed')$this->wallet->credit(tenant()->id,$b->total_kopecks,'bath_refund',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Bath booking cancelled',['booking_id'=>$b->id]);return $b;});}
-    public function getBooking(int $bookingId):BathBooking{return BathBooking::findOrFail($bookingId);}
-    public function getUserBookings(int $clientId){return BathBooking::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершает бронирование и начисляет выплату.
+     *
+     * @throws \RuntimeException Если бронирование не оплачено.
+     */
+    public function completeBooking(
+        int    $bookingId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BathBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($bookingId, $tenantId, $correlationId): BathBooking {
+            $booking = BathBooking::withoutGlobalScopes()->findOrFail($bookingId);
+
+            if (! $booking->isPaid()) {
+                throw new \RuntimeException('Бронирование не оплачено — завершение невозможно.', 400);
+            }
+
+            $booking->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->walletService->credit(
+                $tenantId,
+                $booking->payout_kopecks,
+                \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,
+                $correlationId,
+                null,
+                null,
+                [
+                    'booking_id'    => $booking->id,
+                    'correlation_id'=> $correlationId,
+                ],
+            );
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Отменяет бронирование с возвратом при необходимости.
+     *
+     * @throws \RuntimeException Если бронирование уже завершено.
+     */
+    public function cancelBooking(
+        int    $bookingId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BathBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($bookingId, $tenantId, $correlationId): BathBooking {
+            $booking = BathBooking::withoutGlobalScopes()->findOrFail($bookingId);
+
+            if (! $booking->isCancellable()) {
+                throw new \RuntimeException('Бронирование уже завершено — отмена невозможна.', 400);
+            }
+
+            $booking->update([
+                'status'         => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($booking->isPaid()) {
+                $this->walletService->credit(
+                    $tenantId,
+                    $booking->total_kopecks,
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    $correlationId,
+                    null,
+                    null,
+                    [
+                        'booking_id'    => $booking->id,
+                        'correlation_id'=> $correlationId,
+                    ],
+                );
+            }
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Возвращает историю бронирований клиента (последние 10).
+     *
+     * @return Collection<int, BathBooking>
+     */
+    public function getClientBookings(int $clientId): Collection
+    {
+        return BathBooking::withoutGlobalScopes()
+            ->where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TicketSaleResource extends Model
+final class TicketSaleResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = TicketSale::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -47,8 +44,7 @@ final class TicketSaleResource extends Model
                     Tables\Columns\TextColumn::make('ticket_price')
                         ->money('RUB'),
                     Tables\Columns\TextColumn::make('barcode'),
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->colors(['valid' => 'success', 'used' => 'info', 'cancelled' => 'warning', 'refunded' => 'danger']),
+                    Tables\Columns\TextColumn::make('status')->badge(),
                 ])
                 ->filters([
                     Tables\Filters\TrashedFilter::make(),

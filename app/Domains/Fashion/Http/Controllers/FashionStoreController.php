@@ -2,18 +2,16 @@
 
 namespace App\Domains\Fashion\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FashionStoreController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FashionStoreController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly OrderService $orderService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly OrderService $orderService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -23,10 +21,10 @@ final class FashionStoreController extends Model
                     ->with('products')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $stores, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $stores, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch stores', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                $this->logger->error('Failed to fetch stores', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -34,9 +32,9 @@ final class FashionStoreController extends Model
         {
             try {
                 $store = FashionStore::with('products', 'orders')->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $store, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $store, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Store not found', 'correlation_id' => Str::uuid()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Store not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
@@ -45,9 +43,9 @@ final class FashionStoreController extends Model
             try {
                 $store = FashionStore::findOrFail($id);
                 $products = $store->products()->paginate(20);
-                return response()->json(['success' => true, 'data' => $products, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $products, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -56,69 +54,69 @@ final class FashionStoreController extends Model
             try {
                 $store = FashionStore::findOrFail($id);
                 $reviews = $store->products()->with('reviews')->get()->flatMap->reviews->paginate(20);
-                return response()->json(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $reviews, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function store(): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
-                DB::transaction(function () use ($correlationId) {
+                $this->db->transaction(function () use ($correlationId) {
                     FashionStore::create([
                         'uuid' => Str::uuid(),
-                        'tenant_id' => tenant('id'),
-                        'owner_id' => auth()->id(),
-                        'name' => request('name'),
-                        'description' => request('description'),
-                        'categories' => collect(request('categories', [])),
+                        'tenant_id' => tenant()->id,
+                        'owner_id' => $request->user()?->id,
+                        'name' => $request->input('name'),
+                        'description' => $request->input('description'),
+                        'categories' => collect($request->input('categories', [])),
                         'is_active' => true,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Fashion store created', [
-                        'owner_id' => auth()->id(),
-                        'name' => request('name'),
+                    $this->logger->info('Fashion store created', [
+                        'owner_id' => $request->user()?->id,
+                        'name' => $request->input('name'),
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 
         public function myStore(): JsonResponse
         {
             try {
-                $store = FashionStore::where('owner_id', auth()->id())->firstOrFail();
-                return response()->json(['success' => true, 'data' => $store, 'correlation_id' => Str::uuid()]);
+                $store = FashionStore::where('owner_id', $request->user()?->id)->firstOrFail();
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $store, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Store not found', 'correlation_id' => Str::uuid()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Store not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $store = FashionStore::findOrFail($id);
 
-                DB::transaction(function () use ($store, $correlationId) {
-                    $store->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Fashion store updated', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                $this->db->transaction(function () use ($store, $correlationId) {
+                    $store->update([...$request->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
+                    $this->logger->info('Fashion store updated', ['store_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -128,14 +126,14 @@ final class FashionStoreController extends Model
                 $store = FashionStore::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($store, $correlationId) {
+                $this->db->transaction(function () use ($store, $correlationId) {
                     $store->delete();
-                    Log::channel('audit')->info('Fashion store deleted', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Fashion store deleted', ['store_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -145,14 +143,14 @@ final class FashionStoreController extends Model
                 $store = FashionStore::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($store, $correlationId) {
+                $this->db->transaction(function () use ($store, $correlationId) {
                     $store->update(['is_verified' => true, 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Fashion store verified', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Fashion store verified', ['store_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -160,9 +158,9 @@ final class FashionStoreController extends Model
         {
             try {
                 $stores = FashionStore::with('products')->paginate(50);
-                return response()->json(['success' => true, 'data' => $stores, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $stores, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -174,7 +172,7 @@ final class FashionStoreController extends Model
                 $verifiedStores = FashionStore::where('is_verified', true)->count();
                 $totalProducts = \App\Domains\Fashion\Models\FashionProduct::count();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'total_stores' => $totalStores,
@@ -185,7 +183,7 @@ final class FashionStoreController extends Model
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

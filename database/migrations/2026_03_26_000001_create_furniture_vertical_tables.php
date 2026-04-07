@@ -168,3 +168,5 @@ return new class extends Migration
         Schema::dropIfExists('furniture_stores');
     }
 };
+
+

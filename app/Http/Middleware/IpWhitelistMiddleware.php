@@ -2,14 +2,20 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class IpWhitelistMiddleware extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class IpWhitelistMiddleware
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Проверить, находится ли IP в whitelist.
          *
@@ -28,27 +34,27 @@ final class IpWhitelistMiddleware extends Model
             string $whitelist = 'webhook'
         ): Response {
             $clientIp = $this->getClientIp($request);
-            $allowedIps = config("security.ip_whitelist.{$whitelist}", []);
+            $allowedIps = $this->config->get("security.ip_whitelist.{$whitelist}", []);
 
             if (empty($allowedIps)) {
-                Log::channel('security')->warning('IP whitelist not configured', [
+                $this->logger->channel('security')->warning('IP whitelist not configured', [
                     'whitelist' => $whitelist,
                 ]);
-                return response()->json(['error' => 'IP whitelist not configured'], 500);
+                return $this->response->json(['error' => 'IP whitelist not configured'], 500);
             }
 
             if (!$this->isIpWhitelisted($clientIp, $allowedIps)) {
-                Log::channel('fraud_alert')->warning('IP blocked by whitelist', [
+                $this->logger->channel('fraud_alert')->warning('IP blocked by whitelist', [
                     'whitelist' => $whitelist,
                     'client_ip' => $clientIp,
                     'endpoint' => $request->path(),
                     'user_agent' => $request->userAgent(),
                 ]);
 
-                return response()->json(['error' => 'IP not whitelisted'], 403);
+                return $this->response->json(['error' => 'IP not whitelisted'], 403);
             }
 
-            Log::channel('audit')->debug('IP whitelisted', [
+            $this->logger->channel('audit')->debug('IP whitelisted', [
                 'whitelist' => $whitelist,
                 'client_ip' => $clientIp,
             ]);

@@ -2,14 +2,20 @@
 
 namespace App\Services\Deployment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MonitoringAlertingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class MonitoringAlertingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Регистрирует метрику
          *
@@ -20,11 +26,12 @@ final class MonitoringAlertingService extends Model
          */
         public static function recordMetric(string $metricName, float $value, array $tags = []): void
         {
-            Log::channel('metrics')->info('Metric recorded', [
+            $this->logger->channel('metrics')->info('Metric recorded', [
                 'metric' => $metricName,
                 'value' => $value,
                 'tags' => $tags,
                 'timestamp' => now()->toDateTimeString(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 
@@ -53,7 +60,7 @@ final class MonitoringAlertingService extends Model
                 'status' => 'active',
             ];
 
-            Log::channel('alerts')->info('Alert created', $alert);
+            $this->logger->channel('alerts')->info('Alert created', $alert);
 
             return $alert;
         }
@@ -116,19 +123,19 @@ final class MonitoringAlertingService extends Model
             array $recipients = []
         ): void {
             $severity_color = match ($severity) {
-                'critical' => 'danger',
                 'error' => 'danger',
                 'warning' => 'warning',
                 'info' => 'info',
                 default => 'info',
             };
 
-            Log::channel('alerts')->$severity('Alert triggered', [
+            $this->logger->channel('alerts')->$severity('Alert triggered', [
                 'alert' => $alertName,
                 'message' => $message,
                 'severity' => $severity,
                 'recipients' => $recipients,
                 'timestamp' => now()->toDateTimeString(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 

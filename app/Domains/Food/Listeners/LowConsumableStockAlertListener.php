@@ -1,19 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * LowConsumableStockAlertListener — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/lowconsumablestockalertlistener
+ */
+
+
 namespace App\Domains\Food\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LowConsumableStockAlertListener extends Model
+use Psr\Log\LoggerInterface;
+final class LowConsumableStockAlertListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(LowConsumableStock $event): void
         {
             try {
-                Log::channel('audit')->warning('Low consumable stock alert', [
+                $this->logger->warning('Low consumable stock alert', [
                     'consumable_id' => $event->consumable->id,
                     'name' => $event->consumable->name,
                     'current_stock' => $event->consumable->current_stock,
@@ -23,7 +39,7 @@ final class LowConsumableStockAlertListener extends Model
                 ]);
                 // Notification::send($event->consumable->restaurant->owner, new LowStockNotification($event->consumable));
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Low stock alert failed', [
+                $this->logger->error('Low stock alert failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -31,4 +47,20 @@ final class LowConsumableStockAlertListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

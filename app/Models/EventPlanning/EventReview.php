@@ -2,12 +2,15 @@
 
 namespace App\Models\EventPlanning;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 final class EventReview extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
 
         protected $table = 'event_reviews';
@@ -27,17 +30,21 @@ final class EventReview extends Model
         protected static function booted(): void
         {
             static::creating(function (EventReview $model) {
-                $model->uuid = (string) Str::uuid();
-                $model->correlation_id = (string) Str::uuid();
+                if (empty($model->uuid)) {
+                    $model->uuid = (string) Str::uuid();
+                }
+                if (empty($model->correlation_id)) {
+                    $model->correlation_id = (string) Str::uuid();
+                }
 
                 if (empty($model->tenant_id)) {
-                    $model->tenant_id = auth()->user()?->tenant_id;
+                    $model->tenant_id = $this->guard->user()?->tenant_id;
                 }
             });
 
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check()) {
-                    $query->where('tenant_id', auth()->user()?->tenant_id);
+                if ($this->guard->check()) {
+                    $query->where('tenant_id', $this->guard->user()?->tenant_id);
                 }
             });
         }

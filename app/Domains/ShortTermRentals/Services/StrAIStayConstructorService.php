@@ -2,25 +2,23 @@
 
 namespace App\Domains\ShortTermRentals\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StrAIStayConstructorService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class StrAIStayConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly AIConstructorService $aiService,
+
+    public function __construct(private readonly AIConstructorService $aiService,
             private readonly StrAvailabilityService $availabilityService,
-        ) {}
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Подбор апартаментов по фото "мечты" пользователя или описанию
          */
         public function proposeApartsByInspo(int $userId, string $inspoText, ?string $photoPath = null): Collection
         {
-            $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+            $correlationId = $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
             // 1. Анализируем вкус пользователя (UserTasteProfile - симуляция профиля)
             // В реальном проекте используем: $profile = $user->taste_profile;
@@ -52,7 +50,7 @@ final class StrAIStayConstructorService extends Model
             });
 
             // 5. Логирование использования AI
-            Log::channel('audit')->info('AI Stay Constructor Propose', [
+            $this->logger->info('AI Stay Constructor Propose', [
                 'user_id' => $userId,
                 'inspo' => $inspoText,
                 'suggested_count' => $availableAparts->count(),
@@ -69,7 +67,7 @@ final class StrAIStayConstructorService extends Model
         {
             $apartment = StrApartment::findOrFail($apartmentId);
 
-            Log::channel('audit')->info('AI Virtual Stay Preview Generated', [
+            $this->logger->info('AI Virtual Stay Preview Generated', [
                 'apartment_id' => $apartmentId,
                 'user_id' => $userId,
                 'correlation_id' => (string) Str::uuid(),

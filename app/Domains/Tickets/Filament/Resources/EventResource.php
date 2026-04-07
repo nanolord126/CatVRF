@@ -2,14 +2,11 @@
 
 namespace App\Domains\Tickets\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class EventResource extends Model
+final class EventResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Event::class;
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
         protected static ?string $navigationLabel = 'События';
@@ -86,7 +83,6 @@ final class EventResource extends Model
                         ->label('Статус')
                         ->badge()
                         ->color(fn($state) => match($state) {
-                            'draft' => 'gray',
                             'published' => 'success',
                             'ongoing' => 'info',
                             'completed' => 'secondary',
@@ -138,7 +134,7 @@ final class EventResource extends Model
         public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', filament()->getTenant()?->id)
                 ->with(['organizer', 'ticketTypes', 'reviews']);
         }
 }

@@ -276,10 +276,10 @@ Schedule::job(new CalculateCourierEarningsJob())
     ->name('logistics.calculate-earnings')
     ->withoutOverlapping(60);
 
-Schedule::job(new UpdateShipmentStatusJob())
-    ->everyFifteenMinutes()
-    ->name('logistics.update-shipment-status')
-    ->withoutOverlapping(10);
+// Schedule::job(new UpdateShipmentStatusJob())
+//     ->everyFifteenMinutes()
+//     ->name('logistics.update-shipment-status')
+//     ->withoutOverlapping(10);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MEDICAL
@@ -289,23 +289,23 @@ Schedule::job(new CalculateClinicEarningsJob())
     ->name('medical.calculate-earnings')
     ->withoutOverlapping(60);
 
-Schedule::job(new UpdateAppointmentStatusJob())
-    ->everyThirtyMinutes()
-    ->name('medical.update-appointment-status')
-    ->withoutOverlapping(25);
+// Schedule::job(new UpdateAppointmentStatusJob())
+//     ->everyThirtyMinutes()
+//     ->name('medical.update-appointment-status')
+//     ->withoutOverlapping(25);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PET
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new PetCalculateClinicEarningsJob())
-    ->dailyAt('06:30')
-    ->name('pet.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new PetCalculateClinicEarningsJob())
+//     ->dailyAt('06:30')
+//     ->name('pet.calculate-earnings')
+//     ->withoutOverlapping(60);
 
-Schedule::job(new PetUpdateAppointmentStatusJob())
-    ->everyThirtyMinutes()
-    ->name('pet.update-appointment-status')
-    ->withoutOverlapping(25);
+// Schedule::job(new PetUpdateAppointmentStatusJob())
+//     ->everyThirtyMinutes()
+//     ->name('pet.update-appointment-status')
+//     ->withoutOverlapping(25);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PHOTOGRAPHY
@@ -315,54 +315,54 @@ Schedule::job(new CalculateRatingsJob())
     ->name('photography.calculate-ratings')
     ->withoutOverlapping(60);
 
-Schedule::job(new UpdateSessionStatusJob())
-    ->hourly()
-    ->name('photography.update-session-status')
-    ->withoutOverlapping(55);
+// Schedule::job(new UpdateSessionStatusJob())
+//     ->hourly()
+//     ->name('photography.update-session-status')
+//     ->withoutOverlapping(55);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // REAL ESTATE
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new PropertyAutoCloseJob())
-    ->dailyAt('07:30')
-    ->name('realestate.property-auto-close')
-    ->withoutOverlapping(60);
+// Schedule::job(new PropertyAutoCloseJob())
+//     ->dailyAt('07:30')
+//     ->name('realestate.property-auto-close')
+//     ->withoutOverlapping(60);
 
-Schedule::job(new ViewingReminderJob())
-    ->hourly()
-    ->name('realestate.viewing-reminder')
-    ->withoutOverlapping(55);
+// Schedule::job(new ViewingReminderJob())
+//     ->hourly()
+//     ->name('realestate.viewing-reminder')
+//     ->withoutOverlapping(55);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SPORTS
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new BookingConfirmationJob())
-    ->everyThirtyMinutes()
-    ->name('sports.booking-confirmation')
-    ->withoutOverlapping(25);
+// Schedule::job(new BookingConfirmationJob())
+//     ->everyThirtyMinutes()
+//     ->name('sports.booking-confirmation')
+//     ->withoutOverlapping(25);
 
-Schedule::job(new ClassReminderJob())
-    ->everyThirtyMinutes()
-    ->name('sports.class-reminder')
-    ->withoutOverlapping(25);
+// Schedule::job(new ClassReminderJob())
+//     ->everyThirtyMinutes()
+//     ->name('sports.class-reminder')
+//     ->withoutOverlapping(25);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TICKETS
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new EventReminderJob())
-    ->hourly()
-    ->name('tickets.event-reminder')
-    ->withoutOverlapping(55);
+// Schedule::job(new EventReminderJob())
+//     ->hourly()
+//     ->name('tickets.event-reminder')
+//     ->withoutOverlapping(55);
 
-Schedule::job(new TicketGenerationJob())
-    ->everyFifteenMinutes()
-    ->name('tickets.ticket-generation')
-    ->withoutOverlapping(10);
+// Schedule::job(new TicketGenerationJob())
+//     ->everyFifteenMinutes()
+//     ->name('tickets.ticket-generation')
+//     ->withoutOverlapping(10);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TRAVEL
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateAgencyEarningsJob())
+Schedule::job(new CalculateAgencyEarningsJob(1, 'sch-'.\Illuminate\Support\Str::uuid()->toString()))
     ->dailyAt('08:00')
     ->name('travel.calculate-earnings')
     ->withoutOverlapping(60);

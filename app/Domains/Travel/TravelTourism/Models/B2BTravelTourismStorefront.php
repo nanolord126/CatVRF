@@ -2,14 +2,17 @@
 
 namespace App\Domains\Travel\TravelTourism\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class B2BTravelTourismStorefront extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'b2b_travel_tourism_storefronts';
@@ -41,14 +44,14 @@ final class B2BTravelTourismStorefront extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check() && auth()->user()->tenant_id) {
-                    $query->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant() && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
 
         public function b2bOrders(): HasMany
         {
-            return $this->hasMany('App\Domains\Travel\TravelTourism\Models\B2BTravelTourismOrder');
+            return $this->hasMany(B2BTravelTourismOrder::class, 'storefront_id');
         }
 }

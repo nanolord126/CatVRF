@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Construction;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Models\Construction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -24,6 +30,11 @@ use Illuminate\Support\Str;
 
 final class ConstructionResource extends Resource
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static ?string $model = Construction::class;
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
     protected static ?string $navigationGroup = 'Вертикали';
@@ -103,9 +114,9 @@ final class ConstructionResource extends Resource
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function()use(&$data){
+        $this->db->transaction(function()use(&$data){
             $data['correlation_id'] = Str::uuid()->toString();
-            Log::channel('audit')->info('Construction project action',['user'=>auth()->id(),'correlation_id'=>$data['correlation_id']]);
+            $this->logger->info('Construction project action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
         });
         return $data;
     }

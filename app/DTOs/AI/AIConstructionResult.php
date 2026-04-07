@@ -1,15 +1,42 @@
 <?php declare(strict_types=1);
 
+/**
+ * AIConstructionResult — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ * @see https://catvrf.ru/docs/aiconstructionresult
+ */
+
+
 namespace App\DTOs\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class AIConstructionResult extends Model
+final class AIConstructionResult
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             public string $vertical,
             public string $type, // 'image', 'list', 'design', 'calculation'

@@ -2,38 +2,44 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
+
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Twilio\Rest\Client as TwilioClient;
+use Illuminate\Log\LogManager;
 
 /**
  * SMS Service - отправляет SMS через Twilio/Vonage
  */
-class SmsService
+abstract class SmsService
 {
     /**
      * Twilio клиент
      */
-    protected TwilioClient $twilio;
+    private TwilioClient $twilio;
 
     /**
      * Vonage API (для альтернативы)
      */
-    protected ?string $vonageApiKey;
+    private readonly ?string $vonageApiKey;
 
     /**
      * Конструктор
      */
-    public function __construct()
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    )
     {
         // Инициализировать Twilio если конфиг есть
-        if (config('services.twilio.auth_token')) {
+        if ($this->config->get('services.twilio.auth_token')) {
             $this->twilio = new TwilioClient(
-                config('services.twilio.account_sid'),
-                config('services.twilio.auth_token')
+                $this->config->get('services.twilio.account_sid'),
+                $this->config->get('services.twilio.auth_token')
             );
         }
 
-        $this->vonageApiKey = config('services.vonage.api_key');
+        $this->vonageApiKey = $this->config->get('services.vonage.api_key');
     }
 
     /**
@@ -48,7 +54,7 @@ class SmsService
     ): bool {
         try {
             if (!isset($this->twilio)) {
-                throw new \Exception('Twilio not configured');
+                throw new \RuntimeException('Twilio not configured');
             }
 
             // Нормализовать номер
@@ -58,12 +64,12 @@ class SmsService
             $this->twilio->messages->create(
                 $to,
                 [
-                    'from' => config('services.twilio.phone_number'),
+                    'from' => $this->config->get('services.twilio.phone_number'),
                     'body' => $message,
                 ]
             );
 
-            Log::channel('audit')->info('SMS sent', [
+            $this->logger->channel('audit')->info('SMS sent', [
                 'to' => $this->maskPhone($to),
                 'correlation_id' => $correlationId,
             ]);
@@ -71,7 +77,14 @@ class SmsService
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Failed to send SMS', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send SMS', [
                 'to' => isset($to) ? $this->maskPhone($to) : 'unknown',
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

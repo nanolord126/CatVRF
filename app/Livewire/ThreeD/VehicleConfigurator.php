@@ -6,12 +6,12 @@ use Livewire\Component;
 
 final class VehicleConfigurator extends Component
 {
-    public int $vehicleId;
-    public array $vehicleData = [];
-    public string $selectedColor = '#000000';
-    public string $selectedInterior = 'black';
-    public array $selectedOptions = [];
-    public float $price = 0;
+    private int $vehicleId;
+    private array $vehicleData = [];
+    private string $selectedColor = '#000000';
+    private string $selectedInterior = 'black';
+    private array $selectedOptions = [];
+    private float $price = 0;
 
     public function mount(int $vehicleId): void
     {

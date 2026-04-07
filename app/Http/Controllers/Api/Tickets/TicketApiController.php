@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class TicketApiController extends Model
+final class TicketApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
         public function __construct(
-            private readonly TicketService $ticketService
-        ) {}
+            private readonly TicketService $ticketService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Покупка билета через типизированный реквест.
          */
@@ -25,12 +28,12 @@ final class TicketApiController extends Model
             try {
                 // 2. Создание DTO из валидированного реквеста
                 $dto = BuyTicketDto::fromArray(array_merge($request->validated(), [
-                    'user_id' => auth()->id() ?? 1,
+                    'user_id' => $this->guard->id() ?? 1,
                     'correlation_id' => $correlationId
                 ]));
                 // 3. Вызов сервиса
                 $tickets = $this->ticketService->buyTickets($dto);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => [
@@ -45,11 +48,11 @@ final class TicketApiController extends Model
                     'message' => 'Билеты успешно куплены и доступны в вашем кабинете'
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Ticket purchase failed (API)', [
+                $this->logger->channel('audit')->error('Ticket purchase failed (API)', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
@@ -65,18 +68,18 @@ final class TicketApiController extends Model
             try {
                 $result = $this->ticketService->checkIn(
                     qrCode: $request->input('qr_code'),
-                    checkerUserId: auth()->id() ?? 1,
+                    checkerUserId: $this->guard->id() ?? 1,
                     requestData: array_merge($request->validated(), ['correlation_id' => $correlationId])
                 );
-                return response()->json(array_merge($result, [
+                return $this->response->json(array_merge($result, [
                     'correlation_id' => $correlationId
                 ]), $result['success'] ? 200 : 400);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Ticket check-in API fatal error', [
+                $this->logger->channel('audit')->error('Ticket check-in API fatal error', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => 'Внутренняя ошибка при проверке билета'
@@ -89,11 +92,11 @@ final class TicketApiController extends Model
         public function getMyTickets(Request $request): JsonResponse
         {
             $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            $tickets = \App\Domains\Tickets\Models\Ticket::where('user_id', auth()->id() ?? 1)
+            $tickets = \App\Domains\Tickets\Models\Ticket::where('user_id', $this->guard->id() ?? 1)
                 ->with(['event', 'ticketType'])
                 ->orderBy('id', 'desc')
                 ->paginate(15);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'correlation_id' => $correlationId,
                 'data' => $tickets

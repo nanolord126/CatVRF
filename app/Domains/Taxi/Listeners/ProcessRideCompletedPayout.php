@@ -2,20 +2,23 @@
 
 namespace App\Domains\Taxi\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProcessRideCompletedPayout extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class ProcessRideCompletedPayout
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(RideCompleted $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     // Update driver wallet with ride earnings
-                    Log::channel('audit')->info('Ride payout processed', [
+                    $this->logger->info('Ride payout processed', [
                         'ride_id' => $event->rideId,
                         'driver_id' => $event->driverId,
                         'amount' => $event->priceAmount,
@@ -24,12 +27,35 @@ final class ProcessRideCompletedPayout extends Model
                     ]);
                     // WalletService::credit($driver_id, $event->priceAmount)
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Failed to process ride payout', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to process ride payout', [
                     'correlation_id' => $event->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

@@ -2,198 +2,222 @@
 
 namespace App\Domains\Flowers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\FlowerOrder;
+use App\Domains\Flowers\Models\FlowerReview;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FlowerReviewController extends Model
+final readonly class FlowerReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+        private FraudControlService $fraud,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {}
 
-        public function store(int $orderId, Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+    public function store(int $orderId, Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $order = FlowerOrder::query()->findOrFail($orderId);
+        $this->fraud->check(
+            userId: $request->user()?->id ?? 0,
+            operationType: 'operation',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-                if ($order->user_id !== auth()->id()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Unauthorized',
-                        'correlation_id' => $correlationId,
-                    ], $this->response->HTTP_FORBIDDEN);
-                }
+        try {
+            $order = FlowerOrder::query()->findOrFail($orderId);
 
-                $validated = $request->validate([
-                    'quality_rating' => 'required|integer|min:1|max:5',
-                    'delivery_rating' => 'required|integer|min:1|max:5',
-                    'freshness_rating' => 'required|integer|min:1|max:5',
-                    'comment' => 'nullable|string|max:1000',
-                ]);
-
-                $review = DB::transaction(function () use ($order, $validated, $correlationId) {
-                    $overallRating = round(
-                        ($validated['quality_rating'] + $validated['delivery_rating'] + $validated['freshness_rating']) / 3,
-                        1
-                    );
-
-                    $review = FlowerReview::query()->create([
-                        'tenant_id' => $order->tenant_id,
-                        'order_id' => $order->id,
-                        'shop_id' => $order->shop_id,
-                        'user_id' => auth()->id(),
-                        'quality_rating' => $validated['quality_rating'],
-                        'delivery_rating' => $validated['delivery_rating'],
-                        'freshness_rating' => $validated['freshness_rating'],
-                        'overall_rating' => $overallRating,
-                        'comment' => $validated['comment'] ?? null,
-                        'verified_purchase' => true,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    Log::channel('audit')->info('Flower review created', [
-                        'review_id' => $review->id,
-                        'order_id' => $order->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $review;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $review,
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_CREATED);
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('Review creation failed', [
-                    'error' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return response()->json([
+            if ($order->user_id !== $request->user()?->id) {
+                return new JsonResponse([
                     'success' => false,
-                    'message' => $exception->getMessage(),
+                    'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
+                ], 403);
             }
-        }
 
-        public function shopReviews(int $shopId): JsonResponse
-        {
-            $correlationId = (string)Str::uuid()->toString();
+            $validated = $request->validate([
+                'quality_rating' => 'required|integer|min:1|max:5',
+                'delivery_rating' => 'required|integer|min:1|max:5',
+                'freshness_rating' => 'required|integer|min:1|max:5',
+                'comment' => 'nullable|string|max:1000',
+            ]);
 
-            try {
-                $reviews = FlowerReview::query()
-                    ->where('shop_id', $shopId)
-                    ->where('status', 'approved')
-                    ->with('user')
-                    ->paginate(15);
+            $review = $this->db->transaction(function () use ($order, $validated, $correlationId, $request) {
+                $overallRating = round(
+                    ($validated['quality_rating'] + $validated['delivery_rating'] + $validated['freshness_rating']) / 3,
+                    1
+                );
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $reviews,
+                $review = FlowerReview::query()->create([
+                    'tenant_id' => $order->tenant_id,
+                    'order_id' => $order->id,
+                    'shop_id' => $order->shop_id,
+                    'user_id' => $request->user()?->id,
+                    'quality_rating' => $validated['quality_rating'],
+                    'delivery_rating' => $validated['delivery_rating'],
+                    'freshness_rating' => $validated['freshness_rating'],
+                    'overall_rating' => $overallRating,
+                    'comment' => $validated['comment'] ?? null,
+                    'verified_purchase' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
+
+                $this->logger->info('Flower review created', [
+                    'review_id' => $review->id,
+                    'order_id' => $order->id,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return $review;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $review,
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $exception) {
+            $this->logger->error('Review creation failed', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function shopReviews(int $shopId): JsonResponse
+    {
+        $correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+
+        try {
+            $reviews = FlowerReview::query()
+                ->where('shop_id', $shopId)
+                ->where('status', 'approved')
+                ->with('user')
+                ->paginate(15);
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $reviews,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $this->fraud->check(
+            userId: $request->user()?->id ?? 0,
+            operationType: 'operation',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        try {
+            $review = FlowerReview::query()->findOrFail($id);
+
+            if ($review->user_id !== $request->user()?->id) {
+                return new JsonResponse([
                     'success' => false,
-                    'message' => $exception->getMessage(),
+                    'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
+                ], 403);
             }
-        }
 
-        public function update(int $id, Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $validated = $request->validate([
+                'quality_rating' => 'integer|min:1|max:5',
+                'delivery_rating' => 'integer|min:1|max:5',
+                'freshness_rating' => 'integer|min:1|max:5',
+                'comment' => 'nullable|string|max:1000',
+            ]);
 
-            try {
-                $review = FlowerReview::query()->findOrFail($id);
+            $review = $this->db->transaction(function () use ($review, $validated, $correlationId) {
+                $review->update([...$validated, 'correlation_id' => $correlationId]);
 
-                if ($review->user_id !== auth()->id()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Unauthorized',
-                        'correlation_id' => $correlationId,
-                    ], $this->response->HTTP_FORBIDDEN);
-                }
-
-                $validated = $request->validate([
-                    'quality_rating' => 'integer|min:1|max:5',
-                    'delivery_rating' => 'integer|min:1|max:5',
-                    'freshness_rating' => 'integer|min:1|max:5',
-                    'comment' => 'nullable|string|max:1000',
-                ]);
-
-                $review = DB::transaction(function () use ($review, $validated, $correlationId) {
-                    $review->update([...$validated, 'correlation_id' => $correlationId]);
-
-                    Log::channel('audit')->info('Flower review updated', [
-                        'review_id' => $review->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $review;
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $review,
+                $this->logger->info('Flower review updated', [
+                    'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
+
+                return $review;
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $review,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function destroy(int $id, Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $this->fraud->check(
+            userId: $request->user()?->id ?? 0,
+            operationType: 'operation',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        try {
+            $review = FlowerReview::query()->findOrFail($id);
+
+            if ($review->user_id !== $request->user()?->id) {
+                return new JsonResponse([
                     'success' => false,
-                    'message' => $exception->getMessage(),
+                    'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
+                ], 403);
             }
-        }
 
-        public function destroy(int $id): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->db->transaction(function () use ($review, $correlationId) {
+                $review->delete();
 
-            try {
-                $review = FlowerReview::query()->findOrFail($id);
-
-                if ($review->user_id !== auth()->id()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Unauthorized',
-                        'correlation_id' => $correlationId,
-                    ], $this->response->HTTP_FORBIDDEN);
-                }
-
-                DB::transaction(function () use ($review, $correlationId) {
-                    $review->delete();
-
-                    Log::channel('audit')->info('Flower review deleted', [
-                        'review_id' => $review->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Review deleted',
+                $this->logger->info('Flower review deleted', [
+                    'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                    'correlation_id' => $correlationId,
-                ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
-            }
+            });
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Review deleted',
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $exception) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
 }

@@ -1,118 +1,155 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 
-final class PayoutScheduleService extends Model
+/**
+ * Сервис планирования выплат отелям.
+ * Layer 3: Services — CatVRF 2026
+ *
+ * Расчёт и обработка отложенных выплат (4 дня после выселения).
+ * FraudCheck + DB::transaction + AuditService + correlation_id.
+ *
+ * @package App\Domains\Hotels\Services
+ */
+final readonly class PayoutScheduleService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,)
-        {
-        }
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        /**
-         * Расчитать выплату для отеля (4 дня после выселения)
-         */
-        public function scheduleHotelPayout(int $bookingId, int $amount, string $correlationId): bool
-        {
+    /**
+     * Запланировать выплату отелю (4 дня после выселения).
+     */
+    public function scheduleHotelPayout(int $bookingId, int $amount, int $tenantId, string $correlationId): bool
+    {
+        $userId = (int) $this->guard->id();
 
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'hotel_payout_schedule',
+            amount: $amount,
+            ipAddress: null,
+            deviceFingerprint: null,
+            correlationId: $correlationId,
+        );
 
-            try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        $this->db->transaction(function () use ($bookingId, $amount, $tenantId, $correlationId) {
+            $payoutDate = Carbon::now()->addDays(4);
+
+            $this->db->table('hotel_payouts')->insert([
+                'booking_id'     => $bookingId,
+                'tenant_id'      => $tenantId,
+                'amount'         => $amount,
+                'scheduled_at'   => $payoutDate,
+                'status'         => 'scheduled',
+                'correlation_id' => $correlationId,
+                'created_at'     => Carbon::now(),
+                'updated_at'     => Carbon::now(),
+            ]);
+
+            $this->audit->log(
+                action: 'hotel_payout_scheduled',
+                subjectType: 'HotelPayout',
+                subjectId: $bookingId,
+                old: [],
+                new: ['amount' => $amount, 'scheduled_at' => $payoutDate->toIso8601String()],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Hotel payout scheduled', [
+                'booking_id'     => $bookingId,
+                'amount'         => $amount,
+                'payout_date'    => $payoutDate->toIso8601String(),
+                'correlation_id' => $correlationId,
+            ]);
+        });
+
+        return true;
+    }
+
+    /**
+     * Обработать все запланированные выплаты, готовые к исполнению.
+     */
+    public function processScheduledPayouts(int $tenantId, string $correlationId): int
+    {
+        $userId = (int) $this->guard->id();
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'hotel_payout_process',
+            amount: 0,
+            ipAddress: null,
+            deviceFingerprint: null,
+            correlationId: $correlationId,
+        );
+
+        $processed = 0;
+
+        $this->db->transaction(function () use (&$processed, $tenantId, $correlationId) {
+            $payouts = $this->db->table('hotel_payouts')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'scheduled')
+                ->where('scheduled_at', '<=', Carbon::now())
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($payouts as $payout) {
+                $this->wallet->credit(
+                    walletId: (int) $payout->booking_id,
+                    amount: (int) $payout->amount,
+                    reason: 'hotel_payout',
+                    correlationId: $correlationId,
                 );
-                DB::transaction(function () use ($bookingId, $amount, $correlationId) {
-                    $payoutDate = Carbon::now()->addDays(4);
 
-                    DB::table('hotel_payouts')->insert([
-                        'booking_id' => $bookingId,
-                        'amount' => $amount,
-                        'scheduled_at' => $payoutDate,
-                        'status' => 'scheduled',
-                        'correlation_id' => $correlationId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                $this->db->table('hotel_payouts')
+                    ->where('id', $payout->id)
+                    ->update([
+                        'status'     => 'paid',
+                        'paid_at'    => Carbon::now(),
+                        'updated_at' => Carbon::now(),
                     ]);
 
-                    Log::channel('audit')->info('Hotel payout scheduled', [
-                        'booking_id' => $bookingId,
-                        'amount' => $amount,
-                        'payout_date' => $payoutDate,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return true;
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Hotel payout scheduling failed', [
-                    'booking_id' => $bookingId,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                throw $e;
-            }
-        }
-
-        /**
-         * Обработать запланированные выплаты
-         */
-        public function processScheduledPayouts(string $correlationId): int
-        {
-
-
-            $processed = 0;
-
-            try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                $this->audit->log(
+                    action: 'hotel_payout_processed',
+                    subjectType: 'HotelPayout',
+                    subjectId: (int) $payout->id,
+                    old: ['status' => 'scheduled'],
+                    new: ['status' => 'paid'],
+                    correlationId: $correlationId,
                 );
-                DB::transaction(function () use (&$processed, $correlationId) {
-                    $payouts = DB::table('hotel_payouts')
-                        ->where('status', 'scheduled')
-                        ->where('scheduled_at', '<=', now())
-                        ->lockForUpdate()
-                        ->get();
 
-                    foreach ($payouts as $payout) {
-                        DB::table('hotel_payouts')
-                            ->where('id', $payout->id)
-                            ->update(['status' => 'paid', 'paid_at' => now()]);
-
-                        $processed++;
-
-                        Log::channel('audit')->info('Hotel payout processed', [
-                            'payout_id' => $payout->id,
-                            'booking_id' => $payout->booking_id,
-                            'amount' => $payout->amount,
-                            'correlation_id' => $correlationId,
-                        ]);
-                    }
-                });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Hotel payout processing failed', [
-                    'error' => $e->getMessage(),
+                $this->logger->info('Hotel payout processed', [
+                    'payout_id'      => $payout->id,
+                    'booking_id'     => $payout->booking_id,
+                    'amount'         => $payout->amount,
                     'correlation_id' => $correlationId,
-                    'trace' => $e->getTraceAsString(),
                 ]);
-                throw $e;
-            }
 
-            return $processed;
-        }
+                $processed++;
+            }
+        });
+
+        $this->logger->info('Hotel payouts batch completed', [
+            'tenant_id'      => $tenantId,
+            'processed'      => $processed,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return $processed;
+    }
 }

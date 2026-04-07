@@ -3,13 +3,15 @@
 namespace App\Models\Cleaning;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 final class CleaningReview extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'cleaning_reviews';
 
         protected $fillable = [

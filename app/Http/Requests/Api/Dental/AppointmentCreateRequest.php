@@ -2,22 +2,37 @@
 
 namespace App\Http\Requests\Api\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentCreateRequest extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class AppointmentCreateRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Api\Dental
+ */
+final class AppointmentCreateRequest extends FormRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
         {
             // Обязательный Fraud Check по канону 2026
-            return FraudControlService::check([
-                'user_id' => auth()->id(),
-                'type' => 'appointment_create',
-                'ip' => request()->ip()
-            ]);
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->guard->id(),
+                operationType: 'appointment_create',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
+            return true;
         }
 
         public function rules(): array

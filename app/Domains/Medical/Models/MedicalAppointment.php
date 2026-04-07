@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalAppointment extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'medical_appointments';
@@ -45,7 +44,7 @@ final class MedicalAppointment extends Model
             'cancelled_at' => 'datetime',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 $query->where('tenant_id', tenant()->id ?? 0);

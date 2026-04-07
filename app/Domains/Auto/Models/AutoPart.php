@@ -2,14 +2,15 @@
 
 namespace App\Domains\Auto\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class AutoPart extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'auto_parts';
@@ -53,11 +54,11 @@ final class AutoPart extends Model
         {
             static::creating(function (AutoPart $part) {
                 $part->uuid = $part->uuid ?? (string) Str::uuid();
-                $part->tenant_id = $part->tenant_id ?? (tenant('id') ?? 1);
+                $part->tenant_id = $part->tenant_id ?? (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant', function (Builder $builder) {
-                $builder->where('auto_parts.tenant_id', tenant('id') ?? 1);
+                $builder->where('auto_parts.tenant_id', tenant()->id ?? 1);
             });
         }
 

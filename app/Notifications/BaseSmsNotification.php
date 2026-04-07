@@ -12,32 +12,32 @@ abstract class BaseSmsNotification extends BaseNotification
     /**
      * Шаблон SMS сообщения
      */
-    protected string $template = 'sms.generic';
+    private string $template = 'sms.generic';
 
     /**
      * Текст сообщения (для простых SMS)
      */
-    protected ?string $message = null;
+    private ?string $message = null;
 
     /**
      * Телефон получателя (переопределять или брать из модели)
      */
-    protected ?string $phone = null;
+    private ?string $phone = null;
 
     /**
      * Переменные для подстановки в шаблон
      */
-    protected array $variables = [];
+    private array $variables = [];
 
     /**
      * Приоритет доставки (high, normal, low)
      */
-    protected string $priority = 'normal';
+    private string $priority = 'normal';
 
     /**
      * Максимальное количество символов (для услугового SMS)
      */
-    protected int $maxChars = 160;
+    private int $maxChars = 160;
 
     /**
      * Конструктор

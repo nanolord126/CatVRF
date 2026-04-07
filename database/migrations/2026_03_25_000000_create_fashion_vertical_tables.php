@@ -146,3 +146,5 @@ return new class extends Migration
         Schema::dropIfExists('fashion_stores');
     }
 };
+
+

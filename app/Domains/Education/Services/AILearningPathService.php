@@ -2,19 +2,15 @@
 
 namespace App\Domains\Education\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AILearningPathService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AILearningPathService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private AIConstructorService $aiService,
             private RecommendationService $recommendationService,
-            private EnrollmentService $enrollmentService,
-        ) {}
+            private EnrollmentService $enrollmentService, private readonly LoggerInterface $logger) {}
 
         /**
          * Сгенерировать индивидуальный план обучения (Learning Path)
@@ -24,7 +20,7 @@ final class AILearningPathService extends Model
         {
             $correlationId = (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Learning Path Construction started', [
+            $this->logger->info('AI Learning Path Construction started', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
                 'goal' => $params['goal'] ?? 'general',
@@ -88,7 +84,7 @@ final class AILearningPathService extends Model
             ];
 
             // 5. Логирование и кэширование
-            Log::channel('audit')->info('AI Learning Path Construction completed', [
+            $this->logger->info('AI Learning Path Construction completed', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
                 'courses_count' => $topCourses->count(),
@@ -108,7 +104,7 @@ final class AILearningPathService extends Model
                 $this->enrollmentService->enrollStudent($userId, $courseId, 'subscription');
             }
 
-            Log::channel('audit')->info('User enrolled in AI suggested path', [
+            $this->logger->info('User enrolled in AI suggested path', [
                 'user_id' => $userId,
                 'course_count' => count($courseIds),
                 'correlation_id' => $correlationId

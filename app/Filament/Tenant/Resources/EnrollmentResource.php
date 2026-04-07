@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class EnrollmentResource extends Model
+final class EnrollmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Enrollment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-users';
@@ -132,31 +129,15 @@ final class EnrollmentResource extends Model
                         ->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListEnrollment::route('/'),
-                'create' => Pages\\CreateEnrollment::route('/create'),
-                'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
-                'view' => Pages\\ViewEnrollment::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListEnrollment::route('/'),
-                'create' => Pages\\CreateEnrollment::route('/create'),
-                'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
-                'view' => Pages\\ViewEnrollment::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListEnrollment::route('/'),
-                'create' => Pages\\CreateEnrollment::route('/create'),
-                'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
-                'view' => Pages\\ViewEnrollment::route('/{record}'),
+                'index' => Pages\ListEnrollment::route('/'),
+                'create' => Pages\CreateEnrollment::route('/create'),
+                'edit' => Pages\EditEnrollment::route('/{record}/edit'),
+                'view' => Pages\ViewEnrollment::route('/{record}'),
             ];
         }
 }

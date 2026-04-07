@@ -2,42 +2,60 @@
 
 namespace App\Domains\Auto\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Auto\Models\AutoPart;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
-final class AutoPartCreated extends Model
+final class AutoPartCreated implements ShouldBroadcast
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public function __construct(
-            public readonly AutoPart $autoPart,
-            public readonly string $correlationId
-        ) {
-        }
+    /**
+     * Create a new event instance.
+     */
+    public function __construct(
+        public readonly AutoPart $autoPart,
+        public readonly string $correlationId
+    ) {
 
-        public function broadcastOn(): array
-        {
-            return [
-                new \Illuminate\Broadcasting\Channel('auto.parts.' . $this->autoPart->tenant_id),
-            ];
-        }
+    }
 
-        public function broadcastAs(): string
-        {
-            return 'AutoPartCreated';
-        }
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [
+            new Channel('auto.parts.' . $this->autoPart->tenant_id),
+        ];
+    }
 
-        public function broadcastWith(): array
-        {
-            return [
-                'part_id' => $this->autoPart->id,
-                'sku' => $this->autoPart->sku,
-                'name' => $this->autoPart->name,
-                'current_stock' => $this->autoPart->current_stock,
-                'correlation_id' => $this->correlationId,
-            ];
-        }
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'AutoPartCreated';
+    }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'part_id' => $this->autoPart->id,
+            'sku' => $this->autoPart->sku,
+            'name' => $this->autoPart->name,
+            'current_stock' => $this->autoPart->current_stock,
+            'correlation_id' => $this->correlationId,
+        ];
+    }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Domains\RealEstate\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class SaleListingResource extends Model
+final class SaleListingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = SaleListing::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-tag';
@@ -56,7 +53,7 @@ final class SaleListingResource extends Model
                     TextColumn::make('commission_percent')
                         ->label('Комиссия')
                         ->suffix('%'),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->label('Статус')
                         ->colors([
                             'success' => 'active',

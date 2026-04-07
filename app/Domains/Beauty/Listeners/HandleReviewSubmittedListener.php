@@ -1,36 +1,73 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\ReviewSubmitted;
+use App\Domains\Beauty\Jobs\UpdateMasterRatingsJob;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class HandleReviewSubmittedListener extends Model
+/**
+ * HandleReviewSubmittedListener — CatVRF 2026.
+ *
+ * Запускает пересчёт рейтингов при новом отзыве.
+ * Runs asynchronously via queue (ShouldQueue).
+ * Maintains correlation_id chain.
+ *
+ * @package App\Domains\Beauty\Listeners
+ */
+final class HandleReviewSubmittedListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private Dispatcher $bus,
+        private CacheRepository $cache,
+        private LoggerInterface $auditLogger,
+    ) {}
+
     public function handle(ReviewSubmitted $event): void
-        {
-            $review = $event->review;
+    {
+        $this->bus->dispatch(new UpdateMasterRatingsJob($event->correlationId));
 
-            // Trigger master rating update
-            if ($review->master_id) {
-                UpdateMasterRatingsJob::dispatch($event->correlationId);
-                Cache::forget("master_reviews:{$review->master_id}");
-            }
+        $this->cache->forget("master_reviews:{$event->masterId}");
 
-            // Trigger salon rating update
-            if ($review->salon_id) {
-                Cache::forget("salon_reviews:{$review->salon_id}");
-            }
+        $this->auditLogger->info('ReviewSubmitted handled.', [
+            'review_id'      => $event->reviewId,
+            'master_id'      => $event->masterId,
+            'client_id'      => $event->clientId,
+            'rating'         => $event->rating,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            Log::channel('audit')->info('ReviewSubmitted event handled', [
-                'review_id' => $review->id,
-                'master_id' => $review->master_id,
-                'salon_id' => $review->salon_id,
-                'rating' => $review->rating,
-                'correlation_id' => $event->correlationId,
-            ]);
-        }
+    public function failed(ReviewSubmitted $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('HandleReviewSubmittedListener failed.', [
+            'review_id'      => $event->reviewId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
+
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(ReviewSubmitted $event): bool
+    {
+        return $event->reviewId > 0;
+    }
+
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-events';
+    }
 }

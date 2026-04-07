@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
 
+
+
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Project;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,13 +18,13 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ProjectResource extends Resource
 {
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+
     protected static ?string $model = Project::class;
 
     public static function form(Form $form): Form
@@ -53,7 +57,7 @@ final class ProjectResource extends Resource
                         ->searchable(),
                     Forms\Components\DateTimePicker::make('deadline_at')
                         ->label('Дедлайн')
-                        ->minDate(now()->addDay()),
+                        ->minDate(Carbon::now()->addDay()),
                     Forms\Components\Select::make('status')
                         ->label('Статус')
                         ->options([
@@ -116,7 +120,7 @@ final class ProjectResource extends Resource
                         ->numeric()
                         ->minValue(0)
                         ->maxValue(100)
-                        ->helperText('Используется FraudControlService::check()'),
+                        ->content('Все мутации обязательны: fraud-check, $this->db->transaction, correlation_id, audit log'),
                     Forms\Components\TextInput::make('meta.geo_hash')
                         ->label('Geo hash')
                         ->helperText('Изолирует данные по филиалам'),
@@ -166,7 +170,7 @@ final class ProjectResource extends Resource
                         ->valueLabel('Значение'),
                     Forms\Components\Placeholder::make('audit_hint')
                         ->label('Audit / Fraud')
-                        ->content('Все мутации через DB::transaction() + FraudControlService::check() + correlation_id'),
+                        ->content('fraud-check + correlation_id обязательны'),
                 ])->columns(2),
         ]);
     }
@@ -239,15 +243,15 @@ final class ProjectResource extends Resource
                     ->action(function (Project $record): void {
                         $correlationId = (string) Str::uuid();
 
-                        DB::transaction(static function () use ($record, $correlationId): void {
+                        $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
                                 'status' => 'completed',
-                                'meta' => array_merge($record->meta ?? [], ['completed_at' => now()->toIso8601String()]),
+                                'meta' => array_merge($record->meta ?? [], ['completed_at' => Carbon::now()->toIso8601String()]),
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        Log::channel('audit')->info('Project marked completed from Filament', [
+                        $this->logger->info('Project marked completed from Filament', [
                             'project_id' => $record->id,
                             'correlation_id' => $record->correlation_id ?: $correlationId,
                             'tenant_id' => $record->tenant_id,
@@ -263,14 +267,14 @@ final class ProjectResource extends Resource
                         ->requiresConfirmation()
                         ->action(function (array $records): void {
                             $correlationId = (string) Str::uuid();
-                            DB::transaction(static function () use ($records, $correlationId): void {
+                            $this->db->transaction(static function () use ($records, $correlationId): void {
                                 Project::query()->whereIn('id', $records)->update([
                                     'status' => 'active',
                                     'correlation_id' => $correlationId,
                                 ]);
                             });
 
-                            Log::channel('audit')->info('Projects bulk-activated from Filament', [
+                            $this->logger->info('Projects bulk-activated from Filament', [
                                 'correlation_id' => $correlationId,
                                 'count' => count($records),
                             ]);

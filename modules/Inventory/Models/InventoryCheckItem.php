@@ -5,12 +5,11 @@ namespace Modules\Inventory\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 final class InventoryCheckItem extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
     
         protected $table = 'inventory_check_items';
     

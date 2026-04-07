@@ -2,14 +2,15 @@
 
 namespace App\Domains\Hotels\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\PricingRule;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class PricingRuleResource extends Model
+final class PricingRuleResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = PricingRule::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
@@ -58,17 +59,20 @@ final class PricingRuleResource extends Model
                         ->sortable(),
                     Tables\Columns\TextColumn::make('name')
                         ->searchable(),
-                    Tables\Columns\BadgeColumn::make('type')
-                        ->colors([
-                            'success' => 'seasonal',
-                            'warning' => 'length_of_stay',
-                            'info' => 'advance_booking',
-                            'danger' => 'last_minute',
-                        ]),
+                    Tables\Columns\TextColumn::make('type')
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'seasonal' => 'success',
+                            'length_of_stay' => 'warning',
+                            'advance_booking' => 'info',
+                            'last_minute' => 'danger',
+                            default => 'gray',
+                        }),
                     Tables\Columns\TextColumn::make('multiplier')
                         ->numeric()
                         ->sortable(),
-                    Tables\Columns\BooleanColumn::make('is_active'),
+                    Tables\Columns\IconColumn::make('is_active')
+                        ->boolean(),
                 ])
                 ->filters([
                     Tables\Filters\SelectFilter::make('type')

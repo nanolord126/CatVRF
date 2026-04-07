@@ -1,41 +1,51 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Events\FlowerOrderCreated;
+use App\Domains\Flowers\Models\FlowerOrder;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FlowerService extends Model
+final readonly class FlowerService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraud,
-            private WalletService $wallet,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        /**
-         * Создать новый заказ цветов (B2C или B2B)
-         */
-        public function createOrder(array $data): FlowerOrder
-        {
-            $correlationId = $data['correlation_id'] ?? (string) Str::uuid();
-            $isB2B = isset($data['inn']) || isset($data['business_card_id']);
+    /**
+     * Создать новый заказ цветов (B2C или B2B).
+     *
+     * @param array $data Данные заказа (tenant_id, user_id, flower_shop_id, items, total_price и т.д.)
+     */
+    public function createOrder(array $data): FlowerOrder
+    {
+        $correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
+        $isB2B = isset($data['inn']) || isset($data['business_card_id']);
+        $userId = (int) ($data['user_id'] ?? 0);
+        $tenantId = (int) ($data['tenant_id'] ?? 0);
 
-            // 1. Fraud Check
-            $this->fraud->check(
-                userId: (int) ($data['user_id'] ?? 0),
-                operationType: $isB2B ? 'flower_b2b_order' : 'flower_order',
-                amount: (int) ($data['total_price'] ?? 0),
-                correlationId: $correlationId
-            );
+        $this->fraud->check(
+            userId: $userId,
+            operationType: $isB2B ? 'flower_b2b_order' : 'flower_order',
+            amount: (int) ($data['total_price'] ?? 0),
+            correlationId: $correlationId,
+        );
 
-            return DB::transaction(function () use ($data, $correlationId, $isB2B) {
-                // 2. Создание заказа
-                $order = FlowerOrder::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => tenant()->id ?? ($data['tenant_id'] ?? null),
+        return $this->db->transaction(function () use ($data, $correlationId, $isB2B, $tenantId): FlowerOrder {
+            $order = FlowerOrder::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
                     'user_id' => $data['user_id'] ?? null,
                     'flower_shop_id' => $data['flower_shop_id'],
                     'items_json' => $data['items'] ?? [],
@@ -49,36 +59,41 @@ final class FlowerService extends Model
                     'tags' => ['mode' => $isB2B ? 'B2B' : 'B2C'],
                 ]);
 
-                // 3. Логирование
-                Log::channel('audit')->info('Flower Order Created', [
-                    'order_id' => $order->id,
-                    'mode' => $isB2B ? 'B2B' : 'B2C',
-                    'total' => $order->total_price_kopecks,
-                    'correlation_id' => $correlationId,
-                ]);
+            $this->logger->info('Flower Order Created', [
+                'order_id' => $order->id,
+                'mode' => $isB2B ? 'B2B' : 'B2C',
+                'total' => $order->total_price_kopecks,
+                'tenant_id' => $tenantId,
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 4. Dispatch Event (Trigger Consumable Deduction & Notifications)
-                event(new FlowerOrderCreated($order, $correlationId));
+            event(new FlowerOrderCreated($order, $correlationId));
 
-                return $order;
-            });
-        }
+            return $order;
+        });
+    }
 
-        /**
-         * Обновить статус заказа
-         */
-        public function updateStatus(int $orderId, string $status): void
-        {
-            $order = FlowerOrder::findOrFail($orderId);
+    /**
+     * Обновить статус заказа.
+     *
+     * @param int    $orderId       ID заказа
+     * @param string $status        Новый статус
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function updateStatus(int $orderId, string $status, string $correlationId = ''): void
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+
+        $order = FlowerOrder::findOrFail($orderId);
             $oldStatus = $order->status;
 
             $order->update(['status' => $status]);
 
-            Log::channel('audit')->info('Flower Order Status Updated', [
-               'order_id' => $orderId,
-               'from' => $oldStatus,
-               'to' => $status,
-               'correlation_id' => $order->correlation_id,
-            ]);
-        }
+        $this->logger->info('Flower Order Status Updated', [
+            'order_id' => $orderId,
+            'from' => $oldStatus,
+            'to' => $status,
+            'correlation_id' => $correlationId,
+        ]);
+    }
 }

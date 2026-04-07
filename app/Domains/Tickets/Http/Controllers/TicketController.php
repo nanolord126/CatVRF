@@ -2,41 +2,37 @@
 
 namespace App\Domains\Tickets\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketController extends Model
+use Psr\Log\LoggerInterface;
+use App\Domains\Tickets\Models\Ticket;
+use App\Domains\Tickets\Models\TicketSale;
+use App\Domains\Tickets\Services\TicketGenerationService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
+
+final class TicketController
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Ticket, TicketSale};
-    use App\Domains\Tickets\Services\TicketGenerationService;
-    use Illuminate\Http\JsonResponse;
-    use Illuminate\Support\Str;
-    use Barryvdh\DomPDF\Facade\Pdf;
-
-    final class TicketController
-    {
-        public function __construct(private TicketGenerationService $generationService) {}
+    public function __construct(private TicketGenerationService $generationService, private readonly LoggerInterface $logger) {}
 
         public function myTickets(): JsonResponse
         {
             try {
-                $tickets = Ticket::where('buyer_id', auth()->id())
+                $tickets = Ticket::where('buyer_id', $request->user()?->id)
                     ->with(['event', 'ticketType', 'checkin'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $tickets,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list my tickets', [
+                $this->logger->error('Failed to list my tickets', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list tickets',
                 ], 500);
@@ -51,16 +47,17 @@ final class TicketController extends Model
 
                 $ticket->load(['event', 'ticketType', 'buyer', 'checkin']);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ticket,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to show ticket', [
+                $this->logger->error('Failed to show ticket', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ticket not found',
                 ], 404);
@@ -82,10 +79,11 @@ final class TicketController extends Model
 
                 return $pdf->download($ticket->ticket_number . '.pdf');
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to download ticket', [
+                $this->logger->error('Failed to download ticket', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to download ticket',
                 ], 500);
@@ -95,7 +93,7 @@ final class TicketController extends Model
         public function checkin(int $eventId): JsonResponse
         {
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'qr_code' => 'required|string',
                 ]);
 
@@ -103,21 +101,22 @@ final class TicketController extends Model
 
                 $this->generationService->checkinTicket($validated['qr_code'], $correlationId);
 
-                \Log::channel('audit')->info('Ticket checked in', [
+                $this->logger->info('Ticket checked in', [
                     'event_id' => $eventId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Ticket checked in successfully',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Checkin failed', [
+                $this->logger->error('Checkin failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Checkin failed',
                 ], 400);

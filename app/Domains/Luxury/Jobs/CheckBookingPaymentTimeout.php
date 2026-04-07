@@ -1,21 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * CheckBookingPaymentTimeout — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/checkbookingpaymenttimeout
+ */
+
+
 namespace App\Domains\Luxury\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CheckBookingPaymentTimeout extends Model
+use Psr\Log\LoggerInterface;
+final class CheckBookingPaymentTimeout
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            private string $bookingUuid,
-            private string $correlationId
-        ) {}
+        public function __construct(private string $bookingUuid,
+            private string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Выполнение джобы
@@ -30,7 +42,7 @@ final class CheckBookingPaymentTimeout extends Model
                 }
 
                 // Отмена бронирования, если депозит не был оплачен
-                \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+                $this->db->transaction(function () use ($booking) {
                     $booking->update([
                         'status' => 'cancelled',
                         'notes' => ($booking->notes ?? '') . ' [Auto-cancelled due to payment timeout]',
@@ -43,14 +55,14 @@ final class CheckBookingPaymentTimeout extends Model
                         $bookable->decrement('hold_stock');
                     }
 
-                    Log::channel('audit')->info('VIP Booking Expired and Cancelled', [
+                    $this->logger->info('VIP Booking Expired and Cancelled', [
                         'booking_uuid' => $booking->uuid,
                         'correlation_id' => $this->correlationId,
                     ]);
                 });
 
             } catch (Throwable $e) {
-                Log::channel('audit')->error('VIP Booking Payment Timeout Error', [
+                $this->logger->error('VIP Booking Payment Timeout Error', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);

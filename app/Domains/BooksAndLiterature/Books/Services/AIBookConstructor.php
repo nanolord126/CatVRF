@@ -2,17 +2,16 @@
 
 namespace App\Domains\BooksAndLiterature\Books\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIBookConstructor extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AIBookConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIConstructorService $aiService,
-            private readonly RecommendationService $baseRecService
+            private readonly RecommendationService $baseRecService, private readonly Request $request, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -23,10 +22,11 @@ final class AIBookConstructor extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Book Consultation STARTED', [
+            $this->logger->info('AI Book Consultation STARTED', [
                 'user_id' => $dto->userId,
                 'mood' => $dto->currentMood,
-                'cid' => $correlationId
+                'cid' => $correlationId,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             // 1. Fetch available books based on preferred genres and mood
@@ -98,10 +98,11 @@ final class AIBookConstructor extends Model
                 'correlation_id' => $correlationId
             ];
 
-            Log::channel('audit')->info('AI Book Consultation COMPLETED', [
+            $this->logger->info('AI Book Consultation COMPLETED', [
                 'user_id' => $dto->userId,
                 'rec_count' => count($scoredBooks),
-                'cid' => $correlationId
+                'cid' => $correlationId,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return $finalResponse;

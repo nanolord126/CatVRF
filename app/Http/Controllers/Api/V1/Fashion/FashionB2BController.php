@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1\Fashion;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FashionB2BController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class FashionB2BController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
+        private readonly Request $request,
             private readonly FashionService $fashionService,
-            private readonly RateLimiterService $rateLimiter
-        ) {}
+            private readonly RateLimiterService $rateLimiter,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * @OA\Get(
          *     path="/api/v1/fashion/b2b/catalog",
@@ -37,19 +43,19 @@ final class FashionB2BController extends Model
                     ->where('price_b2b', '>', 0)
                     ->select(['id', 'name', 'price_b2b', 'quantity', 'store_id'])
                     ->paginate(50);
-                Log::channel('audit')->info('B2B catalog browsed', [
+                $this->logger->channel('audit')->info('B2B catalog browsed', [
                     'inn' => $request->get('inn'),
                     'correlation_id' => $correlationId,
                     'count' => $products->count(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $products,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B catalog error', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['error' => 'B2B access error', 'correlation_id' => $correlationId], 403);
+                $this->logger->channel('audit')->error('B2B catalog error', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return $this->response->json(['error' => 'B2B access error', 'correlation_id' => $correlationId], 403);
             }
         }
         /**
@@ -77,25 +83,30 @@ final class FashionB2BController extends Model
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
             try {
-                FraudControlService::check(['action' => 'b2b_order_create', 'inn' => $request->get('inn')]);
+                app(\App\Services\FraudControlService::class)->check(
+                    userId: (int) ($this->guard->id() ?? 0),
+                    operationType: 'b2b_order_create',
+                    amount: 0,
+                    correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+                );
                 $order = $this->fashionService->createB2BOrder(
                     $request->all(),
                     $correlationId
                 );
-                Log::channel('audit')->info('B2B order created', [
+                $this->logger->channel('audit')->info('B2B order created', [
                     'order_id' => $order->id,
                     'inn' => $request->get('inn'),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'order_id' => $order->id,
                     'status' => 'pending_payment',
                     'correlation_id' => $correlationId
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('B2B order failure', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['error' => 'Order creation failed', 'correlation_id' => $correlationId], 400);
+                $this->logger->channel('audit')->error('B2B order failure', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return $this->response->json(['error' => 'Order creation failed', 'correlation_id' => $correlationId], 400);
             }
         }
 }

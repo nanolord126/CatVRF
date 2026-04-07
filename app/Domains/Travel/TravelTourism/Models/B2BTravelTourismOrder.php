@@ -2,14 +2,17 @@
 
 namespace App\Domains\Travel\TravelTourism\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class B2BTravelTourismOrder extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'b2b_travel_tourism_orders';
@@ -30,8 +33,8 @@ final class B2BTravelTourismOrder extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check() && auth()->user()->tenant_id) {
-                    $query->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant() && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
@@ -40,4 +43,27 @@ final class B2BTravelTourismOrder extends Model
         {
             return $this->belongsTo(B2BTravelTourismStorefront::class, 'b2b_travel_tourism_storefront_id');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

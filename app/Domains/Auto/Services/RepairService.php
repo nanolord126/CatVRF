@@ -2,20 +2,25 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class RepairService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class RepairService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Открытие нового заказа на ремонт.
          */
         public function createOrder(Vehicle $vehicle, int $clientId, array $data, string $correlationId): AutoRepairOrder
         {
-            return DB::transaction(function () use ($vehicle, $clientId, $data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($vehicle, $clientId, $data, $correlationId) {
                 $data['uuid'] = (string) Str::uuid();
                 $data['tenant_id'] = tenant()->id;
                 $data['vehicle_id'] = $vehicle->id;
@@ -28,7 +33,7 @@ final class RepairService extends Model
                 // Перевод авто в статус ремонта
                 $vehicle->update(['status' => 'repair']);
 
-                Log::channel('audit')->info('Repair order created', [
+                $this->logger->info('Repair order created', [
                     'order_uuid' => $order->uuid,
                     'vehicle_uuid' => $vehicle->uuid,
                     'correlation_id' => $correlationId,
@@ -43,7 +48,7 @@ final class RepairService extends Model
          */
         public function addPartsAndLabor(AutoRepairOrder $order, int $laborCost, array $parts, string $correlationId): void
         {
-            DB::transaction(function () use ($order, $laborCost, $parts, $correlationId) {
+            $this->db->transaction(function () use ($order, $laborCost, $parts, $correlationId) {
                 $order->labor_cost_kopecks = $laborCost;
                 $order->parts_list = array_merge($order->parts_list ?? [], $parts);
 
@@ -55,7 +60,7 @@ final class RepairService extends Model
                 $order->correlation_id = $correlationId;
                 $order->save();
 
-                Log::channel('audit')->info('Repair costs updated', [
+                $this->logger->info('Repair costs updated', [
                     'order_uuid' => $order->uuid,
                     'labor' => $laborCost,
                     'parts_count' => count($parts),
@@ -70,18 +75,18 @@ final class RepairService extends Model
          */
         public function completeOrder(AutoRepairOrder $order, string $mechanicReport, string $correlationId): void
         {
-            DB::transaction(function () use ($order, $mechanicReport, $correlationId) {
+            $this->db->transaction(function () use ($order, $mechanicReport, $correlationId) {
                 $order->update([
                     'status' => 'completed',
                     'mechanic_report' => $mechanicReport,
-                    'finished_at' => now(),
+                    'finished_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
                 // Возврат авто в статус "active"
                 $order->vehicle->update(['status' => 'active']);
 
-                Log::channel('audit')->info('Repair order completed', [
+                $this->logger->info('Repair order completed', [
                     'order_uuid' => $order->uuid,
                     'vehicle_uuid' => $order->vehicle->uuid,
                     'final_cost' => $order->total_cost_kopecks,

@@ -2,27 +2,24 @@
 
 namespace App\Domains\Hotels\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class PricingRuleController extends Model
+final class PricingRuleController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud) {}
 
-        public function store(string $hotelId): JsonResponse
+        public function store(\Illuminate\Http\Request $request, string $hotelId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $this->authorize('create', PricingRule::class);
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'room_type_id' => 'required|uuid',
                     'name' => 'required|string',
                     'type' => 'required|in:seasonal,length_of_stay,advance_booking,last_minute',
@@ -34,7 +31,7 @@ final class PricingRuleController extends Model
                 ]);
 
                 $rule = PricingRule::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()->id,
                     'room_type_id' => $data['room_type_id'],
                     'name' => $data['name'],
                     'type' => $data['type'],
@@ -47,28 +44,28 @@ final class PricingRuleController extends Model
                     'correlation_id' => \Illuminate\Support\Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $rule,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function update(string $id): JsonResponse
+        public function update(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $rule = PricingRule::findOrFail($id);
                 $this->authorize('update', $rule);
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'name' => 'nullable|string',
                     'multiplier' => 'nullable|numeric|min:0.5|max:2',
                     'date_from' => 'nullable|date',
@@ -78,22 +75,22 @@ final class PricingRuleController extends Model
 
                 $rule->update($data);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $rule,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function destroy(string $id): JsonResponse
+        public function destroy(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $rule = PricingRule::findOrFail($id);
@@ -101,11 +98,11 @@ final class PricingRuleController extends Model
 
                 $rule->delete();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);

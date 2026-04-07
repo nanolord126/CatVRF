@@ -2,14 +2,13 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalClinicResource extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class MedicalClinicResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MedicalClinic::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -49,28 +48,21 @@ final class MedicalClinicResource extends Model
                             ->required(),
                         Forms\Components\Toggle::make('is_verified')
                             ->label('Verified by Platform')
-                            ->disabled(!auth()->user()->is_admin),
+                            ->disabled(!$this->guard->user()->is_admin),
                         Forms\Components\Toggle::make('is_active')
                             ->default(true),
                     ]),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMedicalClinic::route('/'),
-                'create' => Pages\\CreateMedicalClinic::route('/create'),
-                'edit' => Pages\\EditMedicalClinic::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalClinic::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMedicalClinic::route('/'),
-                'create' => Pages\\CreateMedicalClinic::route('/create'),
-                'edit' => Pages\\EditMedicalClinic::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalClinic::route('/{record}'),
+                'index' => Pages\ListMedicalClinic::route('/'),
+                'create' => Pages\CreateMedicalClinic::route('/create'),
+                'edit' => Pages\EditMedicalClinic::route('/{record}/edit'),
+                'view' => Pages\ViewMedicalClinic::route('/{record}'),
             ];
         }
 }

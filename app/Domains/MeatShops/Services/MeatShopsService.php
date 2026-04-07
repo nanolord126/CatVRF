@@ -2,22 +2,18 @@
 
 namespace App\Domains\MeatShops\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MeatShopsService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class MeatShopsService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function createOrder(int $productId, float $weightKg, int $clientId, Carbon $deliveryDate, int $tenantId, string $correlationId): MeatOrder
         {
-            return DB::transaction(function () use ($productId, $weightKg, $clientId, $deliveryDate, $tenantId, $correlationId) {
-                $this->fraudControlService->check(
+            return $this->db->transaction(function () use ($productId, $weightKg, $clientId, $deliveryDate, $tenantId, $correlationId) {
+                $this->fraud->check(
                     userId: $clientId,
                     operationType: 'meat_order',
                     amount: 0,
@@ -42,7 +38,7 @@ final class MeatShopsService extends Model
                 ]);
 
                 MeatOrderCreated::dispatch($order->id, $tenantId, $clientId, $totalPrice, $correlationId);
-                Log::channel('audit')->info('Meat order created', [
+                $this->logger->info('Meat order created', [
                     'order_id' => $order->id,
                     'product_id' => $productId,
                     'weight_kg' => $weightKg,
@@ -61,12 +57,12 @@ final class MeatShopsService extends Model
                 ->firstOrFail();
 
             if (!$order->isPending()) {
-                throw new \Exception("Order {$orderId} is not in pending state");
+                throw new \DomainException("Order {$orderId} is not in pending state");
             }
 
             $order->update(['status' => 'delivered']);
 
-            Log::channel('audit')->info('Meat order delivered', [
+            $this->logger->info('Meat order delivered', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

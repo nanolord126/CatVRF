@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Message extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'chat_messages';
@@ -41,5 +40,21 @@ final class Message extends Model
         public function sender(): BelongsTo
         {
             return $this->belongsTo(User::class, 'sender_id');
-        }
+        }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 }

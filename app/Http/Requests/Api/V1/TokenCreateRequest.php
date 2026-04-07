@@ -2,21 +2,21 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TokenCreateRequest extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class TokenCreateRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
         {
             // CANON 2026: Fraud Check in FormRequest
-            if (auth()->check()) {
+            if ($this->guard->check()) {
                 $correlationId = $this->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
                 $fraudResult = app(\App\Services\FraudControlService::class)->check(
-                    (int) auth()->id(),
+                    (int) $this->guard->id(),
                     'form_request',
                     (int) ($this->input('amount', 0)),
                     $this->ip(),
@@ -24,7 +24,7 @@ final class TokenCreateRequest extends Model
                     $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('FormRequest blocked', [
+                    $this->logger->channel('fraud_alert')->warning('FormRequest blocked', [
                         'class'          => __CLASS__,
                         'correlation_id' => $correlationId,
                         'score'          => $fraudResult['score'],
@@ -32,7 +32,7 @@ final class TokenCreateRequest extends Model
                     return false;
                 }
             }
-            return auth()->check(); // Public endpoint
+            return $this->guard->check(); // Public endpoint
         }
 
         public function rules(): array

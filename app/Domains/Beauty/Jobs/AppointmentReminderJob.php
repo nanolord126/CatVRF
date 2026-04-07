@@ -1,23 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentReminderJob extends Model
+use Psr\Log\LoggerInterface;
+final class AppointmentReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        private readonly string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             readonly public Appointment $appointment,
-            readonly public int $hoursBeforeAppointment = 24,
-        ) {
+            readonly public int $hoursBeforeAppointment = 24, private LoggerInterface $logger) {
             $this->correlationId = Uuid::uuid4()->toString();
         }
 
@@ -28,7 +26,7 @@ final class AppointmentReminderJob extends Model
 
                 // Проверить, что запись ещё актуальна и не отменена
                 if ($appointment->status === 'cancelled' || $appointment->deleted_at) {
-                    Log::channel('audit')->info('Appointment reminder skipped (cancelled)', [
+                    $this->logger->info('Appointment reminder skipped (cancelled)', [
                         'appointment_id' => $appointment->id,
                         'correlation_id' => $this->correlationId,
                     ]);
@@ -43,7 +41,7 @@ final class AppointmentReminderJob extends Model
                 // Можно использовать SMS, Email, Push-notification
                 // Notification::send($client, new AppointmentReminderNotification($appointment, $this->hoursBeforeAppointment));
 
-                Log::channel('audit')->info('Appointment reminder sent', [
+                $this->logger->info('Appointment reminder sent', [
                     'appointment_id' => $appointment->id,
                     'client_id' => $client->id,
                     'hours_before' => $this->hoursBeforeAppointment,
@@ -54,7 +52,7 @@ final class AppointmentReminderJob extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AppointmentReminderJob failed', [
+                $this->logger->error('AppointmentReminderJob failed', [
                     'appointment_id' => $this->appointment->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -67,7 +65,7 @@ final class AppointmentReminderJob extends Model
 
         public function failed(\Throwable $exception): void
         {
-            Log::channel('audit')->error('AppointmentReminderJob permanently failed', [
+            $this->logger->error('AppointmentReminderJob permanently failed', [
                 'appointment_id' => $this->appointment->id,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $this->correlationId,

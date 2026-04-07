@@ -2,17 +2,23 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Services\LogManager;
+use Illuminate\Support\Collection;
 
-final class RecommendationEngine extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class RecommendationEngine
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
             private readonly LogManager $logManager,
-        ) {}
+            private readonly DatabaseManager $db,
+            private readonly CacheManager $cache,
+    ) {}
 
         /**
          * Возвращает персонализированные рекомендации для пользователя.
@@ -21,7 +27,7 @@ final class RecommendationEngine extends Model
         {
             $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return collect($cached);
             }
@@ -30,7 +36,7 @@ final class RecommendationEngine extends Model
 
             $recommendations = collect([]);
 
-            Cache::put($cacheKey, $recommendations->toArray(), 300);
+            $this->cache->put($cacheKey, $recommendations->toArray(), 300);
 
             return $recommendations;
         }
@@ -72,7 +78,7 @@ final class RecommendationEngine extends Model
                 return [];
             }
 
-            return DB::table('users')
+            return $this->db->table('users')
                 ->where('id', '!=', $user->id)
                 ->where('category_preference', $preference)
                 ->limit($limit)
@@ -87,7 +93,7 @@ final class RecommendationEngine extends Model
          */
         private function getUserEnrolledCourses(User $user): array
         {
-            return DB::table('enrollments')
+            return $this->db->table('enrollments')
                 ->where('user_id', $user->id)
                 ->pluck('course_id')
                 ->toArray();

@@ -22,7 +22,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('tenant_id')->index();
                 $table->string('name')->comment('Название галереи');
                 $table->string('address')->nullable()->comment('Физический адрес');
-                $table->point('geo_point')->nullable()->comment('Геолокация для карты');
+                $table->geometry('geo_point')->nullable()->comment('Геолокация для карты');
                 $table->jsonb('schedule_json')->nullable()->comment('Режим работы');
                 $table->float('rating')->default(0)->index();
                 $table->integer('review_count')->default(0);
@@ -179,3 +179,5 @@ return new class extends Migration
         Schema::dropIfExists('art_galleries');
     }
 };
+
+

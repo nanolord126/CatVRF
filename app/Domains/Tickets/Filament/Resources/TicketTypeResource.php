@@ -2,14 +2,11 @@
 
 namespace App\Domains\Tickets\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TicketTypeResource extends Model
+final class TicketTypeResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = TicketType::class;
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
         protected static ?string $navigationLabel = 'Типы билетов';
@@ -106,7 +103,7 @@ final class TicketTypeResource extends Model
         public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', filament()->getTenant()?->id)
                 ->with(['event']);
         }
 }

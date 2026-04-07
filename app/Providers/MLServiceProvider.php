@@ -2,14 +2,17 @@
 
 namespace App\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Log\LogManager;
 
-final class MLServiceProvider extends Model
+final class MLServiceProvider extends ServiceProvider
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    
+
     /**
          * Register ML/AI services
          */
@@ -20,7 +23,7 @@ final class MLServiceProvider extends Model
                 return new TasteMLService(
                     client: app(\OpenAI\Client::class),
                     redisConnection: \Illuminate\Support\Facades\Redis::connection(),
-                    logger: \Illuminate\Support\Facades\Log::channel('audit'),
+                    logger: $this->logger->channel('audit'),
                 );
             });
 
@@ -28,7 +31,7 @@ final class MLServiceProvider extends Model
             $this->app->singleton(UserTasteProfileService::class, function () {
                 return new UserTasteProfileService(
                     mlService: app(TasteMLService::class),
-                    logger: \Illuminate\Support\Facades\Log::channel('audit'),
+                    logger: $this->logger->channel('audit'),
                 );
             });
 
@@ -37,7 +40,7 @@ final class MLServiceProvider extends Model
                 return new AIBeautyConstructorService(
                     client: app(\OpenAI\Client::class),
                     tasteProfileService: app(UserTasteProfileService::class),
-                    logger: \Illuminate\Support\Facades\Log::channel('audit'),
+                    logger: $this->logger->channel('audit'),
                 );
             });
         }

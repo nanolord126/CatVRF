@@ -2,21 +2,19 @@
 
 namespace App\Domains\HomeServices\Ritual\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MemorialConstructor extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class MemorialConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DI зависимостями (readonly).
          */
         public function __construct(
             private RecommendationService $recommendations,
-            private InventoryManagementService $inventory,
-        ) {}
+            private InventoryManagementService $inventory, private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Сгенерировать комплексное предложение на базе анализа (AI).
@@ -27,7 +25,7 @@ final class MemorialConstructor extends Model
         {
             $correlation_id = (string) Str::uuid();
 
-            Log::channel('audit')->info('Memorial constructor started', [
+            $this->logger->info('Memorial constructor started', [
                 'user_id' => $userId,
                 'correlation_id' => $correlation_id,
                 'context' => $context,
@@ -69,10 +67,11 @@ final class MemorialConstructor extends Model
             $uuid = (string) Str::uuid();
 
             // Логика сохранения в кеш или БД (здесь пример лога)
-            Log::channel('audit')->info('Memorial design draft saved', [
+            $this->logger->info('Memorial design draft saved', [
                 'user_id' => $userId,
                 'design_uuid' => $uuid,
                 'payload' => $design,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return $uuid;

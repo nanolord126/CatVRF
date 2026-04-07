@@ -2,14 +2,9 @@
 
 namespace App\Domains\Education\Kids\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class KidsCenterCreateDto extends Model
+final readonly class KidsCenterCreateDto
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param array<string, bool> $facility_details
          * @param array<string, array<string, string>> $schedule_hours
@@ -26,9 +21,8 @@ final class KidsCenterCreateDto extends Model
             public bool $is_safety_verified,
             public array $facility_details,
             public array $schedule_hours,
-            public ?string $correlation_id = null,
-            public array $tags = [],
-        ) {}
+            private ?string $correlation_id = null,
+            private array $tags = []) {}
 
         /**
          * Create from request.

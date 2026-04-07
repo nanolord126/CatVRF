@@ -2,14 +2,10 @@
 
 namespace App\Domains\Medical\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class AppointmentData extends Model
+final readonly class AppointmentData
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param string $uuid Уникальный идентификатор записи (для идемпотентности)
          * @param int $tenantId Контекст клиники
@@ -37,9 +33,8 @@ final class AppointmentData extends Model
             public int $totalPrice,
             public int $prepaymentAmount,
             public string $correlationId,
-            public array $metadata = [],
-            public bool $isTelemedicine = false,
-        ) {
+            private array $metadata = [],
+            private bool $isTelemedicine = false) {
         }
 
         /**

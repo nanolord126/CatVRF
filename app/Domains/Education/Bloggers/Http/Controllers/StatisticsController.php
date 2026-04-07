@@ -2,21 +2,23 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StatisticsController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class StatisticsController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Get streamer earnings and statistics
          */
         public function getBloggerStats(): JsonResponse
         {
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $blogger = BloggerProfile::where('user_id', $userId)
                     ->where('tenant_id', tenant()->id)
@@ -37,7 +39,7 @@ final class StatisticsController extends Model
                 $streamsCompleted = $streams->filter(fn($s) => $s->isEnded())->count();
                 $averageViewers = $streamsCompleted > 0 ? (int)($totalViewers / $streamsCompleted) : 0;
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => [
                         'total_earned' => $totalEarned,
                         'total_commission' => $totalCommission,
@@ -50,12 +52,13 @@ final class StatisticsController extends Model
                         'verification_status' => $blogger->verification_status,
                     ],
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Get blogger stats failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Get blogger stats failed', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch statistics',
                 ], 500);
             }
@@ -75,12 +78,12 @@ final class StatisticsController extends Model
                 $stats = $stream->statistics;
 
                 if (!$stats) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Statistics not found',
                     ], 404);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => [
                         'stream_id' => $stream->id,
                         'title' => $stream->title,
@@ -105,8 +108,8 @@ final class StatisticsController extends Model
                         ],
                     ],
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch statistics',
                 ], 500);
             }
@@ -118,8 +121,8 @@ final class StatisticsController extends Model
         public function getPlatformStats(): JsonResponse
         {
             try {
-                if (!auth()->user()->isAdmin()) {
-                    return response()->json([
+                if (!$request->user()->isAdmin()) {
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Unauthorized',
                     ], 403);
                 }
@@ -133,7 +136,7 @@ final class StatisticsController extends Model
                 $totalCommission = (int) $streams->sum('platform_commission');
                 $totalViewers = (int) $streams->sum('view_count');
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => [
                         'total_streams' => $totalStreams,
                         'live_streams' => $liveStreams,
@@ -143,8 +146,8 @@ final class StatisticsController extends Model
                         'average_viewers_per_stream' => $totalStreams > 0 ? (int)($totalViewers / $totalStreams) : 0,
                     ],
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch statistics',
                 ], 500);
             }
@@ -170,11 +173,11 @@ final class StatisticsController extends Model
                         'verification_status' => $blogger->verification_status,
                     ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => $topStreamers,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch leaderboard',
                 ], 500);
             }

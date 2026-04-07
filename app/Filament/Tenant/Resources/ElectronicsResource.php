@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ElectronicsResource extends Model
+final class ElectronicsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ElectronicProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-device-phone-mobile';
@@ -61,31 +58,15 @@ final class ElectronicsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronics::route('/'),
-                'create' => Pages\\CreateElectronics::route('/create'),
-                'edit' => Pages\\EditElectronics::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronics::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListElectronics::route('/'),
-                'create' => Pages\\CreateElectronics::route('/create'),
-                'edit' => Pages\\EditElectronics::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronics::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronics::route('/'),
-                'create' => Pages\\CreateElectronics::route('/create'),
-                'edit' => Pages\\EditElectronics::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronics::route('/{record}'),
+                'index' => Pages\ListElectronics::route('/'),
+                'create' => Pages\CreateElectronics::route('/create'),
+                'edit' => Pages\EditElectronics::route('/{record}/edit'),
+                'view' => Pages\ViewElectronics::route('/{record}'),
             ];
         }
 }

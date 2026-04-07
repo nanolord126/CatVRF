@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Api\Education;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class EducationController extends Model
+final class EducationController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly EducationManagementService $educationService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Создать Enrollment (B2B/B2C).
          * POST /api/v1/education/enroll
@@ -20,7 +21,7 @@ final class EducationController extends Model
         public function enroll(EnrollmentRequest $request): JsonResponse
         {
             $correlationId = $request->get('correlation_id', (string) Str::uuid());
-            Log::channel('audit')->info('Api Education: Enrollment request received', [
+            $this->logger->channel('audit')->info('Api Education: Enrollment request received', [
                 'user_id' => $request->user()->id,
                 'course_uuid' => $request->get('course_uuid'),
                 'correlation_id' => $correlationId,
@@ -38,7 +39,7 @@ final class EducationController extends Model
                     $enrollment = $this->educationService->enrollUserDirectly($user, $course, $correlationId);
                     $mode = 'B2C (Direct Purchase)';
                 }
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Successfully enrolled in ' . $course->title,
                     'mode' => $mode,
@@ -47,22 +48,22 @@ final class EducationController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\BalanceInsufficientException $e) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Wallet balance insufficient for B2C enrollment.',
                     'correlation_id' => $correlationId,
                 ], 402);
             } catch (\SlotLimitExceededException $e) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Corporate contract slots exceeded.',
                     'correlation_id' => $correlationId,
                 ], 403);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Api Education: Enrollment failed', [
+                $this->logger->channel('audit')->error('Api Education: Enrollment failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'An internal server error occurred during education process.',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -77,7 +78,7 @@ final class EducationController extends Model
             $courses = Course::where('status', 'published')
                 ->select(['uuid', 'title', 'price_kopecks', 'level', 'category'])
                 ->get();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'courses' => $courses,
             ]);
@@ -92,7 +93,7 @@ final class EducationController extends Model
             $contracts = CorporateContract::where('client_tenant_id', $userTenantId)
                 ->where('status', 'active')
                 ->get();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'contracts' => $contracts,
             ]);

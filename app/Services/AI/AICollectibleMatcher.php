@@ -2,21 +2,30 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AICollectibleMatcher extends Model
+use Illuminate\Http\Request;
+use App\Models\Collectibles\CollectibleCategory;
+use App\Models\Collectibles\CollectibleItem;
+use App\Services\Inventory\InventoryManagementService;
+use App\Services\RecommendationService;
+use Illuminate\Support\Collection;
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AICollectibleMatcher
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private RecommendationService $recommendations,
-            private InventoryManagementService $inventory,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private RecommendationService $recommendations,
+        private InventoryManagementService $inventory,
+        private readonly LogManager $logger,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Matches a collectible to a specific theme or interior style for high-end investors.
@@ -36,10 +45,10 @@ final class AICollectibleMatcher extends Model
                 ->limit($limit)
                 ->get();
 
-            Log::channel('recommend')->info('AI Theme Matching executed', [
+            $this->logger->channel('recommend')->info('AI Theme Matching executed', [
                 'theme' => $theme,
                 'matches_found' => $matches->count(),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             return $matches;
@@ -77,10 +86,10 @@ final class AICollectibleMatcher extends Model
             $rarityScore = 1.0 - min(1, ($circulationCount / 1000));
             $finalScore = (float) ($rarityScore * $demandScore);
 
-            Log::channel('audit')->info('AI Rarity Scoring completed', [
+            $this->logger->channel('audit')->info('AI Rarity Scoring completed', [
                 'item_id' => $itemId,
                 'score' => $finalScore,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             return $finalScore;

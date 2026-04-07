@@ -1,22 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * LowStockAlertNotification — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/lowstockalertnotification
+ */
+
 
 namespace App\Domains\Beauty\Notifications;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 
-final class LowStockAlertNotification extends Model
+final class LowStockAlertNotification extends Notification
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Queueable;
 
         public function __construct(
-            private readonly BeautyProduct $product,
-            private readonly string $correlationId,
-        ) {
-        }
+            private BeautyProduct $product,
+            private string $correlationId,
+        ) {}
 
         public function via(object $notifiable): array
         {
@@ -46,4 +61,15 @@ final class LowStockAlertNotification extends Model
                 'vertical' => 'beauty',
             ];
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

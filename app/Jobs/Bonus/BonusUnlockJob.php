@@ -2,19 +2,32 @@
 
 namespace App\Jobs\Bonus;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class BonusUnlockJob extends Model
+/**
+ * Class BonusUnlockJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs\Bonus
+ */
+final class BonusUnlockJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private string $correlationId;
 
-        public function __construct()
+        public function __construct(
+        private readonly LogManager $logger,
+    )
         {
             $this->correlationId = Str::uuid()->toString();
             $this->onQueue('bonuses');
@@ -26,13 +39,20 @@ final class BonusUnlockJob extends Model
                 $unlockedCount = $bonusService->unlockExpiredHolds();
 
                 if ($unlockedCount > 0) {
-                    Log::channel('audit')->info('Bonus unlock job completed', [
+                    $this->logger->channel('audit')->info('Bonus unlock job completed', [
                         'correlation_id' => $this->correlationId,
                         'unlocked_count' => $unlockedCount,
                     ]);
                 }
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Bonus unlock job failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Bonus unlock job failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

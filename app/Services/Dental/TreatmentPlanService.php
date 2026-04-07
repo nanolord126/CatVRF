@@ -2,20 +2,33 @@
 
 namespace App\Services\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TreatmentPlanService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Models\Dental\DentalTreatmentPlan;
+use App\Models\Dental\DentalService as DentalModel;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class TreatmentPlanService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private \App\Services\FraudControlService $fraudControl,
-            private string $correlation_id = ''
-        ) {
-            $this->correlation_id = empty($correlation_id) ? (string) Str::uuid() : $correlation_id;
-        }
+        private readonly Request $request,
+        private \App\Services\FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Get treatment plans for a patient with tenant scoping.
@@ -33,21 +46,21 @@ final class TreatmentPlanService extends Model
          */
         public function createPlan(array $data): DentalTreatmentPlan
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 // 1. Audit Check
-                Log::channel('audit')->info('Creating dental treatment plan', [
+                $this->logger->channel('audit')->info('Creating dental treatment plan', [
                     'client_id' => $data['client_id'],
                     'dentist_id' => $data['dentist_id'],
                     'title' => $data['title'],
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 // 2. Fraud Check (Medical Privacy/Fraud)
-                $this->fraudControl->check(['operation' => 'create_treatment_plan', 'data' => $data]);
+                $this->fraud->check((int) $this->guard->id(), 'create_treatment_plan', $this->request->ip());
 
                 // 3. Create Plan
                 $plan = DentalTreatmentPlan::create(array_merge($data, [
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                     'uuid' => (string) Str::uuid(),
                     'status' => 'draft',
                 ]));
@@ -65,19 +78,19 @@ final class TreatmentPlanService extends Model
          */
         public function updatePlan(int $id, array $data): DentalTreatmentPlan
         {
-            return DB::transaction(function () use ($id, $data) {
+            return $this->db->transaction(function () use ($id, $data) {
                 $plan = DentalTreatmentPlan::findOrFail($id);
 
                 // Audit
-                Log::channel('audit')->info('Updating dental treatment plan', [
+                $this->logger->channel('audit')->info('Updating dental treatment plan', [
                     'plan_id' => $id,
                     'old_status' => $plan->status,
                     'new_status' => $data['status'] ?? $plan->status,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $plan->update(array_merge($data, [
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]));
 
                 return $plan;
@@ -89,7 +102,7 @@ final class TreatmentPlanService extends Model
          */
         public function addStep(int $planId, array $stepData): void
         {
-            DB::transaction(function () use ($planId, $stepData) {
+            $this->db->transaction(function () use ($planId, $stepData) {
                 $plan = DentalTreatmentPlan::findOrFail($planId);
 
                 // Verify service existence
@@ -98,10 +111,10 @@ final class TreatmentPlanService extends Model
                 }
 
                 // Log
-                Log::channel('audit')->info('Adding step to treatment plan', [
+                $this->logger->channel('audit')->info('Adding step to treatment plan', [
                     'plan_id' => $planId,
                     'step_name' => $stepData['name'],
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $plan->addStep($stepData);
@@ -113,7 +126,7 @@ final class TreatmentPlanService extends Model
          */
         public function markStepCompleted(int $planId, string $stepUuid): void
         {
-            DB::transaction(function () use ($planId, $stepUuid) {
+            $this->db->transaction(function () use ($planId, $stepUuid) {
                 $plan = DentalTreatmentPlan::findOrFail($planId);
                 $steps = $plan->steps ?? [];
 
@@ -133,10 +146,10 @@ final class TreatmentPlanService extends Model
 
                 $plan->update(['steps' => $steps]);
 
-                Log::channel('audit')->info('Treatment plan step marked completed', [
+                $this->logger->channel('audit')->info('Treatment plan step marked completed', [
                     'plan_id' => $planId,
                     'step_uuid' => $stepUuid,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
             });
         }
@@ -146,11 +159,11 @@ final class TreatmentPlanService extends Model
          */
         public function archivePlan(int $id): bool
         {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $plan = DentalTreatmentPlan::findOrFail($id);
-                Log::channel('audit')->warning('Archiving dental treatment plan', [
+                $this->logger->channel('audit')->warning('Archiving dental treatment plan', [
                     'plan_id' => $id,
-                    'correlation_id' => $this->correlation_id,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $plan->update(['status' => 'archived']) && $plan->delete();

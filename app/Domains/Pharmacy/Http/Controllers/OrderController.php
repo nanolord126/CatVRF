@@ -2,18 +2,16 @@
 
 namespace App\Domains\Pharmacy\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OrderController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class OrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly PharmacyService $service,
-            private readonly FraudControlService $fraudControl,
-        ) {}
+
+    public function __construct(private readonly PharmacyService $service,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Создание заказа лекарств (B2C).
@@ -24,22 +22,17 @@ final class OrderController extends Model
             $correlationId = (string) Str::uuid();
 
             try {
-                return DB::transaction(function () use ($request, $correlationId) {
+                return $this->db->transaction(function () use ($request, $correlationId) {
                     // 1. Fraud Check
-                    $fraudResult = $this->fraudControl->check([
-                        'user_id' => auth()->id(),
-                        'operation_type' => 'pharmacy_order',
-                        'correlation_id' => $correlationId,
-                        'amount' => collect($request->validated()['items'] ?? [])->sum('price'),
-                    ]);
+                    $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'pharmacy_order', amount: 0, correlationId: $correlationId ?? '');
 
                     if ($fraudResult['decision'] === 'block') {
-                        Log::channel('audit')->warning('Pharmacy order blocked by fraud check', [
-                            'user_id' => auth()->id(),
+                        $this->logger->warning('Pharmacy order blocked by fraud check', [
+                            'user_id' => $request->user()?->id,
                             'correlation_id' => $correlationId,
                             'score' => $fraudResult['score'],
                         ]);
-                        return response()->json(['error' => 'Заказ заблокирован системой безопасности'], 403);
+                        return new \Illuminate\Http\JsonResponse(['error' => 'Заказ заблокирован системой безопасности'], 403);
                     }
 
                     // 2. Создание заказа через сервис
@@ -50,15 +43,15 @@ final class OrderController extends Model
                     );
 
                     // 3. Audit Log
-                    Log::channel('audit')->info('Pharmacy order created (B2C)', [
+                    $this->logger->info('Pharmacy order created (B2C)', [
                         'order_id' => $order->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'total' => $order->total_price_kopecks,
                         'correlation_id' => $correlationId,
                         'timestamp' => Carbon::now(),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'status' => 'success',
                         'order_id' => $order->id,
                         'order_uuid' => $order->uuid,
@@ -67,15 +60,15 @@ final class OrderController extends Model
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pharmacy order creation failed', [
-                    'user_id' => auth()->id(),
+            } catch (\Throwable $e) {
+                $this->logger->error('Pharmacy order creation failed', [
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -93,16 +86,16 @@ final class OrderController extends Model
             try {
                 $order = $this->service->getOrder($orderId);
 
-                if ($order->client_id !== auth()->id() && !auth()->user()->isPharmacyOwner($order->pharmacy_id)) {
-                    Log::channel('audit')->warning('Unauthorized pharmacy order access', [
-                        'user_id' => auth()->id(),
+                if ($order->client_id !== $request->user()?->id && !$request->user()->isPharmacyOwner($order->pharmacy_id)) {
+                    $this->logger->warning('Unauthorized pharmacy order access', [
+                        'user_id' => $request->user()?->id,
                         'order_id' => $orderId,
                         'correlation_id' => $correlationId,
                     ]);
-                    return response()->json(['error' => 'Unauthorized'], 403);
+                    return new \Illuminate\Http\JsonResponse(['error' => 'Unauthorized'], 403);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'order_id' => $order->id,
                     'uuid' => $order->uuid,
                     'status' => $order->status,
@@ -111,13 +104,13 @@ final class OrderController extends Model
                     'requires_prescription' => $order->requires_prescription,
                     'correlation_id' => $correlationId,
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pharmacy order fetch failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Pharmacy order fetch failed', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['error' => 'Order not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['error' => 'Order not found'], 404);
             }
         }
 
@@ -130,32 +123,32 @@ final class OrderController extends Model
             $correlationId = (string) Str::uuid();
 
             try {
-                return DB::transaction(function () use ($orderId, $request, $correlationId) {
+                return $this->db->transaction(function () use ($orderId, $request, $correlationId) {
                     $this->service->validatePrescription(
                         orderId: $orderId,
                         rxData: $request->validated()['prescription_data'] ?? '',
                         correlationId: $correlationId
                     );
 
-                    Log::channel('audit')->info('Pharmacy prescription uploaded', [
+                    $this->logger->info('Pharmacy prescription uploaded', [
                         'order_id' => $orderId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'status' => 'success',
                         'message' => 'Рецепт получен и обработан',
                         'correlation_id' => $correlationId,
                     ], 200);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pharmacy prescription validation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Pharmacy prescription validation failed', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json(['error' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['error' => $e->getMessage()], 400);
             }
         }
 }

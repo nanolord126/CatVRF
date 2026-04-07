@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api\Taxi;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class TaxiApiController extends Model
+final class TaxiApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с инъекцией (по канону).
          */
         public function __construct(
             private readonly TaxiService $taxiService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Создание новой поездки (Ride POST endpoint).
          * @param RideCreateRequest $request Валидация + Fraud check (Level 8)
@@ -33,7 +36,7 @@ final class TaxiApiController extends Model
                     $dto->fleetId
                 );
                 // 3. Возврат JSON (Level 8)
-                return response()->json([
+                return $this->response->json([
                     'status' => 'success',
                     'data' => [
                         'ride_uuid' => $ride->uuid,
@@ -45,12 +48,12 @@ final class TaxiApiController extends Model
                     'correlation_id' => $correlationId
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create taxi ride', [
+                $this->logger->channel('audit')->error('Failed to create taxi ride', [
                     'error' => $e->getMessage(),
                     'user_id' => $request->user()->id,
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => 'Не удалось создать поездку. Попробуйте позже.',
                     'correlation_id' => $correlationId
@@ -66,7 +69,7 @@ final class TaxiApiController extends Model
                 ->where('tenant_id', tenant()->id)
                 ->with(['driver', 'vehicle'])
                 ->firstOrFail();
-            return response()->json([
+            return $this->response->json([
                 'status' => 'success',
                 'data' => [
                     'uuid' => $ride->uuid,
@@ -90,12 +93,12 @@ final class TaxiApiController extends Model
         public function cancel(string $uuid): JsonResponse
         {
             $ride = \App\Domains\Taxi\Models\TaxiRide::where('uuid', $uuid)
-                ->where('passenger_id', auth()->id())
+                ->where('passenger_id', $this->guard->id())
                 ->whereIn('status', ['pending', 'accepted'])
                 ->firstOrFail();
             $ride->update(['status' => 'cancelled']);
-            Log::channel('audit')->info('Taxi ride cancelled by passenger', ['ride_uuid' => $uuid]);
-            return response()->json([
+            $this->logger->channel('audit')->info('Taxi ride cancelled by passenger', ['ride_uuid' => $uuid]);
+            return $this->response->json([
                 'status' => 'success',
                 'message' => 'Поездка успешно отменена.'
             ]);

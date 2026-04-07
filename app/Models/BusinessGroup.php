@@ -91,15 +91,6 @@ final class BusinessGroup extends Model
     // ATTRIBUTES & MUTATORS
     // ========================
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
-        });
-    }
-
     /**
      * Get display name
      */
@@ -111,6 +102,11 @@ final class BusinessGroup extends Model
     protected static function booted(): void
     {
         parent::booted();
+
+        static::creating(function ($model) {
+            $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
+        });
+
         static::addGlobalScope('tenant_id', function ($query) {
             if (function_exists('tenant') && tenant('id')) {
                 $query->where('tenant_id', tenant('id'));

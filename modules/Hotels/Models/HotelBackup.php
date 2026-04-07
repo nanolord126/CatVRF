@@ -5,10 +5,17 @@ namespace Modules\Hotels\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class Hotel extends Model
+final class HotelBackup extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected $fillable = ['name', 'stars', 'address', 'latitude', 'longitude'];
+    protected $table = 'hotels';
+
+    protected $fillable = [
+        'name',
+        'stars',
+        'address',
+        'latitude',
+        'longitude',
+    ];
 }

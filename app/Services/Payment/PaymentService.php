@@ -2,21 +2,28 @@
 
 namespace App\Services\Payment;
 
+
+use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
 use App\Models\Wallet;
 use App\Services\FraudControlService;
 use App\Services\Security\IdempotencyService;
 use App\Services\Wallet\WalletService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class PaymentService
 {
     public function __construct(
+        private readonly Request $request,
         private IdempotencyService $idempotency,
-        private FraudControlService $fraudControl,
+        private FraudControlService $fraud,
         private WalletService $walletService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
     ) {}
 
     /**
@@ -43,7 +50,7 @@ final readonly class PaymentService
         );
 
         if ($existingPayment) {
-            Log::channel('audit')->info('Payment already exists (idempotency)', [
+            $this->logger->channel('audit')->info('Payment already exists (idempotency)', [
                 'correlation_id' => $correlationId,
                 'idempotency_key' => $idempotencyKey,
                 'existing_payment_id' => $existingPayment['payment_id'] ?? null,
@@ -53,17 +60,17 @@ final readonly class PaymentService
         }
 
         // Fraud check
-        $fraudResult = $this->fraudControl->check(
+        $fraudResult = $this->fraud->check(
             userId: $userId,
             operationType: 'payment_init',
             amount: $amount,
-            ipAddress: request()->ip(),
-            deviceFingerprint: request()->header('X-Device-Fingerprint'),
+            ipAddress: $this->request->ip(),
+            deviceFingerprint: $this->request->header('X-Device-Fingerprint'),
             correlationId: $correlationId,
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Payment init blocked by fraud check', [
+            $this->logger->channel('fraud_alert')->warning('Payment init blocked by fraud check', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -73,7 +80,7 @@ final readonly class PaymentService
             throw new \RuntimeException('Payment blocked by fraud detection system');
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $amount,
             $tenantId,
             $userId,
@@ -102,8 +109,8 @@ final readonly class PaymentService
                 'hold_amount' => $hold ? $amount : 0,
                 'authorized_at' => $hold ? now() : null,
                 'correlation_id' => $correlationId,
-                'ip_address' => request()->ip(),
-                'device_fingerprint' => request()->header('X-Device-Fingerprint'),
+                'ip_address' => $this->request->ip(),
+                'device_fingerprint' => $this->request->header('X-Device-Fingerprint'),
                 'fraud_score' => $fraudResult['score'],
                 'metadata' => $metadata,
                 'tags' => ['payment_init' => true],
@@ -117,7 +124,7 @@ final readonly class PaymentService
                 responseData: ['payment_id' => $payment->uuid],
             );
 
-            Log::channel('audit')->info('Payment initialized', [
+            $this->logger->channel('audit')->info('Payment initialized', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'payment_uuid' => $payment->uuid,
@@ -140,7 +147,7 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return DB::transaction(function () use ($paymentUuid, $amount, $correlationId) {
+        return $this->db->transaction(function () use ($paymentUuid, $amount, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_AUTHORIZED) {
@@ -167,15 +174,8 @@ final readonly class PaymentService
 
             $payment->update([
                 'status' => PaymentTransaction::STATUS_CAPTURED,
-                'captured_at' => now(),
-                'hold_amount' => $payment->hold_amount - $captureAmount,
-            ]);
-
-            Log::channel('audit')->info('Payment captured', [
+                'captured_amount' => $captureAmount,
                 'correlation_id' => $correlationId,
-                'payment_id' => $payment->id,
-                'payment_uuid' => $payment->uuid,
-                'capture_amount' => $captureAmount,
             ]);
 
             return $payment->fresh();
@@ -183,17 +183,17 @@ final readonly class PaymentService
     }
 
     /**
-     * Refund платежа (возврат)
+     * Возврат платежа (полный или частичный)
      */
     public function refund(
         string $paymentUuid,
         int $amount,
-        string $reason,
+        string $reason = '',
         ?string $correlationId = null,
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return DB::transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
+        return $this->db->transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_CAPTURED) {
@@ -221,55 +221,9 @@ final readonly class PaymentService
 
             $payment->update([
                 'status' => PaymentTransaction::STATUS_REFUNDED,
-                'refunded_at' => now(),
-                'metadata' => array_merge($payment->metadata ?? [], [
-                    'refund_reason' => $reason,
-                    'refunded_amount' => $amount,
-                    'refund_correlation_id' => $correlationId,
-                ]),
-            ]);
-
-            Log::channel('audit')->info('Payment refunded', [
+                'refunded_amount' => $amount,
+                'refund_reason' => $reason,
                 'correlation_id' => $correlationId,
-                'payment_id' => $payment->id,
-                'payment_uuid' => $payment->uuid,
-                'refund_amount' => $amount,
-                'reason' => $reason,
-            ]);
-
-            return $payment->fresh();
-        });
-    }
-}
-            }
-
-            if ($amount > $payment->amount) {
-                throw new \RuntimeException("Refund amount {$amount} exceeds payment amount {$payment->amount}");
-            }
-
-            // Возврат на wallet (увеличение баланса)
-            $this->walletService->credit(
-                tenantId: $payment->tenant_id,
-                amount: $amount,
-                type: 'refund',
-                sourceId: $payment->id,
-                correlationId: $correlationId,
-                reason: $reason,
-                sourceType: 'payment_refund',
-                walletId: $payment->wallet_id,
-            );
-
-            $payment->update([
-                'status' => PaymentTransaction::STATUS_REFUNDED,
-                'refunded_at' => now(),
-            ]);
-
-            Log::channel('audit')->info('Payment refunded', [
-                'correlation_id' => $correlationId,
-                'payment_id' => $payment->id,
-                'payment_uuid' => $payment->uuid,
-                'refund_amount' => $amount,
-                'reason' => $reason,
             ]);
 
             return $payment->fresh();
@@ -277,23 +231,13 @@ final readonly class PaymentService
     }
 
     /**
-     * Обработка webhook от платежной системы
+     * Обработка webhook от платёжного провайдера
      */
-    public function handleWebhook(
-        string $provider,
-        array $payload,
-        ?string $signature = null,
-    ): bool {
-        $correlationId = Str::uuid()->toString();
-        // if (!$this->webhookSignature->verify($provider, $payload, $signature)) {
-        //     Log::channel('webhook_errors')->error('Webhook signature verification failed', [
-        //         'correlation_id' => $correlationId,
-        //         'provider' => $provider,
-        //     ]);
-        //     return false;
-        // }
+    public function handleWebhook(string $provider, array $payload, ?string $correlationId = null): bool
+    {
+        $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Webhook received', [
+        $this->logger->channel('audit')->info('Payment webhook received', [
             'correlation_id' => $correlationId,
             'provider' => $provider,
             'payload' => $payload,

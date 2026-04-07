@@ -2,56 +2,47 @@
 
 namespace Modules\Payments\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\ServiceProvider;
+use Modules\Payments\Gateways\PaymentGatewayInterface;
+use Modules\Payments\Gateways\TinkoffGateway;
+use Modules\Payments\Services\IdempotencyService;
+use Modules\Payments\Services\PaymentOrchestrator;
 
-final class PaymentServiceProvider extends Model
+final class PaymentServiceProvider extends ServiceProvider
 {
-    use HasFactory;
+    public function register(): void
+    {
+        $this->app->bind(PaymentGatewayInterface::class, function ($app) {
+            $config = config('payments.tinkoff');
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    /**
-         * Выполнить операцию
-         * 
-         * @return mixed
-         * @throws \Exception
-         */
-        public function register(): void
-        {
-            $this->app->singleton(PaymentGatewayInterface::class, function ($app) {
-                return match (config('payments.default_gateway')) {
-                    'tinkoff' => new TinkoffGateway(
-                        config('payments.gateways.tinkoff.terminal_key'),
-                        config('payments.gateways.tinkoff.secret_key')
-                    ),
-                    default => new TinkoffGateway(
-                        config('payments.gateways.tinkoff.terminal_key'),
-                        config('payments.gateways.tinkoff.secret_key')
-                    ),
-                };
-            });
-    
-            $this->app->singleton(PaymentService::class, function ($app) {
-                return new PaymentService(
-                    $app->make(PaymentGatewayInterface::class)
-                );
-            });
+            return new TinkoffGateway(
+                http: $app->make(HttpFactory::class),
+                config: $config,
+            );
+        });
+
+        $this->app->singleton(IdempotencyService::class, fn ($app) => new IdempotencyService(
+            db: $app->make('db'),
+            log: $app->make('log'),
+        ));
+
+        $this->app->singleton(PaymentOrchestrator::class, fn ($app) => new PaymentOrchestrator(
+            db: $app->make('db'),
+            log: $app->make('log'),
+            fraud: $app->make(FraudControlService::class),
+            wallet: $app->make(WalletService::class),
+            idempotency: $app->make(IdempotencyService::class),
+            gateway: $app->make(PaymentGatewayInterface::class),
+        ));
+    }
+
+    public function boot(): void
+    {
+        if (is_dir(__DIR__ . '/../Routes') && file_exists(__DIR__ . '/../Routes/api.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../Routes/api.php');
         }
-    
-        /**
-         * Выполнить операцию
-         * 
-         * @return mixed
-         * @throws \Exception
-         */
-        public function boot(): void
-        {
-            // Register migrations if they exist
-            $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-            
-            // Register routes if they exist
-            if (file_exists(__DIR__.'/../Routes/api.php')) {
-                $this->loadRoutesFrom(__DIR__.'/../Routes/api.php');
-            }
-        }
+    }
 }

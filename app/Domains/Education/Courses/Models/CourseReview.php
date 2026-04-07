@@ -2,17 +2,22 @@
 
 namespace App\Domains\Education\Courses\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class CourseReview extends Model
 {
-    use HasFactory;
+    protected $table = 'education_course_reviews';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasUuids, SoftDeletes;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'course_id',
             'student_id',
@@ -38,7 +43,7 @@ final class CourseReview extends Model
 
         public function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant('id') ?? 0));
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant()->id ?? 0));
         }
 
         public function course(): BelongsTo
@@ -50,4 +55,27 @@ final class CourseReview extends Model
         {
             return $this->belongsTo(Enrollment::class);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

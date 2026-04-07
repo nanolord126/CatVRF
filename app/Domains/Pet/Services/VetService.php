@@ -2,20 +2,21 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VetService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class VetService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Запись питомца на приём.
@@ -25,22 +26,17 @@ final class VetService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting
-            if (RateLimiter::tooManyAttempts("pet:booking:{$userId}", 3)) {
+            if ($this->rateLimiter->tooManyAttempts("pet:booking:{$userId}", 3)) {
                 throw new \RuntimeException("Слишком много записей в ветклинику. Попробуйте позже.", 429);
             }
-            RateLimiter::hit("pet:booking:{$userId}", 3600);
+            $this->rateLimiter->hit("pet:booking:{$userId}", 3600);
 
-            return DB::transaction(function () use ($userId, $vetId, $serviceId, $dateTime, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $vetId, $serviceId, $dateTime, $correlationId) {
                 $vet = Vet::findOrFail($vetId);
                 $clinic = PetClinic::findOrFail($vet->clinic_id);
 
                 // 2. Fraud Check
-                $fraud = $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "pet_appointment",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["vet_id" => $vetId, "service_id" => $serviceId]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
                      throw new \RuntimeException("Запись заблокирована по соображениям безопасности.", 403);
@@ -60,7 +56,7 @@ final class VetService extends Model
                     "tags" => ["vertical:pet", "vet_specialization:" . $vet->specialization]
                 ]);
 
-                Log::channel("audit")->info("Pet: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
+                $this->logger->info("Pet: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
 
                 return $appointment;
             });
@@ -74,7 +70,7 @@ final class VetService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $appointment = PetAppointment::findOrFail($appointmentId);
 
-            DB::transaction(function () use ($appointment, $findings, $vaccineId, $correlationId) {
+            $this->db->transaction(function () use ($appointment, $findings, $vaccineId, $correlationId) {
                 $appointment->update(["status" => "completed"]);
 
                 // Списание медикаментов/расходников
@@ -99,7 +95,7 @@ final class VetService extends Model
                     "correlation_id" => $correlationId
                 ]);
 
-                Log::channel("audit")->info("Pet: appointment completed", ["appointment_id" => $appointment->id]);
+                $this->logger->info("Pet: appointment completed", ["appointment_id" => $appointment->id]);
             });
         }
 }

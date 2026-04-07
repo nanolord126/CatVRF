@@ -2,14 +2,11 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BookingResource extends Model
+final class BookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Booking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
@@ -48,8 +45,7 @@ final class BookingResource extends Model
                     Tables\Columns\TextColumn::make('number_of_seats'),
                     Tables\Columns\TextColumn::make('total_price')
                         ->money('RUB'),
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->colors(['pending' => 'warning', 'confirmed' => 'info', 'completed' => 'success', 'cancelled' => 'danger']),
+                    Tables\Columns\TextColumn::make('status')->badge(),
                 ])
                 ->filters([
                     Tables\Filters\TrashedFilter::make(),

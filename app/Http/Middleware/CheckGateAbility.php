@@ -1,15 +1,38 @@
 <?php declare(strict_types=1);
 
+/**
+ * CheckGateAbility — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/checkgateability
+ * @see https://catvrf.ru/docs/checkgateability
+ * @see https://catvrf.ru/docs/checkgateability
+ * @see https://catvrf.ru/docs/checkgateability
+ * @see https://catvrf.ru/docs/checkgateability
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CheckGateAbility extends Model
+final class CheckGateAbility
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle an incoming request.
          */
@@ -18,12 +41,12 @@ final class CheckGateAbility extends Model
             $user = $request->user();
 
             if (! $user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return $this->response->json(['error' => 'Unauthorized'], 401);
             }
 
             // Check gate
             if (! Gate::check($ability)) {
-                Log::channel('audit')->warning('Gate authorization failed', [
+                $this->logger->channel('audit')->warning('Gate authorization failed', [
                     'correlation_id' => $request->header('X-Correlation-ID'),
                     'ability' => $ability,
                     'user_id' => $user->id,
@@ -31,10 +54,10 @@ final class CheckGateAbility extends Model
                     'path' => $request->path(),
                 ]);
 
-                return response()->json(['error' => 'Forbidden - Insufficient permissions'], 403);
+                return $this->response->json(['error' => 'Forbidden - Insufficient permissions'], 403);
             }
 
-            Log::channel('audit')->debug('Gate authorization granted', [
+            $this->logger->channel('audit')->debug('Gate authorization granted', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'ability' => $ability,
                 'user_id' => $user->id,
@@ -42,4 +65,10 @@ final class CheckGateAbility extends Model
 
             return $next($request);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

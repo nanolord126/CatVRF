@@ -2,14 +2,11 @@
 
 namespace App\Domains\Education\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Tests\TestCase;
 
-final class EducationVerticalIntegrationTest extends Model
+final class EducationVerticalIntegrationTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         protected function setUp(): void

@@ -1,36 +1,69 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\ConsumablesDepleted;
+use App\Domains\Beauty\Jobs\NotifyLowConsumablesJob;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class HandleConsumablesDepletedListener extends Model
+/**
+ * HandleConsumablesDepletedListener — CatVRF 2026.
+ *
+ * Диспатчит уведомление при исчерпании расходников.
+ * Runs asynchronously via queue (ShouldQueue).
+ * Maintains correlation_id chain.
+ *
+ * @package App\Domains\Beauty\Listeners
+ */
+final class HandleConsumablesDepletedListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private Dispatcher $bus,
+        private LoggerInterface $auditLogger,
+    ) {}
+
     public function handle(ConsumablesDepleted $event): void
-        {
-            $consumable = $event->consumable;
+    {
+        $this->bus->dispatch(new NotifyLowConsumablesJob($event->correlationId));
 
-            // Check if stock is below threshold
-            if ($consumable->current_stock <= $consumable->min_stock_threshold) {
-                NotifyLowConsumablesJob::dispatch($event->correlationId);
+        $this->auditLogger->warning('Consumable depleted below threshold.', [
+            'consumable_id'  => $event->consumableId,
+            'name'           => $event->consumableName,
+            'quantity'       => $event->quantity,
+            'tenant_id'      => $event->tenantId,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-                Log::channel('audit')->warning('Consumable depleted below threshold', [
-                    'consumable_id' => $consumable->id,
-                    'name' => $consumable->name,
-                    'current_stock' => $consumable->current_stock,
-                    'threshold' => $consumable->min_stock_threshold,
-                    'correlation_id' => $event->correlationId,
-                ]);
-            }
+    public function failed(ConsumablesDepleted $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('HandleConsumablesDepletedListener failed.', [
+            'consumable_id'  => $event->consumableId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            Log::channel('audit')->info('ConsumablesDepleted event handled', [
-                'consumable_id' => $consumable->id,
-                'quantity_depleted' => $event->quantity,
-                'correlation_id' => $event->correlationId,
-            ]);
-        }
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(ConsumablesDepleted $event): bool
+    {
+        return $event->consumableId > 0;
+    }
+
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-inventory';
+    }
 }

@@ -2,27 +2,32 @@
 
 namespace App\Domains\Sports\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RefundPurchaseCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class RefundPurchaseCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(PurchaseRefunded $event): void
         {
             try {
-                Log::channel('audit')->info('Processing purchase refund commission', [
+                $this->logger->info('Processing purchase refund commission', [
                     'purchase_id' => $event->purchase->id,
                     'commission_amount' => $event->purchase->commission_amount,
                     'reason' => $event->reason,
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($event) {
                     $wallet = \App\Models\Wallet::lockForUpdate()
                         ->where('tenant_id', $event->purchase->tenant_id)
                         ->firstOrFail();
@@ -42,12 +47,12 @@ final class RefundPurchaseCommissionListener extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Purchase refund commission processed', [
+                $this->logger->info('Purchase refund commission processed', [
                     'purchase_id' => $event->purchase->id,
                     'correlation_id' => $event->correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to process purchase refund commission', [
+                $this->logger->error('Failed to process purchase refund commission', [
                     'purchase_id' => $event->purchase->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

@@ -1,20 +1,36 @@
-<?php declare(strict_types=1);
+<?php
 
-namespace Modules\Wallet\Routes;
+declare(strict_types=1);
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Route;
+use Modules\Wallet\Presentation\Http\Controllers\WalletController;
 
-final class api extends Model
-{
-    use HasFactory;
+/*
+|--------------------------------------------------------------------------
+| Wallet API Routes (Clean Architecture — 9-layer)
+|--------------------------------------------------------------------------
+| Все операции делегируются UseCases.
+| Rate-limiting и fraud-check внутри UseCases.
+*/
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Route::get('/balance', [WalletController::class, 'balance'])->name('wallet.balance');
-            Route::post('/deposit', [WalletController::class, 'deposit'])->name('wallet.deposit');
-            Route::post('/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
-            Route::get('/transactions', [WalletController::class, 'index'])->name('wallet.transactions');
-            Route::get('/transactions/{transaction}', [WalletController::class, 'show'])->name('wallet.show');
-            Route::get('/history', [WalletController::class, 'history'])->name('wallet.history');
-            Route::get('/statement', [WalletController::class, 'statement'])->name('wallet.statement');
-}
+Route::middleware(['api', 'auth:sanctum', 'tenant'])
+    ->prefix('wallet')
+    ->name('wallet.')
+    ->group(function (): void {
+        // GET /api/wallet/balance?tenant_id=X
+        Route::get('/balance', [WalletController::class, 'balance'])
+            ->name('balance');
+
+        // POST /api/wallet/deposit  { amount, tenant_id, description? }
+        Route::post('/deposit', [WalletController::class, 'deposit'])
+            ->name('deposit');
+
+        // POST /api/wallet/withdraw  { amount, tenant_id, description? }
+        Route::post('/withdraw', [WalletController::class, 'withdraw'])
+            ->name('withdraw');
+
+        // POST /api/wallet/transfer  { to_user_id, amount, tenant_id, description? }
+        Route::post('/transfer', [WalletController::class, 'transfer'])
+            ->name('transfer');
+    });
+

@@ -7,16 +7,16 @@ use Livewire\Component;
 
 final class Jewelry3DViewer extends Component
 {
-    public int $modelId;
-    public string $modelUrl = '';
-    public string $textureUrl = '';
-    public float $rotationX = 0;
-    public float $rotationY = 0;
-    public float $rotationZ = 0;
-    public float $zoom = 1.0;
-    public string $materialType = 'gold';
-    public bool $arMode = false;
-    public bool $vrMode = false;
+    private int $modelId;
+    private string $modelUrl = '';
+    private string $textureUrl = '';
+    private float $rotationX = 0;
+    private float $rotationY = 0;
+    private float $rotationZ = 0;
+    private float $zoom = 1.0;
+    private string $materialType = 'gold';
+    private bool $arMode = false;
+    private bool $vrMode = false;
 
     public function mount(int $modelId): void
     {

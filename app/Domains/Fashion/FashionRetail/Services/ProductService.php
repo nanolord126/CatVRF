@@ -2,18 +2,20 @@
 
 namespace App\Domains\Fashion\FashionRetail\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProductService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ProductService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function getActive(): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailProduct::where('status', 'active')
                 ->with('shop', 'category', 'variants')
@@ -23,7 +25,7 @@ final class ProductService extends Model
         public function getByShop(int $shopId): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailProduct::where('shop_id', $shopId)
                 ->where('status', 'active')
@@ -34,7 +36,7 @@ final class ProductService extends Model
         public function getByCategory(int $categoryId): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailProduct::where('category_id', $categoryId)
                 ->where('status', 'active')
@@ -45,7 +47,7 @@ final class ProductService extends Model
         public function search(string $query): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailProduct::where('name', 'like', "%{$query}%")
                 ->orWhere('sku', 'like', "%{$query}%")
@@ -58,7 +60,7 @@ final class ProductService extends Model
         public function checkStock(int $productId, int $quantity): bool
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             $product = FashionRetailProduct::findOrFail($productId);
             return $product->current_stock >= $quantity;
@@ -67,13 +69,15 @@ final class ProductService extends Model
         public function reduceStock(int $productId, int $quantity, string $correlationId): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-            DB::transaction(function () use ($productId, $quantity, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($productId, $quantity, $correlationId) {
                 $product = FashionRetailProduct::lockForUpdate()->findOrFail($productId);
 
                 if ($product->current_stock < $quantity) {
-                    throw new \Exception('Insufficient stock');
+                    throw new \RuntimeException('Insufficient stock');
                 }
 
                 $product->update([
@@ -81,7 +85,7 @@ final class ProductService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('FashionRetail stock reduced', [
+                $this->logger->info('FashionRetail stock reduced', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'correlation_id' => $correlationId,
@@ -92,9 +96,9 @@ final class ProductService extends Model
         public function increaseStock(int $productId, int $quantity, string $correlationId): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-            DB::transaction(function () use ($productId, $quantity, $correlationId) {
+            $this->db->transaction(function () use ($productId, $quantity, $correlationId) {
                 $product = FashionRetailProduct::lockForUpdate()->findOrFail($productId);
 
                 $product->update([
@@ -102,7 +106,7 @@ final class ProductService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('FashionRetail stock increased', [
+                $this->logger->info('FashionRetail stock increased', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'correlation_id' => $correlationId,

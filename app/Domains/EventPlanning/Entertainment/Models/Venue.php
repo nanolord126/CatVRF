@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Venue extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'entertainment_venues';
@@ -47,56 +46,6 @@ final class Venue extends Model
             'id',
             'tenant_id',
         ];
-
-        /**
-         * КАНОН: Инициализация модели, авто-генерация UUID и Global Scope
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (Model $model) {
-                if (empty($model->uuid)) {
-                    $model->uuid = (string) Str::uuid();
-                }
-                if (empty($model->correlation_id)) {
-                    $model->correlation_id = (string) Str::uuid();
-                }
-            });
-
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                // В Production используется tenant()->id, здесь заглушка для тестов
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        /* --- Отношения (Relations) --- */
-
-        /**
-         * События заведения (сеансы, квесты и т.д.)
-         */
-        public function events(): HasMany
-        {
-            return $this->hasMany(Event::class, 'venue_id');
-        }
-
-        /**
-         * Схемы залов/столов
-         */
-        public function seatMaps(): HasMany
-        {
-            return $this->hasMany(SeatMap::class, 'venue_id');
-        }
-
-        /**
-         * Отзывы о заведении
-         */
-        public function reviews(): HasMany
-        {
-            return $this->hasMany(Review::class, 'venue_id');
-        }
-
-        /* --- Методы Канона --- */
 
         /**
          * Проверка: активно ли заведение

@@ -2,20 +2,19 @@
 
 namespace App\Domains\PersonalDevelopment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PricingService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class PricingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
+        private readonly string $correlationId;
+
         public function __construct(
-            private WalletService $walletService,
-            private string $correlationId = ''
+            private readonly WalletService $walletService,
+            string $correlationId = '', private readonly LoggerInterface $logger
         ) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
@@ -40,7 +39,7 @@ final class PricingService extends Model
                 $finalPrice = $basePrice;
             }
 
-            Log::channel('audit')->info('PD Pricing: Final price calculated', [
+            $this->logger->info('PD Pricing: Final price calculated', [
                 'program_uuid' => $program->uuid,
                 'user_id' => $user->id,
                 'base_price' => $basePrice,

@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Api\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class EventPlanningController extends Model
+final class EventPlanningController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private EventPlanningService $eventService,
-        ) {}
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
         /**
          * Создание события (B2C/B2B).
          */
@@ -20,12 +21,12 @@ final class EventPlanningController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
             try {
-                Log::channel('audit')->info("API-Request: Store Event starting", [
+                $this->logger->channel('audit')->info("API-Request: Store Event starting", [
                     'correlation_id' => $correlationId,
                     'user_id' => $request->user()?->id,
                 ]);
                 $event = $this->eventService->createEventProject($request->validated(), $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'uuid' => $event->uuid,
                     'status' => $event->status,
@@ -35,12 +36,19 @@ final class EventPlanningController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Exception $e) {
-                Log::channel('audit')->error("API-Error: Store Event failed", [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error("API-Error: Store Event failed", [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при создании плана события. Попробуйте еще раз позже.',
                     'correlation_id' => $correlationId,
@@ -58,13 +66,20 @@ final class EventPlanningController extends Model
                     ->with(['vendors'])
                     ->orderBy('created_at', 'desc')
                     ->paginate(15);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $events,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Exception $e) {
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Не удалось загрузить ваши события.',
                     'correlation_id' => $correlationId,
@@ -80,13 +95,20 @@ final class EventPlanningController extends Model
             try {
                 // Eager loading
                 $event->load(['vendors', 'budgetItems']);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $event,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Exception $e) {
-                return response()->json(['success' => false, 'message' => 'Событие не найдено.'], 404);
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json(['success' => false, 'message' => 'Событие не найдено.'], 404);
             }
         }
         /**
@@ -97,13 +119,20 @@ final class EventPlanningController extends Model
             $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
             try {
                 $this->eventService->cancelEvent($event, $request->input('reason', 'Запрос пользователя'), $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Событие успешно отменено. Штраф списан согласно правилам политики отмены.',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Exception $e) {
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при отмене события.',
                     'correlation_id' => $correlationId,

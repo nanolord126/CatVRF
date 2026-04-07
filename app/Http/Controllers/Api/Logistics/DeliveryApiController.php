@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Api\Logistics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class DeliveryApiController extends Model
+final class DeliveryApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly DeliveryOrderService $orderService,
-            private readonly SurgePricingService $surgeService
-        ) {}
+            private readonly SurgePricingService $surgeService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Создать новый заказ на доставку
          */
@@ -31,7 +32,7 @@ final class DeliveryApiController extends Model
             ]);
             try {
                 $order = $this->orderService->createOrder($validated, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => [
                         'order_uuid' => $order->uuid,
@@ -42,11 +43,11 @@ final class DeliveryApiController extends Model
                     'correlation_id' => $correlationId
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Order Creation failed', [
+                $this->logger->channel('audit')->error('API Order Creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Failed to create delivery order',
                     'correlation_id' => $correlationId
@@ -61,7 +62,7 @@ final class DeliveryApiController extends Model
             $order = DeliveryOrder::where('uuid', $uuid)
                 ->where('tenant_id', tenant('id'))
                 ->firstOrFail();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => [
                     'status' => $order->status,
@@ -81,7 +82,7 @@ final class DeliveryApiController extends Model
             $lat = (float) $request->input('lat');
             $lon = (float) $request->input('lon');
             $surge = $this->surgeService->calculateSurge($lat, $lon, 'logistics');
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'surge_multiplier' => $surge,
                 'estimated_base_price' => 50000, // 500 руб база

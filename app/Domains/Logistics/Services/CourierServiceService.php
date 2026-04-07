@@ -2,17 +2,15 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CourierServiceService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class CourierServiceService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createCourierService(
             int $tenantId,
@@ -23,19 +21,11 @@ final class CourierServiceService extends Model
             int $serviceRadius,
             float $baseRate,
             float $perKmRate,
-            string $correlationId,
-        ): CourierService {
+            string $correlationId
+    ): CourierService {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use (
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use (
                 $tenantId,
                 $userId,
                 $companyName,
@@ -44,8 +34,8 @@ final class CourierServiceService extends Model
                 $serviceRadius,
                 $baseRate,
                 $perKmRate,
-                $correlationId,
-            ) {
+                $correlationId
+    ) {
                 $courier = CourierService::create([
                     'tenant_id' => $tenantId,
                     'user_id' => $userId,
@@ -59,7 +49,7 @@ final class CourierServiceService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Courier service created', [
+                $this->logger->info('Courier service created', [
                     'courier_id' => $courier->id,
                     'tenant_id' => $tenantId,
                     'company_name' => $companyName,
@@ -73,19 +63,11 @@ final class CourierServiceService extends Model
         public function updateCourierService(CourierService $courier, array $data, string $correlationId): CourierService
         {
 
-
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($courier, $data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($courier, $data, $correlationId) {
                 $courier->update([...$data, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Courier service updated', [
+                $this->logger->info('Courier service updated', [
                     'courier_id' => $courier->id,
                     'correlation_id' => $correlationId,
                 ]);

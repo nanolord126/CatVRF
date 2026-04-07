@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AppointmentResource extends Model
+final class AppointmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Appointment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar';
@@ -64,31 +61,15 @@ final class AppointmentResource extends Model
                     ->label('Статус оплаты'),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAppointment::route('/'),
-                'create' => Pages\\CreateAppointment::route('/create'),
-                'edit' => Pages\\EditAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewAppointment::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAppointment::route('/'),
-                'create' => Pages\\CreateAppointment::route('/create'),
-                'edit' => Pages\\EditAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewAppointment::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAppointment::route('/'),
-                'create' => Pages\\CreateAppointment::route('/create'),
-                'edit' => Pages\\EditAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewAppointment::route('/{record}'),
+                'index' => Pages\ListAppointment::route('/'),
+                'create' => Pages\CreateAppointment::route('/create'),
+                'edit' => Pages\EditAppointment::route('/{record}/edit'),
+                'view' => Pages\ViewAppointment::route('/{record}'),
             ];
         }
 }

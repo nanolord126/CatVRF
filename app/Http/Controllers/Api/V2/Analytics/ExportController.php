@@ -2,19 +2,27 @@
 
 namespace App\Http\Controllers\Api\V2\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Str;
 
-final class ExportController extends Model
+final class ExportController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ExportService $exportService,
             private readonly SegmentationService $segmentationService,
-        ) {
-        }
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
+
+    }
         /**
          * POST /api/v2/exports/create
          * Создать экспорт данных
@@ -49,13 +57,20 @@ final class ExportController extends Model
                         ['correlation_id' => (string)$correlationId],
                     ),
                 };
-                return response()->json([
+                return $this->response->json([
                     'data' => $export,
                     'correlation_id' => (string)$correlationId,
                 ], 201);
             } catch (\Exception $e) {
-                \Log::error('Create export error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Create export error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -72,17 +87,24 @@ final class ExportController extends Model
                     'limit' => 'nullable|integer|min:1|max:100',
                 ]);
                 $history = $this->exportService->getExportHistory(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     limit: $validated['limit'] ?? 50,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $history,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Get export history error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Get export history error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -105,17 +127,24 @@ final class ExportController extends Model
                     $criteria = ['by_value' => true, 'by_behavior' => true];
                 }
                 $segments = $this->segmentationService->segmentCustomers(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     criteria: $criteria,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $segments,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Get segments error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Get segments error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -133,18 +162,25 @@ final class ExportController extends Model
                     'segment_2' => 'required|string',
                 ]);
                 $comparison = $this->segmentationService->compareSegments(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     segment1: $validated['segment_1'],
                     segment2: $validated['segment_2'],
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $comparison,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Compare segments error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Compare segments error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);

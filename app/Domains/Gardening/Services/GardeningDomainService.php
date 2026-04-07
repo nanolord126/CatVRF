@@ -2,18 +2,18 @@
 
 namespace App\Domains\Gardening\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GardeningDomainService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class GardeningDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl,
-            private readonly RateLimiterService $rateLimiter
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+            private readonly RateLimiterService $rateLimiter,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * saveProduct() with transactional integrity and bi-layer update (Product + Plant)
@@ -23,9 +23,9 @@ final class GardeningDomainService extends Model
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
             // 1. Core Security Check: Rate limiting and Fraud scoring
-            $this->fraudControl->check($correlationId, 'GARDEN_PRODUCT_SAVE', ['sku' => $dto->sku]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'GARDEN_PRODUCT_SAVE', amount: 0, correlationId: $correlationId);
 
-            return DB::transaction(function () use ($dto, $tenantId, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $tenantId, $correlationId) {
 
                 // 2. Main Product Creation/Update
                 $product = GardenProduct::updateOrCreate(
@@ -52,10 +52,11 @@ final class GardeningDomainService extends Model
                     );
                 }
 
-                Log::channel('audit')->info('Gardening product persisted', [
+                $this->logger->info('Gardening product persisted', [
                     'sku' => $product->sku,
                     'cid' => $correlationId,
-                    'tenant' => $tenantId
+                    'tenant' => $tenantId,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $product;
@@ -69,7 +70,7 @@ final class GardeningDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($dto, $tenantId, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $tenantId, $correlationId) {
                 $box = GardenSubscriptionBox::updateOrCreate(
                     ['name' => $dto->name, 'tenant_id' => $tenantId],
                     [
@@ -82,10 +83,11 @@ final class GardeningDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Gardening subscription box updated', [
+                $this->logger->info('Gardening subscription box updated', [
                     'box_id' => $box->id,
                     'cid' => $correlationId,
-                    'tenant' => $tenantId
+                    'tenant' => $tenantId,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $box;

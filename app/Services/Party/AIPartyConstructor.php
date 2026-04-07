@@ -2,26 +2,38 @@
 
 namespace App\Services\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIPartyConstructor extends Model
+use Illuminate\Http\Request;
+use App\Services\AI\AIConstructorService;
+use App\Models\Party\PartyProduct;
+use App\Models\Party\PartyTheme;
+use App\Models\Party\PartyGiftSet;
+use Illuminate\Database\Eloquent\Collection;
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AIPartyConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private AIConstructorService $aiService,
-            private string $correlationId
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        }
 
         /**
          * Build AI-matching party list.
          */
         public function buildDecorPlan(array $params): array
         {
-            Log::channel('audit')->info('Initializing AI Party Constructor', [
-                'correlation_id' => $this->correlationId,
+            $this->logger->channel('audit')->info('Initializing AI Party Constructor', [
+                'correlation_id' => $this->correlationId(),
                 'budget' => $params['budget'] ?? 0,
                 'guests' => $params['guests'] ?? 0,
                 'theme_id' => $params['theme_id'] ?? null,
@@ -54,20 +66,27 @@ final class AIPartyConstructor extends Model
                     'analysis' => $analysis,
                     'matched_products' => $matchedProducts,
                     'is_b2b' => ($params['budget'] > 1000000), // Larger budgets imply B2B wholesale
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ];
 
-                Log::channel('audit')->info('AI Decor Plan successfully built', [
-                    'correlation_id' => $this->correlationId,
+                $this->logger->channel('audit')->info('AI Decor Plan successfully built', [
+                    'correlation_id' => $this->correlationId(),
                     'products_count' => count($matchedProducts),
                 ]);
 
                 return $result;
 
-            } catch (Exception $e) {
-                Log::channel('audit')->error('Failed to build AI Party Decor Plan', [
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Failed to build AI Party Decor Plan', [
                     'error' => $e->getMessage(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 throw $e;

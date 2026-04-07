@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+
 use App\Domains\Art\Models\PortfolioItem;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-
 final class PortfolioItemPublished
 {
     use Dispatchable;
@@ -18,17 +17,8 @@ final class PortfolioItemPublished
     public function __construct(
         public readonly PortfolioItem $item,
         public readonly string $correlationId,
-        public readonly array $context = [],
-    ) {
-        Log::channel('audit')->info('PortfolioItemPublished event dispatched', [
-            'correlation_id' => $this->correlationId,
-            'portfolio_item_id' => $this->item->id,
-            'project_id' => $this->item->project_id,
-            'artist_id' => $this->item->artist_id,
-            'tenant_id' => $this->item->tenant_id,
-            'published_at' => $this->item->published_at,
-        ]);
-    }
+        public array $context = [],
+    ) {}
 
     public static function dispatch(PortfolioItem $item, string $correlationId, array $context = []): void
     {

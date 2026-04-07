@@ -2,14 +2,23 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
-final class NotificationPreferencesService extends Model
+
+
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class NotificationPreferencesService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Get user notification preferences
          * @param int $userId
@@ -36,7 +45,7 @@ final class NotificationPreferencesService extends Model
                     'correlation_id' => $correlationId,
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get notification preferences', [
+                $this->logger->channel('audit')->error('Failed to get notification preferences', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -79,7 +88,8 @@ final class NotificationPreferencesService extends Model
             $correlationId = Str::uuid()->toString();
 
             try {
-                DB::transaction(function () use ($userId, $channel, $preferences) {
+                $this->fraud->check(new \stdClass());
+                $this->db->transaction(function () use ($userId, $channel, $preferences) {
                     cache()->put(
                         "notif:channel:{$userId}:{$channel}:enabled",
                         $preferences['enabled'] ?? true,
@@ -95,7 +105,7 @@ final class NotificationPreferencesService extends Model
                     }
                 });
 
-                Log::channel('audit')->info('Notification preferences updated', [
+                $this->logger->channel('audit')->info('Notification preferences updated', [
                     'user_id' => $userId,
                     'channel' => $channel,
                     'correlation_id' => $correlationId,
@@ -103,7 +113,7 @@ final class NotificationPreferencesService extends Model
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update preferences', [
+                $this->logger->channel('audit')->error('Failed to update preferences', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -126,7 +136,7 @@ final class NotificationPreferencesService extends Model
                 cache()->put("dnd:user.{$userId}.start_time", $startTime, 86400 * 365);
                 cache()->put("dnd:user.{$userId}.end_time", $endTime, 86400 * 365);
 
-                Log::channel('audit')->info('Do-not-disturb enabled', [
+                $this->logger->channel('audit')->info('Do-not-disturb enabled', [
                     'user_id' => $userId,
                     'start_time' => $startTime,
                     'end_time' => $endTime,
@@ -134,7 +144,7 @@ final class NotificationPreferencesService extends Model
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to set do-not-disturb', [
+                $this->logger->channel('audit')->error('Failed to set do-not-disturb', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -154,13 +164,13 @@ final class NotificationPreferencesService extends Model
                 cache()->forget("dnd:user.{$userId}.start_time");
                 cache()->forget("dnd:user.{$userId}.end_time");
 
-                Log::channel('audit')->info('Do-not-disturb disabled', [
+                $this->logger->channel('audit')->info('Do-not-disturb disabled', [
                     'user_id' => $userId,
                 ]);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to disable do-not-disturb', [
+                $this->logger->channel('audit')->error('Failed to disable do-not-disturb', [
                     'error' => $e->getMessage(),
                 ]);
 

@@ -2,17 +2,17 @@
 
 namespace App\Domains\Medical\MedicalHealthcare\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class B2BMedicalController extends Model
+final class B2BMedicalController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function storefronts(): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => B2BMedicalStorefront::where('is_active', true)
                     ->where('is_verified', true)
@@ -37,18 +37,18 @@ final class B2BMedicalController extends Model
 
                 $c = Str::uuid()->toString();
 
-                DB::transaction(fn() => B2BMedicalStorefront::create([
+                $this->db->transaction(fn() => B2BMedicalStorefront::create([
                     'uuid' => Str::uuid(),
-                    'tenant_id' => auth()->user()->tenant_id
+                    'tenant_id' => $request->user()->tenant_id
                 ] + $v + ['correlation_id' => $c]));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Витрина создана',
                     'correlation_id' => $c
                 ], 201);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка',
                     'correlation_id' => Str::uuid()
@@ -69,21 +69,21 @@ final class B2BMedicalController extends Model
 
                 $c = Str::uuid()->toString();
 
-                DB::transaction(fn() => B2BMedicalOrder::create([
+                $this->db->transaction(fn() => B2BMedicalOrder::create([
                     'uuid' => Str::uuid(),
-                    'tenant_id' => auth()->user()->tenant_id,
+                    'tenant_id' => $request->user()->tenant_id,
                     'order_number' => 'B2B-' . Str::random(8),
                     'commission_amount' => (int)($v['total_amount'] * 0.14),
                     'status' => 'pending'
                 ] + $v + ['correlation_id' => $c]));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ создан',
                     'correlation_id' => $c
                 ], 201);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка',
                     'correlation_id' => Str::uuid()
@@ -93,9 +93,9 @@ final class B2BMedicalController extends Model
 
         public function myB2BOrders(): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
-                'data' => B2BMedicalOrder::where('tenant_id', auth()->user()->tenant_id)
+                'data' => B2BMedicalOrder::where('tenant_id', $request->user()->tenant_id)
                     ->latest()
                     ->paginate(20),
                 'correlation_id' => Str::uuid(),
@@ -108,15 +108,15 @@ final class B2BMedicalController extends Model
                 $o = B2BMedicalOrder::findOrFail($id);
                 $this->authorize('approveOrder', $o);
 
-                DB::transaction(fn() => $o->update(['status' => 'approved']));
+                $this->db->transaction(fn() => $o->update(['status' => 'approved']));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Одобрено',
                     'correlation_id' => Str::uuid()
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка',
                     'correlation_id' => Str::uuid()
@@ -130,18 +130,18 @@ final class B2BMedicalController extends Model
                 $o = B2BMedicalOrder::findOrFail($id);
                 $this->authorize('rejectOrder', $o);
 
-                DB::transaction(fn() => $o->update([
+                $this->db->transaction(fn() => $o->update([
                     'status' => 'rejected',
                     'notes' => $r->get('reason', '')
                 ]));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Отклонено',
                     'correlation_id' => Str::uuid()
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка',
                     'correlation_id' => Str::uuid()
@@ -154,16 +154,16 @@ final class B2BMedicalController extends Model
             try {
                 $this->authorize('verifyInn', B2BMedicalStorefront::class);
 
-                DB::transaction(fn() => B2BMedicalStorefront::findOrFail($id)
+                $this->db->transaction(fn() => B2BMedicalStorefront::findOrFail($id)
                     ->update(['is_verified' => true]));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Верифицировано',
                     'correlation_id' => Str::uuid()
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка',
                     'correlation_id' => Str::uuid()

@@ -2,45 +2,51 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
+
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
+use Illuminate\Log\LogManager;
 
 /**
  * Push Notification Service - отправляет push через Firebase/OneSignal
  */
-class PushNotificationService
+abstract class PushNotificationService
 {
     /**
      * Firebase Messaging инстанс
      */
-    protected $messaging;
+    private $messaging;
 
     /**
      * OneSignal API (альтернатива)
      */
-    protected ?string $oneSignalAppId;
-    protected ?string $oneSignalApiKey;
+    private readonly ?string $oneSignalAppId;
+    private readonly ?string $oneSignalApiKey;
 
     /**
      * Конструктор
      */
-    public function __construct()
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    )
     {
         // Инициализировать Firebase если конфиг есть
-        if (config('services.firebase.credentials_path')) {
+        if ($this->config->get('services.firebase.credentials_path')) {
             try {
                 $factory = new Factory();
-                $firebase = $factory->withServiceAccount(config('services.firebase.credentials_path'));
+                $firebase = $factory->withServiceAccount($this->config->get('services.firebase.credentials_path'));
                 $this->messaging = $firebase->createMessaging();
             } catch (\Exception $e) {
-                Log::warning('Firebase not initialized', ['error' => $e->getMessage()]);
+                $this->logger->warning('Firebase not initialized', ['error' => $e->getMessage()]);
             }
         }
 
-        $this->oneSignalAppId = config('services.onesignal.app_id');
-        $this->oneSignalApiKey = config('services.onesignal.api_key');
+        $this->oneSignalAppId = $this->config->get('services.onesignal.app_id');
+        $this->oneSignalApiKey = $this->config->get('services.onesignal.api_key');
     }
 
     /**
@@ -54,7 +60,7 @@ class PushNotificationService
     ): bool {
         try {
             if (!isset($this->messaging)) {
-                throw new \Exception('Firebase not configured');
+                throw new \RuntimeException('Firebase not configured');
             }
 
             // Создать облако сообщение
@@ -68,7 +74,7 @@ class PushNotificationService
             // Отправить
             $this->messaging->send($message);
 
-            Log::channel('audit')->info('Push notification sent', [
+            $this->logger->channel('audit')->info('Push notification sent', [
                 'token' => substr($token, 0, 20) . '...',
                 'correlation_id' => $correlationId,
             ]);
@@ -76,7 +82,14 @@ class PushNotificationService
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Failed to send push notification', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send push notification', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -106,7 +119,7 @@ class PushNotificationService
                         tenantId: $user->tenant_id ?? null,
                     );
                 } catch (\Exception $e) {
-                    Log::warning('Failed to send push to device', ['error' => $e->getMessage()]);
+                    $this->logger->warning('Failed to send push to device', ['error' => $e->getMessage()]);
                 }
             }
         }

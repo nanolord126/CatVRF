@@ -2,14 +2,11 @@
 
 namespace App\Domains\Food\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class RestaurantOrderResource extends Model
+final class RestaurantOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = RestaurantOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -55,7 +52,7 @@ final class RestaurantOrderResource extends Model
                     TextColumn::make('restaurant.name')
                         ->label('Ресторан')
                         ->searchable(),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->label('Статус')
                         ->colors([
                             'success' => 'delivered',

@@ -2,14 +2,17 @@
 
 namespace App\Modules\Marketplace\Stationery\Livewire;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StationeryProductList extends Model
+use Psr\Log\LoggerInterface;
+use Livewire\Component;
+
+final class StationeryProductList extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use WithPagination;
 
         public string $search = '';
@@ -49,7 +52,7 @@ final class StationeryProductList extends Model
         public function addToBasket(int $productId, int $quantity = 1): void
         {
             try {
-                Log::channel('audit')->info('Stationery basket action', [
+                $this->logger->info('Stationery basket action', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'mode' => $this->mode,

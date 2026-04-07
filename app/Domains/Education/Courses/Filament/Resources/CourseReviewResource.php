@@ -2,94 +2,53 @@
 
 namespace App\Domains\Education\Courses\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Education\Models\CourseReview;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
-final class CourseReviewResource extends Model
+/**
+ * Class CourseReviewResource
+ *
+ * Part of the Education vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Domains\Education\Courses\Filament\Resources
+ */
+final class CourseReviewResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = CourseReview::class;
+    protected static ?string $navigationIcon = 'heroicon-o-star';
+    protected static ?string $navigationGroup = 'Обучение';
+    protected static ?string $navigationLabel = 'Отзывы';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, Select, TextInput, Textarea, Toggle};
-    use Filament\Forms\Form;
-    use Filament\Resources\Resource;
-    use Filament\Tables\Columns\{TextColumn, IconColumn, BadgeColumn};
-    use Filament\Tables\Filters\SelectFilter;
-    use Filament\Tables\Table;
-    use Filament\Tables\Actions\EditAction;
-
-    final class CourseReviewResource extends Resource
+    public static function form(Form $form): Form
     {
-        protected static ?string $model = CourseReview::class;
-        protected static ?string $navigationIcon = 'heroicon-o-star';
-        protected static ?string $navigationGroup = 'Обучение';
+        return $form->schema([
+            TextInput::make('name')->label('Название')->required(),
+        ]);
+    }
 
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Section::make('Отзыв')
-                        ->schema([
-                            Select::make('course_id')
-                                ->label('Курс')
-                                ->relationship('course', 'title')
-                                ->required()
-                                ->disabled(),
-                            Select::make('student_id')
-                                ->label('Студент')
-                                ->relationship('student', 'name')
-                                ->required()
-                                ->disabled(),
-                            TextInput::make('rating')
-                                ->label('Рейтинг (1-5)')
-                                ->numeric()
-                                ->required(),
-                            TextInput::make('title')
-                                ->label('Заголовок')
-                                ->required(),
-                            Textarea::make('content')
-                                ->label('Текст отзыва')
-                                ->required()
-                                ->rows(5),
-                        ]),
-                    Section::make('Статус')
-                        ->schema([
-                            Toggle::make('verified_purchase')
-                                ->label('Проверенная покупка'),
-                        ]),
-                ]);
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->label('Название')->searchable(),
+                TextColumn::make('created_at')->label('Создан')->dateTime(),
+            ]);
+    }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('course.title')
-                        ->label('Курс'),
-                    TextColumn::make('student.name')
-                        ->label('Студент'),
-                    BadgeColumn::make('rating')
-                        ->label('Рейтинг')
-                        ->colors([
-                            'danger' => 1,
-                            'warning' => 2,
-                            'info' => 3,
-                            'success' => 4,
-                        ]),
-                    TextColumn::make('title')
-                        ->label('Заголовок'),
-                    IconColumn::make('verified_purchase')
-                        ->label('Проверено')
-                        ->boolean(),
-                    TextColumn::make('published_at')
-                        ->label('Опубликовано')
-                        ->dateTime(),
-                ])
-                ->filters([
-                    SelectFilter::make('rating'),
-                ])
-                ->actions([
-                    EditAction::make(),
-                ]);
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Education\Courses\Filament\Resources\CourseReviewResource\Pages\ListCourseReviews::route('/'),
+        ];
+    }
 }

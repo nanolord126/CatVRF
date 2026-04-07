@@ -2,14 +2,15 @@
 
 namespace App\Domains\Auto\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class AutoService extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'auto_services';
@@ -46,11 +47,11 @@ final class AutoService extends Model
         {
             static::creating(function ($model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (tenant('id') ?? 1);
+                $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant_id', function (Builder $builder) {
-                $builder->where('auto_services.tenant_id', tenant('id') ?? 1);
+                $builder->where('auto_services.tenant_id', tenant()->id ?? 1);
             });
         }
 

@@ -2,19 +2,22 @@
 
 namespace App\Domains\Medical\Psychology\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ConfidentialityLog extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     protected $table = 'psy_confidentiality_logs';
 
         public $timestamps = false; // Юзаем только created_at по дефолту
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'user_id',
             'session_id',
@@ -25,18 +28,18 @@ final class ConfidentialityLog extends Model
             'created_at',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
 
             static::creating(function (self $model) {
-                $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
-                $model->tenant_id = auth()->user()->tenant_id ?? 0;
-                $model->ip_address = request()->ip();
+                $model->correlation_id = (string) Str::uuid();
+                $model->tenant_id = tenant()->id ?? 0;
+                $model->ip_address = $this->request->ip();
                 $model->created_at = now();
             });
         }

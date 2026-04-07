@@ -5,10 +5,17 @@ namespace App\Http\Middleware;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
 
 final class TenantScoping
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
+
     /**
      * Set active tenant in request + session
      * Automatically filters queries by this tenant
@@ -55,13 +62,13 @@ final class TenantScoping
 
         // Verify user has access to this tenant
         if ($tenantId && !$user->hasRoleInTenant($tenantId, null)) {
-            Log::channel('audit')->warning('TenantScoping: access denied', [
+            $this->logger->channel('audit')->warning('TenantScoping: access denied', [
                 'user_id' => $user->id,
                 'tenant_id' => $tenantId,
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json(['error' => 'Access denied to this tenant'], 403);
+            return $this->response->json(['error' => 'Access denied to this tenant'], 403);
         }
 
         // Set active tenant
@@ -72,7 +79,7 @@ final class TenantScoping
                 session(['active_tenant_id' => $tenantId]);
 
                 // Log tenant access
-                Log::channel('audit')->info('TenantScoping: tenant set', [
+                $this->logger->channel('audit')->info('TenantScoping: tenant set', [
                     'user_id' => $user->id,
                     'tenant_id' => $tenantId,
                     'tenant_name' => $tenant->name,

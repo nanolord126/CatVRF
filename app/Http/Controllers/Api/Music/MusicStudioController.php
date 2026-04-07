@@ -2,33 +2,34 @@
 
 namespace App\Http\Controllers\Api\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class MusicStudioController extends Model
+final class MusicStudioController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly MusicService $musicService
-        ) {}
+            private readonly MusicService $musicService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         public function index(): JsonResponse
         {
             $correlationId = (string) Str::uuid();
             try {
                 $studios = $this->musicService->listStudios(tenant()->id);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $studios,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to list music studios', [
+                $this->logger->channel('audit')->error('Failed to list music studios', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Не удалось получить список студий.',
                     'correlation_id' => $correlationId,
@@ -44,21 +45,21 @@ final class MusicStudioController extends Model
                     tenant()->id,
                     $correlationId
                 );
-                Log::channel('audit')->info('New music studio created via API', [
+                $this->logger->channel('audit')->info('New music studio created via API', [
                     'studio_id' => $studio->id,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $studio,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create music studio', [
+                $this->logger->channel('audit')->error('Failed to create music studio', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при создании студии.',
                     'correlation_id' => $correlationId,
@@ -70,13 +71,13 @@ final class MusicStudioController extends Model
             $correlationId = (string) Str::uuid();
             try {
                 $studio = $this->musicService->getStudioWithDetails($id);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $studio,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Студия не найдена.',
                     'correlation_id' => $correlationId,
@@ -88,17 +89,17 @@ final class MusicStudioController extends Model
             $correlationId = $request->input('correlation_id', (string) Str::uuid());
             try {
                 $studio = $this->musicService->updateStudio($id, $request->validated(), $correlationId);
-                Log::channel('audit')->info('Music studio updated via API', [
+                $this->logger->channel('audit')->info('Music studio updated via API', [
                     'studio_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $studio,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при обновлении студии.',
                     'correlation_id' => $correlationId,
@@ -110,13 +111,13 @@ final class MusicStudioController extends Model
             $correlationId = (string) Str::uuid();
             try {
                 $this->musicService->deleteStudio($id, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Студия успешно удалена.',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при удалении студии.',
                     'correlation_id' => $correlationId,

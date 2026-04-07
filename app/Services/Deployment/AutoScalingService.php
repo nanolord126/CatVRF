@@ -2,14 +2,20 @@
 
 namespace App\Services\Deployment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoScalingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class AutoScalingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Проверяет необходимость масштабирования
          *
@@ -71,10 +77,11 @@ final class AutoScalingService extends Model
          */
         public static function scaleApplication(int $targetInstances, string $provider = 'kubernetes'): array
         {
-            Log::channel('deployment')->info('Scaling application', [
+            $this->logger->channel('deployment')->info('Scaling application', [
                 'target_instances' => $targetInstances,
                 'provider' => $provider,
                 'timestamp' => now()->toDateTimeString(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [
@@ -148,9 +155,10 @@ final class AutoScalingService extends Model
 
             $finalConfig = array_merge($defaults, $config);
 
-            Log::channel('deployment')->info('Auto scaling configured', [
+            $this->logger->channel('deployment')->info('Auto scaling configured', [
                 'enabled' => $enabled,
                 'config' => $finalConfig,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [

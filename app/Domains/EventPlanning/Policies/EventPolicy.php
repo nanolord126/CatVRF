@@ -2,14 +2,16 @@
 
 namespace App\Domains\EventPlanning\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventPolicy extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final class EventPolicy
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -17,9 +19,10 @@ final class EventPolicy extends Model
          */
         public function viewAny(User $user): bool
         {
-            Log::channel('audit')->info('Security: UI Access - ViewAny Events', [
+            $this->logger->info('Security: UI Access - ViewAny Events', [
                 'user_id' => $user->id,
                 'tenant_id' => tenant()->id,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $user->hasRole(['admin', 'business_owner', 'event_planner']);
@@ -38,9 +41,10 @@ final class EventPolicy extends Model
          */
         public function create(User $user): bool
         {
-            Log::channel('audit')->info('Security: UI Access - Create Event', [
+            $this->logger->info('Security: UI Access - Create Event', [
                 'user_id' => $user->id,
                 'tenant_id' => tenant()->id,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $user->hasRole(['admin', 'business_owner', 'event_planner']);
@@ -52,11 +56,12 @@ final class EventPolicy extends Model
         public function update(User $user, Event $event): bool
         {
             if ($user->tenant_id !== $event->tenant_id) {
-                Log::channel('audit')->warning('Security: Cross-tenant edit attempt', [
+                $this->logger->warning('Security: Cross-tenant edit attempt', [
                     'user_id' => $user->id,
                     'event_uuid' => $event->uuid,
                     'event_tenant' => $event->tenant_id,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return false;
             }
 

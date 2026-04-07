@@ -2,17 +2,15 @@
 
 namespace App\Domains\Confectionery\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OrderController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class OrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly ConfectioneryService $service,
-        ) {}
+            private readonly ConfectioneryService $service, private readonly LoggerInterface $logger) {}
 
         public function store(CakeOrderStoreRequest $request): JsonResponse
         {
@@ -34,7 +32,7 @@ final class OrderController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'order_id' => $order->id,
                     'uuid' => $order->uuid,
@@ -43,14 +41,14 @@ final class OrderController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\RuntimeException $e) {
-                \Log::channel('audit')->error('Cake order store error', [
+                $this->logger->error('Cake order store error', [
                     'error' => $e->getMessage(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 $code = (int) $e->getCode();
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -63,14 +61,14 @@ final class OrderController extends Model
             try {
                 $order = CakeOrder::findOrFail($orderId);
 
-                if ($order->client_id !== auth()->id() && !auth()->user()->isShopOwner($order->confectionery_shop_id)) {
-                    return response()->json([
+                if ($order->client_id !== $request->user()?->id && !$request->user()->isShopOwner($order->confectionery_shop_id)) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'order' => [
                         'id' => $order->id,
@@ -88,14 +86,15 @@ final class OrderController extends Model
                         'created_at' => $order->created_at->toIso8601String(),
                     ],
                 ]);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Cake order show error', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Cake order show error', [
                     'order_id' => $orderId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Order not found',
                 ], 404);
@@ -107,8 +106,8 @@ final class OrderController extends Model
             $correlationId = (string) Str::uuid();
 
             try {
-                if (!request()->hasFile('design_photo')) {
-                    return response()->json([
+                if (!$request->hasFile('design_photo')) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Design photo required',
                     ], 400);
@@ -116,45 +115,45 @@ final class OrderController extends Model
 
                 $order = CakeOrder::findOrFail($orderId);
 
-                if ($order->client_id !== auth()->id()) {
-                    return response()->json([
+                if ($order->client_id !== $request->user()?->id) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
-                $file = request()->file('design_photo');
+                $file = $request->file('design_photo');
                 $path = $file->store('cake-designs', 'public');
 
                 $order->update([
                     'menu_items_json' => array_merge(
                         $order->menu_items_json ?? [],
-                        ['custom_design_photo' => $path, 'design_description' => request()->input('description')]
+                        ['custom_design_photo' => $path, 'design_description' => $request->input('description')]
                     ),
                     'tags' => array_merge($order->tags ?? [], ['custom_design' => true]),
                 ]);
 
-                \Log::channel('audit')->info('Custom cake design uploaded', [
+                $this->logger->info('Custom cake design uploaded', [
                     'order_id' => $order->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'photo_path' => $path,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Design uploaded',
                     'photo_path' => $path,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Custom design upload error', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Custom design upload error', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Upload failed',
                     'correlation_id' => $correlationId,
@@ -169,8 +168,8 @@ final class OrderController extends Model
             try {
                 $order = CakeOrder::findOrFail($orderId);
 
-                if ($order->client_id !== auth()->id()) {
-                    return response()->json([
+                if ($order->client_id !== $request->user()?->id) {
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Unauthorized',
                     ], 403);
@@ -178,26 +177,26 @@ final class OrderController extends Model
 
                 $updated = $this->service->cancelOrder($orderId, $correlationId);
 
-                \Log::channel('audit')->info('Cake order cancelled via API', [
+                $this->logger->info('Cake order cancelled via API', [
                     'order_id' => $orderId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Order cancelled',
                     'order' => $updated,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Cake order cancellation error', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Cake order cancellation error', [
                     'order_id' => $orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,

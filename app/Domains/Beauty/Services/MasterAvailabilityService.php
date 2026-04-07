@@ -1,92 +1,105 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyMaster;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Psr\Log\LoggerInterface;
 
-final class MasterAvailabilityService extends Model
+/**
+ * MasterAvailabilityService — расчёт доступных слотов мастера.
+ *
+ * Проверяет расписание мастера, занятые записи и заблокированные часы.
+ * Нарезает временну́ю шкалу по 30 мин и возвращает свободные окна.
+ */
+final readonly class MasterAvailabilityService
 {
-    use HasFactory;
+    public function __construct(
+        private LoggerInterface $logger,
+    ) {
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Получить доступные слоты для образа.
-         */
-        public function getAvailableSlotsForLook(Master $master, array $look, Carbon $date): Collection
-        {
-            $duration = $this->calculateDuration($look);
+     * Получить доступные слоты для образа.
+     *
+     * @param array<string, mixed> $look Данные образа (содержит makeup_style)
+     * @return Collection<int, string> Коллекция свободных временных меток (HH:MM)
+     */
+    public function getAvailableSlotsForLook(BeautyMaster $master, array $look, Carbon $date): Collection
+    {
+        $duration = $this->calculateDuration($look);
 
-            $schedule = MasterSchedule::where('master_id', $master->id)
-                ->where('date', $date->toDateString())
-                ->first();
+        $appointments = BeautyAppointment::where('master_id', $master->id)
+            ->whereDate('start_at', $date)
+            ->whereIn('status', ['pending', 'confirmed', 'completed'])
+            ->get(['start_at', 'end_at']);
 
-            if (!$schedule || $schedule->is_day_off) {
-                return collect();
-            }
+        $schedule = $master->schedule ?? [];
 
-            $availableSlots = collect();
-            $busySlots = Appointment::where('master_id', $master->id)
-                ->whereDate('datetime_start', $date)
-                ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                ->get(['datetime_start', 'price']); // В реальности нужны start и end
-
-            // Простая логика нарезки слотов (60, 90, 120 мин)
-            foreach ($schedule->slots as $workingRange) {
-                $start = Carbon::parse($date->toDateString() . ' ' . $workingRange['start']);
-                $end = Carbon::parse($date->toDateString() . ' ' . $workingRange['end']);
-
-                while ($start->copy()->addMinutes($duration)->lte($end)) {
-                    $slotEnd = $start->copy()->addMinutes($duration);
-
-                    // Проверка на пересечение с занятыми слотами и блокировками
-                    if (!$this->isSlotBusy($start, $slotEnd, $busySlots, $schedule->blocked_hours)) {
-                        $availableSlots->push($start->format('H:i'));
-                    }
-
-                    $start->addMinutes(30); // Шаг 30 мин
-                }
-            }
-
-            return $availableSlots;
+        if (empty($schedule)) {
+            return collect();
         }
 
-        private function calculateDuration(array $look): int
-        {
-            $style = $look['data']['makeup_style'] ?? 'daily';
+        $availableSlots = collect();
 
-            return match ($style) {
-                'wedding', 'evening' => 120,
-                'party' => 90,
-                default => 60,
-            };
+        foreach ($schedule as $workingRange) {
+            $start = Carbon::parse($date->toDateString() . ' ' . ($workingRange['start'] ?? '10:00'));
+            $end = Carbon::parse($date->toDateString() . ' ' . ($workingRange['end'] ?? '18:00'));
+
+            while ($start->copy()->addMinutes($duration)->lte($end)) {
+                $slotEnd = $start->copy()->addMinutes($duration);
+
+                if (!$this->isSlotBusy($start, $slotEnd, $appointments)) {
+                    $availableSlots->push($start->format('H:i'));
+                }
+
+                $start->addMinutes(30);
+            }
         }
 
-        private function isSlotBusy(Carbon $start, Carbon $end, Collection $busySlots, ?array $blockedHours): bool
-        {
-            // Проверка занятых записей
-            foreach ($busySlots as $appointment) {
-                $appStart = Carbon::parse($appointment->datetime_start);
-                // Упрощенно: считаем что аппойнтмент тоже длится как минимум 60 мин
-                $appEnd = $appStart->copy()->addMinutes(60);
+        $this->logger->debug('Available slots calculated', [
+            'master_id' => $master->id,
+            'date' => $date->toDateString(),
+            'slots_count' => $availableSlots->count(),
+        ]);
 
-                if ($start->lt($appEnd) && $end->gt($appStart)) {
-                    return true;
-                }
+        return $availableSlots;
+    }
+
+    /**
+     * Рассчитать длительность услуги по стилю макияжа (минуты).
+     */
+    private function calculateDuration(array $look): int
+    {
+        $style = $look['data']['makeup_style'] ?? 'daily';
+
+        return match ($style) {
+            'wedding', 'evening' => 120,
+            'party' => 90,
+            default => 60,
+        };
+    }
+
+    /**
+     * Проверить, занят ли слот записями.
+     */
+    private function isSlotBusy(Carbon $start, Carbon $end, Collection $busySlots): bool
+    {
+        foreach ($busySlots as $appointment) {
+            $appStart = Carbon::parse($appointment->start_at);
+            $appEnd = $appointment->end_at
+                ? Carbon::parse($appointment->end_at)
+                : $appStart->copy()->addMinutes(60);
+
+            if ($start->lt($appEnd) && $end->gt($appStart)) {
+                return true;
             }
-
-            // Проверка заблокированных часов (обед и т.д.)
-            if ($blockedHours) {
-                foreach ($blockedHours as $blocked) {
-                    $blockStart = Carbon::parse($start->toDateString() . ' ' . $blocked['start']);
-                    $blockEnd = Carbon::parse($start->toDateString() . ' ' . $blocked['end']);
-
-                    if ($start->lt($blockEnd) && $end->gt($blockStart)) {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
         }
+
+        return false;
+    }
 }

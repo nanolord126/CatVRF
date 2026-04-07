@@ -1,38 +1,66 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CommissionCalculator extends Model
+/**
+ * CommissionCalculator — расчёт комиссии платформы для вертикали Beauty.
+ *
+ * Правила:
+ *  - Стандарт: 14%
+ *  - Переход с Dikidi: 10% (первые 4 мес.) → 12% (след. 24 мес.) → 14% далее
+ */
+final readonly class CommissionCalculator
 {
-    use HasFactory;
+    private const COMMISSION_STANDARD     = 14;
+    private const COMMISSION_DIKIDI_EARLY = 10;
+    private const COMMISSION_DIKIDI_MID   = 12;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Рассчитать комиссию платформы.
-         *
-         * Правила:
-         * - Стандарт: 14%
-         * - Переход с Dikidi: 10% (первые 4 мес) -> 12% (след 24 мес)
-         */
-        public function calculatePlatformCommission(BeautySalon $salon, int $amount): int
-        {
-            $percentage = 14;
+     * Рассчитать комиссию в копейках.
+     *
+     * @param array<string, mixed> $tags Теги салона (migration_source, migration_date)
+     */
+    public function calculatePlatformCommission(
+        int   $amountKopecks,
+        array $tags = [],
+    ): int {
+        $percentage = $this->resolvePercentage($tags);
 
-            // Проверка миграции
-            if ($salon->tags['migration_source'] ?? null === 'dikidi') {
-                $migrationDate = \Carbon\Carbon::parse($salon->tags['migration_date'] ?? $salon->created_at);
-                $now = \Carbon\Carbon::now();
+        return (int) ($amountKopecks * ($percentage / 100));
+    }
 
-                if ($now->diffInMonths($migrationDate) < 4) {
-                    $percentage = 10;
-                } elseif ($now->diffInMonths($migrationDate) < 28) {
-                    $percentage = 12;
-                }
-            }
+    /**
+     * Рассчитать выплату мастеру/салону (сумма минус комиссия).
+     *
+     * @param array<string, mixed> $tags
+     */
+    public function calculatePayout(int $amountKopecks, array $tags = []): int
+    {
+        return $amountKopecks - $this->calculatePlatformCommission($amountKopecks, $tags);
+    }
 
-            return (int) ($amount * ($percentage / 100));
+    /**
+     * Вернуть текущий процент комиссии.
+     *
+     * @param array<string, mixed> $tags
+     */
+    public function resolvePercentage(array $tags): int
+    {
+        if (($tags['migration_source'] ?? null) !== 'dikidi') {
+            return self::COMMISSION_STANDARD;
         }
+
+        $migrationDate = Carbon::parse($tags['migration_date'] ?? Carbon::now()->toDateString());
+        $monthsElapsed = $migrationDate->diffInMonths(Carbon::now());
+
+        return match (true) {
+            $monthsElapsed < 4  => self::COMMISSION_DIKIDI_EARLY,
+            $monthsElapsed < 28 => self::COMMISSION_DIKIDI_MID,
+            default             => self::COMMISSION_STANDARD,
+        };
+    }
 }

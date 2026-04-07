@@ -2,14 +2,17 @@
 
 namespace App\Services\Testing;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutomatedTestingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+final readonly class AutomatedTestingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Запускает все тесты
          *
@@ -37,7 +40,7 @@ final class AutomatedTestingService extends Model
 
             $results['summary'] = self::calculateTestSummary($results);
 
-            Log::channel('testing')->info('Test suite completed', [
+            $this->logger->channel('testing')->info('Test suite completed', [
                 'suite' => $suite,
                 'tests_passed' => $results['summary']['passed'],
                 'tests_failed' => $results['summary']['failed'],
@@ -226,8 +229,9 @@ final class AutomatedTestingService extends Model
          */
         public static function runTestFile(string $testFile): array
         {
-            Log::channel('testing')->info('Running test file', [
+            $this->logger->channel('testing')->info('Running test file', [
                 'file' => $testFile,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [

@@ -2,14 +2,13 @@
 
 namespace App\Domains\Fashion\FashionRetail\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class FashionRetailShopResource extends Model
+use Filament\Resources\Resource;
+
+final class FashionRetailShopResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FashionRetailShop::class;
 
         protected static ?string $navigationGroup = 'Fashion Retail';
@@ -33,7 +32,7 @@ final class FashionRetailShopResource extends Model
                 ]),
 
                 Section::make('Status')->schema([
-                    BadgeColumn::make('is_verified')->label('Verified'),
+                    TextColumn::make('is_verified')->label('Verified'),
                     Select::make('is_active')->options([
                         true => 'Active',
                         false => 'Inactive',
@@ -50,9 +49,32 @@ final class FashionRetailShopResource extends Model
                 TextColumn::make('email')->searchable(),
                 TextColumn::make('phone'),
                 TextColumn::make('rating')->numeric(),
-                BadgeColumn::make('is_verified')->colors(['true' => 'success', 'false' => 'secondary']),
-                BadgeColumn::make('is_active')->colors(['true' => 'success', 'false' => 'secondary']),
+                TextColumn::make('is_verified')->badge(),
+                TextColumn::make('is_active')->badge(),
                 TextColumn::make('created_at')->dateTime(),
             ])->filters([])->actions([])->bulkActions([]);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

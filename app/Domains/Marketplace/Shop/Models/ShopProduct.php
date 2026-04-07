@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ShopProduct extends Model
-{
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+{
     use HasFactory;
         use SoftDeletes;
         use BelongsToTenant;
@@ -33,11 +32,27 @@ final class ShopProduct extends Model
             'tags' => 'json',
         ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
+
         /**
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function getFormattedPriceAttribute(): string
         {

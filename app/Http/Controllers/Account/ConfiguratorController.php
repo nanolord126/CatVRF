@@ -2,14 +2,22 @@
 
 namespace App\Http\Controllers\Account;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ConfiguratorController extends Model
+final class ConfiguratorController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Дашборд конфигураторов и калькуляторов
          */
@@ -42,10 +50,10 @@ final class ConfiguratorController extends Model
                     'total_price' => 'required|integer',
                     'total_weight' => 'required|integer',
                 ]);
-                $savedConfig = DB::transaction(function () use ($validated, $correlationId) {
+                $savedConfig = $this->db->transaction(function () use ($validated, $correlationId) {
                     return SavedConfiguration::create([
                         'tenant_id' => tenant('id'),
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'template_id' => $validated['template_id'],
                         'project_name' => $validated['project_name'],
                         'payload' => $validated['payload'],
@@ -55,23 +63,30 @@ final class ConfiguratorController extends Model
                         'correlation_id' => $correlationId,
                     ]);
                 });
-                Log::channel('audit')->info('Configurator project saved', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Configurator project saved', [
+                    'user_id' => $this->guard->id(),
                     'project_id' => $savedConfig->id,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'uuid' => $savedConfig->uuid,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Exception $e) {
-                Log::error('Failed to save configurator project', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Failed to save configurator project', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка сохранения проекта',
                     'correlation_id' => $correlationId
@@ -91,7 +106,7 @@ final class ConfiguratorController extends Model
             $totalPrice = $options->sum('price_kopeks');
             $totalWeight = $options->sum('weight_grams');
             $totalVolume = $options->sum('volume_cm3');
-            return response()->json([
+            return $this->response->json([
                 'price_kopeks' => $totalPrice,
                 'price_formatted' => number_format($totalPrice / 100, 2, '.', ' ') . ' ₽',
                 'weight_grams' => $totalWeight,

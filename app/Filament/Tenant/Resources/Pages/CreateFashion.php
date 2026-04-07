@@ -2,18 +2,58 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateFashion extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use App\Filament\Tenant\Resources\FashionResource;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+/**
+ * Class CreateFashion
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class CreateFashion extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FashionResource::class;
 
-        public function getTitle(): string
-        {
-            return 'Create Fashion';
-        }
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['uuid']           = (string) Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
+        $data['tenant_id']      = $this->guard->user()?->tenant_id;
+        $data['status']         ??= 'pending';
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $record = $this->record;
+
+        $this->logger->info('B2B Fashion order created', [
+            'order_id'       => $record->id,
+            'buyer_inn'      => $record->buyer_inn,
+            'store_id'       => $record->fashion_store_id,
+            'total_amount'   => $record->total_amount,
+            'correlation_id' => $record->correlation_id,
+            'tenant_id'      => $record->tenant_id,
+        ]);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

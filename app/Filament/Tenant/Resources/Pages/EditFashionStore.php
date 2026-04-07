@@ -2,30 +2,58 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditFashionStore extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\FashionStoreResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class EditFashionStore
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditFashionStore extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = FashionStoreResource::class;
 
-    final class EditFashionStore extends EditRecord
+    protected function getHeaderActions(): array
     {
-        protected static string $resource = FashionStoreResource::class;
+        return [
+            ViewAction::make(),
+            DeleteAction::make()->requiresConfirmation()
+                ->modalHeading('Удалить магазин?')
+                ->modalDescription('Все товары магазина будут отвязаны.')
+                ->modalSubmitActionLabel('Да, удалить'),
+        ];
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit FashionStore';
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('FashionStore updated', [
+            'store_id'       => $this->record->id,
+            'name'           => $this->record->name,
+            'type'           => $this->record->type,
+            'is_verified'    => $this->record->is_verified,
+            'tenant_id'      => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+        ]);
+    }
 }

@@ -2,20 +2,18 @@
 
 namespace App\Http\Requests\Luxury;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LuxuryBookingRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class LuxuryBookingRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Авторизация пользователя + Fraud Check
          */
         public function authorize(): bool
         {
-            if (!auth()->check()) {
+            if (!$this->guard->check()) {
                 return false;
             }
 
@@ -25,7 +23,7 @@ final class LuxuryBookingRequest extends Model
 
             try {
                 $fraudService->check([
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'ip' => $this->ip(),
                     'operation' => 'luxury_booking_access',
                     'correlation_id' => $correlationId,

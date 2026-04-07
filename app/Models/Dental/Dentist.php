@@ -2,14 +2,21 @@
 
 namespace App\Models\Dental;
 
+
+use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class Dentist extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'dentists';
@@ -38,26 +45,26 @@ final class Dentist extends Model
             'tenant_id' => 'integer',
         ];
 
-        /**
-         * Boot logic for automatic UUID and tenant scoping.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+    /**
+     * Boot logic for automatic UUID and tenant scoping.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                    $model->tenant_id = tenant()->id;
-                }
-            });
+            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
+            }
+        });
 
-            static::addGlobalScope('tenant', function ($builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+        static::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 
         /**
          * Relations: Clinic the dentist is associated with.

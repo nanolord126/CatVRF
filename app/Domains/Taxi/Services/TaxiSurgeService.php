@@ -2,14 +2,14 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiSurgeService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TaxiSurgeService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Рассчитать surge multiplier на основе спроса и предложения в зоне.
          */
@@ -19,9 +19,8 @@ final class TaxiSurgeService extends Model
             string $correlationId = ''
         ): float {
 
-
             try {
-                Log::channel('audit')->info('Calculating surge multiplier', [
+                $this->logger->info('Calculating surge multiplier', [
                     'location' => $location,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -48,7 +47,7 @@ final class TaxiSurgeService extends Model
 
                 return $multiplier;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Surge multiplier calculation failed', [
+                $this->logger->error('Surge multiplier calculation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -67,7 +66,6 @@ final class TaxiSurgeService extends Model
             string $correlationId = ''
         ): int {
 
-
             $basePrices = [
                 'economy' => 5000, // 50 руб за км
                 'comfort' => 7500, // 75 руб за км
@@ -77,7 +75,7 @@ final class TaxiSurgeService extends Model
             $basePrice = ($basePrices[$vehicleClass] ?? 5000) * $distanceKm;
             $finalPrice = (int) ($basePrice * $ride->surge_multiplier);
 
-            Log::channel('audit')->info('Ride price calculated', [
+            $this->logger->info('Ride price calculated', [
                 'ride_id' => $ride->id,
                 'distance_km' => $distanceKm,
                 'base_price' => $basePrice,

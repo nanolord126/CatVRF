@@ -2,17 +2,21 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OutfitConstructor extends Model
+use Illuminate\Http\Request;
+use App\Services\RecommendationService;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class OutfitConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private RecommendationService $recommendation,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         public function construct(
             array $analysis,
@@ -42,11 +46,12 @@ final class OutfitConstructor extends Model
 
                 $allItems = \array_merge($tops, $bottoms, $outerwear, $shoes, $accessories);
 
-                Log::channel('audit')->info('Outfit construction completed', [
+                $this->logger->channel('audit')->info('Outfit construction completed', [
                     'style' => $outfit_style,
                     'colors' => $colorScheme,
                     'items_count' => \count($allItems),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'data' => [
@@ -74,9 +79,10 @@ final class OutfitConstructor extends Model
                     ],
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Outfit construction failed', [
+                $this->logger->channel('audit')->error('Outfit construction failed', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 throw $e;
             }
         }
@@ -108,7 +114,6 @@ final class OutfitConstructor extends Model
                 'style' => $style,
                 'colors' => $colors,
                 'limit' => match ($category) {
-                    'tops' => 4,
                     'bottoms' => 3,
                     'outerwear' => 2,
                     'shoes' => 2,

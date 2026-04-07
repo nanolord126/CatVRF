@@ -1,49 +1,52 @@
 <?php declare(strict_types=1);
 
+/**
+ * ListVehicleInsurances — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listvehicleinsurances
+ */
+
+
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Auto\Filament\Resources\VehicleInsuranceResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListVehicleInsurances extends Model
+/**
+ * Class ListVehicleInsurances
+ *
+ * Part of the Auto vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages
+ */
+final class ListVehicleInsurances extends ListRecords
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = VehicleInsuranceResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make(),
-                Actions\Action::make('check_expiring')
-                    ->label('Проверить истекающие')
-                    ->action(function () {
-                        $expiring = static::getResource()::getEloquentQuery()
-                            ->where('status', 'active')
-                            ->where('end_date', '<=', now()->addDays(30))
-                            ->count();
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
+/**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
 
-                        \Filament\Notifications\$this->notification->make()
-                            ->title('Найдено полисов с истекающим сроком: ' . $expiring)
-                            ->info()
-                            ->send();
-                    }),
-            ];
-        }
-
-        public function getTabs(): array
-        {
-            return [
-                'all' => \Filament\Resources\Components\Tab::make('Все'),
-                'active' => \Filament\Resources\Components\Tab::make('Активные')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'active')),
-                'expiring' => \Filament\Resources\Components\Tab::make('Истекают')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'active')->where('end_date', '<=', now()->addDays(30)))
-                    ->badge(fn () => static::getResource()::getEloquentQuery()->where('status', 'active')->where('end_date', '<=', now()->addDays(30))->count())
-                    ->badgeColor('warning'),
-                'expired' => \Filament\Resources\Components\Tab::make('Истёкшие')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'expired')),
-            ];
-        }
 }

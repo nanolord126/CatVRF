@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class AIConstruction extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, BelongsToTenant;
 
         protected $table = 'ai_constructions';
@@ -72,7 +71,7 @@ final class AIConstruction extends Model
         public function getPhotoUrl(): ?string
         {
             if (!$this->photo_path) {
-                return null;
+                throw new \DomainException('Entity not found');
             }
 
             return \Storage::url($this->photo_path);

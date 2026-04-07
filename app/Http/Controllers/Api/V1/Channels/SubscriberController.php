@@ -2,25 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class SubscriberController extends Model
+final class SubscriberController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    slug}/subscribe   — подписаться
-     * DELETE /api/v1/channels/{slug}/subscribe   — отписаться
-     * GET    /api/v1/channels/{slug}/subscribe   — статус подписки
-     * GET    /api/v1/subscriptions/channels      — мои подписки
-     * GET    /api/v1/subscriptions/feed          — личная лента (proxy → PostController::feed)
-     */
-    final class SubscriberController extends BaseApiV1Controller
-    {
-        public function __construct(
+    public function __construct(
             private readonly ChannelSubscriptionService $subscriptionService,
-        ) {}
+            private readonly ResponseFactory $response,
+    ) {}
         /** Подписаться на канал */
         public function subscribe(Request $request, string $slug): JsonResponse
         {
@@ -36,7 +26,7 @@ final class SubscriberController extends Model
                     visibilityPreference:  $validated['visibility_preference'] ?? 'all',
                     correlationId:         $correlationId,
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => "Вы подписались на канал «{$channel->name}».",
                     'correlation_id' => $correlationId,
@@ -56,7 +46,7 @@ final class SubscriberController extends Model
                     channel:       $channel,
                     correlationId: $correlationId,
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => "Вы отписались от канала «{$channel->name}».",
                     'correlation_id' => $correlationId,
@@ -75,7 +65,7 @@ final class SubscriberController extends Model
                     (int) $request->user()->id,
                     $channel->id
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'subscribed'     => $isSubscribed,
                     'channel_name'   => $channel->name,
@@ -91,7 +81,7 @@ final class SubscriberController extends Model
             $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
             try {
                 $channels = $this->subscriptionService->getSubscribedChannels((int) $request->user()->id);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data'    => $channels->map(fn ($c) => [
                         'id'          => $c->id,

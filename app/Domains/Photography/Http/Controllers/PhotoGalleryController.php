@@ -2,31 +2,29 @@
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotoGalleryController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PhotoGalleryController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-    		private readonly GalleryService $galleryService,
-    		private readonly FraudControlService $fraudControlService,
-    	) {}
+
+    public function __construct(private readonly GalleryService $galleryService,
+    		private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
     	public function show(int $id): JsonResponse
     	{
     		try {
     			$photographer = Photographer::with('galleries')->findOrFail($id);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $photographer,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Фотограф не найден',
     				'correlation_id' => Str::uuid(),
@@ -42,13 +40,13 @@ final class PhotoGalleryController extends Model
     				->latest()
     				->get();
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $galleries,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -63,13 +61,13 @@ final class PhotoGalleryController extends Model
     				->latest()
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $galleries,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -84,13 +82,13 @@ final class PhotoGalleryController extends Model
 
     			$gallery->increment('view_count');
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $gallery,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Галерея не найдена',
     				'correlation_id' => Str::uuid(),
@@ -103,14 +101,14 @@ final class PhotoGalleryController extends Model
     		try {
     			$gallery = PhotoGallery::findOrFail($id);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $gallery->photos_json,
     				'count' => $gallery->photo_count,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -121,7 +119,7 @@ final class PhotoGalleryController extends Model
     	public function store(Request $request): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$this->authorize('create', PhotoGallery::class);
@@ -135,19 +133,19 @@ final class PhotoGalleryController extends Model
 
     			$gallery = $this->galleryService->createGallery(
     				array_merge($validated, [
-    					'tenant_id' => auth()->user()->tenant_id,
-    					'photographer_id' => auth()->id(),
+    					'tenant_id' => $request->user()->tenant_id,
+    					'photographer_id' => $request->user()?->id,
     					'correlation_id' => $correlationId,
     				])
     			);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $gallery,
     				'correlation_id' => $correlationId,
     			], 201);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -158,7 +156,7 @@ final class PhotoGalleryController extends Model
     	public function update(int $id, Request $request): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$gallery = PhotoGallery::findOrFail($id);
@@ -171,13 +169,13 @@ final class PhotoGalleryController extends Model
 
     			$this->galleryService->updateGallery($gallery, $validated);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Галерея обновлена',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -188,27 +186,27 @@ final class PhotoGalleryController extends Model
     	public function destroy(int $id): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$gallery = PhotoGallery::findOrFail($id);
 
-    			DB::transaction(function () use ($gallery) {
+    			$this->db->transaction(function () use ($gallery) {
     				$gallery->delete();
 
-    				Log::channel('audit')->info('Photography: Gallery deleted', [
+    				$this->logger->info('Photography: Gallery deleted', [
     					'gallery_id' => $gallery->id,
     					'correlation_id' => Str::uuid(),
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Галерея удалена',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -226,27 +224,27 @@ final class PhotoGalleryController extends Model
     				'photos.*' => 'url',
     			]);
 
-    			DB::transaction(function () use ($gallery, $validated) {
+    			$this->db->transaction(function () use ($gallery, $validated) {
     				$photos = array_merge($gallery->photos_json ?? [], $validated['photos']);
     				$gallery->update([
     					'photos_json' => $photos,
     					'photo_count' => count($photos),
     				]);
 
-    				Log::channel('audit')->info('Photography: Photos added to gallery', [
+    				$this->logger->info('Photography: Photos added to gallery', [
     					'gallery_id' => $gallery->id,
     					'count' => count($validated['photos']),
     					'correlation_id' => Str::uuid(),
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Фото добавлены',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -261,13 +259,13 @@ final class PhotoGalleryController extends Model
     				->limit(10)
     				->get();
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $photographers,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),

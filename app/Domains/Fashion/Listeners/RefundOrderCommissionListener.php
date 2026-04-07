@@ -2,18 +2,21 @@
 
 namespace App\Domains\Fashion\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RefundOrderCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class RefundOrderCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(ReturnRequested $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $order = $event->return->order;
 
                     $wallet = Wallet::where('tenant_id', $event->return->tenant_id)
@@ -21,7 +24,7 @@ final class RefundOrderCommissionListener extends Model
                         ->first();
 
                     if (! $wallet) {
-                        throw new \Exception('Wallet not found');
+                        throw new \RuntimeException('Wallet not found');
                     }
 
                     $refundAmount = intval($event->return->refund_amount * 100);
@@ -39,7 +42,7 @@ final class RefundOrderCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Order return refund credited', [
+                    $this->logger->info('Order return refund credited', [
                         'return_id' => $event->return->id,
                         'order_id' => $order->id,
                         'customer_id' => $event->return->customer_id,
@@ -48,7 +51,7 @@ final class RefundOrderCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to refund order return', [
+                $this->logger->error('Failed to refund order return', [
                     'return_id' => $event->return->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

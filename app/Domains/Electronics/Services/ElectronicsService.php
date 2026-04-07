@@ -2,79 +2,196 @@
 
 namespace App\Domains\Electronics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Electronics\Models\ElectronicOrder;
+use App\Domains\Electronics\Models\ElectronicProduct;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class ElectronicsService extends Model
+final readonly class ElectronicsService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.14;
+    private const RATE_LIMIT_KEY = 'electronics:order:';
+    private const RATE_LIMIT_MAX = 15;
+    private const RATE_LIMIT_DECAY = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud, private readonly WalletService $wallet) {}
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        public function createOrder(int $sellerId, array $items, string $correlationId = ""): ElectronicOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            if (RateLimiter::tooManyAttempts("electronics:order:".auth()->id(), 15)) throw new \RuntimeException("Too many orders", 429);
-            RateLimiter::hit("electronics:order:".auth()->id(), 3600);
+    /**
+     * Создать заказ электроники.
+     */
+    public function createOrder(int $sellerId, array $items, string $correlationId = ''): ElectronicOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
 
-            return DB::transaction(function () use ($sellerId, $items, $correlationId) {
-                $total = 0;
-                foreach ($items as $item) {
-                    $product = ElectronicProduct::where('id', $item['product_id'])->firstOrFail();
-                    $total += $product->price_kopecks * $item['quantity'];
-                    if ($product->stock < $item['quantity']) throw new \RuntimeException("Out of stock", 400);
+        return $this->db->transaction(function () use ($sellerId, $items, $correlationId, $userId): ElectronicOrder {
+            $total = 0;
+
+            foreach ($items as $item) {
+                $product = ElectronicProduct::where('id', $item['product_id'])->firstOrFail();
+                $total += $product->price_kopecks * $item['quantity'];
+
+                if ($product->stock < $item['quantity']) {
+                    throw new \RuntimeException('Out of stock for product: ' . $product->id, 400);
                 }
+            }
 
-                $fraud = $this->fraud->check(['user_id' => auth()->id() ?? 0, 'operation_type' => 'electronic_order', 'correlation_id' => $correlationId, 'amount' => $total]);
-                if ($fraud['decision'] === 'block') {
-                    Log::channel('audit')->error('Electronic order blocked', ['user_id' => auth()->id(), 'correlation_id' => $correlationId]);
-                    throw new \RuntimeException("Security block", 403);
-                }
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'electronic_order',
+                amount: $total,
+                correlationId: $correlationId,
+            );
 
-                $order = ElectronicOrder::create([
-                    'uuid' => Str::uuid(), 'tenant_id' => tenant()->id, 'seller_id' => $sellerId, 'client_id' => auth()->id() ?? 0,
-                    'correlation_id' => $correlationId, 'status' => 'pending_payment', 'total_kopecks' => $total,
-                    'payout_kopecks' => $total - (int) ($total * 0.14), 'payment_status' => 'pending', 'items_json' => $items,
-                    'tags' => ['electronics' => true],
-                ]);
+            $payoutKopecks = $total - (int) ($total * self::COMMISSION_RATE);
 
-                Log::channel('audit')->info('Electronic order created', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
-                return $order;
-            });
-        }
+            $order = ElectronicOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'seller_id' => $sellerId,
+                'client_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'items_json' => $items,
+                'tags' => ['electronics' => true],
+            ]);
 
-        public function completeOrder(int $orderId, string $correlationId = ""): ElectronicOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            return DB::transaction(function () use ($orderId, $correlationId) {
-                $order = ElectronicOrder::findOrFail($orderId);
-                if ($order->payment_status !== 'completed') throw new \RuntimeException("Order not paid", 400);
-                foreach ($order->items_json as $item) {
-                    ElectronicProduct::findOrFail($item['product_id'])->decrement('stock', $item['quantity']);
-                }
-                $order->update(['status' => 'completed', 'correlation_id' => $correlationId]);
-                $this->wallet->credit(tenant()->id, $order->payout_kopecks, 'electronic_payout', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
-                Log::channel('audit')->info('Electronic order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
-                return $order;
-            });
-        }
+            $this->audit->record(
+                action: 'electronic_order_created',
+                subjectType: ElectronicOrder::class,
+                subjectId: $order->id,
+                oldValues: [],
+                newValues: $order->toArray(),
+                correlationId: $correlationId,
+            );
 
-        public function cancelOrder(int $orderId, string $correlationId = ""): ElectronicOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            return DB::transaction(function () use ($orderId, $correlationId) {
-                $order = ElectronicOrder::findOrFail($orderId);
-                if ($order->status === 'completed') throw new \RuntimeException("Cannot cancel completed", 400);
-                $order->update(['status' => 'cancelled', 'payment_status' => 'refunded', 'correlation_id' => $correlationId]);
-                if ($order->payment_status === 'completed') {
-                    $this->wallet->credit(tenant()->id, $order->total_kopecks, 'electronic_refund', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
-                }
-                Log::channel('audit')->info('Electronic order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
-                return $order;
-            });
-        }
+            $this->logger->info('Electronic order created', [
+                'order_id' => $order->id,
+                'correlation_id' => $correlationId,
+            ]);
 
-        public function getOrder(int $orderId): ElectronicOrder { return ElectronicOrder::findOrFail($orderId); }
-        public function getUserOrders(int $clientId) { return ElectronicOrder::where('client_id', $clientId)->orderBy('created_at', 'desc')->take(10)->get(); }
+            return $order;
+        });
+    }
+
+    /**
+     * Завершить заказ и выплатить продавцу.
+     */
+    public function completeOrder(int $orderId, string $correlationId = ''): ElectronicOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): ElectronicOrder {
+            $order = ElectronicOrder::findOrFail($orderId);
+
+            if ($order->payment_status !== 'completed') {
+                throw new \RuntimeException('Order not paid', 400);
+            }
+
+            foreach ($order->items_json as $item) {
+                ElectronicProduct::findOrFail($item['product_id'])->decrement('stock', $item['quantity']);
+            }
+
+            $order->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: $order->tenant_id,
+                amount: $order->payout_kopecks,
+                reason: 'electronics_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->audit->record(
+                action: 'electronic_order_completed',
+                subjectType: ElectronicOrder::class,
+                subjectId: $order->id,
+                oldValues: ['status' => 'pending_payment'],
+                newValues: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
+
+            return $order;
+        });
+    }
+
+    /**
+     * Отменить заказ и вернуть оплату.
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): ElectronicOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): ElectronicOrder {
+            $order = ElectronicOrder::findOrFail($orderId);
+
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed order', 400);
+            }
+
+            $previousStatus = $order->payment_status;
+
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: $order->tenant_id,
+                    amount: $order->total_kopecks,
+                    reason: 'electronics_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->audit->record(
+                action: 'electronic_order_cancelled',
+                subjectType: ElectronicOrder::class,
+                subjectId: $order->id,
+                oldValues: ['status' => $previousStatus],
+                newValues: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
+
+            return $order;
+        });
+    }
+
+    /**
+     * Получить заказ по идентификатору.
+     */
+    public function getOrder(int $orderId): ElectronicOrder
+    {
+        return ElectronicOrder::findOrFail($orderId);
+    }
+
+    /**
+     * Получить список заказов клиента.
+     */
+    public function getUserOrders(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return ElectronicOrder::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 }

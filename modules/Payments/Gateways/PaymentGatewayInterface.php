@@ -2,33 +2,17 @@
 
 namespace Modules\Payments\Gateways;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Modules\Payments\DTOs\GatewayInitResponse;
 
-final class PaymentGatewayInterface extends Model
+interface PaymentGatewayInterface
 {
-    use HasFactory;
+    public function init(array $payload): GatewayInitResponse;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    /**
-         * Выполнить операцию
-         * 
-         * @return mixed
-         * @throws \Exception
-         */
-        public function createPayment(float $amount, string $orderId, array $data = []): array;
-        /**
-         * Выполнить операцию
-         * 
-         * @return mixed
-         * @throws \Exception
-         */
-        public function checkStatus(string $paymentId): string;
-        /**
-         * Выполнить операцию
-         * 
-         * @return mixed
-         * @throws \Exception
-         */
-        public function refund(string $paymentId, float $amount): bool;
+    public function getStatus(string $providerPaymentId): string;
+
+    public function refund(string $providerPaymentId, int $amount): bool;
+
+    public function validateWebhook(array $payload): bool;
+
+    public function parseWebhook(array $payload): array;
 }

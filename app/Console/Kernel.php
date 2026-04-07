@@ -7,7 +7,9 @@ use App\Domains\Auto\Jobs\CarWashReminderJob;
 use App\Jobs\AI\MLRecalculateJob;
 use App\Jobs\Analytics\DailyAnalyticsJob;
 use App\Jobs\Auto\SurgeRecalculationJob;
+use App\Jobs\Taxi\TaxiSurgeRecalculateJob;
 use App\Jobs\BonusAccrualJob;
+use App\Jobs\CartCleanupJob;
 use App\Jobs\CleanupExpiredIdempotencyRecordsJob;
 use App\Jobs\DemandForecastJob;
 use App\Jobs\Inventory\LowStockAlertJob;
@@ -15,6 +17,11 @@ use App\Jobs\Notifications\SendQueuedNotificationsJob;
 use App\Jobs\Payments\BatchPayoutJob;
 use App\Jobs\Payments\DailyPayoutJob;
 use App\Jobs\RecommendationQualityJob;
+use App\Jobs\AnnualAnonymizationJob;
+use App\Jobs\InventoryAuditJob;
+use App\Jobs\RouteOptimizationJob;
+use App\Domains\Logistics\Models\Courier;
+use App\Domains\Logistics\Models\DeliveryOrder;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Storage;
@@ -29,6 +36,13 @@ final class Kernel extends ConsoleKernel
             ->onOneServer()
             ->name('taxi-surge-recalculation')
             ->description('Recalculate taxi surge multipliers for active zones');
+
+        // New Clean-Architecture surge job (domain-level)
+        $schedule->job(new TaxiSurgeRecalculateJob())
+            ->everyFiveMinutes()
+            ->withoutOverlapping(10)
+            ->onOneServer()
+            ->name('taxi-surge-recalculate-domain');
 
         $schedule->job(new CarWashReminderJob('24h'))
             ->hourly()
@@ -121,6 +135,34 @@ final class Kernel extends ConsoleKernel
             ->name('cleanup-idempotency')
             ->description('Remove expired payment idempotency records (older than 24h)');
 
+        $schedule->job(new CartCleanupJob())
+            ->everyMinute()
+            ->withoutOverlapping(1)
+            ->name('cart-cleanup')
+            ->description('Release expired cart reservations (20 min TTL)');
+
+        // Route optimization: перерасчёт маршрутов для всех онлайн-курьеров
+        $schedule->call(function (): void {
+            $activeCouriers = Courier::where('is_online', true)->pluck('id');
+
+            foreach ($activeCouriers as $courierId) {
+                $orderIds = DeliveryOrder::where('courier_id', $courierId)
+                    ->whereIn('status', ['assigned', 'picked_up', 'in_transit'])
+                    ->pluck('id')
+                    ->toArray();
+
+                if (!empty($orderIds)) {
+                    RouteOptimizationJob::dispatch((int) $courierId, $orderIds)
+                        ->onQueue('route-opt');
+                }
+            }
+        })
+            ->everyThreeMinutes()
+            ->withoutOverlapping(2)
+            ->name('route-optimization')
+            ->description('Recalculate optimized routes for all active couriers');
+
+
         $schedule->call(function (): void {
             $storage = Storage::disk('models');
             if (!$storage->exists('fraud')) {
@@ -158,6 +200,26 @@ final class Kernel extends ConsoleKernel
             ->timezone('UTC')
             ->name('cleanup-failed-jobs')
             ->description('Remove failed jobs older than 7 days');
+
+        // Плановая инвентаризация всех складов — ежеквартально
+        $schedule->job(new InventoryAuditJob())
+            ->quarterly()
+            ->at('02:00')
+            ->timezone('UTC')
+            ->withoutOverlapping(240)
+            ->onOneServer()
+            ->name('inventory-audit-quarterly')
+            ->description('Quarterly inventory audit for all active warehouses');
+
+        // Ежегодная анонимизация персональных данных (GDPR / ФЗ-152)
+        $schedule->job(new AnnualAnonymizationJob())
+            ->yearly()
+            ->at('01:00')
+            ->timezone('UTC')
+            ->withoutOverlapping(120)
+            ->onOneServer()
+            ->name('annual-anonymization')
+            ->description('Annual GDPR/FZ-152 PII anonymization (users inactive 365+ days)');
     }
 
     protected function commands(): void

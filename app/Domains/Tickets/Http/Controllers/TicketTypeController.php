@@ -2,17 +2,15 @@
 
 namespace App\Domains\Tickets\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketTypeController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TicketTypeController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
         public function byEvent(int $eventId): JsonResponse
         {
             try {
@@ -20,16 +18,17 @@ final class TicketTypeController extends Model
                     ->where('is_active', true)
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ticketTypes,
                     'correlation_id' => Str::uuid()->toString(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to list ticket types', [
+                $this->logger->error('Failed to list ticket types', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list ticket types',
                 ], 500);
@@ -39,13 +38,13 @@ final class TicketTypeController extends Model
         public function store(int $eventId): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'ticket_type_store', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'ticket_type_store', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $event = Event::findOrFail($eventId);
                 $this->authorize('create', TicketType::class);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'name' => 'required|string|max:255',
                     'price' => 'required|numeric|min:0',
                     'total_quantity' => 'required|integer|min:1',
@@ -56,7 +55,7 @@ final class TicketTypeController extends Model
                 ]);
 
                 $ticketType = TicketType::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()?->id,
                     'event_id' => $eventId,
                     'name' => $validated['name'],
                     'price' => $validated['price'],
@@ -71,22 +70,23 @@ final class TicketTypeController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Ticket type created', [
+                $this->logger->info('Ticket type created', [
                     'ticket_type_id' => $ticketType->id,
                     'event_id' => $eventId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ticketType,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create ticket type', [
+                $this->logger->error('Failed to create ticket type', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create ticket type',
                 ], 500);
@@ -96,13 +96,13 @@ final class TicketTypeController extends Model
         public function update(int $id): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'ticket_type_update', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'ticket_type_update', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $ticketType = TicketType::findOrFail($id);
                 $this->authorize('update', $ticketType);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'name' => 'sometimes|string|max:255',
                     'price' => 'sometimes|numeric|min:0',
                     'is_active' => 'sometimes|boolean',
@@ -110,21 +110,22 @@ final class TicketTypeController extends Model
 
                 $ticketType->update($validated + ['correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Ticket type updated', [
+                $this->logger->info('Ticket type updated', [
                     'ticket_type_id' => $ticketType->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $ticketType,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update ticket type', [
+                $this->logger->error('Failed to update ticket type', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update ticket type',
                 ], 500);
@@ -140,21 +141,22 @@ final class TicketTypeController extends Model
                 $correlationId = (string) Str::uuid()->toString();
                 $ticketType->delete();
 
-                Log::channel('audit')->info('Ticket type deleted', [
+                $this->logger->info('Ticket type deleted', [
                     'ticket_type_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Ticket type deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to delete ticket type', [
+                $this->logger->error('Failed to delete ticket type', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete ticket type',
                 ], 500);

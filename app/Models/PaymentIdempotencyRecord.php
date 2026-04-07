@@ -9,6 +9,8 @@ final class PaymentIdempotencyRecord extends Model
     protected $table = 'payment_idempotency_records';
 
     protected $fillable = [
+        'uuid',
+        'correlation_id',
         'operation',
         'idempotency_key',
         'merchant_id',
@@ -17,6 +19,7 @@ final class PaymentIdempotencyRecord extends Model
         'status',
         'expires_at',
         'correlation_id',
+        'tenant_id',
     ];
 
     protected $casts = [

@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 final class FlowerSubscription extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'flower_subscriptions';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'shop_id',
             'user_id',
@@ -44,8 +45,8 @@ final class FlowerSubscription extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (filament()->getTenant()) {
-                    $query->where('tenant_id', filament()->getTenant()->id);
+                if (tenant()) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

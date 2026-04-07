@@ -2,31 +2,34 @@
 
 namespace App\Http\Controllers\Api\Psychology;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PsychologicalApiController extends Model
+final class PsychologicalApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly PsychologicalService $service,
             private readonly AITherapyConstructorService $aiService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Поиск психологов.
          */
         public function index(Request $request): JsonResponse
         {
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-            Log::channel('audit')->info('API: Fetching psychologists', [
+            $this->logger->channel('audit')->info('API: Fetching psychologists', [
                 'correlation_id' => $correlationId,
             ]);
             $psychologists = Psychologist::with(['clinic', 'reviews'])
                 ->where('is_available', true)
                 ->paginate($request->integer('per_page', 15));
-            return response()->json([
+            return $this->response->json([
                 'data' => $psychologists,
                 'correlation_id' => $correlationId,
             ]);
@@ -42,7 +45,7 @@ final class PsychologicalApiController extends Model
                 'min_exp' => 'nullable|integer',
             ]);
             $matches = $this->aiService->generateTherapyPlan($request->all(), $correlationId);
-            return response()->json([
+            return $this->response->json([
                 'plan' => $matches,
                 'correlation_id' => $correlationId,
             ]);
@@ -61,20 +64,20 @@ final class PsychologicalApiController extends Model
             ]);
             try {
                 $booking = $this->service->createBooking(array_merge($data, [
-                    'client_id' => auth()->id() ?? 1, // Fallback for demo
+                    'client_id' => $this->guard->id() ?? 1, // Fallback for demo
                     'price_at_booking' => 5000, // Placeholder price logic
                 ]), $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Booking Failed', [
+                $this->logger->channel('audit')->error('API Booking Failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], 400);

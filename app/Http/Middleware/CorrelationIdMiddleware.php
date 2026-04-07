@@ -1,15 +1,36 @@
 <?php declare(strict_types=1);
 
+/**
+ * CorrelationIdMiddleware — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/correlationidmiddleware
+ * @see https://catvrf.ru/docs/correlationidmiddleware
+ * @see https://catvrf.ru/docs/correlationidmiddleware
+ * @see https://catvrf.ru/docs/correlationidmiddleware
+ * @see https://catvrf.ru/docs/correlationidmiddleware
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class CorrelationIdMiddleware extends Model
+final class CorrelationIdMiddleware
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle the request
          */
@@ -29,7 +50,7 @@ final class CorrelationIdMiddleware extends Model
             $request->attributes->set('correlation_id', $correlationId);
 
             // Логировать только для debug уровня
-            Log::channel('audit')->debug('Correlation ID injected', [
+            $this->logger->channel('audit')->debug('Correlation ID injected', [
                 'correlation_id' => $correlationId,
                 'path' => $request->path(),
                 'method' => $request->method(),
@@ -44,4 +65,10 @@ final class CorrelationIdMiddleware extends Model
 
             return $response;
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

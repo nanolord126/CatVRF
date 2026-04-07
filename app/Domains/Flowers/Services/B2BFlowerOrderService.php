@@ -1,39 +1,54 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Events\B2BFlowerOrderPlaced;
+use App\Domains\Flowers\Models\B2BFlowerOrder;
+use App\Domains\Flowers\Models\B2BFlowerStorefront;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class B2BFlowerOrderService extends Model
+final readonly class B2BFlowerOrderService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-    }
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        public function createB2BOrder(
-            int $tenantId,
-            int $storefrontId,
-            array $items,
-            array $deliveryData,
-            string $correlationId = '',
-        ): B2BFlowerOrder {
-            $correlationId = $correlationId ?: (string)Str::uuid()->toString();
+    /**
+     * Создать B2B-заказ на цветы.
+     *
+     * @param int    $tenantId      ID тенанта
+     * @param int    $storefrontId  ID витрины
+     * @param int    $userId        ID пользователя (для fraud-check)
+     * @param array  $items         Позиции заказа
+     * @param array  $deliveryData  Данные доставки
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function createB2BOrder(
+        int $tenantId,
+        int $storefrontId,
+        int $userId,
+        array $items,
+        array $deliveryData,
+        string $correlationId = '',
+    ): B2BFlowerOrder {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            try {
-                $this->fraudControlService->check(
-                    tenantId: $tenantId,
-                    action: 'b2b_flower_order_create',
-                    correlationId: $correlationId,
-                );
+        try {
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'b2b_flower_order_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
 
-                return DB::transaction(function () use ($tenantId, $storefrontId, $items, $deliveryData, $correlationId) {
+            return $this->db->transaction(function () use ($tenantId, $storefrontId, $items, $deliveryData, $correlationId): B2BFlowerOrder {
                     $storefront = B2BFlowerStorefront::query()
                         ->where('id', $storefrontId)
                         ->where('tenant_id', $tenantId)
@@ -66,7 +81,7 @@ final class B2BFlowerOrderService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('B2B flower order created', [
+                    $this->logger->info('B2B flower order created', [
                         'order_id' => $order->id,
                         'storefront_id' => $storefrontId,
                         'total_amount' => $totalAmount,
@@ -78,8 +93,8 @@ final class B2BFlowerOrderService extends Model
 
                     return $order;
                 });
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('B2B flower order creation failed', [
+            } catch (\Throwable $exception) {
+                $this->logger->error('B2B flower order creation failed', [
                     'storefront_id' => $storefrontId,
                     'error' => $exception->getMessage(),
                     'correlation_id' => $correlationId,
@@ -88,7 +103,10 @@ final class B2BFlowerOrderService extends Model
             }
         }
 
-        private function calculateBulkDiscount(B2BFlowerStorefront $storefront, float $subtotal): float
+    /**
+     * Рассчитать объёмную скидку для B2B-заказа.
+     */
+    private function calculateBulkDiscount(B2BFlowerStorefront $storefront, float $subtotal): float
         {
             if (!$storefront->bulk_discounts) {
                 return 0;
@@ -106,8 +124,11 @@ final class B2BFlowerOrderService extends Model
             return $discount;
         }
 
-        private function generateOrderNumber(): string
-        {
-            return 'B2BFLO-' . date('Ymd') . '-' . Str::upper(Str::random(8));
-        }
+    /**
+     * Сгенерировать номер заказа.
+     */
+    private function generateOrderNumber(): string
+    {
+        return 'B2BFLO-' . date('Ymd') . '-' . Str::upper(Str::random(8));
+    }
 }

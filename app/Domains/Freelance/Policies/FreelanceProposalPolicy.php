@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ * FreelanceProposalPolicy — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/freelanceproposalpolicy
+ */
+
+
 namespace App\Domains\Freelance\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class FreelanceProposalPolicy extends Model
+final class FreelanceProposalPolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function view(User $user, FreelanceProposal $proposal): Response
         {
             return $user->id === $proposal->freelancer->user_id || $user->id === $proposal->job->client_id
@@ -49,4 +60,10 @@ final class FreelanceProposalPolicy extends Model
                 ? $this->response->allow()
                 : $this->response->deny();
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

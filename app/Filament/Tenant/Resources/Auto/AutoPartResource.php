@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoPartResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class AutoPartResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
@@ -266,7 +271,6 @@ final class AutoPartResource extends Model
                         ->label('Категория')
                         ->badge()
                         ->color(fn ($state) => match ($state) {
-                            'engine' => 'primary',
                             'suspension' => 'info',
                             'brakes' => 'danger',
                             'electrical' => 'warning',
@@ -376,17 +380,17 @@ final class AutoPartResource extends Model
                         Tables\Actions\EditAction::make(),
                         Tables\Actions\DeleteAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoPart deleted', [
+                                $this->logger->info('AutoPart deleted', [
                                     'resource' => 'AutoPart',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
                         Tables\Actions\RestoreAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoPart restored', [
+                                $this->logger->info('AutoPart restored', [
                                     'resource' => 'AutoPart',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
@@ -396,9 +400,9 @@ final class AutoPartResource extends Model
                     Tables\Actions\BulkActionGroup::make([
                         Tables\Actions\DeleteBulkAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoParts bulk deleted', [
+                                $this->logger->info('AutoParts bulk deleted', [
                                     'resource' => 'AutoPart',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
@@ -409,10 +413,10 @@ final class AutoPartResource extends Model
                             ->action(function (Collection $records) {
                                 foreach ($records as $record) {
                                     $record->update(['last_reorder_date' => now()]);
-                                    Log::channel('audit')->info('AutoPart reorder marked', [
+                                    $this->logger->info('AutoPart reorder marked', [
                                         'resource' => 'AutoPart',
                                         'resource_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }

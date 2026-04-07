@@ -2,43 +2,54 @@
 
 namespace App\Domains\Flowers\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\FlowerProduct;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class FlowerProductResource extends Model
+/**
+ * FlowerProductResource — CatVRF 2026 Component.
+ *
+ * Filament resource for managing flower products.
+ * Tenant-scoped: all data filtered by current tenant.
+ *
+ * @package App\Domains\Flowers\Filament\Resources
+ */
+final class FlowerProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = FlowerProduct::class;
-        protected static ?string $slug = 'flower-products';
-        protected static ?string $navigationGroup = 'Flowers';
 
-        public static function form(Forms\Form $form): Forms\Form
-        {
-            return $form->schema([
-                Forms\Components\TextInput::make('name')->required(),
-                Forms\Components\Textarea::make('description'),
-                Forms\Components\Select::make('category')->options([
-                    'bouquet' => 'Букет',
-                    'arrangement' => 'Аранжировка',
-                    'subscription' => 'Подписка',
-                ])->required(),
-                Forms\Components\TextInput::make('price')->numeric()->required(),
-                Forms\Components\TextInput::make('stock')->numeric(),
-                Forms\Components\Toggle::make('in_stock'),
-            ]);
-        }
+    protected static ?string $slug = 'flower-products';
 
-        public static function table(Table $table): Table
-        {
-            return $table->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('category'),
-                Tables\Columns\TextColumn::make('price'),
-                Tables\Columns\TextColumn::make('stock'),
-            ])->actions([
-                Tables\Actions\EditAction::make(),
-            ]);
-        }
+    protected static ?string $navigationGroup = 'Flowers';
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\TextInput::make('name')->required(),
+            Forms\Components\Textarea::make('description'),
+            Forms\Components\Select::make('category')->options([
+                'bouquet' => 'Букет',
+                'arrangement' => 'Аранжировка',
+                'subscription' => 'Подписка',
+            ])->required(),
+            Forms\Components\TextInput::make('price')->numeric()->required(),
+            Forms\Components\TextInput::make('stock')->numeric(),
+            Forms\Components\Toggle::make('in_stock'),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table->columns([
+            Tables\Columns\TextColumn::make('name')->searchable(),
+            Tables\Columns\TextColumn::make('category')->badge(),
+            Tables\Columns\TextColumn::make('price'),
+            Tables\Columns\TextColumn::make('stock'),
+        ])->actions([
+            Tables\Actions\EditAction::make(),
+        ]);
+    }
 }

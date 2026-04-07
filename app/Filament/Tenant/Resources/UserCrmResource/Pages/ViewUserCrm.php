@@ -2,6 +2,8 @@
 
 namespace App\Filament\Tenant\Resources\UserCrmResource\Pages;
 
+
+use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\UserCrmResource;
 use Filament\Actions;
 use Filament\Infolists\Infolist;
@@ -10,6 +12,10 @@ use Filament\Resources\Pages\ViewRecord;
 
 final class ViewUserCrm extends ViewRecord
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = UserCrmResource::class;
 
     protected function getHeaderActions(): array
@@ -27,7 +33,7 @@ final class ViewUserCrm extends ViewRecord
                 ])
                 ->action(function (array $data) {
                     $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
-                    \Illuminate\Support\Facades\Log::channel('audit')->info('CRM: Send notification', [
+                    $this->logger->info('CRM: Send notification', [
                         'user_id' => $this->record->id,
                         'tenant_id' => filament()->getTenant()?->id,
                         'correlation_id' => $correlationId,

@@ -2,17 +2,15 @@
 
 namespace App\Domains\Education\Courses\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CertificateController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CertificateController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly CertificateService $certificateService,
-        ) {}
+            private readonly CertificateService $certificateService, private readonly LoggerInterface $logger) {}
 
         public function show(int $id): JsonResponse
         {
@@ -22,16 +20,17 @@ final class CertificateController extends Model
 
                 $this->authorize('view', $certificate);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $certificate,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to show certificate', [
+                $this->logger->error('Failed to show certificate', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Certificate not found',
                 ], 404);
@@ -41,21 +40,22 @@ final class CertificateController extends Model
         public function myCertificates(): JsonResponse
         {
             try {
-                $certificates = Certificate::where('student_id', auth()->id())
+                $certificates = Certificate::where('student_id', $request->user()?->id)
                     ->with(['course'])
                     ->orderByDesc('issued_at')
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $certificates,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list my certificates', [
+                $this->logger->error('Failed to list my certificates', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list my certificates',
                 ], 500);
@@ -69,17 +69,18 @@ final class CertificateController extends Model
                 $this->authorize('download', $certificate);
 
                 if (!$certificate->certificate_url) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Certificate not yet generated',
                     ], 400);
                 }
 
-                \Log::channel('audit')->info('Certificate downloaded', [
+                $this->logger->info('Certificate downloaded', [
                     'certificate_id' => $certificate->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'certificate_number' => $certificate->certificate_number,
@@ -88,10 +89,11 @@ final class CertificateController extends Model
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to download certificate', [
+                $this->logger->error('Failed to download certificate', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to download certificate',
                 ], 500);
@@ -105,13 +107,13 @@ final class CertificateController extends Model
                 $certificate = $this->certificateService->verifyCertificate($code, $correlationId);
 
                 if (!$certificate) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => false,
                         'message' => 'Invalid certificate code',
                     ], 404);
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'certificate_number' => $certificate->certificate_number,
@@ -122,10 +124,11 @@ final class CertificateController extends Model
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to verify certificate', [
+                $this->logger->error('Failed to verify certificate', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to verify certificate',
                 ], 500);

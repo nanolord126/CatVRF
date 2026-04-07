@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+
 use App\Domains\Art\Models\Artwork;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-
 final class ArtworkCreated
 {
     use Dispatchable;
@@ -18,15 +17,8 @@ final class ArtworkCreated
     public function __construct(
         public readonly Artwork $artwork,
         public readonly string $correlationId,
-        public readonly array $context = [],
-    ) {
-        Log::channel('audit')->info('ArtworkCreated event dispatched', [
-            'correlation_id' => $this->correlationId,
-            'artwork_id' => $this->artwork->id,
-            'project_id' => $this->artwork->project_id,
-            'tenant_id' => $this->artwork->tenant_id,
-        ]);
-    }
+        public array $context = [],
+    ) {}
 
     public static function dispatch(Artwork $artwork, string $correlationId, array $context = []): void
     {

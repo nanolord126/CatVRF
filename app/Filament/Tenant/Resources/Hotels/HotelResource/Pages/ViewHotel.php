@@ -2,20 +2,45 @@
 
 namespace App\Filament\Tenant\Resources\Hotels\HotelResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Hotels\HotelResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ViewRecord;
+use Psr\Log\LoggerInterface;
 
-final class ViewHotel extends Model
+/**
+ * ViewHotel — страница просмотра отеля для HotelResource.
+ *
+ * Filament v3 Page: tenant-scoped, audit logging.
+ *
+ * @package App\Filament\Tenant\Resources\Hotels\HotelResource\Pages
+ */
+final class ViewHotel extends ViewRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = HotelResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\EditAction::make(),
-            ];
-        }
+    /**
+     * Действия в заголовке страницы.
+     *
+     * @return array<\Filament\Actions\Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\EditAction::make(),
+        ];
+    }
+
+    /**
+     * Действия после загрузки записи.
+     */
+    protected function afterLoad(): void
+    {
+        app(LoggerInterface::class)->info('Hotel record viewed via HotelResource', [
+            'record_id' => $this->record->id,
+            'correlation_id' => $this->record->correlation_id ?? null,
+            'user_id' => filament()->auth()->id(),
+            'tenant_id' => filament()->getTenant()?->id,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }

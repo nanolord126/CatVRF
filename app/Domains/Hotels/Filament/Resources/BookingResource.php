@@ -2,14 +2,15 @@
 
 namespace App\Domains\Hotels\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Booking;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class BookingResource extends Model
+final class BookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Booking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-bookmark';
@@ -77,13 +78,15 @@ final class BookingResource extends Model
                     Tables\Columns\TextColumn::make('check_out_date')
                         ->date()
                         ->sortable(),
-                    Tables\Columns\BadgeColumn::make('booking_status')
-                        ->colors([
-                            'success' => 'checked_out',
-                            'warning' => 'confirmed',
-                            'info' => 'checked_in',
-                            'danger' => 'cancelled',
-                        ]),
+                    Tables\Columns\TextColumn::make('booking_status')
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'checked_out' => 'success',
+                            'confirmed' => 'warning',
+                            'checked_in' => 'info',
+                            'cancelled' => 'danger',
+                            default => 'gray',
+                        }),
                     Tables\Columns\TextColumn::make('total_price')
                         ->numeric()
                         ->sortable(),

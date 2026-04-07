@@ -2,14 +2,23 @@
 
 namespace App\Http\Controllers\Api\Luxury;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LuxuryAIConstructorController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class LuxuryAIConstructorController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * POST /api/v1/luxury/ai-curate
          *
@@ -26,11 +35,12 @@ final class LuxuryAIConstructorController extends Model
             ]);
             try {
                 // 2. Fraud Check (Канон: Обязательно перед мутациями или тяжелыми операциями)
-                FraudControlService::check([
-                    'user_id' => $request->user()?->id,
-                    'type' => 'luxury_ai_generation',
-                    'correlation_id' => $correlationId,
-                ]);
+                app(\App\Services\FraudControlService::class)->check(
+                    userId: (int) ($this->guard->id() ?? 0),
+                    operationType: 'luxury_ai_generation',
+                    amount: 0,
+                    correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+                );
                 // 3. Создание DTO (Layer 5)
                 $dto = new LuxuryAIAnalysisRequestDTO(
                     clientUuid: $validated['client_uuid'],
@@ -44,11 +54,11 @@ final class LuxuryAIConstructorController extends Model
                     correlationId: $correlationId
                 );
                 $result = $service->generateCuration($dto);
-                Log::channel('audit')->info('Luxury API: Successful curation generation', [
+                $this->logger->channel('audit')->info('Luxury API: Successful curation generation', [
                     'client' => $validated['client_uuid'],
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $result,
                     'meta' => [
@@ -57,12 +67,12 @@ final class LuxuryAIConstructorController extends Model
                     ],
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Luxury API Error', [
+                $this->logger->channel('audit')->error('Luxury API Error', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Произошла ошибка при работе с AI-консультантом. Пожалуйста, обратитесь к вашему VIP-консьержу.',
                     'correlation_id' => $correlationId,

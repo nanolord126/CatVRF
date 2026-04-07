@@ -2,26 +2,22 @@
 
 namespace App\Domains\EventPlanning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventPlanningService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class EventPlanningService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private EventAIService $aiService,
+
+    public function __construct(private EventAIService $aiService,
             private WalletService $walletService,
             private FraudControlService $fraudService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Создает полноценный проект события на базе AI-плана.
          */
         public function createEventProject(array $inputData, string $correlationId): Event
         {
-            Log::channel('audit')->info("EventPlanningService: Creating event project", [
+            $this->logger->info("EventPlanningService: Creating event project", [
                 'correlation_id' => $correlationId,
                 'client_id' => $inputData['client_id'],
             ]);
@@ -34,7 +30,7 @@ final class EventPlanningService extends Model
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($inputData, $correlationId) {
+            return $this->db->transaction(function () use ($inputData, $correlationId) {
 
                 // 2. Генерация AI-плана
                 $aiPlan = $this->aiService->generateEventPlan(
@@ -78,7 +74,7 @@ final class EventPlanningService extends Model
                     ]);
                 }
 
-                Log::channel('audit')->info("EventPlanningService: Event project #{$event->uuid} created successfully", [
+                $this->logger->info("EventPlanningService: Event project #{$event->uuid} created successfully", [
                     'correlation_id' => $correlationId,
                     'event_id' => $event->id,
                 ]);
@@ -93,13 +89,13 @@ final class EventPlanningService extends Model
          */
         public function contractVendor(Event $event, array $vendorData, string $correlationId): EventVendor
         {
-            Log::channel('audit')->info("EventPlanningService: Contracting vendor for event #{$event->uuid}", [
+            $this->logger->info("EventPlanningService: Contracting vendor for event #{$event->uuid}", [
                 'correlation_id' => $correlationId,
                 'vendor_name' => $vendorData['vendor_name'],
                 'vertical' => $vendorData['vertical'],
             ]);
 
-            return DB::transaction(function () use ($event, $vendorData, $correlationId) {
+            return $this->db->transaction(function () use ($event, $vendorData, $correlationId) {
 
                 // 1. Создание связи с вендором
                 $ev = EventVendor::create([
@@ -118,7 +114,7 @@ final class EventPlanningService extends Model
                 // 2. Попытка списания депозита через Wallet (Hold)
                 if ($ev->agreed_price_kopecks > 0) {
                     $depositAmount = (int)($ev->agreed_price_kopecks * 0.2); // 20% стандарт
-                    $this->walletService->hold($event->client_id, $depositAmount, "Prepayment for {$ev->vendor_name}", $correlationId);
+                    $this->walletService->hold($event->client_id, $depositAmount, \App\Domains\Wallet\Enums\BalanceTransactionType::HOLD, $correlationId, null, null, null);
                     $ev->update(['deposit_paid_kopecks' => $depositAmount]);
                 }
 
@@ -133,11 +129,11 @@ final class EventPlanningService extends Model
         {
             if ($event->isCompleted()) return true;
 
-            Log::channel('audit')->info("EventPlanningService: Completing event #{$event->uuid}", [
+            $this->logger->info("EventPlanningService: Completing event #{$event->uuid}", [
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($event, $correlationId) {
+            return $this->db->transaction(function () use ($event, $correlationId) {
                 $event->update(['status' => 'completed']);
 
                 // Здесь должна быть логика финальных оплат вендорам (Release Hold -> Debit)
@@ -151,17 +147,17 @@ final class EventPlanningService extends Model
          */
         public function cancelEvent(Event $event, string $reason, string $correlationId): bool
         {
-            Log::channel('audit')->warning("EventPlanningService: Cancelling event #{$event->uuid}", [
+            $this->logger->warning("EventPlanningService: Cancelling event #{$event->uuid}", [
                 'correlation_id' => $correlationId,
                 'reason' => $reason,
             ]);
 
-            return DB::transaction(function () use ($event, $correlationId) {
+            return $this->db->transaction(function () use ($event, $correlationId) {
                 $event->update(['status' => 'cancelled']);
 
                 // Удержание штрафа (Cancellation Fee) - Канон 2026
                 if ($event->cancellation_fee_kopecks > 0) {
-                    $this->walletService->debit($event->client_id, $event->cancellation_fee_kopecks, "Cancellation fee for event #{$event->uuid}", $correlationId);
+                    $this->walletService->debit($event->client_id, $event->cancellation_fee_kopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, null);
                 }
 
                 return true;

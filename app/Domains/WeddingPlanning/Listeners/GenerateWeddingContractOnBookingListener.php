@@ -2,14 +2,16 @@
 
 namespace App\Domains\WeddingPlanning\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GenerateWeddingContractOnBookingListener extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class GenerateWeddingContractOnBookingListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         public function handle(object $event): void
@@ -17,7 +19,7 @@ final class GenerateWeddingContractOnBookingListener extends Model
             $booking = $event->booking;
             $correlationId = $event->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('Generating wedding contract [Listener Start]', [
+            $this->logger->info('Generating wedding contract [Listener Start]', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -26,9 +28,10 @@ final class GenerateWeddingContractOnBookingListener extends Model
                 // Предотвращение дублирования
                 $existingContract = WeddingContract::where('booking_id', $booking->id)->first();
                 if ($existingContract) {
-                    Log::channel('audit')->info('Contract already exists for booking', [
+                    $this->logger->info('Contract already exists for booking', [
                         'booking_id' => $booking->id,
                         'contract_id' => $existingContract->id,
+                        'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
                     return;
                 }
@@ -52,12 +55,12 @@ final class GenerateWeddingContractOnBookingListener extends Model
 
                 $contract->save();
 
-                Log::channel('audit')->info('Wedding contract successfully generated (Draft)', [
+                $this->logger->info('Wedding contract successfully generated (Draft)', [
                     'contract_id' => $contract->id,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to generate wedding contract', [
+                $this->logger->error('Failed to generate wedding contract', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

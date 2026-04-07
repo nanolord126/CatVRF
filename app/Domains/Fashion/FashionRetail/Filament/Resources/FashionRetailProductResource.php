@@ -2,14 +2,11 @@
 
 namespace App\Domains\Fashion\FashionRetail\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FashionRetailProductResource extends Model
+final class FashionRetailProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FashionRetailProduct::class;
 
         protected static ?string $navigationGroup = 'Fashion Retail';
@@ -59,8 +56,8 @@ final class FashionRetailProductResource extends Model
                 TextColumn::make('shop.name')->searchable(),
                 TextColumn::make('category.name'),
                 TextColumn::make('price')->numeric()->sortable(),
-                TextColumn::make('current_stock')->numeric()->sortable(),
-                BadgeColumn::make('status')->colors(['active' => 'success', 'inactive' => 'secondary']),
+                TextColumn::make('current_stock')->badge()->numeric()->sortable(),
+                TextColumn::make('status')->badge(),
                 TextColumn::make('rating')->numeric(),
             ])->filters([])->actions([])->bulkActions([]);
         }

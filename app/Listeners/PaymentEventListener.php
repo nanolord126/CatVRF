@@ -2,17 +2,14 @@
 
 namespace App\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class PaymentEventListener extends Model
+final class PaymentEventListener
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
             private readonly NotificationService $notificationService,
-        ) {}
+            private readonly LogManager $logger,
+    ) {}
 
         public function handlePaymentInitiated(PaymentInitiatedEvent $event): void
         {
@@ -36,7 +33,7 @@ final class PaymentEventListener extends Model
 
                 $this->notificationService->send($user, $notification, $event->correlationId);
             } catch (\Throwable $e) {
-                Log::channel('notifications')
+                $this->logger->channel('notifications')
                     ->error('Failed to send PaymentInitiatedNotification', [
                         'event' => PaymentInitiatedEvent::class,
                         'error' => $e->getMessage(),
@@ -65,7 +62,7 @@ final class PaymentEventListener extends Model
 
                 $this->notificationService->send($user, $notification, $event->correlationId);
             } catch (\Throwable $e) {
-                Log::channel('notifications')
+                $this->logger->channel('notifications')
                     ->error('Failed to send PaymentAuthorizedNotification', [
                         'error' => $e->getMessage(),
                         'correlation_id' => $event->correlationId,
@@ -96,7 +93,7 @@ final class PaymentEventListener extends Model
 
                 $this->notificationService->send($user, $notification, $event->correlationId);
             } catch (\Throwable $e) {
-                Log::channel('notifications')
+                $this->logger->channel('notifications')
                     ->error('Failed to send PaymentCapturedNotification', [
                         'error' => $e->getMessage(),
                         'correlation_id' => $event->correlationId,
@@ -126,7 +123,7 @@ final class PaymentEventListener extends Model
 
                 $this->notificationService->send($user, $notification, $event->correlationId);
             } catch (\Throwable $e) {
-                Log::channel('notifications')
+                $this->logger->channel('notifications')
                     ->error('Failed to send PaymentFailedNotification', [
                         'error' => $e->getMessage(),
                         'correlation_id' => $event->correlationId,
@@ -156,7 +153,7 @@ final class PaymentEventListener extends Model
 
                 $this->notificationService->send($user, $notification, $event->correlationId);
             } catch (\Throwable $e) {
-                Log::channel('notifications')
+                $this->logger->channel('notifications')
                     ->error('Failed to send PaymentRefundedNotification', [
                         'error' => $e->getMessage(),
                         'correlation_id' => $event->correlationId,

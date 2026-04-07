@@ -2,20 +2,26 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class DeductBookingCommissionListener extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductBookingCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(BookingCreated $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $commissionAmount = (int) ($event->booking->commission_amount * 100);
                     $wallet = \App\Models\Wallet::lockForUpdate()->where('tenant_id', $event->booking->tenant_id)->firstOrFail();
                     $wallet->decrement('balance', $commissionAmount);
@@ -28,7 +34,7 @@ final class DeductBookingCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Booking commission deducted', [
+                    $this->logger->info('Booking commission deducted', [
                         'booking_id' => $event->booking->id,
                         'venue_id' => $event->booking->venue_id,
                         'customer_id' => $event->booking->customer_id,
@@ -37,7 +43,7 @@ final class DeductBookingCommissionListener extends Model
                     ]);
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct booking commission', [
+                $this->logger->error('Failed to deduct booking commission', [
                     'booking_id' => $event->booking->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -45,4 +51,27 @@ final class DeductBookingCommissionListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

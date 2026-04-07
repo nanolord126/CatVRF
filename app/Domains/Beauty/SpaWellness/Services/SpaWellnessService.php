@@ -1,21 +1,188 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\SpaWellness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SpaWellnessService extends Model
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Beauty\SpaWellness\Models\SpaBooking;
+use App\Domains\Beauty\SpaWellness\Models\SpaCenter;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Collection;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+
+/**
+ * SpaWellnessService — сервис управления бронированием СПА-процедур.
+ *
+ * Все суммы в копейках. Без статических фасадов.
+ * clientId и tenantId передаются явно через параметры.
+ */
+final readonly class SpaWellnessService
 {
-    use HasFactory;
+    private const PLATFORM_COMMISSION = 0.14;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createBooking(int $spaId,$treatmentType,$durationMinutes,$bookingDate,string $correlationId=""):SpaBooking{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("spa:book:".auth()->id(),22))throw new \RuntimeException("Too many",429);RateLimiter::hit("spa:book:".auth()->id(),3600);
-    return DB::transaction(function()use($spaId,$treatmentType,$durationMinutes,$bookingDate,$correlationId){$s=SpaCenter::findOrFail($spaId);$total=(int)($s->price_kopecks_per_minute*$durationMinutes);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'spa_wellness','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$b=SpaBooking::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'spa_id'=>$spaId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','treatment_type'=>$treatmentType,'duration_minutes'=>$durationMinutes,'booking_date'=>$bookingDate,'tags'=>['spa'=>true]]);Log::channel('audit')->info('Spa booking created',['booking_id'=>$b->id,'correlation_id'=>$correlationId]);return $b;});
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $walletService,
+        private LoggerInterface $auditLogger,
+        private \Illuminate\Database\DatabaseManager $db,
+        private Guard $guard,
+    ) {}
+
+    /**
+     * Создаёт бронирование СПА-процедуры.
+     *
+     * @throws \RuntimeException При блокировке фрода.
+     */
+    public function createBooking(
+        int    $spaId,
+        string $treatmentType,
+        int    $durationMinutes,
+        string $bookingDate,
+        int    $clientId,
+        string $tenantId,
+        string $correlationId = '',
+    ): SpaBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        $fraudCheck = $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'spa_booking', amount: 0, correlationId: $correlationId ?? '');
+
+        if (($fraudCheck['decision'] ?? '') === 'block') {
+            throw new \RuntimeException('Операция заблокирована службой безопасности.', 403);
+        }
+
+        return $this->db->transaction(function () use (
+            $spaId, $treatmentType, $durationMinutes,
+            $bookingDate, $clientId, $tenantId, $correlationId,
+        ): SpaBooking {
+            $center = SpaCenter::withoutGlobalScopes()->findOrFail($spaId);
+
+            $total  = $center->calculatePrice($durationMinutes);
+            $payout = (int) ($total * (1 - self::PLATFORM_COMMISSION));
+
+            $booking = SpaBooking::create([
+                'uuid'             => Uuid::uuid4()->toString(),
+                'tenant_id'        => $tenantId,
+                'spa_center_id'    => $spaId,
+                'client_id'        => $clientId,
+                'correlation_id'   => $correlationId,
+                'status'           => 'pending_payment',
+                'total_kopecks'    => $total,
+                'payout_kopecks'   => $payout,
+                'payment_status'   => 'pending',
+                'booking_date'     => $bookingDate,
+                'duration_minutes' => $durationMinutes,
+                'treatment_type'   => $treatmentType,
+                'tags'             => ['spa' => true],
+            ]);
+
+            $this->auditLogger->info('SPA booking created.', [
+                'booking_id'     => $booking->id,
+                'correlation_id' => $correlationId,
+                'total_kopecks'  => $total,
+            ]);
+
+            return $booking;
+        });
     }
-    public function completeBooking(int $bookingId,string $correlationId=""):SpaBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=SpaBooking::findOrFail($bookingId);if($b->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$b->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$b->payout_kopecks,'spa_payout',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Spa booking completed',['booking_id'=>$b->id]);return $b;});}
-    public function cancelBooking(int $bookingId,string $correlationId=""):SpaBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=SpaBooking::findOrFail($bookingId);if($b->status==='completed')throw new \RuntimeException("Cannot cancel",400);$b->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($b->payment_status==='completed')$this->wallet->credit(tenant()->id,$b->total_kopecks,'spa_refund',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Spa booking cancelled',['booking_id'=>$b->id]);return $b;});}
-    public function getBooking(int $bookingId):SpaBooking{return SpaBooking::findOrFail($bookingId);}
-    public function getUserBookings(int $clientId){return SpaBooking::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершает бронирование и зачисляет выплату.
+     *
+     * @throws \RuntimeException Если бронирование не оплачено.
+     */
+    public function completeBooking(
+        int    $bookingId,
+        string $tenantId,
+        string $correlationId = '',
+    ): SpaBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($bookingId, $tenantId, $correlationId): SpaBooking {
+            $booking = SpaBooking::withoutGlobalScopes()->findOrFail($bookingId);
+
+            if (! $booking->isPaid()) {
+                throw new \RuntimeException('СПА-бронирование не оплачено — завершение невозможно.', 400);
+            }
+
+            $booking->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->walletService->credit(
+                $tenantId,
+                $booking->payout_kopecks,
+                \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,
+                $correlationId,
+                null,
+                null,
+                [
+                    'booking_id'     => $booking->id,
+                    'correlation_id' => $correlationId,
+                ],
+            );
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Отменяет бронирование с возвратом средств при необходимости.
+     *
+     * @throws \RuntimeException Если бронирование уже завершено.
+     */
+    public function cancelBooking(
+        int    $bookingId,
+        string $tenantId,
+        string $correlationId = '',
+    ): SpaBooking {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($bookingId, $tenantId, $correlationId): SpaBooking {
+            $booking = SpaBooking::withoutGlobalScopes()->findOrFail($bookingId);
+
+            if (! $booking->isCancellable()) {
+                throw new \RuntimeException('СПА-бронирование завершено — отмена невозможна.', 400);
+            }
+
+            $booking->update([
+                'status'         => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($booking->isPaid()) {
+                $this->walletService->credit(
+                    $tenantId,
+                    $booking->total_kopecks,
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    $correlationId,
+                    null,
+                    null,
+                    [
+                        'booking_id'     => $booking->id,
+                        'correlation_id' => $correlationId,
+                    ],
+                );
+            }
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Возвращает историю бронирований клиента (последние 10).
+     *
+     * @return Collection<int, SpaBooking>
+     */
+    public function getClientBookings(int $clientId): Collection
+    {
+        return SpaBooking::withoutGlobalScopes()
+            ->where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
 }
+

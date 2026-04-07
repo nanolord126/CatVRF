@@ -2,20 +2,21 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalAppointmentService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MedicalAppointmentService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание записи к врачу (Clinic/Teleconsultation).
@@ -25,25 +26,20 @@ final class MedicalAppointmentService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting — защита от DOS на медицинские записи
-            if (RateLimiter::tooManyAttempts("medical:book:{$clinicId}", 5)) {
+            if ($this->rateLimiter->tooManyAttempts("medical:book:{$clinicId}", 5)) {
                 throw new \RuntimeException("Слишком много попыток записи. Подождите.", 429);
             }
-            RateLimiter::hit("medical:book:{$clinicId}", 3600);
+            $this->rateLimiter->hit("medical:book:{$clinicId}", 3600);
 
-            return DB::transaction(function () use ($clinicId, $doctorId, $data, $correlationId) {
+            return $this->db->transaction(function () use ($clinicId, $doctorId, $data, $correlationId) {
                 $clinic = Clinic::findOrFail($clinicId);
                 $doctor = Doctor::findOrFail($doctorId);
 
                 // 2. Fraud Check (проверка на подозрительные оплаты медицины)
-                $fraud = $this->fraud->check([
-                    "user_id" => auth()->id() ?? 0,
-                    "operation_type" => "medical_appointment_create",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["clinic_id" => $clinicId, "doctor_id" => $doctorId]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->error("Medical Security Block", ["clinic_id" => $clinicId, "score" => $fraud["score"]]);
+                    $this->logger->error("Medical Security Block", ["clinic_id" => $clinicId, "score" => $fraud["score"]]);
                     throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
                 }
 
@@ -53,7 +49,7 @@ final class MedicalAppointmentService extends Model
                     "tenant_id" => $clinic->tenant_id,
                     "clinic_id" => $clinicId,
                     "doctor_id" => $doctorId,
-                    "patient_id" => auth()->id(),
+                    "patient_id" => $this->guard->id(),
                     "appointment_at" => Carbon::parse($data["appointment_at"]),
                     "service_type" => $data["service_type"] ?? "general",
                     "status" => "pending",
@@ -74,7 +70,7 @@ final class MedicalAppointmentService extends Model
                     }
                 }
 
-                Log::channel("audit")->info("Medical: appointment booked", ["app_id" => $appointment->id, "doctor" => $doctor->id, "corr" => $correlationId]);
+                $this->logger->info("Medical: appointment booked", ["app_id" => $appointment->id, "doctor" => $doctor->id, "corr" => $correlationId]);
 
                 return $appointment;
             });
@@ -88,7 +84,7 @@ final class MedicalAppointmentService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $appointment = MedicalAppointment::with("clinic", "doctor")->findOrFail($appointmentId);
 
-            DB::transaction(function () use ($appointment, $findings, $correlationId) {
+            $this->db->transaction(function () use ($appointment, $findings, $correlationId) {
                 $appointment->update([
                     "status" => "completed",
                     "finished_at" => now()
@@ -132,17 +128,7 @@ final class MedicalAppointmentService extends Model
                     correlationId: $correlationId
                 );
 
-                Log::channel("audit")->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, "fee" => $platformFee]);
-            });
-        }
-
-        /**
-         * Проверка юридических аспектов РФ (ФЗ-152, ЕГИСЗ).
-         */
-        public function validateRussianCompliance(int $userId): bool
-        {
-            // Имитация проверки согласия на ОПД и интеграции с федеральными реестрами
-            Log::channel("audit")->info("Medical: compliance check (FZ-152)", ["user" => $userId]);
+                $this->logger->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["user" => $userId]);
             return true;
         }
 }

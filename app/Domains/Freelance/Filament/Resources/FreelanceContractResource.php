@@ -2,14 +2,11 @@
 
 namespace App\Domains\Freelance\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FreelanceContractResource extends Model
+final class FreelanceContractResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FreelanceContract::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document-check';

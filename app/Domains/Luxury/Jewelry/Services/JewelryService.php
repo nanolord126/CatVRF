@@ -2,19 +2,20 @@
 
 namespace App\Domains\Luxury\Jewelry\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class JewelryService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class JewelryService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly WalletService $wallet,
             private readonly InventoryManagementService $inventory,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Заказ ювелирного изделия с холдированием средств (Escrow).
@@ -23,29 +24,19 @@ final class JewelryService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            if (RateLimiter::tooManyAttempts("jewelry:purchase:".$userId, 5)) {
+            if ($this->rateLimiter->tooManyAttempts("jewelry:purchase:".$userId, 5)) {
                 throw new \RuntimeException("Jewelry purchase frequency limit exceeded.", 429);
             }
-            RateLimiter::hit("jewelry:purchase:".$userId, 3600);
+            $this->rateLimiter->hit("jewelry:purchase:".$userId, 3600);
 
-            return DB::transaction(function () use ($itemId, $userId, $tenantId, $correlationId) {
+            return $this->db->transaction(function () use ($itemId, $userId, $tenantId, $correlationId) {
                 $item = JewelryItem::where("tenant_id", $tenantId)->findOrFail($itemId);
 
                 // 1. Проверка ПОД/ФТ (ФЗ-115) для дорогих изделий (>600к)
                 if ($item->price_kopecks >= 60000000) {
-                    $this->fraud->check([
-                        "user_id" => $userId,
-                        "operation_type" => "high_value_jewelry_purchase",
-                        "amount" => $item->price_kopecks,
-                        "correlation_id" => $correlationId,
-                        "requires_manual_verification" => true
-                    ]);
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
                 } else {
-                    $this->fraud->check([
-                        "user_id" => $userId,
-                        "operation_type" => "jewelry_purchase",
-                        "correlation_id" => $correlationId
-                    ]);
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
                 }
 
                 // 2. Резерв остатка (Inventory)
@@ -70,12 +61,9 @@ final class JewelryService extends Model
                 $this->wallet->hold(
                     $userId,
                     $item->price_kopecks,
-                    "jewelry_escrow_hold",
-                    "Order #{$order->uuid} for {$item->name}",
-                    $correlationId
-                );
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::HOLD, $correlationId, null, null, null);
 
-                Log::channel("audit")->info("Jewelry: purchase initiated (Escrow)", [
+                $this->logger->info("Jewelry: purchase initiated (Escrow)", [
                     "order_uuid" => $order->uuid,
                     "user_id" => $userId,
                     "item_id" => $itemId
@@ -93,7 +81,7 @@ final class JewelryService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = JewelryOrder::with(["jewelryItem", "user"])->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 if ($order->status !== "awaiting_delivery") {
                     throw new \RuntimeException("Order cannot be fulfilled in status: {$order->status}");
                 }
@@ -105,11 +93,7 @@ final class JewelryService extends Model
 
                 // Разморозка и перевод вендору (тенанту)
                 $this->wallet->releaseHold($order->user_id, $order->amount, $correlationId);
-                $this->wallet->credit($order->tenant_id, $payout, "jewelry_sale_payout", "Payment for Jewelry Order #{$order->uuid}", $correlationId);
-
-                $order->update(["status" => "completed", "completed_at" => now()]);
-
-                Log::channel("audit")->info("Jewelry: order fulfilled and paid", [
+                $this->wallet->credit($order->tenant_id, $payout, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     "order_id" => $orderId,
                     "payout" => $payout
                 ]);

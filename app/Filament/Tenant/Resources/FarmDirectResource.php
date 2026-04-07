@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FarmDirectResource extends Model
+final class FarmDirectResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FarmProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-leaf';
@@ -55,31 +52,15 @@ final class FarmDirectResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFarmDirect::route('/'),
-                'create' => Pages\\CreateFarmDirect::route('/create'),
-                'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmDirect::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFarmDirect::route('/'),
-                'create' => Pages\\CreateFarmDirect::route('/create'),
-                'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmDirect::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFarmDirect::route('/'),
-                'create' => Pages\\CreateFarmDirect::route('/create'),
-                'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmDirect::route('/{record}'),
+                'index' => Pages\ListFarmDirect::route('/'),
+                'create' => Pages\CreateFarmDirect::route('/create'),
+                'edit' => Pages\EditFarmDirect::route('/{record}/edit'),
+                'view' => Pages\ViewFarmDirect::route('/{record}'),
             ];
         }
 }

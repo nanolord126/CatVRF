@@ -2,14 +2,11 @@
 
 namespace App\Domains\Education\Social\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TranscodeShortsJob extends Model
+use Psr\Log\LoggerInterface;
+final class TranscodeShortsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -17,13 +14,13 @@ final class TranscodeShortsJob extends Model
 
         public function __construct(
             public SocialPost $post,
-            public string $correlationId
+            public string $correlationId, private readonly LoggerInterface $logger
         ) {
         }
 
-        public function handle(): void
+        public function handle(\Illuminate\Filesystem\FilesystemManager $storage): void
         {
-            Log::channel('audit')->info('Transcoding started', [
+            $this->logger->info('Transcoding started', [
                 'post_id' => $this->post->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -32,7 +29,7 @@ final class TranscodeShortsJob extends Model
 
             try {
                 $ffmpeg = FFMpeg::create();
-                $video = $ffmpeg->open(Storage::disk('s3')->path($this->post->media_url));
+                $video = $ffmpeg->open($storage->disk('s3')->path($this->post->media_url));
 
                 $outputPath = 'shorts/' . $this->post->uuid . '_transcoded.mp4';
 
@@ -43,21 +40,21 @@ final class TranscodeShortsJob extends Model
                 $video->filters()->resize(new \FFMpeg\Coordinate\Dimension(720, 1280))->synchronize();
 
                 // Сохранение (в реальности используем временный файл, потом загружаем в S3)
-                $video->save($format, Storage::disk('s3')->path($outputPath));
+                $video->save($format, $storage->disk('s3')->path($outputPath));
 
                 $this->post->update([
                     'media_url' => $outputPath,
                     'transcoding_status' => 'completed',
                 ]);
 
-                Log::channel('audit')->info('Transcoding completed', [
+                $this->logger->info('Transcoding completed', [
                     'post_id' => $this->post->id,
                     'correlation_id' => $this->correlationId,
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->post->update(['transcoding_status' => 'failed']);
-                Log::error('Transcoding error: ' . $e->getMessage(), [
+                $this->logger->error('Transcoding error: ' . $e->getMessage(), [
                     'post_id' => $this->post->id,
                     'correlation_id' => $this->correlationId,
                 ]);

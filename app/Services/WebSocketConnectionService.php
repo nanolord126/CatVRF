@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class WebSocketConnectionService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class WebSocketConnectionService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Register new connection
          * @param string $connectionId
@@ -20,30 +25,33 @@ final class WebSocketConnectionService extends Model
         public function registerConnection(string $connectionId, int $userId, int $tenantId): bool
         {
             try {
+                $correlationId = Str::uuid()->toString();
                 $key = "ws:connection:{$connectionId}";
 
-                cache()->put($key, [
+                $this->cache->put($key, [
                     'connection_id' => $connectionId,
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'connected_at' => now()->toIso8601String(),
                     'last_heartbeat' => now()->toIso8601String(),
                     'subscriptions' => [],
-                ], 3600); // Keep for 1 hour
+                    'correlation_id' => $correlationId,
+                ], 3600);
 
-                // Track connection count
                 $countKey = "ws:connections:count:{$tenantId}";
-                cache()->increment($countKey, 1, 3600);
+                $this->cache->increment($countKey);
+                $this->cache->put($countKey, (int) $this->cache->get($countKey, 0), 3600);
 
-                Log::channel('audit')->info('WebSocket connection registered', [
+                $this->logger->channel('audit')->info('WebSocket connection registered', [
                     'connection_id' => $connectionId,
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to register connection', [
+                $this->logger->channel('audit')->error('Failed to register connection', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -60,21 +68,23 @@ final class WebSocketConnectionService extends Model
         public function unregisterConnection(string $connectionId, int $tenantId): bool
         {
             try {
+                $correlationId = Str::uuid()->toString();
                 $key = "ws:connection:{$connectionId}";
-                cache()->forget($key);
+                $this->cache->forget($key);
 
-                // Decrement connection count
                 $countKey = "ws:connections:count:{$tenantId}";
-                cache()->decrement($countKey, 1);
+                $current = max(0, (int) $this->cache->get($countKey, 0) - 1);
+                $this->cache->put($countKey, $current, 3600);
 
-                Log::channel('audit')->info('WebSocket connection unregistered', [
+                $this->logger->channel('audit')->info('WebSocket connection unregistered', [
                     'connection_id' => $connectionId,
                     'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to unregister connection', [
+                $this->logger->channel('audit')->error('Failed to unregister connection', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -91,17 +101,17 @@ final class WebSocketConnectionService extends Model
         {
             try {
                 $key = "ws:connection:{$connectionId}";
-                $connection = cache()->get($key);
+                $connection = $this->cache->get($key);
 
                 if ($connection) {
                     $connection['last_heartbeat'] = now()->toIso8601String();
-                    cache()->put($key, $connection, 3600);
+                    $this->cache->put($key, $connection, 3600);
                     return true;
                 }
 
                 return false;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Heartbeat failed', [
+                $this->logger->channel('audit')->error('Heartbeat failed', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -117,7 +127,7 @@ final class WebSocketConnectionService extends Model
         public function getConnectionCount(int $tenantId): int
         {
             $key = "ws:connections:count:{$tenantId}";
-            return (int) cache()->get($key, 0);
+            return (int) $this->cache->get($key, 0);
         }
 
         /**
@@ -130,19 +140,19 @@ final class WebSocketConnectionService extends Model
         {
             try {
                 $key = "ws:connection:{$connectionId}";
-                $connection = cache()->get($key);
+                $connection = $this->cache->get($key);
 
                 if ($connection) {
                     if (!in_array($channel, $connection['subscriptions'])) {
                         $connection['subscriptions'][] = $channel;
-                        cache()->put($key, $connection, 3600);
+                        $this->cache->put($key, $connection, 3600);
                     }
                     return true;
                 }
 
                 return false;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to add subscription', [
+                $this->logger->channel('audit')->error('Failed to add subscription', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -160,20 +170,20 @@ final class WebSocketConnectionService extends Model
         {
             try {
                 $key = "ws:connection:{$connectionId}";
-                $connection = cache()->get($key);
+                $connection = $this->cache->get($key);
 
                 if ($connection) {
                     $connection['subscriptions'] = array_filter(
                         $connection['subscriptions'],
                         fn($ch) => $ch !== $channel
                     );
-                    cache()->put($key, $connection, 3600);
+                    $this->cache->put($key, $connection, 3600);
                     return true;
                 }
 
                 return false;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to remove subscription', [
+                $this->logger->channel('audit')->error('Failed to remove subscription', [
                     'error' => $e->getMessage(),
                 ]);
 

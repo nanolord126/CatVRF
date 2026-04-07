@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MeshController extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class MeshController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
+        private readonly ConfigRepository $config,
             private readonly MeshService $mesh,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Join stream - create peer connection
          */
@@ -25,11 +30,11 @@ final class MeshController extends Model
                 $correlationId = Str::uuid()->toString();
                 $peerConnection = $this->mesh->joinRoom(
                     $stream,
-                    auth()->user(),
+                    $this->guard->user(),
                     $validated['peer_id'],
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'status' => 'joined',
                     'peer_id' => $validated['peer_id'],
                     'room_id' => "stream.{$stream->id}",
@@ -37,12 +42,19 @@ final class MeshController extends Model
                     'turn_servers' => $this->getTurnServers(),
                 ]);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('Mesh join failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('Mesh join failed', [
                     'stream_id' => $stream->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => 'Failed to join stream',
                 ], 500);
@@ -67,17 +79,24 @@ final class MeshController extends Model
                     $validated['sdp'],
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'status' => 'sent',
                     'type' => 'offer',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('Offer send failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('Offer send failed', [
                     'stream_id' => $stream->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                 ], 400);
@@ -102,17 +121,24 @@ final class MeshController extends Model
                     $validated['sdp'],
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'status' => 'sent',
                     'type' => 'answer',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('Answer send failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('Answer send failed', [
                     'stream_id' => $stream->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                 ], 400);
@@ -139,16 +165,23 @@ final class MeshController extends Model
                     $validated['sdp_mid'],
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'status' => 'added',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('ICE candidate add failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('ICE candidate add failed', [
                     'stream_id' => $stream->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                 ], 400);
@@ -166,16 +199,23 @@ final class MeshController extends Model
                 $this->mesh->markConnected($validated['peer_id']);
                 // Check topology and auto-switch if needed
                 $switched = $this->mesh->checkTopology($stream);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'connected',
                     'topology_switched' => $switched,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('Mark connected failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('Mark connected failed', [
                     'stream_id' => $stream->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                 ], 400);
@@ -195,13 +235,20 @@ final class MeshController extends Model
                     $validated['peer_id'],
                     $validated['reason'] ?? ''
                 );
-                return response()->json(['status' => 'failed']);
+                return $this->response->json(['status' => 'failed']);
             } catch (\Exception $e) {
-                Log::channel('fraud_alert')->error('Mark failed failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('fraud_alert')->error('Mark failed failed', [
                     'stream_id' => $stream->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                 ], 400);
@@ -214,13 +261,13 @@ final class MeshController extends Model
         {
             return [
                 [
-                    'urls' => config('services.webrtc.stun'),
+                    'urls' => $this->config->get('services.webrtc.stun'),
                     'protocol' => 'stun',
                 ],
                 [
-                    'urls' => config('services.webrtc.turn.url'),
-                    'username' => config('services.webrtc.turn.username'),
-                    'credential' => config('services.webrtc.turn.credential'),
+                    'urls' => $this->config->get('services.webrtc.turn.url'),
+                    'username' => $this->config->get('services.webrtc.turn.username'),
+                    'credential' => $this->config->get('services.webrtc.turn.credential'),
                     'protocol' => 'turn',
                 ],
             ];

@@ -2,14 +2,18 @@
 
 namespace App\Domains\Auto\Filament\Resources\AutoPartResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditAutoPart extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditAutoPart extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoPartResource::class;
 
         protected function getHeaderActions(): array
@@ -31,7 +35,7 @@ final class EditAutoPart extends Model
                             ->rows(3),
                     ])
                     ->action(function (array $data) {
-                        DB::transaction(function () use ($data) {
+                        $this->db->transaction(function () use ($data) {
                             $oldStock = $this->record->current_stock;
                             $this->record->current_stock += (int) $data['quantity'];
                             $this->record->save();
@@ -43,14 +47,14 @@ final class EditAutoPart extends Model
                                 $this->record->correlation_id
                             ));
 
-                            Log::channel('audit')->info('Auto part stock updated (restock)', [
+                            $this->logger->info('Auto part stock updated (restock)', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'part_id' => $this->record->id,
                                 'old_stock' => $oldStock,
                                 'new_stock' => $this->record->current_stock,
                                 'quantity' => $data['quantity'],
                                 'reason' => $data['reason'] ?? null,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                             ]);
 
                             $this->notification->make()
@@ -63,11 +67,11 @@ final class EditAutoPart extends Model
 
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('Auto part deleted', [
+                        $this->logger->info('Auto part deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'part_id' => $this->record->id,
                             'sku' => $this->record->sku,
-                            'user_id' => auth()->id(),
+                            'user_id' => $this->guard->id(),
                         ]);
                     }),
             ];
@@ -75,12 +79,12 @@ final class EditAutoPart extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('Auto part updated', [
+            $this->logger->info('Auto part updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'part_id' => $this->record->id,
                 'sku' => $this->record->sku,
                 'current_stock' => $this->record->current_stock,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
         }
 

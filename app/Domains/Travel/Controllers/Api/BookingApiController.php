@@ -2,17 +2,22 @@
 
 namespace App\Domains\Travel\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingApiController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use App\Domains\Travel\DTOs\BookingDto;
+use App\Domains\Travel\Services\TravelBookingService as BookingService;
+use App\Domains\Travel\Services\TravelFraudService;
+
+final class BookingApiController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private BookingService $bookingService,
-            private TravelFraudService $fraudService
+            private TravelFraudService $fraudService, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -23,37 +28,29 @@ final class BookingApiController extends Model
             $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
 
             // 1. Валидация (Слой 8)
-            $validator = Validator::make($request->all(), [
+            $validated = $request->validate([
                 'bookable_type' => 'required|string|in:trip,excursion',
                 'bookable_id' => 'required|integer',
                 'slots_count' => 'required|integer|min:1|max:10',
                 'idempotency_key' => 'nullable|string'
             ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors(),
-                    'correlation_id' => $correlationId
-                ], 422);
-            }
-
             try {
                 // 2. Фрод-контроль и Rate Limit (Слой 6)
                 $this->fraudService->validateBooking(
-                    userId: (int) auth()->id(),
+                    userId: (int) $request->user()?->id,
                     bookableId: (int) $request->input('bookable_id'),
                     bookableType: (string) $request->input('bookable_type'),
                     context: array_merge($request->all(), ['correlation_id' => $correlationId])
                 );
 
                 // 3. Сборка DTO (Слой 4)
-                $dto = BookingDto::fromRequest($request, (int) auth()->id(), $correlationId);
+                $dto = BookingDto::fromRequest($request, (int) $request->user()?->id, $correlationId);
 
                 // 4. Бизнес-логика (Слой 3)
                 $booking = $this->bookingService->createBooking($dto);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'booking_id' => $booking->id,
@@ -63,13 +60,13 @@ final class BookingApiController extends Model
                     'correlation_id' => $correlationId
                 ], 201);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Booking creation failed at API level', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Booking creation failed at API level', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -87,13 +84,13 @@ final class BookingApiController extends Model
             try {
                 $this->bookingService->payBooking($id, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Бронирование успешно оплачено',
                     'correlation_id' => $correlationId
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -112,13 +109,13 @@ final class BookingApiController extends Model
             try {
                 $this->bookingService->cancelBooking($id, $reason, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Бронирование отменено',
                     'correlation_id' => $correlationId
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId

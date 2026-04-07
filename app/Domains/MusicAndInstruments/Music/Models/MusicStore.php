@@ -2,14 +2,15 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class MusicStore extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'music_stores';
@@ -42,11 +43,11 @@ final class MusicStore extends Model
         /**
          * The "booted" method of the model.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function ($model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+                $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
                 // Tenant scoping
                 if (empty($model->tenant_id) && function_exists('tenant')) {

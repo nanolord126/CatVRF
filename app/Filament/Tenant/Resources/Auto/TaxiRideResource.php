@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiRideResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class TaxiRideResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = TaxiRide::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-arrow-right';
@@ -316,7 +321,6 @@ final class TaxiRideResource extends Model
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Статус')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'pending' => 'На ожидании',
                         'accepted' => 'Принята',
                         'driver_on_way' => 'Водитель едет',
                         'arrived' => 'Приехал',
@@ -326,7 +330,6 @@ final class TaxiRideResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'pending' => 'warning',
                         'accepted' => 'info',
                         'driver_on_way' => 'primary',
                         'arrived' => 'cyan',
@@ -430,9 +433,9 @@ final class TaxiRideResource extends Model
                         ->visible(fn ($record) => !in_array($record->status, ['completed', 'cancelled']))
                         ->action(function ($record) {
                             $record->update(['status' => 'completed', 'completed_at' => now()]);
-                            Log::channel('audit')->info('Taxi ride completed', [
+                            $this->logger->info('Taxi ride completed', [
                                 'ride_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -445,9 +448,9 @@ final class TaxiRideResource extends Model
                         ->visible(fn ($record) => !in_array($record->status, ['completed', 'cancelled']))
                         ->action(function ($record) {
                             $record->update(['status' => 'cancelled']);
-                            Log::channel('audit')->info('Taxi ride cancelled', [
+                            $this->logger->info('Taxi ride cancelled', [
                                 'ride_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -460,9 +463,9 @@ final class TaxiRideResource extends Model
                     Tables\Actions\DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Taxi ride bulk deleted', [
+                                $this->logger->info('Taxi ride bulk deleted', [
                                     'ride_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -476,9 +479,9 @@ final class TaxiRideResource extends Model
                             $records->each(function ($record) {
                                 if (!in_array($record->status, ['completed', 'cancelled'])) {
                                     $record->update(['status' => 'completed', 'completed_at' => now()]);
-                                    Log::channel('audit')->info('Taxi ride bulk completed', [
+                                    $this->logger->info('Taxi ride bulk completed', [
                                         'ride_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }

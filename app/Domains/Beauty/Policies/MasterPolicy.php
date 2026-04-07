@@ -1,15 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * MasterPolicy — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/masterpolicy
+ */
+
 
 namespace App\Domains\Beauty\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class MasterPolicy extends Model
+final class MasterPolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         public function viewAny(User $user): bool
@@ -30,7 +43,7 @@ final class MasterPolicy extends Model
         public function update(User $user, Master $master): bool
         {
             return (
-                $master->tenant_id === tenant('id') && (
+                $master->tenant_id === tenant()->id && (
                     $master->user_id === $user->id || // Сам мастер
                     $user->can('update_masters')
                 )
@@ -39,16 +52,22 @@ final class MasterPolicy extends Model
 
         public function delete(User $user, Master $master): bool
         {
-            return $master->tenant_id === tenant('id') && $user->can('delete_masters');
+            return $master->tenant_id === tenant()->id && $user->can('delete_masters');
         }
 
         public function restore(User $user, Master $master): bool
         {
-            return $master->tenant_id === tenant('id') && $user->can('restore_masters');
+            return $master->tenant_id === tenant()->id && $user->can('restore_masters');
         }
 
         public function forceDelete(User $user, Master $master): bool
         {
-            return $master->tenant_id === tenant('id') && $user->can('force_delete_masters');
+            return $master->tenant_id === tenant()->id && $user->can('force_delete_masters');
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

@@ -2,103 +2,182 @@
 
 namespace App\Domains\Freelance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ContractService extends Model
+use Carbon\Carbon;
+use App\Domains\Freelance\Models\FreelanceContract;
+use App\Domains\Freelance\Models\FreelanceProposal;
+use App\Domains\Freelance\Events\PaymentMilestoneReleased;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+
+/**
+ * ContractService — управление фриланс-контрактами.
+ *
+ * Создание, активация, завершение контрактов,
+ * управление milestones и выплатами.
+ * Все мутации через DB::transaction + fraud-check.
+ *
+ * @package App\Domains\Freelance\Services
+ */
+final readonly class ContractService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private WalletService $walletService
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {}
 
-        /**
-         * Регистрация эскроу-факта для нового заказа.
-         */
-        public function initEscrow(FreelanceOrder $order): FreelanceContract
-        {
-            return FreelanceContract::create([
-                'tenant_id' => $order->tenant_id,
-                'order_id' => $order->id,
-                'escrow_amount_kopecks' => $order->budget_kopecks,
-                'escrow_status' => 'awaiting',
-                'correlation_id' => $order->correlation_id
+    /**
+     * Создать контракт из принятого предложения.
+     */
+    public function createContract(
+        FreelanceProposal $proposal,
+        int $milestoneCount,
+        string $correlationId = '',
+    ): FreelanceContract {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $this->fraud->check(
+            userId: $proposal->client_id,
+            operationType: 'freelance_contract_create',
+            amount: $proposal->price,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($proposal, $milestoneCount, $correlationId) {
+            $contract = FreelanceContract::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'correlation_id' => $correlationId,
+                'proposal_id' => $proposal->id,
+                'client_id' => $proposal->client_id,
+                'freelancer_id' => $proposal->freelancer_id,
+                'title' => $proposal->title,
+                'total_price' => $proposal->price,
+                'milestone_count' => $milestoneCount,
+                'status' => 'active',
+                'tags' => ['source' => 'proposal'],
             ]);
-        }
 
-        /**
-         * Холдирование средств на кошельке клиента (Безопасная сделка).
-         */
-        public function holdFunds(int $contractId): void
-        {
-            $contract = FreelanceContract::with(['order.client.wallet'])->findOrFail($contractId);
+            $this->audit->log(
+                action: 'freelance_contract_created',
+                subjectType: FreelanceContract::class,
+                subjectId: $contract->id,
+                old: [],
+                new: $contract->toArray(),
+                correlationId: $correlationId,
+            );
 
-            DB::transaction(function () use ($contract) {
-                // Блокировка суммы на кошельке клиента до завершения работ
-                $this->walletService->hold(
-                    walletId: $contract->order->client->wallet->id,
-                    amount: $contract->escrow_amount_kopecks,
-                    correlationId: $contract->correlation_id
-                );
+            $this->logger->info('Freelance contract created', [
+                'contract_id' => $contract->id,
+                'proposal_id' => $proposal->id,
+                'correlation_id' => $correlationId,
+            ]);
 
-                $contract->update(['escrow_status' => 'held']);
-                $contract->order->update(['status' => 'escrow_hold']);
+            return $contract;
+        });
+    }
 
-                Log::channel('audit')->info('Freelance budget held on client wallet', [
-                    'contract_number' => $contract->contract_number,
-                    'amount' => $contract->escrow_amount_kopecks,
-                    'correlation_id' => $contract->correlation_id
-                ]);
-            });
-        }
+    /**
+     * Завершить контракт и финализировать выплаты.
+     */
+    public function completeContract(int $contractId, string $correlationId = ''): FreelanceContract
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-        /**
-         * Арбитражное решение при споре по заказу.
-         * $refundPercent — сколько % вернуть клиенту (0-100).
-         */
-        public function resolveDispute(int $contractId, string $resolution, float $refundPercent = 50): void
-        {
-            $contract = FreelanceContract::with(['order.client.wallet', 'order.freelancer.user.wallet'])->findOrFail($contractId);
+        return $this->db->transaction(function () use ($contractId, $correlationId) {
+            $contract = FreelanceContract::findOrFail($contractId);
 
-            DB::transaction(function () use ($contract, $resolution, $refundPercent) {
-                $refundAmount = (int) ($contract->escrow_amount_kopecks * ($refundPercent / 100));
-                $payoutAmount = $contract->escrow_amount_kopecks - $refundAmount;
+            if ($contract->status !== 'active') {
+                throw new \RuntimeException('Contract is not active', 400);
+            }
 
-                // 1. Возврат части средств клиенту
-                if ($refundAmount > 0) {
-                    $this->walletService->release_hold(
-                        walletId: $contract->order->client->wallet->id,
-                        amount: $refundAmount,
-                        correlationId: $contract->correlation_id
-                    );
-                }
+            $contract->update([
+                'status' => 'completed',
+                'completed_at' => Carbon::now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 2. Выплата остатка фрилансеру
-                if ($payoutAmount > 0) {
-                    $this->walletService->credit(
-                        walletId: $contract->order->freelancer->user->wallet->id,
-                        amount: $payoutAmount,
-                        type: 'arbitration_resolved_payout',
-                        correlationId: $contract->correlation_id
-                    );
-                }
+            $this->audit->log(
+                action: 'freelance_contract_completed',
+                subjectType: FreelanceContract::class,
+                subjectId: $contract->id,
+                old: ['status' => 'active'],
+                new: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
 
-                $contract->update([
-                    'escrow_status' => $refundPercent >= 100 ? 'refunded' : 'released',
-                    'arbitration_comment' => $resolution
-                ]);
+            $this->logger->info('Freelance contract completed', [
+                'contract_id' => $contract->id,
+                'correlation_id' => $correlationId,
+            ]);
 
-                $contract->order->update(['status' => 'completed']);
+            return $contract;
+        });
+    }
 
-                Log::channel('audit')->warning('Freelance dispute resolved by court', [
-                    'contract_id' => $contract->id,
-                    'payout' => $payoutAmount,
-                    'refund' => $refundAmount,
-                    'reason' => $resolution,
-                    'correlation_id' => $contract->correlation_id
-                ]);
-            });
-        }
+    /**
+     * Релиз оплаты за milestone.
+     */
+    public function releaseMilestonePayment(
+        int $contractId,
+        int $milestoneNumber,
+        string $correlationId = '',
+    ): FreelanceContract {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($contractId, $milestoneNumber, $correlationId) {
+            $contract = FreelanceContract::findOrFail($contractId);
+
+            $milestoneAmount = (int) ($contract->total_price / $contract->milestone_count);
+
+            $this->fraud->check(
+                userId: $contract->client_id,
+                operationType: 'freelance_milestone_release',
+                amount: $milestoneAmount,
+                correlationId: $correlationId,
+            );
+
+            event(new PaymentMilestoneReleased(
+                contract: $contract,
+                amount: $milestoneAmount,
+                milestoneNumber: $milestoneNumber,
+                correlationId: $correlationId,
+            ));
+
+            $this->audit->log(
+                action: 'freelance_milestone_released',
+                subjectType: FreelanceContract::class,
+                subjectId: $contract->id,
+                old: [],
+                new: [
+                    'milestone' => $milestoneNumber,
+                    'amount' => $milestoneAmount,
+                ],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Milestone payment released', [
+                'contract_id' => $contract->id,
+                'milestone' => $milestoneNumber,
+                'amount' => $milestoneAmount,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $contract;
+        });
+    }
+
+    /**
+     * Получить контракт по ID.
+     */
+    public function getContract(int $contractId): FreelanceContract
+    {
+        return FreelanceContract::findOrFail($contractId);
+    }
 }

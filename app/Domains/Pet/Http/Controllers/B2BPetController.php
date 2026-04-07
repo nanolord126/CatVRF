@@ -2,24 +2,22 @@
 
 namespace App\Domains\Pet\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BPetController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BPetController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function storefronts(): JsonResponse
         {
             $storefronts = B2BPetStorefront::where('tenant_id', tenant()->id)
                 ->paginate(15);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $storefronts->items(),
                 'pagination' => [
                     'total' => $storefronts->total(),
@@ -33,7 +31,7 @@ final class B2BPetController extends Model
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId ?? \Illuminate\Support\Str::uuid()->toString());
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
                 $validated = $request->validate([
                     'company_name' => 'required|string|max:255',
@@ -43,32 +41,33 @@ final class B2BPetController extends Model
                     'min_order_amount' => 'numeric|min:1000',
                 ]);
 
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $storefront = B2BPetStorefront::create([
                         'tenant_id' => tenant()->id,
                         'correlation_id' => $correlationId,
                         ...$validated,
                     ]);
 
-                    Log::channel('audit')->info('B2B Pet storefront created', [
+                    $this->logger->info('B2B Pet storefront created', [
                         'storefront_id' => $storefront->id,
                         'correlation_id' => $correlationId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'data' => $storefront,
                         'message' => 'Витрина создана',
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pet storefront creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Pet storefront creation failed', [
                     'error' => $e->getMessage(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка создания витрины',
                     'error' => $e->getMessage(),
                 ], 500);
@@ -79,7 +78,7 @@ final class B2BPetController extends Model
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
                 $validated = $request->validate([
                     'storefront_id' => 'required|exists:b2b_pet_storefronts,id',
@@ -90,28 +89,29 @@ final class B2BPetController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $storefront = B2BPetStorefront::findOrFail($validated['storefront_id']);
                     $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                    Log::channel('audit')->info('B2B Pet order created', [
+                    $this->logger->info('B2B Pet order created', [
                         'storefront_id' => $storefront->id,
                         'correlation_id' => $correlationId,
                         'commission' => $commission,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ создан',
                         'correlation_id' => $correlationId,
                         'commission' => $commission,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pet order creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Pet order creation failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка создания заказа',
                 ], 500);
             }
@@ -123,7 +123,7 @@ final class B2BPetController extends Model
                 ->latest()
                 ->paginate(10);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $orders->items(),
                 'pagination' => [
                     'total' => $orders->total(),
@@ -135,22 +135,23 @@ final class B2BPetController extends Model
         public function approveOrder(int $id): JsonResponse
         {
             try {
-                return DB::transaction(function () use ($id) {
+                return $this->db->transaction(function () use ($id) {
                     $order = B2BPetStorefront::findOrFail($id);
                     $order->update(['status' => 'approved']);
 
-                    Log::channel('audit')->info('Pet order approved', [
+                    $this->logger->info('Pet order approved', [
                         'order_id' => $id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ одобрен',
                         'data' => $order,
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка одобрения',
                 ], 500);
             }
@@ -163,24 +164,25 @@ final class B2BPetController extends Model
                     'reason' => 'required|string|max:500',
                 ]);
 
-                return DB::transaction(function () use ($id, $validated) {
+                return $this->db->transaction(function () use ($id, $validated) {
                     $order = B2BPetStorefront::findOrFail($id);
                     $order->update([
                         'status' => 'rejected',
                         'rejection_reason' => $validated['reason'],
                     ]);
 
-                    Log::channel('audit')->info('Pet order rejected', [
+                    $this->logger->info('Pet order rejected', [
                         'order_id' => $id,
                         'reason' => $validated['reason'],
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ отклонён',
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка отклонения',
                 ], 500);
             }
@@ -189,22 +191,23 @@ final class B2BPetController extends Model
         public function verifyInn(int $id): JsonResponse
         {
             try {
-                return DB::transaction(function () use ($id) {
+                return $this->db->transaction(function () use ($id) {
                     $storefront = B2BPetStorefront::findOrFail($id);
                     $storefront->update(['is_verified' => true]);
 
-                    Log::channel('audit')->info('Pet storefront verified', [
+                    $this->logger->info('Pet storefront verified', [
                         'storefront_id' => $id,
-                        'admin_id' => auth()->id(),
+                        'admin_id' => $request->user()?->id,
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Витрина верифицирована',
                         'data' => $storefront,
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка верификации',
                 ], 500);
             }

@@ -2,14 +2,23 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CDNConfigurationService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class CDNConfigurationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Поддерживаемые провайдеры CDN
          */
@@ -31,10 +40,10 @@ final class CDNConfigurationService extends Model
         public static function getUrl(string $path, string $provider = 'cloudflare'): string
         {
             $providers = [
-                'cloudflare' => fn($path) => 'https://' . config('cdn.cloudflare_domain') . '/' . ltrim($path, '/'),
-                'bunny' => fn($path) => 'https://' . config('cdn.bunny_domain') . '/' . ltrim($path, '/'),
-                'aws_cloudfront' => fn($path) => 'https://' . config('cdn.cloudfront_domain') . '/' . ltrim($path, '/'),
-                'azure_cdn' => fn($path) => 'https://' . config('cdn.azure_domain') . '.azureedge.net/' . ltrim($path, '/'),
+                'cloudflare' => fn($path) => 'https://' . $this->config->get('cdn.cloudflare_domain') . '/' . ltrim($path, '/'),
+                'bunny' => fn($path) => 'https://' . $this->config->get('cdn.bunny_domain') . '/' . ltrim($path, '/'),
+                'aws_cloudfront' => fn($path) => 'https://' . $this->config->get('cdn.cloudfront_domain') . '/' . ltrim($path, '/'),
+                'azure_cdn' => fn($path) => 'https://' . $this->config->get('cdn.azure_domain') . '.azureedge.net/' . ltrim($path, '/'),
             ];
 
             return isset($providers[$provider])
@@ -122,16 +131,16 @@ final class CDNConfigurationService extends Model
             $paths = is_string($paths) ? [$paths] : $paths;
 
             $result = match ($provider) {
-                'cloudflare' => self::purgeCloudflareCache($paths),
                 'bunny' => self::purgeBunnyCache($paths),
                 'aws_cloudfront' => self::purgeCloudFrontCache($paths),
                 default => ['status' => 'error', 'message' => 'Unknown provider'],
             };
 
-            Log::channel('performance')->info('CDN cache purged', [
+            $this->logger->channel('performance')->info('CDN cache purged', [
                 'provider' => $provider,
                 'paths_count' => count($paths),
                 'result' => $result,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $result;
@@ -146,13 +155,13 @@ final class CDNConfigurationService extends Model
         public static function purgeAllCache(string $provider = 'cloudflare'): array
         {
             $result = match ($provider) {
-                'cloudflare' => ['status' => 'success', 'message' => 'All cache purged'],
                 'bunny' => ['status' => 'success', 'message' => 'All cache purged'],
                 default => ['status' => 'error', 'message' => 'Unknown provider'],
             };
 
-            Log::channel('performance')->warning('All CDN cache purged', [
+            $this->logger->channel('performance')->warning('All CDN cache purged', [
                 'provider' => $provider,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $result;

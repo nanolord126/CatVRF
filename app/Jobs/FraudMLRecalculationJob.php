@@ -7,12 +7,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
 use Modules\Finances\Models\FraudAttempt;
 use Modules\Finances\Models\FraudModelVersion;
 use Modules\Finances\Services\FraudMLService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Fraud ML Model Recalculation Job
@@ -33,7 +35,10 @@ final class FraudMLRecalculationJob implements ShouldQueue
     private readonly FraudMLService $fraudMLService;
     private readonly string $correlationId;
 
-    public function __construct()
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
     {
         $this->fraudMLService = app(FraudMLService::class);
         $this->correlationId = (string) Str::uuid()->toString();
@@ -42,7 +47,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('FraudML recalculation started', [
+            $this->logger->channel('audit')->info('FraudML recalculation started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -51,7 +56,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             $trainingData = $this->collectTrainingData();
 
             if (count($trainingData) < 100) {
-                Log::warning('Insufficient training data for FraudML', [
+                $this->logger->warning('Insufficient training data for FraudML', [
                     'correlation_id' => $this->correlationId,
                     'data_count' => count($trainingData),
                 ]);
@@ -74,7 +79,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             if ($metrics['auc_roc'] > 0.92 && $metrics['precision'] > 0.85) {
                 $this->activateModelVersion($modelVersion);
 
-                Log::channel('audit')->info('New FraudML model activated', [
+                $this->logger->channel('audit')->info('New FraudML model activated', [
                     'correlation_id' => $this->correlationId,
                     'model_version' => $modelVersion,
                     'auc_roc' => $metrics['auc_roc'],
@@ -82,7 +87,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
                     'recall' => $metrics['recall'],
                 ]);
             } else {
-                Log::warning('New FraudML model did not meet quality threshold', [
+                $this->logger->warning('New FraudML model did not meet quality threshold', [
                     'correlation_id' => $this->correlationId,
                     'auc_roc' => $metrics['auc_roc'],
                     'precision' => $metrics['precision'],
@@ -93,7 +98,14 @@ final class FraudMLRecalculationJob implements ShouldQueue
             $this->cleanupOldModels();
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FraudML recalculation failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('FraudML recalculation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -147,7 +159,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
 
         // Здесь вызвать Python скрипт или ML сервис для обучения
         // Для демо: просто логируем
-        Log::channel('audit')->info('FraudML model training started', [
+        $this->logger->channel('audit')->info('FraudML model training started', [
             'correlation_id' => $this->correlationId,
             'model_version' => $version,
             'training_samples' => count($features),
@@ -178,7 +190,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
      */
     private function saveModelVersion(string $version, array $metrics): void
     {
-        DB::transaction(function () use ($version, $metrics) {
+        $this->db->transaction(function () use ($version, $metrics) {
             FraudModelVersion::create([
                 'version' => $version,
                 'trained_at' => now(),
@@ -220,7 +232,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             // Удалить запись из БД
             $model->delete();
 
-            Log::info('Deleted old FraudML model', [
+            $this->logger->info('Deleted old FraudML model', [
                 'version' => $model->version,
             ]);
         }
@@ -228,7 +240,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        Log::channel('audit')->error('FraudMLRecalculationJob failed permanently', [
+        $this->logger->channel('audit')->error('FraudMLRecalculationJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

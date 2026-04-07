@@ -1,43 +1,85 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\RoomType;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Auth\Access\Response;
 
-final class RoomTypePolicy extends Model
+/**
+ * RoomTypePolicy — Политика авторизации для типов номеров.
+ *
+ * Управление типами номеров (создание, обновление, удаление)
+ * доступно владельцу отеля (по tenant_id) и администратору.
+ * Просмотр открыт для всех авторизованных.
+ *
+ * @package App\Domains\Hotels\Policies
+ */
+final class RoomTypePolicy
 {
-    use HasFactory;
+    /**
+     * Может ли пользователь просматривать список типов номеров.
+     */
+    public function viewAny(User $user): Response
+    {
+        return Response::allow();
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function viewAny(): Response
-        {
-            return $this->response->allow();
+    /**
+     * Может ли пользователь просматривать конкретный тип номера.
+     */
+    public function view(User $user, RoomType $roomType): Response
+    {
+        return Response::allow();
+    }
+
+    /**
+     * Может ли пользователь создавать типы номеров.
+     */
+    public function create(User $user): Response
+    {
+        return $user->can('create_room_types') || $user->is_admin
+            ? Response::allow()
+            : Response::deny('Недостаточно прав для создания типа номера');
+    }
+
+    /**
+     * Может ли пользователь обновлять тип номера.
+     */
+    public function update(User $user, RoomType $roomType): Response
+    {
+        if ($user->is_admin) {
+            return Response::allow();
         }
 
-        public function view(): Response
-        {
-            return $this->response->allow();
-        }
+        return $user->tenant_id === $roomType->tenant_id
+            ? Response::allow()
+            : Response::deny('Нет доступа к этому типу номера');
+    }
 
-        public function create(): Response
-        {
-            return auth()->check() && auth()->user()->can('create_room_types')
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
+    /**
+     * Может ли пользователь удалять тип номера.
+     */
+    public function delete(User $user, RoomType $roomType): Response
+    {
+        return $user->is_admin
+            ? Response::allow()
+            : Response::deny('Только администратор может удалить тип номера');
+    }
 
-        public function update(): Response
-        {
-            return auth()->check() && (auth()->user()->is_admin || auth()->user()->is_hotel_owner)
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
-
-        public function delete(): Response
-        {
-            return auth()->check() && auth()->user()->is_admin
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
+    /**
+     * Отладочный массив.
+     *
+     * @return array<string, mixed>
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

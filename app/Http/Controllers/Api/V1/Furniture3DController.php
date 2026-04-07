@@ -7,6 +7,7 @@ use App\Services\ThreeD\FurnitureARService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * Furniture3DController
@@ -19,8 +20,11 @@ use Illuminate\Support\Str;
  */
 final class Furniture3DController extends Controller
 {
-    public function __construct(private readonly FurnitureARService $service)
+    public function __construct(private readonly FurnitureARService $service,
+        private readonly ResponseFactory $response,
+    )
     {
+
     }
 
     public function generate(int $furnitureId, Request $request): JsonResponse
@@ -34,7 +38,7 @@ final class Furniture3DController extends Controller
             'colors' => 'array',
         ]);
         $model = $this->service->generateFurniture3DModel($furnitureData);
-        return response()->json([
+        return $this->response->json([
             'data' => $model,
             'correlation_id' => Str::uuid(),
         ]);
@@ -55,7 +59,7 @@ final class Furniture3DController extends Controller
             ],
             []
         );
-        return response()->json([
+        return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),
         ]);

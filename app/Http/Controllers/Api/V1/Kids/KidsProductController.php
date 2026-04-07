@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers\Api\V1\Kids;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class KidsProductController extends Model
+final class KidsProductController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly KidsInventoryService $inventory,
             private readonly AIKidsProductConstructor $aiConstructor,
             private readonly FraudControlService $fraud,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Get list of children products with tenant scoping.
          * GET /api/v1/kids/products
@@ -26,7 +27,7 @@ final class KidsProductController extends Model
                 ->with(['toy', 'clothing', 'store'])
                 ->latest()
                 ->paginate($request->get('limit', 20));
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $products,
                 'correlation_id' => $correlationId,
@@ -41,7 +42,7 @@ final class KidsProductController extends Model
             $correlationId = (string) Str::uuid();
             $product = KidsProduct::with(['toy', 'clothing', 'store', 'reviews'])
                 ->findOrFail($id);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $product,
                 'correlation_id' => $correlationId,
@@ -65,17 +66,17 @@ final class KidsProductController extends Model
                     interests: $request->get('interests', []),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $suggestions,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Suggestion API Failure', [
+                $this->logger->channel('audit')->error('AI Suggestion API Failure', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'AI recommendation engine is temporarily unavailable.',
                     'correlation_id' => $correlationId,
@@ -99,13 +100,13 @@ final class KidsProductController extends Model
                 correlationId: $correlationId
             );
             if (!$result) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Insufficient stock for this product.',
                     'correlation_id' => $correlationId,
                 ], 400);
             }
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Stock successfully reserved.',
                 'correlation_id' => $correlationId,

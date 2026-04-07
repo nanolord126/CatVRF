@@ -2,18 +2,19 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
 
-final class ApiRateLimiter extends Model
+final class ApiRateLimiter
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RateLimiterService $rateLimiterService,
-        ) {
-        }
+            private readonly Guard $guard,
+    )
+    {
+        // Implementation required by canon
+    }
 
         /**
          * Handle with tenant-aware sliding window
@@ -22,7 +23,7 @@ final class ApiRateLimiter extends Model
         public function handle(Request $request, Closure $next, string $limit = '100', string $window = '3600'): mixed
         {
             $tenantId = tenant('id') ?? $request->attributes->get('tenant_id') ?? 0;
-            $userId = auth()->id() ?? 'anonymous';
+            $userId = $this->guard->id() ?? 'anonymous';
             $ip = $request->ip() ?? '0.0.0.0';
             $endpoint = $request->path();
 
@@ -39,7 +40,7 @@ final class ApiRateLimiter extends Model
             );
 
             if ($remaining < 0) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Rate limit exceeded',
                     'retry_after' => $windowInt,
                     'correlation_id' => $request->header('X-Correlation-ID'),
@@ -79,7 +80,7 @@ final class ApiRateLimiter extends Model
             }
 
             // Add current request
-            $redis->za);
+            $redis->zadd($key, $now->timestamp, (string) $now->timestamp);
 
             // Set expiry
             $redis->expire($key, $window);

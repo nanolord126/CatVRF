@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Clinic extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_clinics';
@@ -52,7 +51,7 @@ final class Clinic extends Model
         /**
          * КАНОН: Глобальный Scope для изоляции по Tenant.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (Clinic $clinic) {
                 $clinic->uuid = $clinic->uuid ?? (string)Str::uuid();

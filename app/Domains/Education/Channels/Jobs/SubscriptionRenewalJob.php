@@ -2,14 +2,18 @@
 
 namespace App\Domains\Education\Channels\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class SubscriptionRenewalJob extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final class SubscriptionRenewalJob
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -17,20 +21,20 @@ final class SubscriptionRenewalJob extends Model
         public function handle(ChannelTariffService $tariffService): void
         {
             $correlationId = Str::uuid()->toString();
-            $warnDays      = config('channels.notifications.plan_expiry_warn_days', 3);
+            $warnDays      = $this->config->get('channels.notifications.plan_expiry_warn_days', 3);
 
-            Log::channel('audit')->info('SubscriptionRenewalJob started', [
+            $this->logger->info('SubscriptionRenewalJob started', [
                 'correlation_id' => $correlationId,
             ]);
 
             // 1. Предупреждения (за N дней до истечения)
             $expiringSoon = ChannelSubscriptionUsage::where('status', 'active')
-                ->whereBetween('expires_at', [now(), now()->addDays($warnDays)])
+                ->whereBetween('expires_at', [Carbon::now(), Carbon::now()->addDays($warnDays)])
                 ->with(['channel', 'plan'])
                 ->get();
 
             foreach ($expiringSoon as $usage) {
-                Log::channel('audit')->info('Channel plan expiring soon', [
+                $this->logger->info('Channel plan expiring soon', [
                     'correlation_id' => $correlationId,
                     'channel_id'     => $usage->channel_id,
                     'tenant_id'      => $usage->tenant_id,
@@ -52,7 +56,7 @@ final class SubscriptionRenewalJob extends Model
 
             // 2. Авто-продление истёкших (попытка списания с кошелька)
             $expired = ChannelSubscriptionUsage::where('status', 'active')
-                ->where('expires_at', '<=', now())
+                ->where('expires_at', '<=', Carbon::now())
                 ->with(['channel', 'plan'])
                 ->get();
 
@@ -67,7 +71,7 @@ final class SubscriptionRenewalJob extends Model
                     $failed++;
 
                     // Если оплата не прошла — деградация до архива
-                    Log::channel('audit')->warning('Channel subscription renewal failed', [
+                    $this->logger->warning('Channel subscription renewal failed', [
                         'correlation_id' => $correlationId,
                         'channel_id'     => $usage->channel_id,
                         'tenant_id'      => $usage->tenant_id,
@@ -86,7 +90,7 @@ final class SubscriptionRenewalJob extends Model
                 }
             }
 
-            Log::channel('audit')->info('SubscriptionRenewalJob completed', [
+            $this->logger->info('SubscriptionRenewalJob completed', [
                 'correlation_id' => $correlationId,
                 'renewed'        => $renewed,
                 'failed'         => $failed,

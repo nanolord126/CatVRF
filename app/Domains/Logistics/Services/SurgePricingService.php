@@ -2,14 +2,14 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SurgePricingService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class SurgePricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Расчет коэффициента Surge для точки и вертикали
          */
@@ -17,7 +17,7 @@ final class SurgePricingService extends Model
         {
             $cacheKey = "logistics:surge:{$lat}:{$lon}:{$vertical}:v1";
 
-            return Cache::remember($cacheKey, 300, function () use ($lat, $lon, $vertical) {
+            return $this->cache->remember($cacheKey, 300, function () use ($lat, $lon, $vertical) {
                 // 1. Поиск активной GeoZone для точки
                 $geoZone = $this->findMatchingGeoZone($lat, $lon);
 
@@ -73,7 +73,7 @@ final class SurgePricingService extends Model
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Dynamic surge created', [
+            $this->logger->info('Dynamic surge created', [
                 'geo_zone_id' => $geoZoneId,
                 'multiplier' => $multiplier,
                 'reason' => $reason,
@@ -81,7 +81,7 @@ final class SurgePricingService extends Model
             ]);
 
             // Инвалидация кэша для этой зоны (упрощенно — всей логистики)
-            Cache::tags(['logistics_surge'])->flush();
+            $this->cache->tags(['logistics_surge'])->flush();
 
             return $surge;
         }

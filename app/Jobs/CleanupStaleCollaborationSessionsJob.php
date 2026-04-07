@@ -2,35 +2,60 @@
 
 namespace App\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class CleanupStaleCollaborationSessionsJob extends Model
+
+/**
+ * Class CleanupStaleCollaborationSessionsJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs
+ */
+final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
 {
-    use HasFactory;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Queueable;
+    public int $timeout = 300;
+    public int $tries = 3;
 
-        public int $timeout = 300;
-        public int $tries = 3;
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(
+        private readonly LogManager $logger,
+    )
+    {
+        //
+    }
 
-        public function handle(): void
-        {
-            try {
-                // Очищаем устаревшие сессии редактирования
-                // В продакшене можно использовать более оптимизированный подход с Redis SCAN
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        try {
+            // Очищаем устаревшие сессии редактирования
+            // В продакшене можно использовать более оптимизированный подход с Redis SCAN
 
-                Log::channel('audit')->info('Cleanup stale collaboration sessions job completed', [
-                    'timestamp' => now()->toIso8601String(),
-                ]);
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to cleanup stale collaboration sessions', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
+            $this->logger->channel('audit')->info('Cleanup stale collaboration sessions job completed', [
+                'timestamp' => now()->toIso8601String(),
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Failed to cleanup stale collaboration sessions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-                throw $e;
-            }
+            throw $e;
         }
+    }
 }

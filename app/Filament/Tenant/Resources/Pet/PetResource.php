@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Pet;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PetResource extends Model
+final class PetResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetClinic::class;
         protected static ?string $navigationIcon = 'heroicon-o-heart';
         protected static ?string $navigationGroup = 'Вертикали';

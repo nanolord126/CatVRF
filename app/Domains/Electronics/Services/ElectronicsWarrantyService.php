@@ -2,17 +2,17 @@
 
 namespace App\Domains\Electronics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ElectronicsWarrantyService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ElectronicsWarrantyService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Register a new hardware warranty after a successful sale.
@@ -22,7 +22,7 @@ final class ElectronicsWarrantyService extends Model
         {
             $correlationId = $dto->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Registering electronics warranty', [
+            $this->logger->info('LAYER-3: Registering electronics warranty', [
                 'serial' => $dto->serialNumber,
                 'order_id' => $dto->orderId,
                 'correlation_id' => $correlationId,
@@ -31,7 +31,7 @@ final class ElectronicsWarrantyService extends Model
             // 1. Double registration check
             $exists = ElectronicsWarranty::where('serial_number', $dto->serialNumber)->exists();
             if ($exists) {
-                Log::channel('audit')->error('LAYER-3: Serial number already registered', [
+                $this->logger->error('LAYER-3: Serial number already registered', [
                     'serial' => $dto->serialNumber,
                     'correlation_id' => $correlationId,
                 ]);
@@ -39,12 +39,9 @@ final class ElectronicsWarrantyService extends Model
             }
 
             // 2. Fraud Check for suspicious registration patterns
-            $this->fraud->check('electronics_warranty_reg', [
-                'user_id' => $dto->userId,
-                'serial' => $dto->serialNumber,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'electronics_warranty_reg', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 $product = ElectronicsProduct::findOrFail($dto->productId);
 
                 $warranty = ElectronicsWarranty::create([
@@ -52,14 +49,14 @@ final class ElectronicsWarrantyService extends Model
                     'order_id' => $dto->orderId,
                     'user_id' => $dto->userId,
                     'serial_number' => $dto->serialNumber,
-                    'starts_at' => now(),
-                    'expires_at' => now()->addMonths($dto->monthsDuration),
+                    'starts_at' => Carbon::now(),
+                    'expires_at' => Carbon::now()->addMonths($dto->monthsDuration),
                     'status' => 'active',
                     'terms' => 'Standard manufacturer warranty for ' . $product->brand,
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('LAYER-3: Warranty registered successfully', [
+                $this->logger->info('LAYER-3: Warranty registered successfully', [
                     'id' => $warranty->id,
                     'expires' => $warranty->expires_at->toDateString(),
                     'correlation_id' => $correlationId,
@@ -76,7 +73,7 @@ final class ElectronicsWarrantyService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            return DB::transaction(function () use ($serialNumber, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($serialNumber, $reason, $correlationId) {
                 $warranty = ElectronicsWarranty::where('serial_number', $serialNumber)->firstOrFail();
 
                 $warranty->update([
@@ -85,7 +82,7 @@ final class ElectronicsWarrantyService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->warning('LAYER-3: Warranty voided', [
+                $this->logger->warning('LAYER-3: Warranty voided', [
                     'serial' => $serialNumber,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,

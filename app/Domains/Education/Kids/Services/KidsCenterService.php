@@ -2,34 +2,33 @@
 
 namespace App\Domains\Education\Kids\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class KidsCenterService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class KidsCenterService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a new center with full safety verification.
          */
         public function createCenter(KidsCenterCreateDto $dto): KidsCenter
         {
-            Log::channel('audit')->info('Attempting to create kids center', [
+            $this->logger->info('Attempting to create kids center', [
                 'name' => $dto->name,
                 'correlation_id' => $dto->correlation_id
             ]);
 
             // Fraud control check before mutation
-            FraudControlService::check('kids_center_add', [
-                'type' => $dto->center_type,
-                'capacity' => $dto->capacity_limit
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'kids_center_add', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 $center = KidsCenter::create($dto->toArray());
 
-                Log::channel('audit')->info('Kids center created successfully', [
+                $this->logger->info('Kids center created successfully', [
                     'center_id' => $center->id,
                     'correlation_id' => $dto->correlation_id
                 ]);
@@ -43,7 +42,7 @@ final class KidsCenterService extends Model
          */
         public function bookEventSlot(int $eventId, int $childCount, string $correlationId): void
         {
-            DB::transaction(function () use ($eventId, $childCount, $correlationId) {
+            $this->db->transaction(function () use ($eventId, $childCount, $correlationId) {
                 $event = KidsEvent::where('id', $eventId)->lockForUpdate()->firstOrFail();
 
                 // Check availability - assuming a simplified check against booked_counts in a separate relation or column
@@ -53,7 +52,7 @@ final class KidsCenterService extends Model
                 }
 
                 // In actual impl: $event->bookings()->create(...) + decrementing slots
-                Log::channel('audit')->info('Event slot booked', [
+                $this->logger->info('Event slot booked', [
                     'event_id' => $eventId,
                     'child_count' => $childCount,
                     'correlation_id' => $correlationId
@@ -66,7 +65,7 @@ final class KidsCenterService extends Model
          */
         public function markAsSafetyVerified(int $centerId, string $correlationId): void
         {
-            Log::channel('audit')->info('Safety verification requested', [
+            $this->logger->info('Safety verification requested', [
                 'center_id' => $centerId,
                 'correlation_id' => $correlationId
             ]);
@@ -77,7 +76,7 @@ final class KidsCenterService extends Model
                 'correlation_id' => $correlationId
             ]);
 
-            Log::channel('audit')->info('Center safety verified', [
+            $this->logger->info('Center safety verified', [
                 'center_id' => $centerId,
                 'correlation_id' => $correlationId
             ]);
@@ -93,7 +92,7 @@ final class KidsCenterService extends Model
                 throw new \RuntimeException("Center is currently closed.");
             }
 
-            Log::channel('audit')->info('Child visit started', [
+            $this->logger->info('Child visit started', [
                 'center_id' => $centerId,
                 'user_id' => $userId,
                 'correlation_id' => $correlationId

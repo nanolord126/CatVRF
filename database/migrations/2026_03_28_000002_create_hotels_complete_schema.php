@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('address');
-            $table->point('geo_point')->nullable()->spatialIndex();
+            $table->geometry('geo_point')->nullable()->spatialIndex();
             $table->integer('stars')->default(3)->comment('1-5');
             $table->float('rating', 3, 2)->default(0);
             $table->integer('review_count')->default(0);
@@ -161,3 +161,5 @@ return new class extends Migration
         Schema::dropIfExists('hotels');
     }
 };
+
+

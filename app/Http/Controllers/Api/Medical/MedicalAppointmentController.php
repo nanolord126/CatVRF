@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api\Medical;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class MedicalAppointmentController extends Model
+final class MedicalAppointmentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param AppointmentService $appointmentService Основная бизнес-логика
          */
         public function __construct(
-            private readonly AppointmentService $appointmentService
-        ) {
+            private readonly AppointmentService $appointmentService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
         }
         /**
          * Создание новой записи к врачу.
@@ -45,14 +48,14 @@ final class MedicalAppointmentController extends Model
                 // 3. Вызов сервиса записи (Layer 3)
                 $appointment = $this->appointmentService->bookDoctor($dto);
                 // 4. Лог аудита (Layer 6)
-                Log::channel('audit')->info('Medical Appointment Created via API', [
+                $this->logger->channel('audit')->info('Medical Appointment Created via API', [
                     'correlation_id' => $correlationId,
                     'appointment_uuid' => $appointment->uuid,
                     'patient_id' => $dto->patientId,
                     'doctor_id' => $dto->doctorId,
                     'user_agent' => $request->userAgent(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Appointment successfully booked',
                     'data' => [
@@ -64,12 +67,12 @@ final class MedicalAppointmentController extends Model
                 ], 201);
             } catch (\Throwable $e) {
                 // 5. Обработка всех ошибок через correlation_id
-                Log::channel('audit')->error('Failed to book medical appointment', [
+                $this->logger->channel('audit')->error('Failed to book medical appointment', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Booking failed',
                     'message' => $e->getMessage(),
@@ -90,19 +93,19 @@ final class MedicalAppointmentController extends Model
             try {
                 $appointment = \App\Domains\Medical\Models\Appointment::where('uuid', $uuid)->firstOrFail();
                 // Проверка прав (Policy Layer 6)
-                // if (auth()->user()->cannot('cancel', $appointment)) { ... }
+                // if ($this->guard->user()->cannot('cancel', $appointment)) { ... }
                 $this->appointmentService->cancelAppointmentByPatient(
                     appointmentId: (int)$appointment->id,
                     reason: $request->get('reason', 'Cancelled via Mobile App'),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Appointment cancelled',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Cancellation failed',
                     'correlation_id' => $correlationId,
@@ -117,13 +120,13 @@ final class MedicalAppointmentController extends Model
          */
         public function listDoctors(Request $request): JsonResponse
         {
-            $tenantId = (int)$request->header('X-Tenant-ID') ?? auth()->user()?->tenant_id;
+            $tenantId = (int)$request->header('X-Tenant-ID') ?? $this->guard->user()?->tenant_id;
             $doctors = \App\Domains\Medical\Models\Doctor::where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->withCount('medicalAppointments')
                 ->orderByDesc('rating')
                 ->paginate(10);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $doctors,
                 'correlation_id' => $request->get('correlation_id'),

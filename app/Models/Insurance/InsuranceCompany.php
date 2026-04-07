@@ -2,14 +2,17 @@
 
 namespace App\Models\Insurance;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class InsuranceCompany extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'insurance_companies';
@@ -48,15 +51,15 @@ final class InsuranceCompany extends Model
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (auth()->check() && empty($model->tenant_id)) {
-                    $model->tenant_id = auth()->user()->tenant_id;
+                if ($this->guard->check() && empty($model->tenant_id)) {
+                    $model->tenant_id = $this->guard->user()->tenant_id;
                 }
             });
 
             // Global scope for tenant isolation
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if ($this->guard->check()) {
+                    $builder->where('tenant_id', $this->guard->user()->tenant_id);
                 }
             });
         }

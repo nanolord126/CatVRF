@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class ProgramResource extends Model
+final class ProgramResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Program::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-presentation-chart-line';
@@ -136,22 +131,15 @@ final class ProgramResource extends Model
                         ->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListProgram::route('/'),
-                'create' => Pages\\CreateProgram::route('/create'),
-                'edit' => Pages\\EditProgram::route('/{record}/edit'),
-                'view' => Pages\\ViewProgram::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListProgram::route('/'),
-                'create' => Pages\\CreateProgram::route('/create'),
-                'edit' => Pages\\EditProgram::route('/{record}/edit'),
-                'view' => Pages\\ViewProgram::route('/{record}'),
+                'index' => Pages\ListProgram::route('/'),
+                'create' => Pages\CreateProgram::route('/create'),
+                'edit' => Pages\EditProgram::route('/{record}/edit'),
+                'view' => Pages\ViewProgram::route('/{record}'),
             ];
         }
 }

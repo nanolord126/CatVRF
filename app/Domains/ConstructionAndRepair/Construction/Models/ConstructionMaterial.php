@@ -2,14 +2,15 @@
 
 namespace App\Domains\ConstructionAndRepair\Construction\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ConstructionMaterial extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, BelongsToTenant, SoftDeletes;
 
         protected $table = 'const_materials';
@@ -38,11 +39,27 @@ final class ConstructionMaterial extends Model
             'tags' => 'json',
         ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
+
         protected static function booted(): void
         {
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+                $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
             });
         }
 

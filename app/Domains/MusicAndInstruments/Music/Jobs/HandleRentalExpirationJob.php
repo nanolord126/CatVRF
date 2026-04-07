@@ -2,30 +2,29 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HandleRentalExpirationJob extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class HandleRentalExpirationJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
          * Create a new job instance.
          */
-        public function __construct(
-            public int $bookingId,
-            public string $correlationId
-        ) {}
+        public function __construct(public int $bookingId,
+            public string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Execute the job.
          */
         public function handle(): void
         {
-            DB::transaction(function () {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () {
                 $booking = MusicBooking::lockForUpdate()
                     ->where('bookable_type', MusicInstrument::class)
                     ->where('status', 'confirmed')
@@ -41,7 +40,7 @@ final class HandleRentalExpirationJob extends Model
                     $instrument->decrement('hold_stock');
                     $booking->update(['status' => 'completed']);
 
-                    Log::channel('audit')->info('Expired rental auto-completed', [
+                    $this->logger->info('Expired rental auto-completed', [
                         'booking_id' => $this->bookingId,
                         'instrument_id' => $instrument->id,
                         'correlation_id' => $this->correlationId,

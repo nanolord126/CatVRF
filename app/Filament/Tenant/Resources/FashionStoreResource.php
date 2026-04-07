@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FashionStoreResource extends Model
+final class FashionStoreResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FashionStore::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -87,31 +84,15 @@ final class FashionStoreResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashionStore::route('/'),
-                'create' => Pages\\CreateFashionStore::route('/create'),
-                'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionStore::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFashionStore::route('/'),
-                'create' => Pages\\CreateFashionStore::route('/create'),
-                'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionStore::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashionStore::route('/'),
-                'create' => Pages\\CreateFashionStore::route('/create'),
-                'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
-                'view' => Pages\\ViewFashionStore::route('/{record}'),
+                'index' => Pages\ListFashionStore::route('/'),
+                'create' => Pages\CreateFashionStore::route('/create'),
+                'edit' => Pages\EditFashionStore::route('/{record}/edit'),
+                'view' => Pages\ViewFashionStore::route('/{record}'),
             ];
         }
 }

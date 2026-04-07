@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalDoctor extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'medical_doctors';
@@ -50,7 +49,7 @@ final class MedicalDoctor extends Model
             'is_active' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 $query->where('tenant_id', tenant()->id ?? 0);

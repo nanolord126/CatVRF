@@ -2,19 +2,22 @@
 
 namespace App\Domains\Medical\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class MedicalReview extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'medical_reviews';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'doctor_id',
             'clinic_id',
@@ -37,10 +40,10 @@ final class MedicalReview extends Model
             'verified_appointment' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
+                if ($tenantId = $this->guard?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
                     $query->where('tenant_id', $tenantId);
                 }
             });

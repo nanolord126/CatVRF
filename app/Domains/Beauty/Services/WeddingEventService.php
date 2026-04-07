@@ -1,92 +1,102 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment;
+use App\Services\FraudControlService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 
-final class WeddingEventService extends Model
+/**
+ * WeddingEventService — управление свадебными бронированиями.
+ *
+ * Рассчитывает штрафы при отмене и создаёт свадебные записи.
+ * Штрафная сетка: >30 дней 0% → 14–30 дней 20% → 7–14 дней 45% → 3–7 дней 70% → <3 дней 100%.
+ * AI Look добавляет +15% к штрафу.
+ */
+final readonly class WeddingEventService
 {
-    use HasFactory;
+    public function __construct(
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private FraudControlService $fraud,
+    ) {
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Рассчитывает штрафы при отмене свадебного бронирования.
-         * Штрафная сетка (за 30 дней):
-         * > 30 дней: 0%
-         * 14-30 дней: 20%
-         * 7-14 дней: 45%
-         * 3-7 дней: 70%
-         * < 3 дней: 100%
-         * + AI Look (ИИ подбор образа): +15% к штрафу.
-         */
-        public function calculateCancellationFee(Appointment $appointment, string $correlationId): array
-        {
-            Log::channel('audit')->info('Wedding cancellation fee calculation started', [
+     * Рассчитать штрафы при отмене свадебного бронирования.
+     *
+     * @return array{appointment_id: int, days_before: int, base_penalty_percent: int, has_ai_look: bool, fee_amount: int}
+     */
+    public function calculateCancellationFee(BeautyAppointment $appointment, string $correlationId): array
+    {
+        $this->logger->info('Wedding cancellation fee calculation started', [
+            'appointment_id' => $appointment->id,
+            'correlation_id' => $correlationId,
+        ]);
+
+        if (!$appointment->is_wedding_event) {
+            throw new \InvalidArgumentException('Appointment is not marked as wedding_event.');
+        }
+
+        $now = Carbon::now();
+        $eventDate = Carbon::parse($appointment->start_at);
+        $daysBefore = $now->diffInDays($eventDate, false);
+
+        $basePenaltyPercent = match (true) {
+            $daysBefore >= 30 => 0,
+            $daysBefore >= 14 => 20,
+            $daysBefore >= 7 => 45,
+            $daysBefore >= 3 => 70,
+            default => 100,
+        };
+
+        $hasAiLook = ($appointment->tags['ai_look'] ?? false) === true;
+
+        if ($hasAiLook && $basePenaltyPercent < 100) {
+            $basePenaltyPercent = min(100, $basePenaltyPercent + 15);
+        }
+
+        $feeAmount = (int) ($appointment->price_cents * ($basePenaltyPercent / 100));
+
+        return [
+            'appointment_id' => $appointment->id,
+            'days_before' => $daysBefore,
+            'base_penalty_percent' => $basePenaltyPercent,
+            'has_ai_look' => $hasAiLook,
+            'fee_amount' => $feeAmount,
+        ];
+    }
+
+    /**
+     * Создать свадебное бронирование с проверкой фрода.
+     */
+    public function createWeddingAppointment(array $data, string $correlationId): BeautyAppointment
+    {
+        $this->fraud->check(
+            userId: (int) ($this->guard->id() ?? 0),
+            operationType: 'beauty_wedding_booking',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($data, $correlationId): BeautyAppointment {
+            $appointment = BeautyAppointment::create(array_merge($data, [
+                'is_wedding_event' => true,
+                'correlation_id' => $correlationId,
+            ]));
+
+            $this->logger->info('Wedding appointment created', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $correlationId,
             ]);
 
-            if (!$appointment->is_wedding_event) {
-                 throw new \InvalidArgumentException("Appointment is not marked as wedding_event.");
-            }
-
-            $now = Carbon::now();
-            $eventDate = Carbon::parse($appointment->datetime_start);
-            $daysBefore = $now->diffInDays($eventDate, false);
-
-            // Расчёт базового штрафа по прогрессивной шкале (30-дневная сетка)
-            $basePenaltyPercent = match (true) {
-                $daysBefore >= 30 => 0,
-                $daysBefore >= 14 => 20,
-                $daysBefore >= 7  => 45,
-                $daysBefore >= 3  => 70,
-                default           => 100,
-            };
-
-            // Дополнительный штраф за AI Look (+15%)
-            // Поле tags (jsonb) используется для хранения флага ai_look по канону 2026
-            $hasAiLook = ($appointment->tags['ai_look'] ?? false) === true;
-            if ($hasAiLook && $basePenaltyPercent < 100) {
-                $basePenaltyPercent += 15;
-                // Кап на 100%
-                if ($basePenaltyPercent > 100) {
-                    $basePenaltyPercent = 100;
-                }
-            }
-
-            $feeAmount = (int) ($appointment->price * ($basePenaltyPercent / 100));
-
-            return [
-                'appointment_id' => $appointment->id,
-                'days_before' => $daysBefore,
-                'base_penalty_percent' => $basePenaltyPercent,
-                'has_ai_look' => $hasAiLook,
-                'fee_amount' => $feeAmount, // в копейках (int)
-                'correlation_id' => $correlationId,
-            ];
-        }
-
-        /**
-         * Создание свадебного бронирования с проверкой фрода.
-         */
-        public function createWeddingAppointment(array $data, string $correlationId): Appointment
-        {
-            FraudControlService::check($data); // Canon 2026
-
-            return DB::transaction(function () use ($data, $correlationId) {
-                $appointment = Appointment::create(array_merge($data, [
-                    'is_wedding_event' => true,
-                    'correlation_id' => $correlationId,
-                ]));
-
-                Log::channel('audit')->info('Wedding appointment created', [
-                    'appointment_id' => $appointment->id,
-                    'bride_name' => $appointment->bride_name,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $appointment;
-            });
-        }
+            return $appointment;
+        });
+    }
 }

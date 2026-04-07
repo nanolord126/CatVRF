@@ -2,14 +2,13 @@
 
 namespace App\Domains\RealEstate\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RealEstateFraudService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class RealEstateFraudService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * КАНОН 2026: FraudMLService для недвижимости.
          *
@@ -17,8 +16,8 @@ final class RealEstateFraudService extends Model
          * и подозрительных схем с кэшбэком или демпингом.
          */
         public function __construct(
-            private readonly \App\Services\FraudControlService $fraudControl,
-            private readonly string $correlation_id = ''
+            private readonly \App\Services\FraudControlService $fraud,
+            private string $correlation_id = '', private readonly LoggerInterface $logger, private readonly Guard $guard
         ) {}
 
         /**
@@ -53,17 +52,13 @@ final class RealEstateFraudService extends Model
             }
 
             // 3. Проверка через глобальный FraudControl
-            $globalCheck = $this->fraudControl->check([
-                'operation' => 'real_estate_valuation',
-                'correlation_id' => $this->correlation_id ?: Str::uuid()->toString(),
-                'features' => $features,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'real_estate_valuation', amount: 0, correlationId: $correlationId ?? '');
 
             if (!$globalCheck) {
                 $score = 1.0;
             }
 
-            Log::channel('audit')->info('Real Estate Fraud Score', [
+            $this->logger->info('Real Estate Fraud Score', [
                 'entity_type' => get_class($entity),
                 'entity_uuid' => $entity->uuid ?? 'N/A',
                 'score' => $score,
@@ -81,7 +76,7 @@ final class RealEstateFraudService extends Model
         {
             // Если сумма аренды 0 или подозрительно высокая - блок
             if ($contract->rent_amount <= 0 || $contract->rent_amount > 50000000) {
-                throw new \Exception('Подозрительные финансовые условия договора. Блокировка FraudML.');
+                throw new \RuntimeException('Подозрительные финансовые условия договора. Блокировка FraudML.');
             }
 
             // Проверка частоты сделок клиента (анти-фроуд)
@@ -90,7 +85,7 @@ final class RealEstateFraudService extends Model
                 ->count();
 
             if ($recentContracts > 3) {
-                throw new \Exception('Превышен лимит создания договоров для одного клиента. Подозрение на спам.');
+                throw new \DomainException('Превышен лимит создания договоров для одного клиента. Подозрение на спам.');
             }
         }
 }

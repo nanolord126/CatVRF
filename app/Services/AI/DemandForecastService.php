@@ -2,6 +2,10 @@
 
 namespace App\Services\AI;
 
+
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Models\DemandForecast;
 use App\Models\DemandModelVersion;
 use App\Services\FraudControl\FraudControlService;
@@ -25,10 +29,13 @@ use Illuminate\Support\Str;
 final readonly class DemandForecastService
 {
     public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly Repository $cache,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
     ) {}
     /**
      * Прогнозировать спрос для товара на период
@@ -48,7 +55,7 @@ final readonly class DemandForecastService
                 $this->fraud->check([
                     'operation_type' => 'demand_forecast_usage',
                     'item_id' => $itemId,
-                    'ip_address' => request()->ip(),
+                    'ip_address' => $this->request->ip(),
                     'correlation_id' => $correlationId,
                 ]);
             }
@@ -56,9 +63,9 @@ final readonly class DemandForecastService
             // 2. CACHE CHECK
             $cacheKey = "demand_forecast:item:{$itemId}:from:{$dateFrom->format('Y-m-d')}:to:{$dateTo->format('Y-m-d')}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached) {
-                Log::channel('audit')->info('Forecast: Cache hit', [
+                $this->logger->channel('audit')->info('Forecast: Cache hit', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
@@ -68,7 +75,7 @@ final readonly class DemandForecastService
             }
 
             // 3. BUILD FORECAST (исторический спрос, сезонность, погода, маркетинг)
-            $historicalDemand = DB::table('demand_actuals')
+            $historicalDemand = $this->db->table('demand_actuals')
                 ->where('item_id', $itemId)
                 ->where('date', '>=', now()->subDays(30))
                 ->selectRaw('AVG(actual_demand) as avg_demand, STDDEV(actual_demand) as stddev')
@@ -140,10 +147,10 @@ final readonly class DemandForecastService
                 default => 86400,            // 1 день для долгосрочного
             };
 
-            Cache::put($cacheKey, $result, $ttl);
+            $this->cache->put($cacheKey, $result, $ttl);
 
             // 5. AUDIT LOG
-            Log::channel('audit')->info('Forecast: Generated', [
+            $this->logger->channel('audit')->info('Forecast: Generated', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
@@ -154,7 +161,7 @@ final readonly class DemandForecastService
 
             return $result;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Forecast: Generation failed', [
+            $this->logger->channel('audit')->error('Forecast: Generation failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'date_from' => $dateFrom->format('Y-m-d'),
@@ -190,14 +197,14 @@ final readonly class DemandForecastService
                 );
             }
 
-            Log::channel('audit')->info('Forecast: Bulk generated', [
+            $this->logger->channel('audit')->info('Forecast: Bulk generated', [
                 'correlation_id' => $correlationId,
                 'items_count' => count($itemIds),
             ]);
 
             return $forecasts;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Forecast: Bulk failed', [
+            $this->logger->channel('audit')->error('Forecast: Bulk failed', [
                 'correlation_id' => $correlationId,
                 'items_count' => count($itemIds),
                 'error' => $e->getMessage(),
@@ -229,7 +236,7 @@ final readonly class DemandForecastService
                 'trained_at' => $accuracy?->trained_at?->toIso8601String(),
             ];
 
-            Log::channel('audit')->info('Forecast: Accuracy retrieved', [
+            $this->logger->channel('audit')->info('Forecast: Accuracy retrieved', [
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'mape' => $result['mape'],
@@ -237,7 +244,7 @@ final readonly class DemandForecastService
 
             return $result;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Forecast: Accuracy retrieval failed', [
+            $this->logger->channel('audit')->error('Forecast: Accuracy retrieval failed', [
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'error' => $e->getMessage(),
@@ -260,7 +267,7 @@ final readonly class DemandForecastService
         }
 
         // Проверить праздники из конфига
-        $holidays = config('business.holidays', []);
+        $holidays = $this->config->get('business.holidays', []);
         if (in_array($date->format('Y-m-d'), $holidays)) {
             return 1.3;
         }
@@ -274,7 +281,7 @@ final readonly class DemandForecastService
     private function getPromoFactor(int $itemId, Carbon $date): float
     {
         try {
-            $activPromos = DB::table('promo_campaigns')
+            $activPromos = $this->db->table('promo_campaigns')
                 ->where('status', 'active')
                 ->where('start_at', '<=', $date)
                 ->where('end_at', '>=', $date)

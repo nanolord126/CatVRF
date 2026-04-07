@@ -2,14 +2,20 @@
 
 namespace App\Services\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Insurance\InsuranceType;
+use App\Models\User;
 
-final class PricingService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class PricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Calculate final premium amount for a potential policy.
          * All amounts in cents (int).
@@ -24,7 +30,7 @@ final class PricingService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Log Start (Audit Trace: Canon 2026)
-            Log::channel('audit')->info('[PricingService] Calculating premium', [
+            $this->logger->channel('audit')->info('[PricingService] Calculating premium', [
                 'correlation_id' => $correlationId,
                 'insurance_type' => $type->slug,
                 'user_id' => $user->id,
@@ -78,7 +84,7 @@ final class PricingService extends Model
             );
 
             // 8. Log Completion (Audit Trace)
-            Log::channel('audit')->info('[PricingService] Premium calculation success', [
+            $this->logger->channel('audit')->info('[PricingService] Premium calculation success', [
                 'correlation_id' => $correlationId,
                 'final_premium' => $totalPremium,
                 'factors' => [

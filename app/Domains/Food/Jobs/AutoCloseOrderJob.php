@@ -2,14 +2,13 @@
 
 namespace App\Domains\Food\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class AutoCloseOrderJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class AutoCloseOrderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithQueue;
         use Queueable;
@@ -17,8 +16,7 @@ final class AutoCloseOrderJob extends Model
 
         public function __construct(
             private RestaurantOrder $order,
-            private string $correlationId = '',
-        ) {
+            private string $correlationId = '', private readonly LoggerInterface $logger) {
             $this->onQueue('default');
 
         }
@@ -26,7 +24,7 @@ final class AutoCloseOrderJob extends Model
         public function handle(): void
         {
             try {
-                Log::channel('audit')->info('Auto close order job started', [
+                $this->logger->info('Auto close order job started', [
                     'order_id' => $this->order->id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -38,15 +36,15 @@ final class AutoCloseOrderJob extends Model
 
                 // Если заказ готов > 2 часов → автоматически закрыть
                 if ($order->ready_at && $order->ready_at->addHours(2)->isPast()) {
-                    $order->update(['status' => 'delivered', 'completed_at' => now()]);
+                    $order->update(['status' => 'delivered', 'completed_at' => Carbon::now()]);
 
-                    Log::channel('audit')->info('Order auto-closed', [
+                    $this->logger->info('Order auto-closed', [
                         'order_id' => $order->id,
                         'correlation_id' => $this->correlationId,
                     ]);
                 }
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Auto close order job failed', [
+                $this->logger->error('Auto close order job failed', [
                     'order_id' => $this->order->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
@@ -58,6 +56,6 @@ final class AutoCloseOrderJob extends Model
 
         public function retryUntil(): Carbon
         {
-            return now()->addHours(3);
+            return Carbon::now()->addHours(3);
         }
 }

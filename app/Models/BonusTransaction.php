@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 final class BonusTransaction extends Model
 {
@@ -53,7 +54,7 @@ final class BonusTransaction extends Model
 
         // Global scope tenant_id (Canon 2026)
         if (function_exists('tenant') && tenant('id')) {
-            static::addGlobalScope('tenant_id', function ($builder) {
+            static::addGlobalScope('tenant_id', function (Builder $builder) {
                 $builder->where('tenant_id', tenant('id'));
             });
         }

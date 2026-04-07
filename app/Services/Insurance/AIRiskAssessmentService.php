@@ -2,14 +2,22 @@
 
 namespace App\Services\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Insurance\InsuranceType;
+use Exception;
+use Illuminate\Support\Collection;
 
-final class AIRiskAssessmentService extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AIRiskAssessmentService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Build risk profile for a user and recommend insurance types.
          */
@@ -21,7 +29,7 @@ final class AIRiskAssessmentService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Log Audit (Start process)
-            Log::channel('audit')->info('[AIRiskAssessmentService] Generating user risk recommendations', [
+            $this->logger->channel('audit')->info('[AIRiskAssessmentService] Generating user risk recommendations', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'user_age' => $userData['age'] ?? 'unknown',
@@ -80,7 +88,7 @@ final class AIRiskAssessmentService extends Model
                 }
 
                 // 4. Record recommendation log (Audit)
-                Log::channel('audit')->info('[AIRiskAssessmentService] Recommendations generated', [
+                $this->logger->channel('audit')->info('[AIRiskAssessmentService] Recommendations generated', [
                     'correlation_id' => $correlationId,
                     'count' => $recommendations->count(),
                 ]);
@@ -88,7 +96,14 @@ final class AIRiskAssessmentService extends Model
                 return $recommendations->sortByDesc('confidence_score')->values();
 
             } catch (Exception $e) {
-                Log::channel('audit')->error('[AIRiskAssessmentService] Recommendation failure', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('[AIRiskAssessmentService] Recommendation failure', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
@@ -104,7 +119,7 @@ final class AIRiskAssessmentService extends Model
         {
             $correlationId = $correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('[AIRiskAssessmentService] Assessing loss probability for policy', [
+            $this->logger->channel('audit')->info('[AIRiskAssessmentService] Assessing loss probability for policy', [
                 'correlation_id' => $correlationId,
                 'policy_id' => $policyId,
             ]);

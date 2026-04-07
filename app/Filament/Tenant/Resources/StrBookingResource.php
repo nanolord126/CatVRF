@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StrBookingResource extends Model
+final class StrBookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StrBooking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -57,22 +54,15 @@ final class StrBookingResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStrBooking::route('/'),
-                'create' => Pages\\CreateStrBooking::route('/create'),
-                'edit' => Pages\\EditStrBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewStrBooking::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStrBooking::route('/'),
-                'create' => Pages\\CreateStrBooking::route('/create'),
-                'edit' => Pages\\EditStrBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewStrBooking::route('/{record}'),
+                'index' => Pages\ListStrBooking::route('/'),
+                'create' => Pages\CreateStrBooking::route('/create'),
+                'edit' => Pages\EditStrBooking::route('/{record}/edit'),
+                'view' => Pages\ViewStrBooking::route('/{record}'),
             ];
         }
 }

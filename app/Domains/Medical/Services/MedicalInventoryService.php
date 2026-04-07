@@ -2,14 +2,16 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalInventoryService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MedicalInventoryService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Резервация расходников для услуги (Hold).
          */
@@ -22,7 +24,9 @@ final class MedicalInventoryService extends Model
                 return;
             }
 
-            DB::transaction(function () use ($consumablesConfig, $quantityMultiplier, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($consumablesConfig, $quantityMultiplier, $correlationId) {
                 foreach ($consumablesConfig as $config) {
                     $sku = $config['sku'];
                     $amountPerService = $config['amount'];
@@ -31,7 +35,7 @@ final class MedicalInventoryService extends Model
                     $consumable = MedicalConsumable::where('sku', $sku)->first();
 
                     if (!$consumable) {
-                        Log::channel('audit')->warning("Consumable with SKU $sku not found during reservation", [
+                        $this->logger->warning("Consumable with SKU $sku not found during reservation", [
                             'correlation_id' => $correlationId
                         ]);
                         continue;
@@ -65,7 +69,7 @@ final class MedicalInventoryService extends Model
             $service = MedicalService::findOrFail($serviceId);
             $consumablesConfig = $service->consumables_config ?? [];
 
-            DB::transaction(function () use ($consumablesConfig, $quantityMultiplier, $reason, $sourceId, $correlationId) {
+            $this->db->transaction(function () use ($consumablesConfig, $quantityMultiplier, $reason, $sourceId, $correlationId) {
                 foreach ($consumablesConfig as $config) {
                     $sku = $config['sku'];
                     $amount = $config['amount'] * $quantityMultiplier;
@@ -82,7 +86,7 @@ final class MedicalInventoryService extends Model
                             'metadata' => array_merge($consumable->metadata ?? [], ['holds' => $holds])
                         ]);
 
-                        Log::channel('audit')->info("Medical consumable deducted", [
+                        $this->logger->info("Medical consumable deducted", [
                             'sku' => $sku,
                             'amount' => $amount,
                             'source_id' => $sourceId,
@@ -101,7 +105,7 @@ final class MedicalInventoryService extends Model
             $service = MedicalService::findOrFail($serviceId);
             $consumablesConfig = $service->consumables_config ?? [];
 
-            DB::transaction(function () use ($consumablesConfig, $correlationId) {
+            $this->db->transaction(function () use ($consumablesConfig, $correlationId) {
                 foreach ($consumablesConfig as $config) {
                     $sku = $config['sku'];
                     $consumable = MedicalConsumable::where('sku', $sku)->first();

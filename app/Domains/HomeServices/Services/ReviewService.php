@@ -2,16 +2,19 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ReviewService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class ReviewService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createReview(
             int $contractorId,
@@ -23,30 +26,22 @@ final class ReviewService extends Model
             string $correlationId = ''
         ): ServiceReview {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
                     if ($rating < 1 || $rating > 5) {
                         throw new \InvalidArgumentException('Rating must be between 1 and 5');
                     }
 
                     $review = ServiceReview::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'contractor_id' => $contractorId,
                         'reviewer_id' => $reviewerId,
                         'job_id' => $jobId,
                         'rating' => $rating,
                         'title' => $title,
                         'content' => $content,
-                        'published_at' => now(),
+                        'published_at' => Carbon::now(),
                         'correlation_id' => $correlationId,
                     ]);
 
@@ -59,7 +54,7 @@ final class ReviewService extends Model
 
                     ReviewSubmitted::dispatch($review, $correlationId);
 
-                    \Log::channel('audit')->info('Review submitted', [
+                    $this->logger->info('Review submitted', [
                         'review_id' => $review->id,
                         'contractor_id' => $contractorId,
                         'rating' => $rating,
@@ -69,7 +64,7 @@ final class ReviewService extends Model
                     return $review;
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create review', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to create review', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }
@@ -82,17 +77,9 @@ final class ReviewService extends Model
             string $correlationId = ''
         ): ServiceReview {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($review, $rating, $title, $content, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($review, $rating, $title, $content, $correlationId) {
                     $review->update([
                         'rating' => $rating,
                         'title' => $title,
@@ -107,7 +94,7 @@ final class ReviewService extends Model
                     return $review;
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update review', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to update review', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }

@@ -2,17 +2,23 @@
 
 namespace App\Services\ML;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\UserTasteProfile;
+use App\Models\UserTasteProfileHistory;
 
-final class UserTasteProfileService extends Model
+
+use Illuminate\Support\Str;
+use Throwable;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class UserTasteProfileService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly TasteMLService $mlService,
-        ) {}
+        private TasteMLService $mlService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Получить или создать профиль для пользователя
@@ -25,7 +31,7 @@ final class UserTasteProfileService extends Model
                     ->first();
 
                 if (!$profile) {
-                    $profile = DB::transaction(function () use ($userId, $tenantId, $correlationId) {
+                    $profile = $this->db->transaction(function () use ($userId, $tenantId, $correlationId) {
                         return UserTasteProfile::create([
                             'user_id' => $userId,
                             'tenant_id' => $tenantId,
@@ -43,7 +49,7 @@ final class UserTasteProfileService extends Model
                         ]);
                     });
 
-                    Log::channel('audit')->info('User taste profile created', [
+                    $this->logger->channel('audit')->info('User taste profile created', [
                         'user_id' => $userId,
                         'tenant_id' => $tenantId,
                         'profile_id' => $profile->id,
@@ -53,7 +59,7 @@ final class UserTasteProfileService extends Model
 
                 return $profile;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to get or create taste profile', [
+                $this->logger->channel('audit')->error('Failed to get or create taste profile', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -72,7 +78,9 @@ final class UserTasteProfileService extends Model
             array $preferences,
             ?string $correlationId = null
         ): UserTasteProfile {
-            return DB::transaction(function () use ($userId, $tenantId, $preferences, $correlationId) {
+            $this->fraud->check(new \stdClass());
+
+            return $this->db->transaction(function () use ($userId, $tenantId, $preferences, $correlationId) {
                 $profile = $this->getOrCreateProfile($userId, $tenantId, $correlationId);
 
                 $oldExplicit = $profile->explicit_preferences ?? [];
@@ -109,7 +117,9 @@ final class UserTasteProfileService extends Model
             array $embeddings,
             ?string $correlationId = null
         ): UserTasteProfile {
-            return DB::transaction(function () use (
+            $this->fraud->check(new \stdClass());
+
+            return $this->db->transaction(function () use (
                 $userId,
                 $tenantId,
                 $categoryScores,
@@ -196,13 +206,13 @@ final class UserTasteProfileService extends Model
                     'last_interaction_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('User taste interaction recorded', [
+                $this->logger->channel('audit')->info('User taste interaction recorded', [
                     'user_id' => $userId,
                     'interaction_type' => $interactionType,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to record taste interaction', [
+                $this->logger->channel('audit')->error('Failed to record taste interaction', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -219,7 +229,7 @@ final class UserTasteProfileService extends Model
 
             $profile->update(['allow_personalization' => $enabled]);
 
-            Log::channel('audit')->info('Personalization toggled', [
+            $this->logger->channel('audit')->info('Personalization toggled', [
                 'user_id' => $userId,
                 'enabled' => $enabled,
             ]);

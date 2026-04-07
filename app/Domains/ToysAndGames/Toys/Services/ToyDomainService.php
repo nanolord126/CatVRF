@@ -2,29 +2,31 @@
 
 namespace App\Domains\ToysAndGames\Toys\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ToyDomainService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class ToyDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Upsert a toy with safety certification and B2B/B2C pricing.
          */
         public function upsertToy(ToySaveDto $dto): Toy
         {
-            Log::channel('audit')->info('Toy Upsert Initiated', [
+            $this->logger->info('Toy Upsert Initiated', [
                 'cid' => $dto->correlationId,
-                'sku' => $dto->sku
+                'sku' => $dto->sku,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 $toy = Toy::updateOrCreate(
                     ['sku' => $dto->sku, 'tenant_id' => $dto->tenantId],
                     [
@@ -46,9 +48,10 @@ final class ToyDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Toy Upsert Successful', [
+                $this->logger->info('Toy Upsert Successful', [
                     'cid' => $dto->correlationId,
-                    'toy_uuid' => $toy->uuid
+                    'toy_uuid' => $toy->uuid,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $toy;
@@ -61,12 +64,12 @@ final class ToyDomainService extends Model
          */
         public function createB2BOrder(VolumeToyOrderDto $dto): ToyOrder
         {
-            Log::channel('audit')->info('B2B Toy Order Processed', ['cid' => $dto->correlationId]);
+            $this->logger->info('B2B Toy Order Processed', ['cid' => $dto->correlationId]);
 
             // Security: Block suspicious bulk orders
-            $this->fraudControl->check(['cid' => $dto->correlationId, 'type' => 'b2b_toy_order']);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'b2b_toy_order', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 $totalAmount = 0;
                 $orderItems = [];
 
@@ -74,7 +77,7 @@ final class ToyDomainService extends Model
                     $toy = Toy::lockForUpdate()->find($item['toy_id']);
 
                     if (!$toy || $toy->stock_quantity < $item['quantity']) {
-                        throw new \Exception('Insufficient stock for toy: ' . ($toy->title ?? 'Unknown'));
+                        throw new \RuntimeException('Insufficient stock for toy: ' . ($toy->title ?? 'Unknown'));
                     }
 
                     // Minimum 10 items for B2B pricing in this vertical domain
@@ -95,8 +98,8 @@ final class ToyDomainService extends Model
 
                 $order = ToyOrder::create([
                     'uuid' => (string) Str::uuid(),
-                    'tenant_id' => auth()->user()->tenant_id ?? 1,
-                    'user_id' => auth()->id() ?? 0,
+                    'tenant_id' => $this->guard->user()->tenant_id ?? 1,
+                    'user_id' => $this->guard->id() ?? 0,
                     'b2b_company_id' => $dto->companyId,
                     'store_id' => $dto->storeId,
                     'total_amount' => $totalAmount,
@@ -107,10 +110,11 @@ final class ToyDomainService extends Model
                     'metadata' => array_merge($dto->metadata, ['items' => $orderItems])
                 ]);
 
-                Log::channel('audit')->info('B2B Toy Order Completed', [
+                $this->logger->info('B2B Toy Order Completed', [
                     'cid' => $dto->correlationId,
                     'order_uuid' => $order->uuid,
-                    'total' => $totalAmount
+                    'total' => $totalAmount,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $order;
@@ -122,7 +126,7 @@ final class ToyDomainService extends Model
          */
         public function submitReview(int $toyId, int $userId, int $rating, string $comment, string $cid): ToyReview
         {
-            return DB::transaction(function () use ($toyId, $userId, $rating, $comment, $cid) {
+            return $this->db->transaction(function () use ($toyId, $userId, $rating, $comment, $cid) {
                 $review = ToyReview::create([
                     'toy_id' => $toyId,
                     'user_id' => $userId,
@@ -130,15 +134,16 @@ final class ToyDomainService extends Model
                     'comment' => $comment,
                     'correlation_id' => $cid,
                     'metadata' => [
-                        'client_ip' => request()->ip(),
+                        'client_ip' => $this->request->ip(),
                         'ai_sentiment' => 'pending'
                     ]
                 ]);
 
-                Log::channel('audit')->info('Toy Review Added', [
+                $this->logger->info('Toy Review Added', [
                     'cid' => $cid,
                     'toy_id' => $toyId,
-                    'rating' => $rating
+                    'rating' => $rating,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $review;

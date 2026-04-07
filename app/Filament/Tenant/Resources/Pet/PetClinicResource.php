@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Pet;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PetClinicResource extends Model
+final class PetClinicResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetClinic::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -78,7 +73,6 @@ final class PetClinicResource extends Model
                         ->label('Тип')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'clinic' => 'danger',
                             'grooming' => 'success',
                             'pharmacy' => 'info',
                             'boarding' => 'warning',

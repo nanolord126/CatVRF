@@ -2,18 +2,21 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\UserBodyMetrics;
+use App\Models\UserTasteProfile;
+use App\Services\ML\UserTasteProfileService;
+use Illuminate\Http\UploadedFile;
 
-final class AIBeautyConstructorService extends Model
+use Throwable;
+use Illuminate\Log\LogManager;
+
+final readonly class AIBeautyConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly UserTasteProfileService $tasteService,
-            private readonly \OpenAI\Client $openai,
-        ) {}
+        private UserTasteProfileService $tasteService,
+        private \OpenAI\Client $openai,
+        private readonly LogManager $logger,
+    ) {}
 
         /**
          * Анализировать фото и получить рекомендации красоты
@@ -32,7 +35,7 @@ final class AIBeautyConstructorService extends Model
             $correlationId ??= \Illuminate\Support\Str::uuid()->toString();
 
             try {
-                Log::channel('audit')->info('Beauty constructor: Starting face analysis', [
+                $this->logger->channel('audit')->info('Beauty constructor: Starting face analysis', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -45,7 +48,7 @@ final class AIBeautyConstructorService extends Model
                 $faceAnalysis = $this->analyzeFacePhoto($facePhoto);
 
                 if (!$faceAnalysis) {
-                    throw new \Exception('Failed to analyze face photo');
+                    throw new \RuntimeException('Failed to analyze face photo');
                 }
 
                 // 3. Объединить данные: физические параметры + вкусы + анализ лица
@@ -60,7 +63,7 @@ final class AIBeautyConstructorService extends Model
                 ];
 
                 // 5. Логировать
-                Log::channel('audit')->info('Beauty constructor: Analysis complete', [
+                $this->logger->channel('audit')->info('Beauty constructor: Analysis complete', [
                     'user_id' => $userId,
                     'recommendations_count' => array_sum(array_map('count', $recommendations)),
                     'correlation_id' => $correlationId,
@@ -86,7 +89,7 @@ final class AIBeautyConstructorService extends Model
                     'correlation_id' => $correlationId,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Beauty constructor failed', [
+                $this->logger->channel('audit')->error('Beauty constructor failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -131,14 +134,14 @@ final class AIBeautyConstructorService extends Model
                 // Парсить JSON из ответа
                 preg_match('/\{.*\}/s', $analysisText, $matches);
                 if (empty($matches)) {
-                    return null;
+                    throw new \DomainException('Operation returned no result');
                 }
 
                 return json_decode($matches[0], true) ?? null;
             } catch (Throwable $e) {
-                Log::warning('Failed to analyze face photo', ['error' => $e->getMessage()]);
+                $this->logger->warning('Failed to analyze face photo', ['error' => $e->getMessage()]);
 
-                return null;
+                throw new \DomainException('Operation returned no result');
             }
         }
 
@@ -283,7 +286,6 @@ final class AIBeautyConstructorService extends Model
         private function getEyePaletteForEye(string $eyeColor): array
         {
             return match ($eyeColor) {
-                'blue' => ['warm_oranges', 'warm_browns', 'coppers'],
                 'green' => ['purples', 'burgundies', 'bronze'],
                 'brown' => ['golds', 'silvers', 'jewel_tones'],
                 'hazel' => ['greens', 'golds', 'purples'],

@@ -2,18 +2,18 @@
 
 namespace App\Domains\Food\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class RestaurantOrderController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class RestaurantOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RestaurantOrderService $orderService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -21,25 +21,25 @@ final class RestaurantOrderController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $orders = RestaurantOrder::query()
-                    ->where('tenant_id', tenant('id'))
-                    ->where('client_id', auth()->id() ?? 0)
+                    ->where('tenant_id', tenant()->id)
+                    ->where('client_id', $request->user()?->id ?? 0)
                     ->with(['restaurant', 'delivery', 'kds'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $orders,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
 
@@ -51,9 +51,9 @@ final class RestaurantOrderController extends Model
                 ]);
 
                 $order = $this->orderService->createOrder([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()->id,
                     'restaurant_id' => $request->get('restaurant_id'),
-                    'client_id' => auth()->id(),
+                    'client_id' => $request->user()?->id,
                     'items' => $request->get('items'),
                     'subtotal_price' => $request->get('subtotal_price'),
                     'delivery_price' => $request->boolean('delivery') ? 50000 : 0,
@@ -61,14 +61,14 @@ final class RestaurantOrderController extends Model
                     'notes' => $request->get('notes'),
                 ], $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $order,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Order creation failed', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                $this->logger->error('Order creation failed', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
@@ -76,7 +76,7 @@ final class RestaurantOrderController extends Model
         {
             $this->authorize('view', $order);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $order->load(['restaurant', 'delivery', 'kds']),
             ]);
@@ -89,11 +89,11 @@ final class RestaurantOrderController extends Model
 
                 $order->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->info('Order cancelled', ['order_id' => $order->id]);
+                $this->logger->info('Order cancelled', ['order_id' => $order->id]);
 
-                return response()->json(['success' => true, 'message' => 'Заказ отменён']);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ отменён']);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
@@ -104,19 +104,19 @@ final class RestaurantOrderController extends Model
 
                 $this->orderService->confirmPaymentAndSendToKitchen($order, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ отправлен на кухню',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
         public function status(RestaurantOrder $order): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'status' => $order->status,
                 'kds_status' => $order->kds?->status,
@@ -131,27 +131,27 @@ final class RestaurantOrderController extends Model
                 ->with('kds')
                 ->paginate(20);
 
-            return response()->json(['success' => true, 'data' => $orders]);
+            return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders]);
         }
 
         public function markReady(RestaurantOrder $order): JsonResponse
         {
             try {
-                $order->update(['status' => 'ready', 'ready_at' => now()]);
-                return response()->json(['success' => true, 'message' => 'Заказ готов']);
+                $order->update(['status' => 'ready', 'ready_at' => Carbon::now()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ готов']);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 
         public function markPicked(RestaurantOrder $order): JsonResponse
         {
             try {
-                $order->update(['status' => 'delivered', 'completed_at' => now()]);
+                $order->update(['status' => 'delivered', 'completed_at' => Carbon::now()]);
                 event(new \App\Domains\Food\Events\OrderCompleted($order, Str::uuid()->toString()));
-                return response()->json(['success' => true, 'message' => 'Заказ выдан']);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ выдан']);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false], 500);
             }
         }
 }

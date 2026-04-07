@@ -2,56 +2,49 @@
 
 namespace App\Domains\Luxury\Jewelry\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class Jewelry3DService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Http\Request;
+final readonly class Jewelry3DService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FilesystemManager $storage, private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function uploadModel(array $data): Jewelry3DModel
         {
 
-
-            Log::channel('audit')->info('Jewelry3DService: Uploading 3D model', [
+            $this->logger->info('Jewelry3DService: Uploading 3D model', [
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
                 'jewelry_item_id' => $data['jewelry_item_id'],
-                'tenant_id' => filament()->getTenant()->id,
+                'tenant_id' => tenant()->id,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($data) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($data) {
                 $modelFile = $data['model_file'];
                 $textureFile = $data['texture_file'] ?? null;
                 $previewFile = $data['preview_file'] ?? null;
 
-                $modelPath = Storage::disk('public')->putFile('jewelry/3d-models', $modelFile);
-                $texturePath = $textureFile ? Storage::disk('public')->putFile('jewelry/textures', $textureFile) : null;
-                $previewPath = $previewFile ? Storage::disk('public')->putFile('jewelry/previews', $previewFile) : null;
+                $modelPath = $this->storage->disk('public')->putFile('jewelry/3d-models', $modelFile);
+                $texturePath = $textureFile ? $this->storage->disk('public')->putFile('jewelry/textures', $textureFile) : null;
+                $previewPath = $previewFile ? $this->storage->disk('public')->putFile('jewelry/previews', $previewFile) : null;
 
                 return Jewelry3DModel::create([
                     'uuid' => Str::uuid(),
                     'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                    'tenant_id' => filament()->getTenant()->id,
+                    'tenant_id' => tenant()->id,
                     'jewelry_item_id' => $data['jewelry_item_id'],
-                    'model_url' => Storage::url($modelPath),
-                    'texture_url' => $texturePath ? Storage::url($texturePath) : null,
+                    'model_url' => $this->storage->disk('public')->url($modelPath),
+                    'texture_url' => $texturePath ? $this->storage->disk('public')->url($texturePath) : null,
                     'material_type' => $data['material_type'] ?? 'gold',
                     'dimensions' => $data['dimensions'] ?? [],
                     'weight_grams' => $data['weight_grams'] ?? 0,
-                    'preview_image_url' => $previewPath ? Storage::url($previewPath) : null,
+                    'preview_image_url' => $previewPath ? $this->storage->disk('public')->url($previewPath) : null,
                     'ar_compatible' => $data['ar_compatible'] ?? true,
                     'vr_compatible' => $data['vr_compatible'] ?? true,
                     'file_size_mb' => $modelFile->getSize() / 1024 / 1024,
@@ -65,16 +58,16 @@ final class Jewelry3DService extends Model
         public function generateARView(int $modelId): string
         {
 
-
             $model = Jewelry3DModel::findOrFail($modelId);
 
-            Log::channel('audit')->info('Jewelry3DService: Generating AR view', [
+            $this->logger->info('Jewelry3DService: Generating AR view', [
                 'model_id' => $modelId,
                 'jewelry_item_id' => $model->jewelry_item_id,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             if (!$model->ar_compatible) {
-                throw new \Exception('This model is not AR compatible');
+                throw new \RuntimeException('This model is not AR compatible');
             }
 
             // Generate AR-compatible URL with viewer parameters
@@ -87,16 +80,16 @@ final class Jewelry3DService extends Model
         public function generateVRView(int $modelId): string
         {
 
-
             $model = Jewelry3DModel::findOrFail($modelId);
 
-            Log::channel('audit')->info('Jewelry3DService: Generating VR view', [
+            $this->logger->info('Jewelry3DService: Generating VR view', [
                 'model_id' => $modelId,
                 'jewelry_item_id' => $model->jewelry_item_id,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             if (!$model->vr_compatible) {
-                throw new \Exception('This model is not VR compatible');
+                throw new \RuntimeException('This model is not VR compatible');
             }
 
             // Generate VR-compatible viewer URL
@@ -108,7 +101,6 @@ final class Jewelry3DService extends Model
 
         public function getEmbeddedViewer(int $modelId, string $viewerType = 'web'): string
         {
-
 
             $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -126,7 +118,6 @@ final class Jewelry3DService extends Model
         public function rotate3DModel(int $modelId, float $rotationX, float $rotationY, float $rotationZ): array
         {
 
-
             $model = Jewelry3DModel::findOrFail($modelId);
 
             return [
@@ -140,7 +131,6 @@ final class Jewelry3DService extends Model
 
         public function zoomModel(int $modelId, float $zoomLevel): array
         {
-
 
             $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -157,24 +147,17 @@ final class Jewelry3DService extends Model
         public function changeMetalType(int $modelId, string $metalType): Jewelry3DModel
         {
 
-
             $model = Jewelry3DModel::findOrFail($modelId);
 
-            Log::channel('audit')->info('Jewelry3DService: Changing metal type', [
+            $this->logger->info('Jewelry3DService: Changing metal type', [
                 'model_id' => $modelId,
                 'from' => $model->material_type,
                 'to' => $metalType,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($model, $metalType) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($model, $metalType) {
                 $model->update(['material_type' => $metalType]);
                 return $model;
             });
@@ -183,21 +166,20 @@ final class Jewelry3DService extends Model
         public function downloadModel(int $modelId, string $format = 'glb'): string
         {
 
-
             $model = Jewelry3DModel::findOrFail($modelId);
 
-            Log::channel('audit')->info('Jewelry3DService: Downloading model', [
+            $this->logger->info('Jewelry3DService: Downloading model', [
                 'model_id' => $modelId,
                 'format' => $format,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             // Return download URL
-            return Storage::url($model->model_url) . "?format={$format}";
+            return $this->storage->disk('public')->url($model->model_url) . "?format={$format}";
         }
 
         public function createModelPreview(int $modelId, array $angles = []): array
         {
-
 
             $model = Jewelry3DModel::findOrFail($modelId);
 

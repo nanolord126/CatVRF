@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class PaymentController extends Model
+final class PaymentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
+            private readonly FraudControlService $fraud,
             private readonly IdempotencyService $idempotencyService,
             private readonly RateLimiterService $rateLimiterService,
-        ) {
-        }
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {
+
+    }
         /**
          * Initialize payment
          *
@@ -66,22 +70,22 @@ final class PaymentController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
+                $this->fraud->check(
+                    $this->guard->id() ?? 0,
                     'payment_init',
                     (int) $request->get('amount', 0),
                     $request->ip(),
                     null,
                     $correlationId
                 );
-                Log::channel('audit')->info('PaymentController::init called', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('PaymentController::init called', [
+                    'user_id' => $this->guard->id(),
                     'amount' => $request->get('amount'),
                     'correlation_id' => $correlationId,
                 ]);
                 // Rate limiting check
                 if (!$this->rateLimiterService->checkPaymentInit(
-                    auth()->id() ?? 0,
+                    $this->guard->id() ?? 0,
                     $request->ip()
                 )) {
                     throw new AuthorizationException('Rate limit exceeded');
@@ -93,7 +97,7 @@ final class PaymentController extends Model
                     return $this->respondWithError('Duplicate payment', 409);
                 }
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $paymentId = \Str::uuid()->toString();
                     $payment = \App\Domains\Consulting\Finances\Models\PaymentTransaction::create([
                         'uuid' => $paymentId,
@@ -108,7 +112,7 @@ final class PaymentController extends Model
                             'api_version' => 'v1',
                         ],
                     ]);
-                    \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
+                    $this->logger->channel('audit')->info('Payment initiated V1', [
                         'payment_id' => $payment->id,
                         'correlation_id' => $paymentId,
                     ]);
@@ -136,7 +140,7 @@ final class PaymentController extends Model
                 $payment = \App\Domains\Consulting\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
                     ->where('tenant_id', (int) tenant('id'))
                     ->firstOrFail();
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
+                $this->logger->channel('audit')->info('Payment retrieved', [
                     'payment_id' => $payment->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -147,7 +151,7 @@ final class PaymentController extends Model
                     'created_at' => $payment->created_at,
                 ]);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
+                $this->logger->channel('audit')->error('Payment retrieval failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

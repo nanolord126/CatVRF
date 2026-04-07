@@ -2,14 +2,19 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class AIConstructorRequest extends Model
+/**
+ * Class AIConstructorRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests
+ */
+final class AIConstructorRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
         {
             return $this->user() && $this->user()->hasVerifiedEmail();

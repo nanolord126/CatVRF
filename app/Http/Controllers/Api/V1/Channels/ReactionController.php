@@ -2,22 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReactionController extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class ReactionController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    uuid}/react  — поставить/убрать реакцию (toggle)
-     * GET  /api/v1/posts/{uuid}/react  — получить реакции поста
-     */
-    final class ReactionController extends BaseApiV1Controller
-    {
-        public function __construct(
+    public function __construct(
+        private readonly ConfigRepository $config,
             private readonly ReactionService $reactionService,
-        ) {}
+            private readonly ResponseFactory $response,
+    ) {}
         /** Поставить / убрать реакцию (toggle) */
         public function react(Request $request, string $postUuid): JsonResponse
         {
@@ -40,17 +36,17 @@ final class ReactionController extends Model
                     ipAddress:     $request->ip() ?? '',
                     correlationId: $correlationId,
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $reactions,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\InvalidArgumentException $e) {
-                return response()->json([
+                return $this->response->json([
                     'success'        => false,
                     'error'          => $e->getMessage(),
                     'correlation_id' => $correlationId,
-                    'allowed_reactions' => config('channels.allowed_reactions', []),
+                    'allowed_reactions' => $this->config->get('channels.allowed_reactions', []),
                 ], 422);
             } catch (\Throwable $e) {
                 return $this->errorResponse($e, $correlationId, 429);
@@ -78,11 +74,11 @@ final class ReactionController extends Model
                         );
                     }
                 }
-                return response()->json([
+                return $this->response->json([
                     'success'         => true,
                     'data'            => $reactions,
                     'my_reactions'    => $userReactions,
-                    'allowed'         => config('channels.allowed_reactions', []),
+                    'allowed'         => $this->config->get('channels.allowed_reactions', []),
                     'correlation_id'  => $correlationId,
                 ]);
             } catch (\Throwable $e) {

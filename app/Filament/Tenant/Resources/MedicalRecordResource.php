@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MedicalRecordResource extends Model
+final class MedicalRecordResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MedicalRecord::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document-text';
@@ -108,22 +105,15 @@ final class MedicalRecordResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMedicalRecord::route('/'),
-                'create' => Pages\\CreateMedicalRecord::route('/create'),
-                'edit' => Pages\\EditMedicalRecord::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalRecord::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMedicalRecord::route('/'),
-                'create' => Pages\\CreateMedicalRecord::route('/create'),
-                'edit' => Pages\\EditMedicalRecord::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalRecord::route('/{record}'),
+                'index' => Pages\ListMedicalRecord::route('/'),
+                'create' => Pages\CreateMedicalRecord::route('/create'),
+                'edit' => Pages\EditMedicalRecord::route('/{record}/edit'),
+                'view' => Pages\ViewMedicalRecord::route('/{record}'),
             ];
         }
 }

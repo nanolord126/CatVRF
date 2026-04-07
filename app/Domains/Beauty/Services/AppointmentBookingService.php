@@ -1,22 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment as Appointment;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyService;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyMaster as Master;
+use App\Domains\Beauty\Models\AIConstruction;
+use App\Domains\Beauty\Exceptions\AvailabilityConflictException;
+use App\Exceptions\FraudBlockedException;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+use App\Domains\Beauty\Services\InventoryService;
+use App\Domains\Beauty\Services\MasterAvailabilityService;
+use App\Services\FraudControlService;
+use App\Domains\Beauty\Services\AppointmentCancellationService;
+use App\Domains\Beauty\Services\AppointmentRescheduleService;
 
-final class AppointmentBookingService extends Model
+final readonly class AppointmentBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private InventoryService $inventory,
-            private MasterAvailabilityService $availability,
-            private FraudControlService $fraud,
-            private AppointmentCancellationService $cancellation,
-            private AppointmentRescheduleService $reschedule,
-        ) {}
+        private InventoryService $inventory,
+        private MasterAvailabilityService $availability,
+        private FraudControlService $fraud,
+        private AppointmentCancellationService $cancellation,
+        private AppointmentRescheduleService $reschedule,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
         /**
          * Перенос бронирования (Rescheduling).
@@ -27,7 +42,7 @@ final class AppointmentBookingService extends Model
          */
         public function reschedule(Appointment $appointment, Carbon $newStartTime): Appointment
         {
-            return DB::transaction(function () use ($appointment, $newStartTime) {
+            return $this->db->transaction(function () use ($appointment, $newStartTime) {
                 $now = Carbon::now();
 
                 // 1. Расчет комиссии за перенос
@@ -57,7 +72,7 @@ final class AppointmentBookingService extends Model
                     ]),
                 ]);
 
-                Log::channel('audit')->info('Appointment rescheduled', [
+                $this->logger->info('Appointment rescheduled', [
                     'appointment_id' => $appointment->id,
                     'fee' => $feeData['fee_amount'],
                     'new_start' => $newStartTime->toDateTimeString(),
@@ -91,14 +106,10 @@ final class AppointmentBookingService extends Model
             $startDateTime = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $startTime);
 
             // 1. Fraud Check
-            $fraudScore = $this->fraud->check([
-                'user_id' => $userId,
-                'type' => 'appointment_booking',
-                'correlation_id' => $correlationId,
-            ]);
+            $fraudScore = $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'appointment_booking', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudScore > 0.8) {
-                Log::channel('fraud_alert')->warning('Appointment blocked by fraud control', [
+                $this->logger->warning('Appointment blocked by fraud control', [
                     'user_id' => $userId,
                     'score' => $fraudScore,
                     'correlation_id' => $correlationId,
@@ -106,7 +117,7 @@ final class AppointmentBookingService extends Model
                 throw new FraudBlockedException('Подозрение на мошенничество. Операция заблокирована.');
             }
 
-            return DB::transaction(function () use ($look, $userId, $masterId, $startDateTime, $correlationId, $policy) {
+            return $this->db->transaction(function () use ($look, $userId, $masterId, $startDateTime, $correlationId, $policy) {
                 $master = Master::findOrFail($masterId);
                 $lookData = $look->construction_data; // {items: [...], services: [...]}
 
@@ -136,14 +147,14 @@ final class AppointmentBookingService extends Model
                     );
                 }
 
-                // 4. Определение B2C/B2B режима (для цен и комиссий)
-                $isB2B = request()->has('inn') && request()->has('business_card_id');
+                // 4. Определение B2C/B2B режима (передаётся из контроллера/DTO)
+                $isB2B = !empty($look->construction_data['is_b2b']);
                 $priceCents = (int)($serviceData['price'] ?? $service->price);
 
                 // 5. Создание записи
                 $appointment = Appointment::create([
                     'uuid' => Str::uuid()->toString(),
-                    'tenant_id' => tenant('id') ?? $master->tenant_id,
+                    'tenant_id' => tenant()->id ?? $master->tenant_id,
                     'salon_id' => $master->salon_id,
                     'master_id' => $masterId,
                     'service_id' => $service->id,
@@ -170,16 +181,13 @@ final class AppointmentBookingService extends Model
                 }
 
                 // 6. Audit Log
-                Log::channel('audit')->info('Appointment booked from AI Look', [
+                $this->logger->info('Appointment booked from AI Look', [
                     'appointment_id' => $appointment->id,
                     'user_id' => $userId,
                     'master_id' => $masterId,
                     'correlation_id' => $correlationId,
                     'price' => $priceCents,
                 ]);
-
-                // 7. Уведомления (Dispatch Job)
-                // SendAppointmentNotifications::dispatch($appointment);
 
                 return $appointment;
             });
@@ -194,7 +202,7 @@ final class AppointmentBookingService extends Model
          */
         public function cancel(Appointment $appointment, string $reason = ''): bool
         {
-            return DB::transaction(function () use ($appointment, $reason) {
+            return $this->db->transaction(function () use ($appointment, $reason) {
                 $now = Carbon::now();
 
                 // Расчет штрафов через специализированный сервис

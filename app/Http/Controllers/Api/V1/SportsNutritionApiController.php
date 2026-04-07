@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class SportsNutritionApiController extends Model
+final class SportsNutritionApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly AISupplementConstructor $aiConstructor
-        ) {}
+            private readonly AISupplementConstructor $aiConstructor,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * GET /api/v1/sports-nutrition/catalog
          * Full catalog with multi-tenant filtering and advanced query logic.
@@ -44,12 +45,12 @@ final class SportsNutritionApiController extends Model
                     });
                 }
                 $results = $query->paginate($request->get('per_page', 20));
-                Log::channel('audit')->info('Catalog GET success', [
+                $this->logger->channel('audit')->info('Catalog GET success', [
                     'cid' => $correlationId,
                     'user' => $request->user()?->id,
                     'count' => $results->count()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $results->items(),
@@ -59,12 +60,12 @@ final class SportsNutritionApiController extends Model
                     ]
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Catalog GET failed', [
+                $this->logger->channel('audit')->error('Catalog GET failed', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json(['error' => 'Internal Catalog Error', 'cid' => $correlationId], 500);
+                return $this->response->json(['error' => 'Internal Catalog Error', 'cid' => $correlationId], 500);
             }
         }
         /**
@@ -93,7 +94,7 @@ final class SportsNutritionApiController extends Model
                     correlationId: $correlationId
                 );
                 $stack = $this->aiConstructor->constructStack($dto);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'stack_result' => [
@@ -107,11 +108,11 @@ final class SportsNutritionApiController extends Model
                     ]
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI stack generation failure', [
+                $this->logger->channel('audit')->error('AI stack generation failure', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json(['error' => 'AI Service Unavailable', 'cid' => $correlationId], 503);
+                return $this->response->json(['error' => 'AI Service Unavailable', 'cid' => $correlationId], 503);
             }
         }
         /**
@@ -125,7 +126,7 @@ final class SportsNutritionApiController extends Model
                 ->with(['store', 'category'])
                 ->firstOrFail();
             $showB2b = $request->user() && $request->user()->can('view_b2b_pricing');
-            return response()->json([
+            return $this->response->json([
                 'id' => $product->uuid,
                 'name' => $product->name,
                 'brand' => $product->brand,

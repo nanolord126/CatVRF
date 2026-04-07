@@ -2,23 +2,19 @@
 
 namespace App\Domains\Sports\Fitness\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SendClassReminderJob extends Model
+use Psr\Log\LoggerInterface;
+final class SendClassReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithQueue;
         use Queueable;
         use SerializesModels;
 
         public function __construct(
-            public ?int $scheduleId = null,
-            public ?string $correlationId = null,
-        ) {
+            private ?int $scheduleId = null,
+            private readonly ?string $correlationId = null, private readonly LoggerInterface $logger) {
             $this->onQueue('notifications');
         }
 
@@ -44,14 +40,14 @@ final class SendClassReminderJob extends Model
                 $attendees = $schedule->attendances()->where('status', '!=', 'cancelled')->get();
 
                 foreach ($attendees as $attendance) {
-                    Log::channel('audit')->info('Class reminder sent', [
+                    $this->logger->info('Class reminder sent', [
                         'schedule_id' => $this->scheduleId,
                         'member_id' => $attendance->member_id,
                         'correlation_id' => $this->correlationId,
                     ]);
                 }
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to send class reminder', [
+                $this->logger->error('Failed to send class reminder', [
                     'schedule_id' => $this->scheduleId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,

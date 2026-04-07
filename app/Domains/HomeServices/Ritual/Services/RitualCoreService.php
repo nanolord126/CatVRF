@@ -1,125 +1,172 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Ritual\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\HomeServices\Ritual\Models\FuneralOrder;
+use App\Domains\HomeServices\Ritual\Models\RitualAgency;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class RitualCoreService extends Model
+/**
+ * RitualCoreService — управление ритуальными услугами.
+ *
+ * Создание заказов на ритуальные услуги, оформление мемориальных
+ * сертификатов, координация с ритуальными агентствами.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class RitualCoreService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Конструктор с DI зависимостями (readonly).
-         */
-        public function __construct(
-            private WalletService $wallet,
-            private FraudControlService $fraud,
-        ) {}
+     * Создать заказ на ритуальную услугу.
+     */
+    public function createOrder(
+        int    $agencyId,
+        string $serviceType,
+        string $scheduledDate,
+        string $correlationId = '',
+    ): FuneralOrder {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        /**
-         * Создать новый заказ на организацию похорон.
-         *
-         * @throws FraudAlertException
-         * @throws InsufficientFundsException
-         */
-        public function createFuneralOrder(array $data, string $correlation_id = null): FuneralOrder
-        {
-            $correlation_id ??= (string) Str::uuid();
+        return $this->db->transaction(function () use ($agencyId, $serviceType, $scheduledDate, $correlationId): FuneralOrder {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'ritual_order',
+                amount: 0,
+                correlationId: $correlationId,
+            );
 
-            // 1. Fraud Check (Канон 2026)
-            $this->fraud->check([
-                'operation' => 'funeral_order_create',
-                'client_id' => $data['client_id'],
-                'amount' => $data['total_amount_kopecks'],
-                'correlation_id' => $correlation_id,
+            $order = FuneralOrder::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'agency_id'      => $agencyId,
+                'client_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending',
+                'service_type'   => $serviceType,
+                'scheduled_date' => $scheduledDate,
+                'tags'           => ['ritual' => true],
             ]);
 
-            return DB::transaction(function () use ($data, $correlation_id) {
+            $this->logger->info('Ritual order created', [
+                'order_id'       => $order->id,
+                'agency_id'      => $agencyId,
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 2. Создание записи заказа (Optimistic Locking & Unique scoping)
-                $order = FuneralOrder::create([
-                    ...$data,
-                    'status' => 'pending',
-                    'correlation_id' => $correlation_id,
-                ]);
+            return $order;
+        });
+    }
 
-                // 3. Логирование (Audit Log Канон)
-                Log::channel('audit')->info('Funeral order created', [
-                    'order_uuid' => $order->uuid,
-                    'client_id' => $order->client_id,
-                    'amount' => $order->total_amount_kopecks,
-                    'correlation_id' => $correlation_id,
-                ]);
+    /**
+     * Завершить ритуальный заказ и выплатить агентству.
+     */
+    public function completeOrder(int $orderId, int $totalKopecks, string $correlationId = ''): FuneralOrder
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-                return $order;
-            });
-        }
+        return $this->db->transaction(function () use ($orderId, $totalKopecks, $correlationId): FuneralOrder {
+            $order = FuneralOrder::findOrFail($orderId);
 
-        /**
-         * Процессинг оплаты заказа (Дебет Кошелька).
-         *
-         * @throws InsufficientFundsException
-         */
-        public function processPayment(FuneralOrder $order, int $amount_kopecks): bool
-        {
-            return DB::transaction(function () use ($order, $amount_kopecks) {
+            $payoutKopecks = $totalKopecks - (int) ($totalKopecks * 0.14);
 
-                // 4. Списание через WalletService (Канон 2026)
-                $this->wallet->debit(
-                    walletId: $order->client_id, // Условно ID клиента = его кошелек
-                    amountInKopecks: $amount_kopecks,
-                    type: 'withdrawal',
-                    reason: "Payment for funeral order #{$order->uuid}",
-                    correlation_id: $order->correlation_id
-                );
+            $order->update([
+                'status'         => 'completed',
+                'total_kopecks'  => $totalKopecks,
+                'payout_kopecks' => $payoutKopecks,
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 5. Обновление статуса оплаты
-                $order->increment('paid_amount_kopecks', $amount_kopecks);
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $payoutKopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['order_id' => $order->id],
+            );
 
-                if ($order->isFullyPaid()) {
-                    $order->update(['status' => 'paid']);
-                }
+            $this->logger->info('Ritual order completed', [
+                'order_id'       => $order->id,
+                'total_kopecks'  => $totalKopecks,
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel('audit')->info('Funeral payment processed', [
-                    'order_uuid' => $order->uuid,
-                    'amount' => $amount_kopecks,
-                    'correlation_id' => $order->correlation_id,
-                ]);
+            return $order;
+        });
+    }
 
-                return true;
-            });
-        }
+    /**
+     * Отменить ритуальный заказ.
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): FuneralOrder
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        /**
-         * Аннулирование заказа с возвратом средств.
-         */
-        public function cancelOrder(FuneralOrder $order, string $reason): void
-        {
-            DB::transaction(function () use ($order, $reason) {
+        return $this->db->transaction(function () use ($orderId, $correlationId): FuneralOrder {
+            $order = FuneralOrder::findOrFail($orderId);
 
-                if ($order->paid_amount_kopecks > 0) {
-                    // Возвращаем средства клиенту
-                    $this->wallet->credit(
-                        walletId: $order->client_id,
-                        amountInKopecks: $order->paid_amount_kopecks,
-                        type: 'refund',
-                        reason: "Refund for canceled order #{$order->uuid}: {$reason}",
-                        correlation_id: $order->correlation_id
-                    );
-                }
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed order', 400);
+            }
 
-                $order->update([
-                    'status' => 'cancelled',
-                    'metadata' => array_merge($order->metadata ?? [], ['cancellation_reason' => $reason]),
-                ]);
+            $order->update([
+                'status'         => 'cancelled',
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel('audit')->warning('Funeral order cancelled', [
-                    'order_uuid' => $order->uuid,
-                    'reason' => $reason,
-                    'correlation_id' => $order->correlation_id,
-                ]);
-            });
-        }
+            $this->logger->info('Ritual order cancelled', [
+                'order_id'       => $order->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Найти ритуальное агентство по ID.
+     */
+    public function getAgency(int $agencyId): RitualAgency
+    {
+        return RitualAgency::findOrFail($agencyId);
+    }
+
+    /**
+     * Получить заказ по ID.
+     */
+    public function getOrder(int $orderId): FuneralOrder
+    {
+        return FuneralOrder::findOrFail($orderId);
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

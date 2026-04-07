@@ -2,19 +2,21 @@
 
 namespace App\Domains\Fashion\FashionRetail\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FashionRetailCategory extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'fashion_retail_categories';
 
         protected $fillable = [
+        'correlation_id',
             'uuid',
             'tenant_id',
             'name',
@@ -34,8 +36,8 @@ final class FashionRetailCategory extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
@@ -54,4 +56,27 @@ final class FashionRetailCategory extends Model
         {
             return $this->hasMany(FashionRetailProduct::class, 'category_id');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

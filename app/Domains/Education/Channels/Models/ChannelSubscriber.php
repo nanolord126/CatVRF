@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 final class ChannelSubscriber extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'channel_subscribers';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'channel_id',
             'user_id',
             'visibility_preference',
@@ -45,5 +46,21 @@ final class ChannelSubscriber extends Model
         public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
         {
             return $query->whereNull('unsubscribed_at');
-        }
+        }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 }

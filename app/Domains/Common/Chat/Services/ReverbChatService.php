@@ -2,17 +2,19 @@
 
 namespace App\Domains\Common\Chat\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ReverbChatService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ReverbChatService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly string $correlationId;
 
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -22,16 +24,16 @@ final class ReverbChatService extends Model
          */
         public function createConversation(array $userIds, string $type = 'private', array $metadata = []): Conversation
         {
-            return DB::transaction(function () use ($userIds, $type, $metadata) {
+            return $this->db->transaction(function () use ($userIds, $type, $metadata) {
                 $conversation = Conversation::create([
-                    'tenant_id' => function_exists('tenant') ? tenant('id') : 1,
+                    'tenant_id' => function_exists('tenant') ? tenant()->id : 1,
                     'type' => $type,
                     'metadata' => $metadata,
                 ]);
 
                 $conversation->participants()->sync($userIds);
 
-                Log::channel('audit')->info('Chat Conversation created', [
+                $this->logger->info('Chat Conversation created', [
                     'conversation_id' => $conversation->id,
                     'participants' => $userIds,
                     'correlation_id' => $this->correlationId,
@@ -47,13 +49,9 @@ final class ReverbChatService extends Model
         public function sendMessage(string $conversationUuid, int $senderId, string $content, string $type = 'text'): Message
         {
             // 1. Проверка на фрод и частоту сообщений
-            FraudControlService::check([
-                'operation' => 'chat_message',
-                'sender_id' => $senderId,
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'chat_message', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($conversationUuid, $senderId, $content, $type) {
+            return $this->db->transaction(function () use ($conversationUuid, $senderId, $content, $type) {
                 $conversation = Conversation::where('uuid', $conversationUuid)->firstOrFail();
 
                 // 2. Создание сообщения
@@ -68,7 +66,7 @@ final class ReverbChatService extends Model
                 // 3. Широковещание через Reverb
                 event(new MessageSent($message, $this->correlationId));
 
-                Log::channel('audit')->info('Chat Message sent', [
+                $this->logger->info('Chat Message sent', [
                     'message_id' => $message->id,
                     'conversation_id' => $conversation->id,
                     'sender_id' => $senderId,
@@ -86,7 +84,7 @@ final class ReverbChatService extends Model
         {
             $conversation = Conversation::where('uuid', $conversationUuid)->firstOrFail();
             $conversation->participants()->updateExistingPivot($userId, [
-                'last_read_at' => now(),
+                'last_read_at' => Carbon::now(),
             ]);
         }
 }

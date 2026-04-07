@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Veterinary;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class VeterinaryAppointmentResource extends Model
+final class VeterinaryAppointmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = VeterinaryAppointment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -162,7 +159,6 @@ final class VeterinaryAppointmentResource extends Model
                     TextColumn::make('status')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'pending' => 'warning',
                             'confirmed' => 'success',
                             'in_progress' => 'primary',
                             'completed' => 'success',
@@ -174,7 +170,6 @@ final class VeterinaryAppointmentResource extends Model
                     TextColumn::make('payment_status')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'paid' => 'success',
                             'unpaid' => 'danger',
                             'refunded' => 'warning',
                             'partially_paid' => 'info',

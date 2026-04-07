@@ -2,6 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Sports\Pages;
 
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Sports\SportsResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,6 +16,10 @@ use Illuminate\Support\Str;
 
 final class ListSport extends ListRecords
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = SportsResource::class;
 
     protected function getHeaderActions(): array
@@ -26,10 +34,10 @@ final class ListSport extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = auth()->id();
+        $userId = $this->guard->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Sports ListRecords accessed', [
+        $this->logger->info('Sports ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -53,8 +61,8 @@ final class ListSport extends ListRecords
 
     public function render()
     {
-        Log::channel('audit')->info('ListSport page rendered', [
-            'user_id' => auth()->id(),
+        $this->logger->info('ListSport page rendered', [
+            'user_id' => $this->guard->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

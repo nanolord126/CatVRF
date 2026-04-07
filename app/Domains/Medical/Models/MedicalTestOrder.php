@@ -2,19 +2,22 @@
 
 namespace App\Domains\Medical\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class MedicalTestOrder extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'medical_test_orders';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'appointment_id',
             'patient_id',
@@ -43,10 +46,10 @@ final class MedicalTestOrder extends Model
             'completed_at' => 'datetime',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
+                if ($tenantId = $this->guard?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
                     $query->where('tenant_id', $tenantId);
                 }
             });

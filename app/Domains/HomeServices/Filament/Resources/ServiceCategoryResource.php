@@ -2,14 +2,13 @@
 
 namespace App\Domains\HomeServices\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ServiceCategoryResource extends Model
+use Filament\Resources\Resource;
+
+final class ServiceCategoryResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ServiceCategory::class;
         protected static ?string $navigationIcon = 'heroicon-o-list-bullet';
         protected static ?string $navigationLabel = 'Категории';
@@ -49,6 +48,29 @@ final class ServiceCategoryResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', tenant()->id);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

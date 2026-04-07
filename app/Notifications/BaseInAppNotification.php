@@ -12,57 +12,57 @@ abstract class BaseInAppNotification extends BaseNotification
     /**
      * Заголовок уведомления
      */
-    protected string $title = 'Notification';
+    private string $title = 'Notification';
 
     /**
      * Содержимое уведомления
      */
-    protected string $message = '';
+    private string $message = '';
 
     /**
      * Тип уведомления (info, success, warning, error, action)
      */
-    protected string $notificationType = 'info';
+    private string $notificationType = 'info';
 
     /**
      * Иконка для отображения
      */
-    protected ?string $icon = null;
+    private ?string $icon = null;
 
     /**
      * URL для изображения
      */
-    protected ?string $imageUrl = null;
+    private ?string $imageUrl = null;
 
     /**
      * Action button (текст и ссылка)
      */
-    protected array $actionButton = [];
+    private array $actionButton = [];
 
     /**
      * Второй action button
      */
-    protected array $secondaryButton = [];
+    private array $secondaryButton = [];
 
     /**
      * Данные для frontend (JSON)
      */
-    protected array $frontendData = [];
+    private array $frontendData = [];
 
     /**
      * Вы должны подтвердить это уведомление
      */
-    protected bool $requiresConfirmation = false;
+    private bool $requiresConfirmation = false;
 
     /**
      * Таймер автозакрытия (мс, 0 = не закрывать)
      */
-    protected int $autoCloseTimeout = 5000;
+    private int $autoCloseTimeout = 5000;
 
     /**
      * Показывать ли в истории
      */
-    protected bool $showInHistory = true;
+    private bool $showInHistory = true;
 
     /**
      * Конструктор

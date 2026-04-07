@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class DentalAppointmentResource extends Model
+final class DentalAppointmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = DentalAppointment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -142,31 +139,15 @@ final class DentalAppointmentResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentalAppointment::route('/'),
-                'create' => Pages\\CreateDentalAppointment::route('/create'),
-                'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalAppointment::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListDentalAppointment::route('/'),
-                'create' => Pages\\CreateDentalAppointment::route('/create'),
-                'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalAppointment::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDentalAppointment::route('/'),
-                'create' => Pages\\CreateDentalAppointment::route('/create'),
-                'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
-                'view' => Pages\\ViewDentalAppointment::route('/{record}'),
+                'index' => Pages\ListDentalAppointment::route('/'),
+                'create' => Pages\CreateDentalAppointment::route('/create'),
+                'edit' => Pages\EditDentalAppointment::route('/{record}/edit'),
+                'view' => Pages\ViewDentalAppointment::route('/{record}'),
             ];
         }
 }

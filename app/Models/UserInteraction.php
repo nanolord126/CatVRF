@@ -5,16 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 final class UserInteraction extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use BelongsToTenant;
+    use HasFactory, BelongsToTenant;
 
         protected $table = 'user_interactions';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'user_id',
             'interaction_type',
             'interactable_type',
@@ -61,7 +63,6 @@ final class UserInteraction extends Model
         public function getInteractionWeight(): float
         {
             return match ($this->interaction_type) {
-                'product_view' => 0.1,
                 'product_click' => 0.2,
                 'add_to_cart' => 0.5,
                 'add_to_wishlist' => 0.6,

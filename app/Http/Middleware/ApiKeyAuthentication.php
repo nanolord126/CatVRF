@@ -2,14 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ApiKeyAuthentication extends Model
+final class ApiKeyAuthentication
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Валидация API ключа для B2B интеграций.
          */
@@ -18,13 +21,13 @@ final class ApiKeyAuthentication extends Model
             $apiKey = $request->header('X-API-Key');
 
             if (!$apiKey) {
-                Log::channel('audit')->warning('API request without X-API-Key header', [
+                $this->logger->channel('audit')->warning('API request without X-API-Key header', [
                     'ip' => $request->ip(),
                     'path' => $request->path(),
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'message' => 'API key is required',
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ], 401);
@@ -41,13 +44,13 @@ final class ApiKeyAuthentication extends Model
                 ->first();
 
             if (!$record) {
-                Log::channel('audit')->warning('Invalid or expired API key attempted', [
+                $this->logger->channel('audit')->warning('Invalid or expired API key attempted', [
                     'key_preview' => substr($apiKey, 0, 10) . '...',
                     'ip' => $request->ip(),
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'message' => 'Invalid or expired API key',
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ], 401);
@@ -64,7 +67,7 @@ final class ApiKeyAuthentication extends Model
                 'api_abilities' => json_decode($record->abilities, true) ?? [],
             ]);
 
-            Log::channel('audit')->info('API key authenticated', [
+            $this->logger->channel('audit')->info('API key authenticated', [
                 'key_id' => $record->id,
                 'tenant_id' => $record->tenant_id,
                 'correlation_id' => $request->header('X-Correlation-ID'),

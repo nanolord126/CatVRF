@@ -2,19 +2,22 @@
 
 namespace App\Domains\Logistics\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ShipmentTracking extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'shipment_tracking';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'shipment_id',
             'event_type',
@@ -29,11 +32,11 @@ final class ShipmentTracking extends Model
             'event_time' => 'datetime',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check()) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -42,4 +45,27 @@ final class ShipmentTracking extends Model
         {
             return $this->belongsTo(Shipment::class);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

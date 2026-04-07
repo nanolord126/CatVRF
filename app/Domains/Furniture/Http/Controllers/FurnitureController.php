@@ -2,24 +2,22 @@
 
 namespace App\Domains\Furniture\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FurnitureController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FurnitureController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FurnitureService $furnitureService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FurnitureService $furnitureService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id ?? 0;
+                $tenantId = $request->user()?->tenant_id ?? 0;
 
                 $items = FurnitureItem::where('tenant_id', $tenantId)
                     ->when($request->input('style'),     fn ($q, $v) => $q->where('style', $v))
@@ -30,10 +28,10 @@ final class FurnitureController extends Model
                     ->orderByDesc('rating')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $items, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $items, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Furniture: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('Furniture: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -42,9 +40,9 @@ final class FurnitureController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $item = FurnitureItem::findOrFail($id);
-                return response()->json(['success' => true, 'data' => $item, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $item, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Товар не найден', 'correlation_id' => $correlationId], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Товар не найден', 'correlation_id' => $correlationId], 404);
             }
         }
 
@@ -55,11 +53,11 @@ final class FurnitureController extends Model
                 $item   = FurnitureItem::findOrFail($id);
                 $model  = $item->model_3d_url ?? null;
                 if ($model === null) {
-                    return response()->json(['success' => false, 'message' => '3D-модель недоступна', 'correlation_id' => $correlationId], 404);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => '3D-модель недоступна', 'correlation_id' => $correlationId], 404);
                 }
-                return response()->json(['success' => true, 'data' => ['model_url' => $model, 'item' => $item], 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => ['model_url' => $model, 'item' => $item], 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка 3D', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка 3D', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -67,16 +65,16 @@ final class FurnitureController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'furniture_order',
                     amount: (int) $request->input('total_kopecks', 0),
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -88,11 +86,11 @@ final class FurnitureController extends Model
                     'color'            => 'nullable|string',
                 ]);
 
-                $order = DB::transaction(function () use ($validated, $userId, $correlationId): FurnitureOrder {
+                $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): FurnitureOrder {
                     $item  = FurnitureItem::findOrFail($validated['item_id']);
                     $order = FurnitureOrder::create([
                         'uuid'             => Str::uuid(),
-                        'tenant_id'        => auth()->user()?->tenant_id ?? 0,
+                        'tenant_id'        => $request->user()?->tenant_id ?? 0,
                         'client_id'        => $userId,
                         'item_id'          => $validated['item_id'],
                         'quantity'         => $validated['quantity'],
@@ -105,19 +103,19 @@ final class FurnitureController extends Model
                         'correlation_id'   => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Furniture: Order created', [
+                    $this->logger->info('Furniture: Order created', [
                         'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                     ]);
 
                     return $order;
                 });
 
-                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Furniture: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('Furniture: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -125,13 +123,13 @@ final class FurnitureController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $orders = FurnitureOrder::where('client_id', auth()->id())
+                $orders = FurnitureOrder::where('client_id', $request->user()?->id)
                     ->with('item')
                     ->orderByDesc('created_at')
                     ->paginate(20);
-                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 }

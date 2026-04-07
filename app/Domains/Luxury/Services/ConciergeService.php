@@ -2,18 +2,15 @@
 
 namespace App\Domains\Luxury\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConciergeService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ConciergeService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать VIP-бронирование (товар или услуга)
@@ -24,14 +21,9 @@ final class ConciergeService extends Model
             array $data
         ): VIPBooking {
             // 1. Fraud Check
-            $this->fraudControl->check([
-                'user_id' => $client->user_id,
-                'operation' => 'create_vip_booking',
-                'amount' => $data['total_price_kopecks'] ?? 0,
-                'correlation_id' => $this->correlationId
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'create_vip_booking', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($client, $bookable, $data) {
+            return $this->db->transaction(function () use ($client, $bookable, $data) {
                 // 2. Логика холда стока (если это товар)
                 if ($bookable instanceof LuxuryProduct) {
                     if ($bookable->current_stock <= 0) {
@@ -52,16 +44,16 @@ final class ConciergeService extends Model
                     'total_price_kopecks' => $data['total_price_kopecks'] ?? 0,
                     'deposit_kopecks' => $data['deposit_kopecks'] ?? 0,
                     'payment_status' => 'unpaid',
-                    'concierge_id' => $data['concierge_id'] ?? auth()->id(),
+                    'concierge_id' => $data['concierge_id'] ?? $this->guard->id(),
                     'notes' => $data['notes'] ?? null,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
                 ]);
 
                 // 4. Audit Log
-                Log::channel('audit')->info('VIP Booking Created', [
+                $this->logger->info('VIP Booking Created', [
                     'booking_uuid' => $booking->uuid,
                     'client_uuid' => $client->uuid,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
                     'trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)
                 ]);
 

@@ -2,217 +2,194 @@
 
 namespace App\Domains\Pharmacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
 
-final class PharmacyService extends Model
+final readonly class PharmacyService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly PaymentService $payment,
-            private readonly WalletService $wallet,
-        ) {}
+        private readonly \App\Services\FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-        /**
-         * Создание заказа на медикаменты.
-         * Если в заказе есть рецептурные препараты, статус будет "awaiting_prescription".
-         */
-        public function createOrder(int $pharmacyId, array $items, string $correlationId = ""): PharmacyOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создание заказа в аптеке с проверкой наличия и рецептов.
+     */
+    public function createOrder(int $pharmacyId, array $items, string $correlationId): PharmacyOrder
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pharmacy_order',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-            // 1. Rate Limiting - защита от роботов на дефицитные лекарства
-            if (RateLimiter::tooManyAttempts("pharmacy:order:".auth()->id(), 5)) {
-                throw new \RuntimeException("Too many orders. Please wait.", 429);
+        return $this->db->transaction(function () use ($pharmacyId, $items, $correlationId): PharmacyOrder {
+            $pharmacy = Pharmacy::findOrFail($pharmacyId);
+            $totalAmount = 0;
+            $orderItems = [];
+
+            foreach ($items as $item) {
+                $medication = Medication::lockForUpdate()->findOrFail($item['medication_id']);
+
+                if ($medication->stock_quantity < $item['quantity']) {
+                    throw new RuntimeException("Insufficient stock for {$medication->name}. Available: {$medication->stock_quantity}.");
+                }
+
+                if ($medication->requires_prescription) {
+                    $this->validateActivePrescription($this->guard->id(), $medication->id);
+                }
+
+                $lineTotal = $medication->price * $item['quantity'];
+                $totalAmount += $lineTotal;
+
+                $orderItems[] = [
+                    'medication_id' => $medication->id,
+                    'quantity' => $item['quantity'],
+                    'price_at_order' => $medication->price,
+                    'line_total' => $lineTotal,
+                    'correlation_id' => $correlationId,
+                ];
+
+                $medication->decrement('stock_quantity', $item['quantity']);
             }
-            RateLimiter::hit("pharmacy:order:".auth()->id(), 3600);
 
-            return DB::transaction(function () use ($pharmacyId, $items, $correlationId) {
-                $pharmacy = Pharmacy::findOrFail($pharmacyId);
+            $order = PharmacyOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $pharmacy->tenant_id,
+                'user_id' => $this->guard->id(),
+                'pharmacy_id' => $pharmacyId,
+                'total_amount' => $totalAmount,
+                'status' => 'pending',
+                'idempotency_key' => (string) Str::uuid(),
+                'correlation_id' => $correlationId,
+                'tags' => ['source' => 'platform'],
+            ]);
 
-                // 2. Fraud Check - предотвращение злоупотреблений рецептурными препаратами
-                $fraud = $this->fraud->check([
-                    "user_id" => auth()->id() ?? 0,
-                    "operation_type" => "pharmacy_order_create",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["pharmacy_id" => $pharmacyId]
-                ]);
+            $order->items()->createMany($orderItems);
 
-                if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->error("Pharmacy Security Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
-                    throw new \RuntimeException("Blocked by security. Unusual medication activity.", 403);
-                }
+            $this->logger->info('Pharmacy order created', [
+                'order_id' => $order->id,
+                'order_uuid' => $order->uuid,
+                'pharmacy_id' => $pharmacyId,
+                'items_count' => count($orderItems),
+                'total_amount' => $totalAmount,
+                'correlation_id' => $correlationId,
+            ]);
 
-                $totalPrice = 0;
-                $requiresPrescription = false;
+            return $order;
+        });
+    }
 
-                foreach ($items as $item) {
-                    $medicine = Medicine::findOrFail($item["id"]);
-                    $totalPrice += ($medicine->price_kopecks * $item["qty"]);
+    /**
+     * Подтверждение готовности заказа к выдаче / доставке.
+     */
+    public function markReadyForPickup(int $orderId, string $correlationId): PharmacyOrder
+    {
+        return $this->db->transaction(function () use ($orderId, $correlationId): PharmacyOrder {
+            $order = PharmacyOrder::lockForUpdate()->findOrFail($orderId);
 
-                    if ($medicine->is_prescription_required) {
-                        $requiresPrescription = true;
-                    }
+            if ($order->status !== 'pending') {
+                throw new RuntimeException("Order {$orderId} cannot be marked ready from status: {$order->status}.");
+            }
 
-                    // 3. Резервация в InventoryManagementService
-                    $this->inventory->reserveStock(
-                        itemId: $medicine->id,
-                        quantity: $item["qty"],
-                        sourceType: "pharmacy_order",
-                        sourceId: 0 // Will update
-                    );
-                }
+            $order->update([
+                'status' => 'ready_for_pickup',
+                'ready_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 4. Создание заказа
-                $order = PharmacyOrder::create([
-                    "uuid" => (string) Str::uuid(),
-                    "tenant_id" => $pharmacy->tenant_id,
-                    "pharmacy_id" => $pharmacyId,
-                    "client_id" => auth()->id(),
-                    "status" => $requiresPrescription ? "awaiting_prescription" : "pending_payment",
-                    "total_price_kopecks" => $totalPrice,
-                    "requires_prescription" => $requiresPrescription,
-                    "correlation_id" => $correlationId,
-                    "tags" => ["temp_controlled:" . (collect($items)->contains("requires_cold_chain", true) ? "yes" : "no")]
-                ]);
+            $this->logger->info('Pharmacy order ready for pickup', [
+                'order_id' => $order->id,
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel("audit")->info("Pharmacy: order created", ["order_id" => $order->id, "requires_rx" => $requiresPrescription]);
+            return $order->refresh();
+        });
+    }
 
-                return $order;
-            });
+    /**
+     * Завершение заказа с выплатой аптеке.
+     */
+    public function completeOrder(int $orderId, string $correlationId): PharmacyOrder
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pharmacy_order_complete',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): PharmacyOrder {
+            $order = PharmacyOrder::with('pharmacy')->lockForUpdate()->findOrFail($orderId);
+
+            if ($order->status !== 'ready_for_pickup') {
+                throw new RuntimeException("Order {$orderId} is not ready for completion.");
+            }
+
+            $platformFee = (int) ($order->total_amount * 0.14);
+            $payoutAmount = $order->total_amount - $platformFee;
+
+            $this->wallet->credit(
+                userId: $order->pharmacy->owner_id,
+                amount: $payoutAmount,
+                type: 'pharmacy_payout',
+                reason: "Pharmacy order #{$order->id} completed",
+                correlationId: $correlationId,
+            );
+
+            $order->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'payout_amount' => $payoutAmount,
+                'platform_fee' => $platformFee,
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->logger->info('Pharmacy order completed with payout', [
+                'order_id' => $order->id,
+                'payout_amount' => $payoutAmount,
+                'platform_fee' => $platformFee,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order->refresh();
+        });
+    }
+
+    /**
+     * Валидация рецепта для рецептурных препаратов.
+     */
+    private function validateActivePrescription(int $userId, int $medicationId): void
+    {
+        $hasPrescription = Prescription::where('user_id', $userId)
+            ->where('status', 'verified')
+            ->where('expires_at', '>=', now())
+            ->exists();
+
+        if (!$hasPrescription) {
+            throw new RuntimeException("Valid prescription required for medication ID: {$medicationId}.");
         }
+    }
 
-        /**
-         * Валидация рецепта (вызывается после загрузки фото/скана пользователем).
-         */
-        public function validatePrescription(int $orderId, string $rxData, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = PharmacyOrder::findOrFail($orderId);
-
-            DB::transaction(function () use ($order, $rxData, $correlationId) {
-                // Здесь должна быть логика OCR или вызов API верификации рецептов
-                // Для Канона 2026 пишем логику подтверждения
-
-                Prescription::create([
-                    "order_id" => $order->id,
-                    "client_id" => $order->client_id,
-                    "raw_data" => $rxData,
-                    "verified_at" => now(),
-                    "correlation_id" => $correlationId
-                ]);
-
-                $order->update(["status" => "pending_payment"]);
-
-                Log::channel("audit")->info("Pharmacy: rx verified", ["order_id" => $order->id, "corr" => $correlationId]);
-            });
-        }
-
-        /**
-         * Завершение заказа и выплата аптеке.
-         */
-        public function completeOrder(int $orderId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = PharmacyOrder::with("pharmacy")->findOrFail($orderId);
-
-            DB::transaction(function () use ($order, $correlationId) {
-                $order->update([
-                    "status" => "completed",
-                    "delivered_at" => now()
-                ]);
-
-                // 5. Окончательное списание из Inventory
-                // (В реальности нужен цикл по айтемам заказа)
-                $this->inventory->deductStock(
-                    itemId: 0,
-                    quantity: 1,
-                    reason: "Pharmacy order completed: {$order->id}",
-                    sourceType: "pharmacy_order",
-                    sourceId: $order->id
-                );
-
-                // 6. Расчет комиссии платформы (14% согласно Канону 2026)
-                $total = $order->total_price_kopecks;
-                $platformFee = (int) ($total * 0.14);
-                $payout = $total - $platformFee;
-
-                // Выплата аптеке
-                $this->wallet->credit(
-                    userId: $order->pharmacy->owner_id,
-                    amount: $payout,
-                    type: "pharmacy_payout",
-                    reason: "Order delivered: {$order->id}",
-                    correlationId: $correlationId
-                );
-
-                Log::channel("audit")->info("Pharmacy: payout done", ["order_id" => $order->id, "payout" => $payout]);
-            });
-        }
-
-        /**
-         * Получение заказа по ID.
-         */
-        public function getOrder(int $orderId): PharmacyOrder
-        {
-            return PharmacyOrder::with(['pharmacy', 'medicines'])->findOrFail($orderId);
-        }
-
-        /**
-         * Получение всех заказов пользователя.
-         */
-        public function getOrdersForUser(int $userId, int $limit = 10): \Illuminate\Support\Collection
-        {
-            return PharmacyOrder::where('client_id', $userId)
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-        }
-
-        /**
-         * Получение всех заказов аптеки.
-         */
-        public function getOrdersForPharmacy(int $pharmacyId, int $limit = 50): \Illuminate\Support\Collection
-        {
-            return PharmacyOrder::where('pharmacy_id', $pharmacyId)
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-        }
-
-        /**
-         * Отмена заказа.
-         */
-        public function cancelOrder(int $orderId, string $reason, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) \Illuminate\Support\Str::uuid();
-            $order = PharmacyOrder::findOrFail($orderId);
-
-            DB::transaction(function () use ($order, $reason, $correlationId) {
-                if (in_array($order->status, ['completed', 'cancelled'])) {
-                    throw new \RuntimeException("Cannot cancel order with status: {$order->status}");
-                }
-
-                $order->update(['status' => 'cancelled']);
-
-                // Возврат зарезервированного товара
-                // (В реальности нужно вернуть все резервации)
-                $this->inventory->releaseStock(
-                    itemId: 0,
-                    quantity: 1,
-                    sourceType: 'pharmacy_order',
-                    sourceId: $order->id
-                );
-
-                Log::channel("audit")->info("Pharmacy order cancelled", [
-                    "order_id" => $order->id,
-                    "reason" => $reason,
-                    "correlation_id" => $correlationId,
-                ]);
-            });
-        }
+    /**
+     * Поиск лекарств по МНН или торговому названию.
+     */
+    public function searchMedications(string $query, int $pharmacyId): \Illuminate\Support\Collection
+    {
+        return Medication::where('pharmacy_id', $pharmacyId)
+            ->where('stock_quantity', '>', 0)
+            ->where(function ($q) use ($query): void {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('inn', 'like', "%{$query}%");
+            })
+            ->orderBy('name')
+            ->get();
+    }
 }

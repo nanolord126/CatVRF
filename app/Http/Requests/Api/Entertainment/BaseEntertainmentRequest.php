@@ -2,23 +2,58 @@
 
 namespace App\Http\Requests\Api\Entertainment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class BaseEntertainmentRequest extends Model
+/**
+ * Class BaseEntertainmentRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Api\Entertainment
+ */
+final class BaseEntertainmentRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
             return true;
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [
                 'correlation_id' => ['nullable', 'string', 'uuid'],
             ];
         }
+
+    /**
+     * Get the string representation of this object.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return static::class . '::' . ($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

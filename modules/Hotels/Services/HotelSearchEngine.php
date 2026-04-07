@@ -2,20 +2,17 @@
 
 namespace Modules\Hotels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Modules\Hotels\Models\Hotel;
 
-final class HotelSearchEngine extends Model
+final class HotelSearchEngine
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Платформенный поиск по отелям с учетом фильтров.
-         */
-        public function search(array $filters): Builder
-        {
-            $query = Hotel::query()->where('is_active', true);
+     * Платформенный поиск по отелям с учетом фильтров.
+     */
+    public function search(array $filters): Builder
+    {
+        $query = Hotel::query()->where('is_active', true);
     
             // 1. Гео-фильтр (Радиус от точки)
             if (isset($filters['lat'], $filters['lng'])) {

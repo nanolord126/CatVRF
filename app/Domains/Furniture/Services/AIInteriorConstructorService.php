@@ -2,17 +2,14 @@
 
 namespace App\Domains\Furniture\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIInteriorConstructorService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIInteriorConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RecommendationService $generalRecommendations,
-            private readonly FurnitureDomainService $furnitureService
+            private readonly FurnitureDomainService $furnitureService, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -23,7 +20,7 @@ final class AIInteriorConstructorService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-4: AI Interior Constructor Request', [
+            $this->logger->info('LAYER-4: AI Interior Constructor Request', [
                 'room_type' => $dto->roomTypeId,
                 'style' => $dto->stylePreference,
                 'budget' => $dto->budgetKopecks,
@@ -38,7 +35,7 @@ final class AIInteriorConstructorService extends Model
                 $products = $this->getMatchingProducts($dto->roomTypeId, $dto->stylePreference);
 
                 if ($products->isEmpty()) {
-                    throw new Exception("No products found for room type #{$dto->roomTypeId} with style '{$dto->stylePreference}'.");
+                    throw new \DomainException("No products found for room type #{$dto->roomTypeId} with style '{$dto->stylePreference}'.");
                 }
 
                 // 3. Selection Algorithm (Budget-aware + Style-score)
@@ -52,7 +49,7 @@ final class AIInteriorConstructorService extends Model
                     correlationId: $correlationId
                 );
 
-                Log::channel('audit')->info('LAYER-4: AI Interior Layout Generated Successfully', [
+                $this->logger->info('LAYER-4: AI Interior Layout Generated Successfully', [
                     'total_items' => count($result->recommendedProductIds),
                     'total_cost' => $result->estimatedTotal,
                     'correlation_id' => $correlationId,
@@ -61,7 +58,7 @@ final class AIInteriorConstructorService extends Model
                 return $result;
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('LAYER-4: AI Construction Failed', [
+                $this->logger->error('LAYER-4: AI Construction Failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

@@ -2,17 +2,15 @@
 
 namespace App\Domains\Fashion\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProductService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ProductService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createProduct(
             int $tenantId,
@@ -24,23 +22,15 @@ final class ProductService extends Model
             int $stock,
             array $colors = [],
             array $sizes = [],
-            ?string $correlationId = null,
-        ): FashionProduct {
-
+            ?string $correlationId = null
+    ): FashionProduct {
 
             try {
                 $correlationId ??= Str::uuid()->toString();
 
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $product = DB::transaction(function () use (
+                $product = $this->db->transaction(function () use (
                     $tenantId,
                     $storeId,
                     $categoryId,
@@ -50,8 +40,8 @@ final class ProductService extends Model
                     $stock,
                     $colors,
                     $sizes,
-                    $correlationId,
-                ) {
+                    $correlationId
+    ) {
                     $product = FashionProduct::create([
                         'uuid' => Str::uuid()->toString(),
                         'tenant_id' => $tenantId,
@@ -67,7 +57,7 @@ final class ProductService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Fashion product created', [
+                    $this->logger->info('Fashion product created', [
                         'product_id' => $product->id,
                         'store_id' => $storeId,
                         'sku' => $sku,
@@ -80,7 +70,7 @@ final class ProductService extends Model
 
                 return $product;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create fashion product', [
+                $this->logger->error('Failed to create fashion product', [
                     'error' => $e->getMessage(),
                     'sku' => $sku,
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -93,28 +83,20 @@ final class ProductService extends Model
         public function updateProduct(FashionProduct $product, array $data, ?string $correlationId = null): void
         {
 
-
             try {
                 $correlationId ??= Str::uuid()->toString();
 
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($product, $data, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($product, $data, $correlationId) {
                     $product->update([...$data, 'correlation_id' => $correlationId]);
 
-                    Log::channel('audit')->info('Fashion product updated', [
+                    $this->logger->info('Fashion product updated', [
                         'product_id' => $product->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update fashion product', [
+                $this->logger->error('Failed to update fashion product', [
                     'product_id' => $product->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -127,32 +109,24 @@ final class ProductService extends Model
         public function updateStock(FashionProduct $product, int $quantity, ?string $correlationId = null): void
         {
 
-
             try {
                 $correlationId ??= Str::uuid()->toString();
 
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($product, $quantity, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($product, $quantity, $correlationId) {
                     $product->update([
                         'current_stock' => $quantity,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Fashion product stock updated', [
+                    $this->logger->info('Fashion product stock updated', [
                         'product_id' => $product->id,
                         'quantity' => $quantity,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update fashion product stock', [
+                $this->logger->error('Failed to update fashion product stock', [
                     'product_id' => $product->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',

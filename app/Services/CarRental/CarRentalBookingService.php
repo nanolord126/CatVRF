@@ -2,31 +2,42 @@
 
 namespace App\Services\CarRental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CarRentalBookingService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+use App\Services\FraudControlService;
+use App\Models\CarRental\Car;
+use App\Models\CarRental\Booking;
+use App\Models\CarRental\Insurance;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class CarRentalBookingService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Dependency injection for modular logic.
          */
         public function __construct(
-            private FraudControlService $fraudControl,
-            private PricingService $pricingService
-        ) {}
+        private readonly Request $request,
+            private FraudControlService $fraud,
+            private PricingService $pricingService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Initialize booking process (Layer: Reservation).
-         * Strictly uses DB::transaction and pessimistic locking.
+         * Strictly uses $this->db->transaction and pessimistic locking.
          */
         public function createBooking(array $data, string $correlationId): Booking
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 1. Mandatory Fraud Check (Canon Rule 2026)
-                $this->fraudControl->check($data['user_id'], 'car_rental_booking');
+                $this->fraud->check((int) $data['user_id'], 'car_rental_booking', $this->request->ip());
 
                 // 2. Fetch car with pessimistic lock to prevent double booking
                 $car = Car::where('id', $data['car_id'])
@@ -34,7 +45,7 @@ final class CarRentalBookingService extends Model
                     ->firstOrFail();
 
                 if (!$car->isAvailable()) {
-                    throw new \Exception("The vehicle '{$car->getDisplayNameAttribute()}' is currently unvailable.");
+                    throw new \DomainException("The vehicle '{$car->getDisplayNameAttribute()}' is currently unvailable.");
                 }
 
                 // 3. Date Parsing
@@ -75,7 +86,7 @@ final class CarRentalBookingService extends Model
                 $car->update(['status' => 'reserved']);
 
                 // 7. Audit Logging (Canon Rule 2026)
-                Log::channel('audit')->info('[CarRental] Booking Created', [
+                $this->logger->channel('audit')->info('[CarRental] Booking Created', [
                     'correlation_id' => $correlationId,
                     'booking_uuid' => $booking->uuid,
                     'user_id' => $data['user_id'],
@@ -92,11 +103,11 @@ final class CarRentalBookingService extends Model
          */
         public function processCheckIn(string $bookingUuid, array $photoData, int $mileage, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingUuid, $photoData, $mileage, $correlationId) {
+            return $this->db->transaction(function () use ($bookingUuid, $photoData, $mileage, $correlationId) {
                 $booking = Booking::where('uuid', $bookingUuid)->lockForUpdate()->firstOrFail();
 
                 if ($booking->status !== 'confirmed') {
-                    throw new \Exception("Cannot check-in. Booking must be in 'confirmed' status.");
+                    throw new \LogicException("Cannot check-in. Booking must be in 'confirmed' status.");
                 }
 
                 $booking->update([
@@ -111,7 +122,7 @@ final class CarRentalBookingService extends Model
 
                 $booking->car->update(['status' => 'rented', 'mileage' => $mileage]);
 
-                Log::channel('audit')->info('[CarRental] Vehicle Picked Up', [
+                $this->logger->channel('audit')->info('[CarRental] Vehicle Picked Up', [
                     'booking_uuid' => $bookingUuid,
                     'correlation_id' => $correlationId,
                     'mileage' => $mileage,
@@ -126,11 +137,11 @@ final class CarRentalBookingService extends Model
          */
         public function processCheckOut(string $bookingUuid, array $photoData, int $endMileage, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingUuid, $photoData, $endMileage, $correlationId) {
+            return $this->db->transaction(function () use ($bookingUuid, $photoData, $endMileage, $correlationId) {
                 $booking = Booking::with('car')->where('uuid', $bookingUuid)->lockForUpdate()->firstOrFail();
 
                 if ($booking->status !== 'picked_up') {
-                    throw new \Exception("Cannot return vehicle. Status mismatch.");
+                    throw new \LogicException("Cannot return vehicle. Status mismatch.");
                 }
 
                 $startMileage = $booking->check_in_data['start_mileage'] ?? 0;
@@ -152,7 +163,7 @@ final class CarRentalBookingService extends Model
                     'mileage' => $endMileage
                 ]);
 
-                Log::channel('audit')->info('[CarRental] Vehicle Returned', [
+                $this->logger->channel('audit')->info('[CarRental] Vehicle Returned', [
                     'booking_uuid' => $bookingUuid,
                     'distance' => $tripDistance,
                     'correlation_id' => $correlationId,

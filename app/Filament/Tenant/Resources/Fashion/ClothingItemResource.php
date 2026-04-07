@@ -2,15 +2,8 @@
 
 namespace App\Filament\Tenant\Resources\Fashion;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClothingItemResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor, Components\FileUpload};
+use Psr\Log\LoggerInterface;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -20,6 +13,10 @@ final class ClothingItemResource extends Model
 
     final class ClothingItemResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = ClothingItem::class;
         protected static ?string $navigationIcon = 'heroicon-m-shopping-bag';
         protected static ?string $navigationGroup = 'Fashion';
@@ -220,14 +217,12 @@ final class ClothingItemResource extends Model
                 BadgeColumn::make('category')
                     ->label('Категория')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'mens' => 'М',
                         'womens' => 'Ж',
                         'kids' => 'Д',
                         'unisex' => 'У',
                         default => '-',
                     })
                     ->color(fn ($state) => match($state) {
-                        'mens' => 'blue',
                         'womens' => 'pink',
                         'kids' => 'green',
                         'unisex' => 'purple',
@@ -327,7 +322,7 @@ final class ClothingItemResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Clothing featured', ['item_id' => $record->id, 'correlation_id' => $record->correlation_id]);
+                            $this->logger->info('Clothing featured', ['item_id' => $record->id, 'correlation_id' => $record->correlation_id]);
                         })
                         ->successNotification(),
                 ]),
@@ -343,7 +338,7 @@ final class ClothingItemResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Clothing bulk activated', ['item_id' => $record->id, 'correlation_id' => $record->correlation_id]);
+                                $this->logger->info('Clothing bulk activated', ['item_id' => $record->id, 'correlation_id' => $record->correlation_id]);
                             });
                         })
                         ->deselectRecordsAfterCompletion(),

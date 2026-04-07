@@ -1,76 +1,88 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\FraudControlService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class BeautyTryOnService extends Model
+/**
+ * BeautyTryOnService — инициация AR-примерки для пользователей.
+ *
+ * Запускает AR-сессию для виртуальной примерки причёсок и макияжа,
+ * возвращает session_id для отслеживания результатов.
+ */
+final readonly class BeautyTryOnService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
-        /**
-         * Инициировать AR-примерку для пользователя.
-         */
-        public function initiateARSession(int $userId, string $serviceType = 'hairstyle', string $correlationId = ''): array
-        {
-            $correlationId = $correlationId ?: Str::uuid()->toString();
+        private FraudControlService $fraud,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {
+    }
 
-            $this->fraudControlService->check(
-                $userId,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId
-            );
+    /**
+     * Инициировать AR-примерку для пользователя.
+     *
+     * @return array{success: bool, session_id: string, service_type: string, correlation_id: string}
+     */
+    public function initiateARSession(int $userId, string $serviceType = 'hairstyle', string $correlationId = ''): array
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : Str::uuid()->toString();
 
-            try {
-                Log::channel('audit')->info('AR session initiated', [
-                    'user_id' => $userId,
-                    'service_type' => $serviceType,
-                    'correlation_id' => $correlationId,
-                ]);
-                // Возвращает session_id для отслеживания
+        $this->fraud->check(
+            userId: (int) ($this->guard->id() ?? 0),
+            operationType: 'beauty_ar_session',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-                return [
-                    'success' => true,
-                    'session_id' => \Ramsey\Uuid\Uuid::uuid4()->toString(),
-                    'service_type' => $serviceType,
-                    'correlation_id' => $correlationId,
-                ];
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('AR session failed', [
-                    'user_id' => $userId,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                throw $e;
-            }
-        }
-
-        /**
-         * Получить результаты примерки (примерные координаты).
-         */
-        public function getTryOnResult(string $sessionId, string $correlationId = ''): array
-        {
-            $correlationId = $correlationId ?: Str::uuid()->toString();
-
-            Log::channel('audit')->info('Try-on result requested', [
-                'session_id' => $sessionId,
+        try {
+            $this->logger->info('AR session initiated', [
+                'user_id' => $userId,
+                'service_type' => $serviceType,
                 'correlation_id' => $correlationId,
             ]);
 
             return [
-                'session_id' => $sessionId,
-                'hairstyle_matches' => [], // Array of recommended hairstyles
-                'makeup_matches' => [], // Array of recommended makeup products
-                'confidence_score' => 0.0,
+                'success' => true,
+                'session_id' => Str::uuid()->toString(),
+                'service_type' => $serviceType,
+                'correlation_id' => $correlationId,
             ];
+        } catch (\Throwable $e) {
+            $this->logger->error('AR session failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            throw $e;
         }
+    }
+
+    /**
+     * Получить результаты примерки.
+     *
+     * @return array{session_id: string, hairstyle_matches: array<mixed>, makeup_matches: array<mixed>, confidence_score: float}
+     */
+    public function getTryOnResult(string $sessionId, string $correlationId = ''): array
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : Str::uuid()->toString();
+
+        $this->logger->info('Try-on result requested', [
+            'session_id' => $sessionId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return [
+            'session_id' => $sessionId,
+            'hairstyle_matches' => [],
+            'makeup_matches' => [],
+            'confidence_score' => 0.0,
+        ];
+    }
 }

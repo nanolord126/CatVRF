@@ -2,30 +2,31 @@
 
 namespace App\Domains\Freelance\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CalculateFreelancerEarningsJob extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class CalculateFreelancerEarningsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            public readonly int $freelancerId = 0,
-            public readonly string $correlationId = '',
-        ) {
+        public function __construct(public int $freelancerId = 0,
+            private string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             $this->onQueue('default');
 
         }
 
         public function handle(): void
         {
-            DB::transaction(function () {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () {
                 $freelancer = Freelancer::find($this->freelancerId);
                 if (!$freelancer) {
-                    Log::channel('audit')->warning('Freelancer not found for earnings calculation', [
+                    $this->logger->warning('Freelancer not found for earnings calculation', [
                         'freelancer_id' => $this->freelancerId,
                         'correlation_id' => $this->correlationId,
                     ]);
@@ -45,7 +46,7 @@ final class CalculateFreelancerEarningsJob extends Model
                     'jobs_completed' => $completedJobs,
                 ]);
 
-                Log::channel('audit')->info('Freelancer earnings calculated', [
+                $this->logger->info('Freelancer earnings calculated', [
                     'freelancer_id' => $this->freelancerId,
                     'total_earned' => $totalEarned,
                     'jobs_completed' => $completedJobs,
@@ -56,6 +57,6 @@ final class CalculateFreelancerEarningsJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(24);
+            return Carbon::now()->addHours(24);
         }
 }

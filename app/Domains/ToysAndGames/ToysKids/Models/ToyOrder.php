@@ -2,14 +2,17 @@
 
 namespace App\Domains\ToysAndGames\ToysKids\Models;
 
+use App\Models\Traits\HasUuids;
+use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ToyOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 
         protected $table = 'toy_orders';
@@ -30,7 +33,7 @@ final class ToyOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function product(): BelongsTo
         {
@@ -41,7 +44,7 @@ final class ToyOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isPending(): bool
         {
@@ -52,7 +55,7 @@ final class ToyOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function isDelivered(): bool
         {
@@ -63,8 +66,8 @@ final class ToyOrder extends Model
         {
             parent::booted();
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }

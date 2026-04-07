@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BookingResource extends Model
+final class BookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Booking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -83,31 +80,15 @@ final class BookingResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBooking::route('/'),
-                'create' => Pages\\CreateBooking::route('/create'),
-                'edit' => Pages\\EditBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewBooking::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBooking::route('/'),
-                'create' => Pages\\CreateBooking::route('/create'),
-                'edit' => Pages\\EditBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewBooking::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBooking::route('/'),
-                'create' => Pages\\CreateBooking::route('/create'),
-                'edit' => Pages\\EditBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewBooking::route('/{record}'),
+                'index' => Pages\ListBooking::route('/'),
+                'create' => Pages\CreateBooking::route('/create'),
+                'edit' => Pages\EditBooking::route('/{record}/edit'),
+                'view' => Pages\ViewBooking::route('/{record}'),
             ];
         }
 }

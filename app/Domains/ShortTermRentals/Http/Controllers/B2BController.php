@@ -2,17 +2,14 @@
 
 namespace App\Domains\ShortTermRentals\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class B2BController extends Model
+final class B2BController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ApartmentService $apartmentService,
-            private readonly FraudControlService $fraudControl
+            private readonly FraudControlService $fraud
         ) {}
 
         public function manageListings(Request $request): JsonResponse
@@ -22,23 +19,46 @@ final class B2BController extends Model
             try {
                 $isB2B = $request->has('inn') && $request->has('business_card_id');
                 if (!$isB2B) {
-                    return response()->json(['error' => 'B2B only', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['error' => 'B2B only', 'correlation_id' => $correlationId], 403);
                 }
 
-                $this->fraudControl->check($request->all(), 'manage_b2b_listings');
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 $listings = $this->apartmentService->getB2BListings($request->all(), $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $listings,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ], 403);
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

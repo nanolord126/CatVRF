@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Channels\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Pages\CreateRecord;
 
-final class CreatePost extends Model
+final class CreatePost extends CreateRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = PostResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -37,4 +34,27 @@ final class CreatePost extends Model
         {
             return $this->getResource()::getUrl('index');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

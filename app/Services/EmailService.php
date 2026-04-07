@@ -2,13 +2,18 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
+
+
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Log\LogManager;
 
 final readonly class EmailService
 {
     public function __construct(
+        private readonly Request $request,
         private RateLimiterService $rateLimiterService,
+        private readonly LogManager $logger,
     ) {}
 
     public function sendDailyReport(int $tenantId, array $data, string $correlationId = ''): void
@@ -21,13 +26,15 @@ final readonly class EmailService
                     ->subject('Ежедневный отчёт — ' . date('d.m.Y'));
             });
 
-            Log::channel('audit')->info('Daily report sent', [
+            $this->logger->channel('audit')->info('Daily report sent', [
                 'tenant_id' => $tenantId,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Daily report send failed', [
+            $this->logger->channel('audit')->error('Daily report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
     }
@@ -42,13 +49,15 @@ final readonly class EmailService
                     ->subject('Еженедельный отчёт — ' . date('W, Y'));
             });
 
-            Log::channel('audit')->info('Weekly report sent', [
+            $this->logger->channel('audit')->info('Weekly report sent', [
                 'tenant_id' => $tenantId,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Weekly report send failed', [
+            $this->logger->channel('audit')->error('Weekly report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
     }
@@ -60,14 +69,16 @@ final readonly class EmailService
                 $message->to($email);
             });
 
-            Log::channel('audit')->info('Transactional email sent', [
+            $this->logger->channel('audit')->info('Transactional email sent', [
                 'email' => $email,
                 'template' => $template,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Transactional email send failed', [
+            $this->logger->channel('audit')->error('Transactional email send failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
     }

@@ -2,19 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class UserBodyMetrics extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use BelongsToTenant;
+    use HasFactory, TenantScoped;
 
         protected $table = 'user_body_metrics';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'user_id',
             'tenant_id',
             'clothing_size_top',
@@ -59,7 +60,7 @@ final class UserBodyMetrics extends Model
         public function getBMI(): ?float
         {
             if (!$this->height_cm || !$this->weight_kg) {
-                return null;
+                throw new \DomainException('Entity not found');
             }
 
             $heightM = $this->height_cm / 100;
@@ -74,7 +75,7 @@ final class UserBodyMetrics extends Model
             $bmi = $this->getBMI();
 
             if (!$bmi) {
-                return null;
+                throw new \DomainException('Entity not found');
             }
 
             return match (true) {

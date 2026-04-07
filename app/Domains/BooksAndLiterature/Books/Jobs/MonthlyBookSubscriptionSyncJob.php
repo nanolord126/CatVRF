@@ -2,32 +2,35 @@
 
 namespace App\Domains\BooksAndLiterature\Books\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class MonthlyBookSubscriptionSyncJob extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class MonthlyBookSubscriptionSyncJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            private readonly string $correlationId = (string) Str::uuid()
-        ) {}
+        public function __construct(private readonly string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Monthly Book Box Sync Started', [
+            $this->logger->info('Monthly Book Box Sync Started', [
                 'cid' => $this->correlationId,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => Carbon::now()->toIso8601String(),
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             try {
                 // Processing in chunks to maintain performance with thousands of subscribers
                 BookSubscriptionBox::where('status', 'active')
                     ->where('is_paid', true)
-                    ->where('next_delivery_at', '<=', now())
+                    ->where('next_delivery_at', '<=', Carbon::now())
                     ->chunk(100, function ($subscriptions) {
                         foreach ($subscriptions as $box) {
                             $this->processSubscriptionBox($box);
@@ -35,23 +38,26 @@ final class MonthlyBookSubscriptionSyncJob extends Model
                     });
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Monthly Book Box Sync CRITICAL FAILURE', [
+                $this->logger->error('Monthly Book Box Sync CRITICAL FAILURE', [
                     'cid' => $this->correlationId,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 throw $e;
             }
 
-            Log::channel('audit')->info('Monthly Book Box Sync Completed', [
-                'cid' => $this->correlationId
+            $this->logger->info('Monthly Book Box Sync Completed', [
+                'cid' => $this->correlationId,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
         }
 
         private function processSubscriptionBox(BookSubscriptionBox $box): void
         {
-            DB::transaction(function () use ($box) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($box) {
                 // Find inventory available for the box theme/genre
                 $availableBooks = Book::where('genre_id', $box->genre_id)
                     ->where('stock_quantity', '>', 10) // Reserve minimum stock
@@ -61,10 +67,11 @@ final class MonthlyBookSubscriptionSyncJob extends Model
                     ->get();
 
                 if ($availableBooks->isEmpty()) {
-                    Log::channel('audit')->warning('Subscription fulfillment deferred - No stock for genre', [
+                    $this->logger->warning('Subscription fulfillment deferred - No stock for genre', [
                         'cid' => $this->correlationId,
                         'box_id' => $box->id,
-                        'genre_id' => $box->genre_id
+                        'genre_id' => $box->genre_id,
+                        'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
                     return;
                 }
@@ -97,18 +104,19 @@ final class MonthlyBookSubscriptionSyncJob extends Model
 
                 // Update Box Status for next month
                 $box->update([
-                    'last_sent_at' => now(),
-                    'next_delivery_at' => now()->addMonth(),
+                    'last_sent_at' => Carbon::now(),
+                    'next_delivery_at' => Carbon::now()->addMonth(),
                     'metadata' => array_merge($box->metadata ?? [], [
                        'last_shipment_uuid' => $order->uuid,
                        'books_sent' => $availableBooks->pluck('id')->toArray()
                     ])
                 ]);
 
-                Log::channel('audit')->info('Book Subscription Fulfilled', [
+                $this->logger->info('Book Subscription Fulfilled', [
                     'cid' => $this->correlationId,
                     'box_uuid' => $box->uuid,
-                    'order_uuid' => $order->uuid
+                    'order_uuid' => $order->uuid,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             });
         }
@@ -120,6 +128,6 @@ final class MonthlyBookSubscriptionSyncJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(24);
+            return Carbon::now()->addHours(24);
         }
 }

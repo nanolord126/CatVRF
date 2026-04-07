@@ -2,17 +2,18 @@
 
 namespace App\Livewire\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Contracts\Auth\Guard;
 
-final class PostCard extends Model
+final class PostCard extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public int $postId;
+    private int $postId;
 
-        public ?Post $post = null;
+        private ?Post $post = null;
 
         public function mount(int $postId): void
         {
@@ -30,7 +31,7 @@ final class PostCard extends Model
             }
 
             // Проверка авторства
-            $tenantId = auth()->user()?->current_tenant_id ?? auth()->id();
+            $tenantId = $this->guard->user()?->current_tenant_id ?? $this->guard->id();
 
             if ((string) $tenantId !== (string) ($this->post->channel?->tenant_id ?? '')) {
                 $this->dispatch('notify', type: 'error', message: 'Нет доступа.');
@@ -49,8 +50,8 @@ final class PostCard extends Model
         public function render(): View
         {
             $isOwner = $this->post !== null
-                && auth()->check()
-                && (string) auth()->user()->current_tenant_id === (string) ($this->post->channel?->tenant_id ?? '');
+                && $this->guard->check()
+                && (string) $this->guard->user()->current_tenant_id === (string) ($this->post->channel?->tenant_id ?? '');
 
             return view('livewire.channels.post-card', [
                 'post'    => $this->post,

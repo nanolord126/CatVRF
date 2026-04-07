@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CosmeticsResource extends Model
+final class CosmeticsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CosmeticOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +105,15 @@ final class CosmeticsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCosmetics::route('/'),
-                'create' => Pages\\CreateCosmetics::route('/create'),
-                'edit' => Pages\\EditCosmetics::route('/{record}/edit'),
-                'view' => Pages\\ViewCosmetics::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListCosmetics::route('/'),
-                'create' => Pages\\CreateCosmetics::route('/create'),
-                'edit' => Pages\\EditCosmetics::route('/{record}/edit'),
-                'view' => Pages\\ViewCosmetics::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCosmetics::route('/'),
-                'create' => Pages\\CreateCosmetics::route('/create'),
-                'edit' => Pages\\EditCosmetics::route('/{record}/edit'),
-                'view' => Pages\\ViewCosmetics::route('/{record}'),
+                'index' => Pages\ListCosmetics::route('/'),
+                'create' => Pages\CreateCosmetics::route('/create'),
+                'edit' => Pages\EditCosmetics::route('/{record}/edit'),
+                'view' => Pages\ViewCosmetics::route('/{record}'),
             ];
         }
 }

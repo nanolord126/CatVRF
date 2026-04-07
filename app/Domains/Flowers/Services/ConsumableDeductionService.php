@@ -1,42 +1,80 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * ConsumableDeductionService — CatVRF 2026 Component.
+ *
+ * Сервис списания расходных материалов при изготовлении букетов.
+ * Вызывается после подтверждения комплектации букета.
+ * Интеграция с InventoryManagementService для актуализации остатков.
+ *
+ * @package App\Domains\Flowers\Services
+ * @version 2026.1
+ */
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\FlowerConsumable;
+use App\Services\Inventory\InventoryManagementService;
+use Psr\Log\LoggerInterface;
 
-final class ConsumableDeductionService extends Model
+final readonly class ConsumableDeductionService
 {
-    use HasFactory;
+    /**
+     * Идентификатор версии компонента.
+     */
+    private const VERSION = '1.0.0';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    // Dependencies injected via constructor
-        // Add private readonly properties here
-        public function __construct(
-            private InventoryManagementService $inventoryService
-        ) {}
+    /**
+     * Максимальное количество повторных попыток.
+     */
+    private const MAX_RETRIES = 3;
 
-        public function deductForBouquet(
-            int $bouquetId,
-            string $correlationId
-        ): void {
-            $consumables = FlowerConsumable::where('bouquet_id', $bouquetId)
-                ->get();
+    /**
+     * TTL кэша по умолчанию (секунды).
+     */
+    private const CACHE_TTL = 3600;
 
-            foreach ($consumables as $consumable) {
-                $this->inventoryService->deductStock(
-                    itemId: $consumable->id,
-                    quantity: $consumable->quantity_per_bouquet,
-                    reason: 'bouquet_completion',
-                    sourceType: 'bouquet',
-                    sourceId: $bouquetId
-                );
+    public function __construct(
+        private readonly InventoryManagementService $inventoryService,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-                Log::channel('audit')->info('Consumable deducted', [
-                    'consumable_id' => $consumable->id,
-                    'bouquet_id' => $bouquetId,
-                    'correlation_id' => $correlationId,
-                ]);
-            }
+    /**
+     * Списать расходные материалы при изготовлении букета.
+     *
+     * Получает все расходники, привязанные к указанному букету,
+     * и последовательно списывает каждый через InventoryManagementService.
+     *
+     * @param int    $bouquetId     ID букета
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function deductForBouquet(int $bouquetId, string $correlationId): void
+    {
+        $consumables = FlowerConsumable::where('bouquet_id', $bouquetId)->get();
+
+        foreach ($consumables as $consumable) {
+            $this->inventoryService->deductStock(
+                itemId: $consumable->id,
+                quantity: $consumable->quantity_per_bouquet,
+                reason: 'bouquet_completion',
+                sourceType: 'bouquet',
+                sourceId: $bouquetId,
+            );
+
+            $this->logger->info('Consumable deducted for bouquet', [
+                'consumable_id' => $consumable->id,
+                'quantity' => $consumable->quantity_per_bouquet,
+                'bouquet_id' => $bouquetId,
+                'correlation_id' => $correlationId,
+            ]);
         }
+
+        $this->logger->info('All consumables deducted for bouquet', [
+            'bouquet_id' => $bouquetId,
+            'deducted_count' => $consumables->count(),
+            'correlation_id' => $correlationId,
+        ]);
+    }
 }

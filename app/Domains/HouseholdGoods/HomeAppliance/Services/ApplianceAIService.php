@@ -2,17 +2,14 @@
 
 namespace App\Domains\HouseholdGoods\HomeAppliance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ApplianceAIService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class ApplianceAIService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private AIConstructorService $aiService,
-            private string $correlationId = ""
+            private readonly AIConstructorService $aiService,
+            private string $correlationId = "", private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -22,7 +19,7 @@ final class ApplianceAIService extends Model
         {
             $correlationId = $this->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Appliance repair estimation started', [
+            $this->logger->info('AI Appliance repair estimation started', [
                 'type' => $applianceType,
                 'correlation_id' => $correlationId
             ]);
@@ -45,7 +42,7 @@ final class ApplianceAIService extends Model
                     'correlation_id' => $correlationId
                 ];
             } catch (\Throwable $e) {
-                Log::error('Appliance AI Estimation failed', [
+                $this->logger->error('Appliance AI Estimation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);

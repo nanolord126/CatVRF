@@ -2,24 +2,26 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class DashboardController extends Model
+use App\Http\Controllers\Controller;
+
+final class DashboardController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * GET /api/dashboard
          * Get blogger dashboard overview
          */
         public function index(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            $currentMonth = now()->startOfMonth();
-            $lastMonth = now()->subMonth()->startOfMonth();
+            $currentMonth = Carbon::now()->startOfMonth();
+            $lastMonth = Carbon::now()->subMonth()->startOfMonth();
 
             $streams = Stream::where('blogger_id', $profile->id)
                 ->where('status', 'ended')
@@ -58,8 +60,8 @@ final class DashboardController extends Model
             $engagement = [
                 'average_chat_messages' => $streams->count() > 0 ? round($streams->sum('chat_messages_count') / $streams->count()) : 0,
                 'average_engagement_rate' => $streams->count() > 0 ? round($streams->avg('average_engagement_rate'), 2) : 0,
-                'total_orders' => DB::table('stream_orders')->where('stream_id', $streams->pluck('id'))->count(),
-                'total_gifts' => DB::table('nft_gifts')->where('stream_id', $streams->pluck('id'))->count(),
+                'total_orders' => $this->db->table('stream_orders')->where('stream_id', $streams->pluck('id'))->count(),
+                'total_gifts' => $this->db->table('nft_gifts')->where('stream_id', $streams->pluck('id'))->count(),
             ];
 
             $streams_info = [
@@ -68,11 +70,11 @@ final class DashboardController extends Model
                 'average_duration' => $streams->count() > 0 ? round($streams->avg('duration_minutes')) : 0,
                 'upcoming_streams' => Stream::where('blogger_id', $profile->id)
                     ->where('status', 'scheduled')
-                    ->where('scheduled_at', '>=', now())
+                    ->where('scheduled_at', '>=', Carbon::now())
                     ->count(),
             ];
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => [
                     'profile' => [
                         'display_name' => $profile->display_name,
@@ -94,11 +96,11 @@ final class DashboardController extends Model
          */
         public function analytics(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
             $last30days = collect();
             for ($i = 29; $i >= 0; $i--) {
-                $date = now()->subDays($i)->startOfDay();
+                $date = Carbon::now()->subDays($i)->startOfDay();
                 $dayStreams = Stream::where('blogger_id', $profile->id)
                     ->where('status', 'ended')
                     ->whereBetween('ended_at', [
@@ -115,7 +117,7 @@ final class DashboardController extends Model
                 ]);
             }
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => [
                     'last_30_days' => $last30days,
                     'trending' => [
@@ -133,7 +135,7 @@ final class DashboardController extends Model
          */
         public function recommendations(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
             $streams = Stream::where('blogger_id', $profile->id)->where('status', 'ended')->get();
 
             $recommendations = [];
@@ -169,7 +171,7 @@ final class DashboardController extends Model
                 ];
             }
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $recommendations,
             ]);
         }

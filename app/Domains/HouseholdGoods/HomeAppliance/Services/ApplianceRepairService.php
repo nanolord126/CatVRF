@@ -2,18 +2,20 @@
 
 namespace App\Domains\HouseholdGoods\HomeAppliance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ApplianceRepairService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class ApplianceRepairService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ""
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+            private string $correlationId = "",
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Запуск процесса ремонта (Диагностика -> Ремонт).
@@ -23,9 +25,9 @@ final class ApplianceRepairService extends Model
         {
             $correlationId = $this->correlationId ?: (string) Str::uuid();
 
-            return DB::transaction(function () use ($order, $partsData, $laborCost, $correlationId) {
+            return $this->db->transaction(function () use ($order, $partsData, $laborCost, $correlationId) {
                 // 1. Fraud Check
-                $this->fraudControl->check(['operation' => 'appliance_repair_start', 'order_id' => $order->id]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'appliance_repair_start', amount: 0, correlationId: $correlationId ?? '');
 
                 $partsCost = 0;
 
@@ -50,14 +52,14 @@ final class ApplianceRepairService extends Model
                 // 3. Обновление заказа
                 $order->update([
                     'status' => 'in_repair',
-                    'repair_started_at' => now(),
+                    'repair_started_at' => Carbon::now(),
                     'labor_cost_kopecks' => $laborCost,
                     'parts_cost_kopecks' => $partsCost,
                     'total_cost_kopecks' => $laborCost + $partsCost,
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('HomeAppliance repair started', [
+                $this->logger->info('HomeAppliance repair started', [
                     'order_uuid' => $order->uuid,
                     'parts_count' => count($partsData),
                     'total_cost' => $order->total_cost_kopecks,
@@ -73,20 +75,21 @@ final class ApplianceRepairService extends Model
          */
         public function completeRepair(ApplianceRepairOrder $order): ApplianceRepairOrder
         {
-            return DB::transaction(function () use ($order) {
+            return $this->db->transaction(function () use ($order) {
                 // Гарантия 2026: 180 дней для B2C, 90 дней для B2B (по умолчанию)
                 $warrantyDays = $order->is_b2b ? 90 : 180;
 
                 $order->update([
                     'status' => 'completed',
-                    'completed_at' => now(),
-                    'warranty_expires_at' => now()->addDays($warrantyDays),
+                    'completed_at' => Carbon::now(),
+                    'warranty_expires_at' => Carbon::now()->addDays($warrantyDays),
                     'correlation_id' => $this->correlationId ?: Str::uuid()
                 ]);
 
-                Log::channel('audit')->info('HomeAppliance repair completed', [
+                $this->logger->info('HomeAppliance repair completed', [
                     'order_uuid' => $order->uuid,
                     'warranty_until' => $order->warranty_expires_at->toDateTimeString(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $order;
@@ -98,7 +101,7 @@ final class ApplianceRepairService extends Model
          */
         public function scheduleVisit(ApplianceRepairOrder $order, Carbon $visitAt): ApplianceRepairOrder
         {
-            $this->fraudControl->check(['operation' => 'appliance_schedule_visit', 'order_id' => $order->id]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'appliance_schedule_visit', amount: 0, correlationId: $correlationId ?? '');
 
             $order->update([
                 'visit_scheduled_at' => $visitAt,

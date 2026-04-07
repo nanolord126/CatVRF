@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MedicalSuppliesResource extends Model
+final class MedicalSuppliesResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MedicalSupply::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class MedicalSuppliesResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMedicalSupplies::route('/'),
-                'create' => Pages\\CreateMedicalSupplies::route('/create'),
-                'edit' => Pages\\EditMedicalSupplies::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalSupplies::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMedicalSupplies::route('/'),
-                'create' => Pages\\CreateMedicalSupplies::route('/create'),
-                'edit' => Pages\\EditMedicalSupplies::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalSupplies::route('/{record}'),
+                'index' => Pages\ListMedicalSupplies::route('/'),
+                'create' => Pages\CreateMedicalSupplies::route('/create'),
+                'edit' => Pages\EditMedicalSupplies::route('/{record}/edit'),
+                'view' => Pages\ViewMedicalSupplies::route('/{record}'),
             ];
         }
 }

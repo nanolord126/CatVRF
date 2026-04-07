@@ -2,21 +2,33 @@
 
 namespace App\Services\Legal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultationService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Services\Legal\PricingService;
+use App\Models\User;
+use App\Models\Lawyer;
+use App\Models\Legal\LegalConsultation;
+use Illuminate\Database\Eloquent\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class ConsultationService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Constructor injection for required dependencies.
          */
         public function __construct(
-            private readonly FraudControlService $fraudControl,
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
             private readonly PricingService $pricing,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Create a new legal consultation session with full audit.
@@ -33,11 +45,7 @@ final class ConsultationService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Fraud Check before booking
-            $this->fraudControl->check($client->id, 'legal_consultation_book', [
-                'lawyer_id' => $lawyer->id,
-                'scheduled_at' => $scheduledAt,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check((int) $client->id, 'legal_consultation_book', $this->request->ip());
 
             // 2. Price calculation
             $priceInCents = $this->pricing->calculateConsultationPrice(
@@ -48,7 +56,7 @@ final class ConsultationService extends Model
                 $correlationId
             );
 
-            Log::channel('audit')->info('Attempting to book legal consultation', [
+            $this->logger->channel('audit')->info('Attempting to book legal consultation', [
                 'client_id' => $client->id,
                 'lawyer_id' => $lawyer->id,
                 'scheduled_at' => $scheduledAt,
@@ -56,9 +64,9 @@ final class ConsultationService extends Model
             ]);
 
             // 3. Database transaction
-            return DB::transaction(function () use ($client, $lawyer, $scheduledAt, $durationMinutes, $priceInCents, $correlationId) {
+            return $this->db->transaction(function () use ($client, $lawyer, $scheduledAt, $durationMinutes, $priceInCents, $correlationId) {
                 // Lock lawyer for availability check (pessimistic locking)
-                DB::table('lawyers')->where('id', $lawyer->id)->lockForUpdate()->first();
+                $this->db->table('lawyers')->where('id', $lawyer->id)->lockForUpdate()->first();
 
                 // Create record
                 $consultation = LegalConsultation::create([
@@ -74,7 +82,7 @@ final class ConsultationService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Legal consultation booked successfully', [
+                $this->logger->channel('audit')->info('Legal consultation booked successfully', [
                     'consultation_id' => $consultation->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -90,19 +98,19 @@ final class ConsultationService extends Model
         {
             $correlationId = $correlationId ?? $consultation->correlation_id;
 
-            Log::channel('audit')->info('Completing legal consultation', [
+            $this->logger->channel('audit')->info('Completing legal consultation', [
                 'consultation_id' => $consultation->id,
                 'correlation_id' => $correlationId,
             ]);
 
-            DB::transaction(function () use ($consultation, $summary, $correlationId) {
+            $this->db->transaction(function () use ($consultation, $summary, $correlationId) {
                 $consultation->update([
                     'status' => 'completed',
                     'summary' => $summary, // Ensure this is confidential/encrypted as per rule
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Legal consultation completed', [
+                $this->logger->channel('audit')->info('Legal consultation completed', [
                     'consultation_id' => $consultation->id,
                     'correlation_id' => $correlationId,
                 ]);

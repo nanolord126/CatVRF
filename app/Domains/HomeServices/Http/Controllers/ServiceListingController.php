@@ -2,18 +2,16 @@
 
 namespace App\Domains\HomeServices\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ServiceListingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final readonly class ServiceListingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private ListingService $listingService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly ListingService $listingService,
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -22,9 +20,9 @@ final class ServiceListingController extends Model
                     ->with(['contractor', 'category', 'reviews'])
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $listings, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $listings, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list listings'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list listings'], 500);
             }
         }
 
@@ -32,9 +30,9 @@ final class ServiceListingController extends Model
         {
             try {
                 $listing = ServiceListing::with(['contractor', 'category', 'reviews', 'jobs'])->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $listing, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $listing, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Listing not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Listing not found'], 404);
             }
         }
 
@@ -46,33 +44,33 @@ final class ServiceListingController extends Model
                     ->with(['category', 'reviews'])
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $listings, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $listings, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to fetch listings'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to fetch listings'], 500);
             }
         }
 
         public function store(): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_create', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'service_listing_create', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('ServiceListing create blocked', [
+                $this->logger->warning('ServiceListing create blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
-            Log::channel('audit')->info('ServiceListing create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            $this->logger->info('ServiceListing create start', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id]);
 
             try {
-                $contractor = \App\Domains\HomeServices\Models\Contractor::where('user_id', auth()->id())->firstOrFail();
+                $contractor = \App\Domains\HomeServices\Models\Contractor::where('user_id', $request->user()?->id)->firstOrFail();
                 $this->authorize('create', ServiceListing::class);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'category_id' => 'required|integer|exists:service_categories,id',
                     'name'        => 'required|string|max:255',
                     'description' => 'required|string',
@@ -90,31 +88,31 @@ final class ServiceListingController extends Model
                     $correlationId
                 );
 
-                Log::channel('audit')->info('ServiceListing created', [
+                $this->logger->info('ServiceListing created', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'listing_id'     => $listing->id,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                Log::error('ServiceListing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Failed to create listing'], 500);
+                $this->logger->error('ServiceListing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create listing'], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_update', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'service_listing_update', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('ServiceListing update blocked', [
+                $this->logger->warning('ServiceListing update blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -123,7 +121,7 @@ final class ServiceListingController extends Model
 
                 $before = $listing->toArray();
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'name'        => 'sometimes|string',
                     'description' => 'sometimes|string',
                     'base_price'  => 'sometimes|numeric|min:0',
@@ -132,33 +130,33 @@ final class ServiceListingController extends Model
 
                 $listing = $this->listingService->updateListing($listing, $validated, $correlationId);
 
-                Log::channel('audit')->info('ServiceListing updated', [
+                $this->logger->info('ServiceListing updated', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'listing_id'     => $id,
                     'before'         => $before,
                     'after'          => $listing->toArray(),
                 ]);
 
-                return response()->json(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('ServiceListing update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Update failed'], 500);
+                $this->logger->error('ServiceListing update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Update failed'], 500);
             }
         }
 
         public function delete(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_delete', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'service_listing_delete', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('ServiceListing delete blocked', [
+                $this->logger->warning('ServiceListing delete blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -167,31 +165,31 @@ final class ServiceListingController extends Model
 
                 $listing->delete();
 
-                Log::channel('audit')->info('ServiceListing deleted', [
+                $this->logger->info('ServiceListing deleted', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'listing_id'     => $id,
                 ]);
 
-                return response()->json(['success' => true, 'message' => 'Listing deleted', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Listing deleted', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('ServiceListing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Deletion failed'], 500);
+                $this->logger->error('ServiceListing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Deletion failed'], 500);
             }
         }
 
         public function forceDelete(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_force_delete', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'service_listing_force_delete', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('ServiceListing forceDelete blocked', [
+                $this->logger->warning('ServiceListing forceDelete blocked', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -200,16 +198,16 @@ final class ServiceListingController extends Model
 
                 $listing->forceDelete();
 
-                Log::channel('audit')->info('ServiceListing permanently deleted', [
+                $this->logger->info('ServiceListing permanently deleted', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'listing_id'     => $id,
                 ]);
 
-                return response()->json(['success' => true, 'message' => 'Listing permanently deleted', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Listing permanently deleted', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::error('ServiceListing forceDelete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Deletion failed'], 500);
+                $this->logger->error('ServiceListing forceDelete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Deletion failed'], 500);
             }
         }
 }

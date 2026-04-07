@@ -2,37 +2,42 @@
 
 namespace App\Jobs\CarRental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class CleanupExpiredBookingsJob extends Model
+final class CleanupExpiredBookingsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
          * correlation_id transfer across queue.
          */
-        public readonly string $correlationId;
+        private string $correlationId;
 
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
 
         /**
-         * handle() with DB::transaction() (Canon Rule 2026).
+         * handle() with $this->db->transaction() (Canon Rule 2026).
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('[CarRentalCleanup] Job Started', [
+            $this->logger->channel('audit')->info('[CarRentalCleanup] Job Started', [
                 'correlation_id' => $this->correlationId,
             ]);
 
             try {
-                DB::transaction(function () {
+                $this->db->transaction(function () {
                     // 1. Find Expired Pending Bookings (Canon Rule: 4-hour validity)
                     $expiredBookings = Booking::where('status', 'pending')
                         ->where('created_at', '<', now()->subHours(4))
@@ -56,7 +61,7 @@ final class CleanupExpiredBookingsJob extends Model
                             'correlation_id' => $this->correlationId,
                         ]);
 
-                        Log::channel('audit')->info('[CarRentalCleanup] Booking Auto-Cancelled', [
+                        $this->logger->channel('audit')->info('[CarRentalCleanup] Booking Auto-Cancelled', [
                             'booking_uuid' => $booking->uuid,
                             'car_uuid' => $booking->car->uuid,
                             'correlation_id' => $this->correlationId,
@@ -65,7 +70,7 @@ final class CleanupExpiredBookingsJob extends Model
                 });
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('[CarRentalCleanup] Job Failed State', [
+                $this->logger->channel('audit')->error('[CarRentalCleanup] Job Failed State', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                     'trace' => $e->getTraceAsString(),
@@ -74,7 +79,7 @@ final class CleanupExpiredBookingsJob extends Model
                 throw $e;
             }
 
-            Log::channel('audit')->info('[CarRentalCleanup] Job Completed Successfully', [
+            $this->logger->channel('audit')->info('[CarRentalCleanup] Job Completed Successfully', [
                 'correlation_id' => $this->correlationId,
             ]);
         }

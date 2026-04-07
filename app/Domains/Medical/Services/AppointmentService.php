@@ -2,24 +2,23 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AppointmentService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private WalletService $wallet,
-            private FraudControlService $fraudControl,
+
+    public function __construct(private WalletService $wallet,
+            private FraudControlService $fraud,
             private RateLimiterService $rateLimiter,
-            private MedicalInventoryService $inventory
-        ) {}
+            private MedicalInventoryService $inventory,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создание новой записи на прием.
-         * КРИТИЧНО: DB::transaction() + FraudCheck + AgeLimiting + Prepayment.
+         * КРИТИЧНО: $this->db->transaction() + FraudCheck + AgeLimiting + Prepayment.
          */
         public function createAppointment(array $data, string $correlationId = null): Appointment
         {
@@ -27,8 +26,8 @@ final class AppointmentService extends Model
 
             try {
                 // 1. Rate Limiting и Fraud Check
-                $this->rateLimiter->check('medical_appointment_create', (int)auth()->id());
-                $this->fraudControl->check(['user_id' => auth()->id(), 'action' => 'medical_booking']);
+                $this->rateLimiter->check('medical_appointment_create', (int)$this->guard->id());
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'action', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Валидация доменных данных
                 $doctor = Doctor::findOrFail($data['doctor_id']);
@@ -37,16 +36,16 @@ final class AppointmentService extends Model
 
                 // 2.1 Проверка доступности врача (Layer 2 logic)
                 if (!$doctor->isAvailableAt($appointmentAt)) {
-                    throw new \Exception("Doctor is not available at this time: " . $appointmentAt->toDateTimeString());
+                    throw new \DomainException("Doctor is not available at this time: " . $appointmentAt->toDateTimeString());
                 }
 
                 // 2.2 Проверка возрастных ограничений
                 if (!$service->checkAgeLimits($data['client_age'] ?? 0)) {
-                    throw new \Exception("The patient's age does not meet the requirements for this service.");
+                    throw new \DomainException("The patient's age does not meet the requirements for this service.");
                 }
 
                 // 3. Выполнение транзакции
-                return DB::transaction(function () use ($data, $doctor, $service, $appointmentAt, $correlationId) {
+                return $this->db->transaction(function () use ($data, $doctor, $service, $appointmentAt, $correlationId) {
 
                     // 3.1 Расчет предоплаты
                     $prepaymentNeeded = $service->calculateRequiredPrepayment();
@@ -61,7 +60,7 @@ final class AppointmentService extends Model
                         'clinic_id' => $doctor->clinic_id,
                         'doctor_id' => $doctor->id,
                         'service_id' => $service->id,
-                        'client_id' => auth()->id(),
+                        'client_id' => $this->guard->id(),
                         'appointment_at' => $appointmentAt,
                         'status' => 'pending',
                         'total_price' => $service->base_price,
@@ -78,14 +77,14 @@ final class AppointmentService extends Model
                     // 3.4 Если нужна предоплата - инициируем ее через Wallet (холд на кошельке клиента)
                     if ($prepaymentNeeded > 0) {
                         // $this->wallet->holdForAppointment($appointment, $prepaymentNeeded);
-                        Log::channel('audit')->info('Prepayment requested for appointment', [
+                        $this->logger->info('Prepayment requested for appointment', [
                             'appointment_id' => $appointment->id,
                             'amount' => $prepaymentNeeded,
                             'correlation_id' => $correlationId
                         ]);
                     }
 
-                    Log::channel('audit')->info('Medical appointment created successfully', [
+                    $this->logger->info('Medical appointment created successfully', [
                         'appointment_id' => $appointment->id,
                         'doctor_id' => $doctor->id,
                         'service_id' => $service->id,
@@ -96,7 +95,7 @@ final class AppointmentService extends Model
                 });
 
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create appointment', [
+                $this->logger->error('Failed to create appointment', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
@@ -114,7 +113,7 @@ final class AppointmentService extends Model
             $correlationId = $correlationId ?? $appointment->correlation_id ?? (string)Str::uuid();
 
             try {
-                DB::transaction(function () use ($appointment, $correlationId) {
+                $this->db->transaction(function () use ($appointment, $correlationId) {
                     // 1. Статус приема
                     $appointment->complete();
 
@@ -130,13 +129,13 @@ final class AppointmentService extends Model
                     // 3. Отправка ивента через транзакцию
                     // \App\Domains\Medical\Events\AppointmentCompleted::dispatch($appointment, $correlationId);
 
-                    Log::channel('audit')->info('Medical appointment completed and stock deducted', [
+                    $this->logger->info('Medical appointment completed and stock deducted', [
                         'appointment_id' => $appointment->id,
                         'correlation_id' => $correlationId
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to complete appointment', [
+                $this->logger->error('Failed to complete appointment', [
                     'appointment_id' => $appointmentId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -154,7 +153,7 @@ final class AppointmentService extends Model
             $correlationId = $correlationId ?? $appointment->correlation_id ?? (string)Str::uuid();
 
             try {
-                DB::transaction(function () use ($appointment, $reason, $correlationId) {
+                $this->db->transaction(function () use ($appointment, $reason, $correlationId) {
                     $appointment->update([
                         'status' => 'cancelled',
                         'internal_notes' => ($appointment->internal_notes ?? '') . " Cancellation reason: $reason",
@@ -164,69 +163,15 @@ final class AppointmentService extends Model
                     // Возврат расходников в общий сток
                     $this->inventory->releaseForService((int)$appointment->service_id, 1, $correlationId);
 
-                    Log::channel('audit')->info('Medical appointment cancelled', [
+                    $this->logger->info('Medical appointment cancelled', [
                         'appointment_id' => $appointment->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to cancel appointment', [
+                $this->logger->error('Failed to cancel appointment', [
                     'appointment_id' => $appointmentId,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-                throw $e;
-            }
-        }
-    }
-
-                    Log::channel('audit')->info('Medical appointment completed', [
-                        'appointment_id' => $appointment->id,
-                        'doctor_id' => $appointment->doctor_id,
-                        'patient_id' => $appointment->patient_id,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $appointment;
-                });
-            } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to complete appointment', [
-                    'appointment_id' => $appointment->id,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-                throw $e;
-            }
-        }
-
-        public function cancelAppointment(
-            MedicalAppointment $appointment,
-            string $reason,
-            ?string $correlationId = null,
-        ): MedicalAppointment {
-            $correlationId ??= Str::uuid()->toString();
-
-            try {
-                return DB::transaction(function () use ($appointment, $reason, $correlationId) {
-                    $appointment->update([
-                        'status' => 'cancelled',
-                        'cancelled_at' => now(),
-                        'notes' => $reason,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    Log::channel('audit')->info('Medical appointment cancelled', [
-                        'appointment_id' => $appointment->id,
-                        'reason' => $reason,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    return $appointment;
-                });
-            } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to cancel appointment', [
-                    'appointment_id' => $appointment->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

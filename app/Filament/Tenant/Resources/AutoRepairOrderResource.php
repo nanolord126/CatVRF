@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoRepairOrderResource extends Model
+final class AutoRepairOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoRepairOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
@@ -107,31 +104,15 @@ final class AutoRepairOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoRepairOrder::route('/'),
-                'create' => Pages\\CreateAutoRepairOrder::route('/create'),
-                'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAutoRepairOrder::route('/'),
-                'create' => Pages\\CreateAutoRepairOrder::route('/create'),
-                'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoRepairOrder::route('/'),
-                'create' => Pages\\CreateAutoRepairOrder::route('/create'),
-                'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
+                'index' => Pages\ListAutoRepairOrder::route('/'),
+                'create' => Pages\CreateAutoRepairOrder::route('/create'),
+                'edit' => Pages\EditAutoRepairOrder::route('/{record}/edit'),
+                'view' => Pages\ViewAutoRepairOrder::route('/{record}'),
             ];
         }
 }

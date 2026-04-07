@@ -2,14 +2,20 @@
 
 namespace App\Domains\Auto\Filament\Resources\TowingRequestResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CreateTowingRequest extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateTowingRequest extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = TowingRequestResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -19,18 +25,13 @@ final class CreateTowingRequest extends Model
             $data['uuid'] = Str::uuid()->toString();
             $data['correlation_id'] = $correlationId;
 
-            $fraudCheck = app(FraudControlService::class)->check([
-                'operation_type' => 'towing_request',
-                'user_id' => auth()->id(),
-                'amount' => $data['price'] ?? 0,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'towing_request', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudCheck['blocked']) {
-                Log::channel('fraud_alert')->warning('Towing request blocked', [
+                $this->logger->warning('Towing request blocked', [
                     'correlation_id' => $correlationId,
                 ]);
-                throw new \Exception('Операция заблокирована системой безопасности');
+                throw new \RuntimeException('Операция заблокирована системой безопасности');
             }
 
             return $data;
@@ -38,8 +39,8 @@ final class CreateTowingRequest extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
-                Log::channel('audit')->info('TowingRequest created', [
+            $this->db->transaction(function () {
+                $this->logger->info('TowingRequest created', [
                     'correlation_id' => $this->record->correlation_id,
                     'request_id' => $this->record->id,
                 ]);
@@ -56,4 +57,27 @@ final class CreateTowingRequest extends Model
                 ->body('Ожидайте назначения водителя')
                 ->send();
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

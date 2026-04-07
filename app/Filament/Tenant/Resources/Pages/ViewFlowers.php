@@ -2,18 +2,25 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\FlowersResource;
+use Filament\Actions\EditAction;
+use Filament\Resources\Pages\ViewRecord;
 
-final class ViewFlowers extends Model
+/**
+ * Class ViewFlowers
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class ViewFlowers extends ViewRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FlowersResource::class;
 
-        public function getTitle(): string
-        {
-            return 'View Flowers';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [EditAction::make()];
+    }
 }

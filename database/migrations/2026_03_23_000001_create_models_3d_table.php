@@ -50,3 +50,5 @@ final class CreateModels3dTable extends Migration
         Schema::dropIfExists('models_3d');
     }
 }
+
+

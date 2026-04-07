@@ -2,14 +2,18 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class MusicService
 {
-    use HasFactory;
+    public function __construct(private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Get all music stores for the current tenant.
          */
@@ -23,16 +27,16 @@ final class MusicService extends Model
          */
         public function createStore(array $data): MusicStore
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $correlationId = (string) Str::uuid();
 
                 $store = MusicStore::create(array_merge($data, [
                     'correlation_id' => $correlationId,
                 ]));
 
-                Log::channel('audit')->info('Music store created', [
+                $this->logger->info('Music store created', [
                     'store_id' => $store->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -72,22 +76,22 @@ final class MusicService extends Model
          */
         public function deductAccessoryStock(int $accessoryId, int $quantity, string $reason): void
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            DB::transaction(function () use ($accessoryId, $quantity, $reason) {
+            $this->db->transaction(function () use ($accessoryId, $quantity, $reason) {
                 $accessory = MusicAccessory::lockForUpdate()->findOrFail($accessoryId);
 
                 if ($accessory->stock < $quantity) {
-                    throw new \Exception('Insufficient stock for accessory: ' . $accessory->name);
+                    throw new \RuntimeException('Insufficient stock for accessory: ' . $accessory->name);
                 }
 
                 $accessory->decrement('stock', $quantity);
 
-                Log::channel('audit')->info('Music accessory stock deducted', [
+                $this->logger->info('Music accessory stock deducted', [
                     'accessory_id' => $accessoryId,
                     'quantity' => $quantity,
                     'reason' => $reason,
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->request->header('X-Correlation-ID'),
                 ]);
             });
         }
@@ -99,12 +103,12 @@ final class MusicService extends Model
         {
             $store = MusicStore::findOrFail($storeId);
 
-            $avgRating = DB::table('music_reviews')
+            $avgRating = $this->db->table('music_reviews')
                 ->where('music_store_id', $storeId)
                 ->where('is_published', true)
                 ->avg('rating');
 
-            $count = DB::table('music_reviews')
+            $count = $this->db->table('music_reviews')
                 ->where('music_store_id', $storeId)
                 ->where('is_published', true)
                 ->count();

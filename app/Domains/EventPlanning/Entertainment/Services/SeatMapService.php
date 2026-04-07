@@ -2,18 +2,17 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SeatMapService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class SeatMapService
 {
-    use HasFactory;
+
+    public function __construct(private string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private string $correlationId = ''
-        ) {
-        }
+    }
 
         private function getCorrelationId(): string
         {
@@ -27,13 +26,16 @@ final class SeatMapService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('Saving seat map', [
+            $this->logger->info('Saving seat map', [
                 'venue_uuid' => $venue->uuid,
                 'name' => $name,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($venue, $name, $layout, $categories, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+
+            return $this->db->transaction(function () use ($venue, $name, $layout, $categories, $correlationId) {
                 /** @var SeatMap $seatMap */
                 $seatMap = SeatMap::updateOrCreate(
                     [
@@ -48,7 +50,7 @@ final class SeatMapService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Seat map saved successfully', [
+                $this->logger->info('Seat map saved successfully', [
                     'seat_map_uuid' => $seatMap->uuid,
                     'correlation_id' => $correlationId,
                 ]);
@@ -72,19 +74,22 @@ final class SeatMapService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->warning('Deleting seat map', [
+            $this->logger->warning('Deleting seat map', [
                 'seat_map_uuid' => $seatMap->uuid,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($seatMap, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+
+            return $this->db->transaction(function () use ($seatMap, $correlationId) {
                 $lockingMap = SeatMap::where('id', $seatMap->id)->lockForUpdate()->first();
 
                 // Здесь можно добавить проверку: если есть активные события на этой схеме — запретить удаление
 
                 $lockingMap->delete();
 
-                Log::channel('audit')->info('Seat map deleted successfully', [
+                $this->logger->info('Seat map deleted successfully', [
                     'correlation_id' => $correlationId,
                 ]);
 

@@ -2,31 +2,29 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
 
                 $validated = $request->all();
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $review = FreelanceReview::create([
                         'tenant_id' => tenant()->id,
                         'contract_id' => ($validated['contract_id'] ?? null),
-                        'reviewer_id' => auth()->id(),
+                        'reviewer_id' => $request->user()?->id,
                         'freelancer_id' => ($validated['freelancer_id'] ?? null),
                         'client_id' => ($validated['client_id'] ?? null),
                         'review_type' => ($validated['review_type'] ?? 'client_to_freelancer'),
@@ -42,26 +40,26 @@ final class ReviewController extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Freelance review submitted', [
+                    $this->logger->info('Freelance review submitted', [
                         'review_id' => $review->id,
                         'contract_id' => ($validated['contract_id'] ?? null),
                         'overall_rating' => ($validated['overall_rating'] ?? null),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'success' => true,
                         'data' => $review,
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error submitting review', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error submitting review', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to submit review',
                     'correlation_id' => Str::uuid(),
@@ -76,19 +74,19 @@ final class ReviewController extends Model
                     ->where('status', 'approved')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing freelancer reviews', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing freelancer reviews', [
                     'freelancer_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list reviews',
                     'correlation_id' => Str::uuid(),
@@ -101,19 +99,19 @@ final class ReviewController extends Model
             try {
                 $reviews = FreelanceReview::where('contract_id', $id)->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing contract reviews', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing contract reviews', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list reviews',
                     'correlation_id' => Str::uuid(),
@@ -129,23 +127,23 @@ final class ReviewController extends Model
 
                 $review->increment('helpful_count');
 
-                Log::channel('audit')->info('Review marked as helpful', [
+                $this->logger->info('Review marked as helpful', [
                     'review_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error marking review as helpful', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error marking review as helpful', [
                     'review_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to mark review',
                     'correlation_id' => Str::uuid(),
@@ -161,23 +159,23 @@ final class ReviewController extends Model
 
                 $review->increment('unhelpful_count');
 
-                Log::channel('audit')->info('Review marked as unhelpful', [
+                $this->logger->info('Review marked as unhelpful', [
                     'review_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error marking review as unhelpful', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error marking review as unhelpful', [
                     'review_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to mark review',
                     'correlation_id' => Str::uuid(),

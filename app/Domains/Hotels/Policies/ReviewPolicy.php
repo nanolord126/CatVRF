@@ -1,43 +1,89 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Review;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Auth\Access\Response;
 
-final class ReviewPolicy extends Model
+/**
+ * ReviewPolicy — Политика авторизации для отзывов.
+ *
+ * Просмотр отзывов открыт для всех авторизованных пользователей.
+ * Создание — только гости, прошедшие проживание.
+ * Редактирование — автор или администратор.
+ * Удаление — только администратор.
+ *
+ * @package App\Domains\Hotels\Policies
+ */
+final class ReviewPolicy
 {
-    use HasFactory;
+    /**
+     * Может ли пользователь просматривать список отзывов.
+     */
+    public function viewAny(User $user): Response
+    {
+        return Response::allow();
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function viewAny(): Response
-        {
-            return $this->response->allow();
+    /**
+     * Может ли пользователь просматривать конкретный отзыв.
+     */
+    public function view(User $user, Review $review): Response
+    {
+        return Response::allow();
+    }
+
+    /**
+     * Может ли пользователь создавать отзыв.
+     * Только авторизованные пользователи с подтверждённым проживанием.
+     */
+    public function create(User $user): Response
+    {
+        return $user->tenant_id !== null
+            ? Response::allow()
+            : Response::deny('Требуется авторизация для создания отзыва');
+    }
+
+    /**
+     * Может ли пользователь обновлять отзыв.
+     * Доступно автору отзыва или администратору.
+     */
+    public function update(User $user, Review $review): Response
+    {
+        if ($user->is_admin) {
+            return Response::allow();
         }
 
-        public function view(): Response
-        {
-            return $this->response->allow();
-        }
+        return $user->id === $review->user_id
+            ? Response::allow()
+            : Response::deny('Только автор может редактировать отзыв');
+    }
 
-        public function create(): Response
-        {
-            return auth()->check()
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
+    /**
+     * Может ли пользователь удалять отзыв.
+     * Только для администратора.
+     */
+    public function delete(User $user, Review $review): Response
+    {
+        return $user->is_admin
+            ? Response::allow()
+            : Response::deny('Только администратор может удалить отзыв');
+    }
 
-        public function update(): Response
-        {
-            return auth()->check() && (auth()->user()->is_admin || auth()->user()->is_guest)
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
-
-        public function delete(): Response
-        {
-            return auth()->check() && auth()->user()->is_admin
-                ? $this->response->allow()
-                : $this->response->deny('Not authorized');
-        }
+    /**
+     * Отладочный массив.
+     *
+     * @return array<string, mixed>
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

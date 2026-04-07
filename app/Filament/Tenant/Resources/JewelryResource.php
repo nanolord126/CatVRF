@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class JewelryResource extends Model
+final class JewelryResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Jewelry3DModel::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class JewelryResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListJewelry::route('/'),
-                'create' => Pages\\CreateJewelry::route('/create'),
-                'edit' => Pages\\EditJewelry::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelry::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListJewelry::route('/'),
-                'create' => Pages\\CreateJewelry::route('/create'),
-                'edit' => Pages\\EditJewelry::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelry::route('/{record}'),
+                'index' => Pages\ListJewelry::route('/'),
+                'create' => Pages\CreateJewelry::route('/create'),
+                'edit' => Pages\EditJewelry::route('/{record}/edit'),
+                'view' => Pages\ViewJewelry::route('/{record}'),
             ];
         }
 }

@@ -1,15 +1,31 @@
 <?php declare(strict_types=1);
 
+/**
+ * TaxiDemandForecastService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/taxidemandforecastservice
+ */
+
+
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiDemandForecastService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TaxiDemandForecastService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Прогноз спроса на такси на несколько часов вперёд.
          */
@@ -20,9 +36,8 @@ final class TaxiDemandForecastService extends Model
             string $correlationId = ''
         ): array {
 
-
             try {
-                Log::channel('audit')->info('Forecasting taxi demand', [
+                $this->logger->info('Forecasting taxi demand', [
                     'tenant_id' => $tenantId,
                     'hours_ahead' => $hoursAhead,
                     'location' => $location,
@@ -47,7 +62,7 @@ final class TaxiDemandForecastService extends Model
 
                 return $predictions;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Demand forecast failed', [
+                $this->logger->error('Demand forecast failed', [
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

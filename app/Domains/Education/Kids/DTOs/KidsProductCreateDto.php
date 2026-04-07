@@ -2,14 +2,9 @@
 
 namespace App\Domains\Education\Kids\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class KidsProductCreateDto extends Model
+final readonly class KidsProductCreateDto
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param array<string, int> $age_range
          * @param array<string, mixed> $material_details
@@ -27,9 +22,8 @@ final class KidsProductCreateDto extends Model
             public string $safety_class,
             public array $material_details,
             public string $origin_country,
-            public ?string $correlation_id = null,
-            public array $tags = [],
-        ) {}
+            private ?string $correlation_id = null,
+            private array $tags = []) {}
 
         /**
          * Create from request.

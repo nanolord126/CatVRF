@@ -1,36 +1,63 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CleanupExpiredBookingsJob extends Model
+use Carbon\Carbon;
+use App\Domains\Beauty\Models\Appointment;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+use App\Services\FraudControlService;
+
+/**
+ * CleanupExpiredBookingsJob — снимает статус pending у просроченных бронирований.
+ *
+ * Запускается каждые 15 минут через Scheduler.
+ */
+final class CleanupExpiredBookingsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(
-            private readonly string $correlationId,
-        ) {}
+    public int $tries   = 3;
+    public int $timeout = 120;
 
-        public function handle(): void
-        {
-            DB::transaction(function (): void {
-                $expired = Appointment::query()
-                    ->where('status', 'pending')
-                    ->where('created_at', '<', now()->subMinutes(15))
-                    ->update(['status' => 'expired']);
+    private string $correlationId;
 
-                Log::channel('audit')->info('Expired bookings cleaned', [
-                    'count' => $expired,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
-        }
+    public function __construct(string $correlationId = '')
+    {
+        $this->correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+    }
+
+    public function handle(
+        LoggerInterface $logger,
+        \Illuminate\Database\DatabaseManager $db,
+    ): void {
+        $db->transaction(function () use ($logger): void {
+            $count = Appointment::query()
+                ->where('status', 'pending')
+                ->where('created_at', '<', Carbon::now()->subMinutes(15))
+                ->update(['status' => 'expired']);
+
+            $logger->info('Expired bookings cleaned.', [
+                'count'          => $count,
+                'correlation_id' => $this->correlationId,
+            ]);
+        });
+    }
+
+    /** @return array<int, string> */
+    public function tags(): array
+    {
+        return ['beauty', 'job:cleanup-expired-bookings'];
+    }
 }

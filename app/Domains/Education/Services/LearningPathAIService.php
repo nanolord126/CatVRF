@@ -2,14 +2,18 @@
 
 namespace App\Domains\Education\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class LearningPathAIService extends Model
+use App\Domains\Education\Models\Course;
+use App\Models\User;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class LearningPathAIService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
+
     /**
          * Конструктор обучения (AI Learning Path Constructor).
          * Генерирует JSON структуру уроков и тем на основе уровня пользователя и целей.
@@ -18,7 +22,7 @@ final class LearningPathAIService extends Model
         {
             $correlationId = (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Education: Generating individual learning path', [
+            $this->logger->info('AI Education: Generating individual learning path', [
                 'user_id' => $user->id,
                 'course_uuid' => $course->uuid,
                 'correlation_id' => $correlationId,
@@ -29,10 +33,11 @@ final class LearningPathAIService extends Model
             // В реальной системе здесь будет запрос к API LLM
             $path = $this->mockAiPathGeneration($user, $course, $preferences);
 
-            Log::channel('audit')->info('AI Education: Path generated successfully', [
+            $this->logger->info('AI Education: Path generated successfully', [
                 'user_id' => $user->id,
                 'modules_count' => count($path['modules']),
                 'confidence_score' => 0.98,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return array_merge($path, ['correlation_id' => $correlationId]);
@@ -82,9 +87,10 @@ final class LearningPathAIService extends Model
          */
         public function recalculatePathOnProgress(User $user, array $recentPerformance): array
         {
-            Log::channel('audit')->info('AI Education: Recalculating path based on performance', [
+            $this->logger->info('AI Education: Recalculating path based on performance', [
                 'user_id' => $user->id,
                 'performance' => $recentPerformance,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             // Если студент делает ошибки в Квизах, AI добавляет "Remedial Lessons"

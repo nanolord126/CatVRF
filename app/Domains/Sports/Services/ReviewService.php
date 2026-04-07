@@ -2,14 +2,16 @@
 
 namespace App\Domains\Sports\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReviewService extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class ReviewService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function createReview(
             ?int $studioId,
             ?int $trainerId,
@@ -23,23 +25,23 @@ final class ReviewService extends Model
             ?string $correlationId = null,
         ): Review {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
 
                 if ($rating < 1 || $rating > 5) {
-                    throw new \Exception('Rating must be between 1 and 5');
+                    throw new \InvalidArgumentException('Rating must be between 1 and 5');
                 }
 
-                Log::channel('audit')->info('Creating review', [
+                $this->logger->info('Creating review', [
                     'studio_id' => $studioId,
                     'trainer_id' => $trainerId,
                     'rating' => $rating,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $review = DB::transaction(function () use (
+                $review = $this->db->transaction(function () use (
                     $studioId,
                     $trainerId,
                     $reviewerId,
@@ -49,10 +51,9 @@ final class ReviewService extends Model
                     $categories,
                     $verifiedPurchase,
                     $bookingId,
-                    $correlationId,
-                ) {
+                    $correlationId) {
                     $review = Review::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()?->id,
                         'studio_id' => $studioId,
                         'trainer_id' => $trainerId,
                         'reviewer_id' => $reviewerId,
@@ -89,14 +90,14 @@ final class ReviewService extends Model
                     return $review;
                 });
 
-                Log::channel('audit')->info('Review created successfully', [
+                $this->logger->info('Review created successfully', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $review;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create review', [
+                $this->logger->error('Failed to create review', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? null,
                 ]);
@@ -113,16 +114,16 @@ final class ReviewService extends Model
             ?string $correlationId = null,
         ): Review {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
             try {
                 $correlationId = $correlationId ?? Str::uuid()->toString();
 
                 if ($rating < 1 || $rating > 5) {
-                    throw new \Exception('Rating must be between 1 and 5');
+                    throw new \InvalidArgumentException('Rating must be between 1 and 5');
                 }
 
-                Log::channel('audit')->info('Updating review', [
+                $this->logger->info('Updating review', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -144,15 +145,16 @@ final class ReviewService extends Model
                     ]);
                 }
 
-                Log::channel('audit')->info('Review updated', [
+                $this->logger->info('Review updated', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $review;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to update review', [
+                $this->logger->error('Failed to update review', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
                 throw $e;
             }

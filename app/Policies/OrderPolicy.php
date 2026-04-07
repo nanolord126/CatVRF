@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class OrderPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -20,7 +21,7 @@ final class OrderPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($order->tenant_id) && $user->tenant_id !== $order->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $order->tenant_id,
@@ -35,7 +36,7 @@ final class OrderPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized order view attempt', [
+                $this->logger->warning('Unauthorized order view attempt', [
                     'user_id' => $user->id,
                     'order_id' => $order->id,
                     'order_user_id' => $order->user_id,
@@ -64,7 +65,7 @@ final class OrderPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -74,7 +75,7 @@ final class OrderPolicy extends Model
             $allowed = $user->email_verified_at !== null;
 
             if (!$allowed) {
-                Log::info('Unverified user order creation attempt', [
+                $this->logger->info('Unverified user order creation attempt', [
                     'user_id' => $user->id,
                     'email' => $user->email,
                 ]);
@@ -93,7 +94,7 @@ final class OrderPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -107,7 +108,7 @@ final class OrderPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized order update attempt', [
+                $this->logger->warning('Unauthorized order update attempt', [
                     'user_id' => $user->id,
                     'order_id' => $order->id,
                     'order_status' => $order->status,
@@ -133,7 +134,7 @@ final class OrderPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized order cancellation attempt', [
+                $this->logger->warning('Unauthorized order cancellation attempt', [
                     'user_id' => $user->id,
                     'order_id' => $order->id,
                     'order_status' => $order->status,
@@ -158,7 +159,7 @@ final class OrderPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::info('Unauthorized checkout attempt', [
+                $this->logger->info('Unauthorized checkout attempt', [
                     'user_id' => $user->id,
                     'order_id' => $order->id,
                     'order_status' => $order->status,
@@ -183,7 +184,7 @@ final class OrderPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized order confirmation attempt', [
+                $this->logger->warning('Unauthorized order confirmation attempt', [
                     'user_id' => $user->id,
                     'tenant_id' => $user->tenant_id,
                     'order_business_id' => $order->business_id,
@@ -319,7 +320,7 @@ final class OrderPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -337,7 +338,7 @@ final class OrderPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -356,7 +357,7 @@ final class OrderPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

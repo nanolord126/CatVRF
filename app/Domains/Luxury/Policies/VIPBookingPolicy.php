@@ -1,19 +1,32 @@
 <?php declare(strict_types=1);
 
+/**
+ * VIPBookingPolicy — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/vipbookingpolicy
+ */
+
+
 namespace App\Domains\Luxury\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VIPBookingPolicy extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class VIPBookingPolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         public function __construct(
-            private readonly FraudControlService $fraudControl
+            private readonly FraudControlService $fraud, private readonly Guard $guard
         ) {}
 
         /**
@@ -32,11 +45,7 @@ final class VIPBookingPolicy extends Model
         {
             // Проверка фрод-контроля для VIP
             try {
-                $this->fraudControl->check([
-                    'user_id' => $user->id,
-                    'operation' => 'create_vip_booking_policy',
-                    'correlation_id' => bin2hex(random_bytes(16)),
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'create_vip_booking_policy', amount: 0, correlationId: $correlationId ?? '');
             } catch (\Throwable $e) {
                 return false;
             }

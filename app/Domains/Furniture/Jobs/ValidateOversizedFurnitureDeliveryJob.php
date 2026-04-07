@@ -1,97 +1,119 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Furniture\Models\FurnitureCustomOrder;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class ValidateOversizedFurnitureDeliveryJob extends Model
+final class ValidateOversizedFurnitureDeliveryJob implements ShouldQueue
 {
-    use HasFactory;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    public int $tries = 3;
 
-        public $tries = 3;
-        public $timeout = 60;
+    public int $timeout = 60;
 
-        /**
-         * @param FurnitureCustomOrder $order
-         * @param string|null $correlationId
-         */
-        public function __construct(
-            private readonly FurnitureCustomOrder $order,
-            private readonly ?string $correlationId = null
-        ) {}
+    /**
+     * @param FurnitureCustomOrder $order Заказ на кастомную мебель
+     * @param string|null $correlationId Идентификатор корреляции
+     */
+    public function __construct(
+        private readonly FurnitureCustomOrder $order,
+        private ?string $correlationId = null,
+    ) {
+    }
 
-        /**
-         * Execute dimensional check for custom furniture order items.
-         */
-        public function handle(): void
-        {
-            $correlationId = $this->correlationId ?? (string) \Illuminate\Support\Str::uuid();
+    /**
+     * Execute dimensional check for custom furniture order items.
+     * Проверяет габариты заказа и помечает как oversized при необходимости.
+     */
+    public function handle(LoggerInterface $logger): void
+    {
+        $correlationId = $this->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-8: Starting Dimensional Validation (Oversized Check)', [
+        $logger->info('LAYER-8: Starting Dimensional Validation (Oversized Check)', [
+            'order_id' => $this->order->id,
+            'correlation_id' => $correlationId,
+        ]);
+
+        try {
+            $spec = $this->order->ai_specification;
+            $maxDim = 0;
+
+            if (isset($spec['dimensions']) && is_array($spec['dimensions'])) {
+                foreach ($spec['dimensions'] as $dim) {
+                    $maxDim = max($maxDim, (int) $dim);
+                }
+            }
+
+            if ($maxDim > 200) {
+                $this->order->update([
+                    'is_oversized' => true,
+                    'tags' => array_merge($this->order->tags ?? [], ['oversized_delivery_required']),
+                ]);
+
+                $logger->warning('LAYER-8: Order Marked as Oversized', [
+                    'order_id' => $this->order->id,
+                    'max_dimension' => $maxDim,
+                    'correlation_id' => $correlationId,
+                ]);
+            }
+
+            $logger->info('LAYER-8: Dimensional Validation Completed', [
                 'order_id' => $this->order->id,
+                'is_oversized' => $maxDim > 200,
+                'max_dimension' => $maxDim,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            $logger->error('LAYER-8: Job Validation Failed', [
+                'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
 
-            try {
-                // Logic to calculate dimensions of custom project (mocked)
-                $spec = $this->order->ai_specification;
-                $maxDim = 0;
-
-                if (isset($spec['dimensions'])) {
-                    foreach ($spec['dimensions'] as $dim) {
-                        $maxDim = max($maxDim, (int) $dim);
-                    }
-                }
-
-                // If any dimension exceeds 200cm, mark as oversized
-                if ($maxDim > 200) {
-                    $this->order->update([
-                        'is_oversized' => true,
-                        'tags' => array_merge($this->order->tags ?? [], ['oversized_delivery_required'])
-                    ]);
-
-                    Log::channel('audit')->warning('LAYER-8: Order Marked as Oversized', [
-                        'order_id' => $this->order->id,
-                        'max_dimension' => $maxDim,
-                        'correlation_id' => $correlationId,
-                    ]);
-                }
-
-                Log::channel('audit')->info('LAYER-8: Dimensional Validation Completed', [
-                    'order_id' => $this->order->id,
-                    'correlation_id' => $correlationId,
-                ]);
-
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('LAYER-8: Job Validation Failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                throw $e;
-            }
+            throw $e;
         }
+    }
 
-        /**
-         * Handle the job failure.
-         */
-        public function failed(\Throwable $exception): void
-        {
-            Log::channel('audit')->error('LAYER-8: Critical Job Failure (Oversized Check)', [
-                'error' => $exception->getMessage(),
-                'order_id' => $this->order->id,
-            ]);
-        }
+    /**
+     * Handle the job failure.
+     * Логируем ошибку при финальном фейле джоба.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        report(new \RuntimeException(
+            sprintf(
+                'LAYER-8: Critical Job Failure (Oversized Check) [order_id=%d, correlation_id=%s]: %s',
+                $this->order->id,
+                $this->correlationId ?? 'unknown',
+                $exception->getMessage(),
+            ),
+            previous: $exception,
+        ));
+    }
 
-        /**
-         * Get tags for the job monitoring.
-         */
-        public function tags(): array
-        {
-            return ['furniture', 'oversized_check', 'order:' . $this->order->id];
-        }
+    /**
+     * Get tags for the job monitoring.
+     *
+     * @return array<int, string>
+     */
+    public function tags(): array
+    {
+        return [
+            'furniture',
+            'oversized_check',
+            'order:' . $this->order->id,
+        ];
+    }
 }

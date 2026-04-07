@@ -2,6 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\GroceryAndDelivery\Pages;
 
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\GroceryAndDelivery\GroceryAndDeliveryResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,6 +16,10 @@ use Illuminate\Support\Str;
 
 final class ListGroceryAndDelivery extends ListRecords
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = GroceryAndDeliveryResource::class;
 
     protected function getHeaderActions(): array
@@ -26,10 +34,10 @@ final class ListGroceryAndDelivery extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = auth()->id();
+        $userId = $this->guard->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('GroceryAndDelivery ListRecords accessed', [
+        $this->logger->info('GroceryAndDelivery ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -53,8 +61,8 @@ final class ListGroceryAndDelivery extends ListRecords
 
     public function render()
     {
-        Log::channel('audit')->info('ListGroceryAndDelivery page rendered', [
-            'user_id' => auth()->id(),
+        $this->logger->info('ListGroceryAndDelivery page rendered', [
+            'user_id' => $this->guard->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

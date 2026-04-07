@@ -2,20 +2,18 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\FlowerConsumableResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\FlowerConsumableResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListFlowerConsumables extends Model
+final class ListFlowerConsumables extends ListRecords
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FlowerConsumableResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make()->icon('heroicon-o-plus-circle'),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()->icon('heroicon-o-plus-circle'),
+        ];
+    }
 }

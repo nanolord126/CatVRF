@@ -2,14 +2,15 @@
 
 namespace App\Domains\Food\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class OrderReadyReminderJob extends Model
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class OrderReadyReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithQueue;
         use Queueable;
@@ -17,8 +18,7 @@ final class OrderReadyReminderJob extends Model
 
         public function __construct(
             private RestaurantOrder $order,
-            private string $correlationId = '',
-        ) {
+            private string $correlationId = '', private readonly Request $request, private readonly LoggerInterface $logger) {
             $this->onQueue('notifications');
 
         }
@@ -26,7 +26,7 @@ final class OrderReadyReminderJob extends Model
         public function handle(): void
         {
             try {
-                Log::channel('audit')->info('Order ready reminder job started', [
+                $this->logger->info('Order ready reminder job started', [
                     'order_id' => $this->order->id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -34,21 +34,22 @@ final class OrderReadyReminderJob extends Model
                 // Проверить статус заказа
                 $order = RestaurantOrder::find($this->order->id);
                 if (!$order || $order->status !== 'ready') {
-                    Log::channel('audit')->notice('Order not in ready status', [
+                    $this->logger->notice('Order not in ready status', [
                         'order_id' => $this->order->id,
                         'status' => $order?->status,
+                        'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
                     return;
                 }
                 // Notification::send($order->client, new OrderReadyNotification($order));
 
-                Log::channel('audit')->info('Order ready reminder sent', [
+                $this->logger->info('Order ready reminder sent', [
                     'order_id' => $order->id,
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Order ready reminder job failed', [
+                $this->logger->error('Order ready reminder job failed', [
                     'order_id' => $this->order->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -61,6 +62,6 @@ final class OrderReadyReminderJob extends Model
 
         public function retryUntil(): Carbon
         {
-            return now()->addHours(2);
+            return Carbon::now()->addHours(2);
         }
 }

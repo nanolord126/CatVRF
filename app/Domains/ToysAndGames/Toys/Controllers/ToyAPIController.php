@@ -2,16 +2,15 @@
 
 namespace App\Domains\ToysAndGames\Toys\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ToyAPIController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ToyAPIController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly AIToyConstructor $aiConstructor
+            private readonly AIToyConstructor $aiConstructor, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -22,9 +21,10 @@ final class ToyAPIController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            Log::channel('audit')->info('Toy Search Request', [
+            $this->logger->info('Toy Search Request', [
                 'cid' => $correlationId,
-                'params' => $request->all()
+                'params' => $request->all(),
+                'correlation_id' => $request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             $query = Toy::with(['store', 'category', 'ageGroup'])
@@ -59,7 +59,7 @@ final class ToyAPIController extends Model
 
             $results = $query->paginate(20);
 
-            return response()->json([
+            return (new \Illuminate\Http\JsonResponse([
                 'cid' => $correlationId,
                 'status' => 'success',
                 'data' => $results,
@@ -67,7 +67,7 @@ final class ToyAPIController extends Model
                     'total' => $results->total(),
                     'version' => '2026.1.0'
                 ]
-            ])->header('X-Correlation-ID', $correlationId);
+            ]))->header('X-Correlation-ID', $correlationId);
         }
 
         /**
@@ -85,9 +85,10 @@ final class ToyAPIController extends Model
                 'b2b_mode' => 'boolean'
             ]);
 
-            Log::channel('audit')->info('AI Consultation Started', [
+            $this->logger->info('AI Consultation Started', [
                 'cid' => $correlationId,
-                'user' => $request->user()?->id ?? 'guest'
+                'user' => $request->user()?->id ?? 'guest',
+                'correlation_id' => $request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             $dto = new ToyAIRequestDto(
@@ -101,11 +102,11 @@ final class ToyAPIController extends Model
 
             $recommendation = $this->aiConstructor->constructRecommendedOffer($dto);
 
-            return response()->json([
+            return (new \Illuminate\Http\JsonResponse([
                 'cid' => $correlationId,
                 'status' => 'success',
                 'advice' => $recommendation,
-            ])->header('X-Correlation-ID', $correlationId);
+            ]))->header('X-Correlation-ID', $correlationId);
         }
 
         /**
@@ -118,7 +119,7 @@ final class ToyAPIController extends Model
                 ->with(['store', 'category', 'reviews.user'])
                 ->firstOrFail();
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'status' => 'success',
                 'toy' => $toy,
                 'average_rating' => $toy->reviews()->avg('rating') ?: 0

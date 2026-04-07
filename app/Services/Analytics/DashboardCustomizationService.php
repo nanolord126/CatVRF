@@ -2,14 +2,16 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class DashboardCustomizationService extends Model
+final readonly class DashboardCustomizationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 86400;  // 24 hours
 
         /**
@@ -32,9 +34,9 @@ final class DashboardCustomizationService extends Model
             ];
 
             $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
-            Cache::put($cacheKey, $layout, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $layout, self::CACHE_TTL);
 
-            Log::channel('audit')->info('Dashboard layout saved', [
+            $this->logger->channel('audit')->info('Dashboard layout saved', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -51,7 +53,7 @@ final class DashboardCustomizationService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -70,7 +72,7 @@ final class DashboardCustomizationService extends Model
                 'correlation_id' => $correlationId,
             ];
 
-            Cache::put($cacheKey, $defaultLayout, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $defaultLayout, self::CACHE_TTL);
 
             return $defaultLayout;
         }
@@ -82,9 +84,9 @@ final class DashboardCustomizationService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
-            Cache::forget($cacheKey);
+            $this->cache->forget($cacheKey);
 
-            Log::channel('audit')->info('Dashboard layout deleted', [
+            $this->logger->channel('audit')->info('Dashboard layout deleted', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -121,9 +123,9 @@ final class DashboardCustomizationService extends Model
             ];
 
             $cacheKey = "dashboard:name:{$tenantId}:{$userId}";
-            Cache::put($cacheKey, $nameData, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $nameData, self::CACHE_TTL);
 
-            Log::channel('audit')->info('Dashboard name saved', [
+            $this->logger->channel('audit')->info('Dashboard name saved', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,

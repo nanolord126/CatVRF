@@ -2,17 +2,16 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIMedicalTriageService extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AIMedicalTriageService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private \App\Services\AI\AIConstructorService $aiConstructor,
-            private \App\Domains\Medical\Models\Doctor $doctorModel
+            private \App\Domains\Medical\Models\Doctor $doctorModel, private readonly Request $request, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -42,7 +41,7 @@ final class AIMedicalTriageService extends Model
                     ->limit(3)
                     ->get();
 
-                Log::channel('audit')->info('AI Triage performed', [
+                $this->logger->info('AI Triage performed', [
                     'user_id' => $userId,
                     'urgency' => $analysis['urgency'],
                     'correlation_id' => $correlationId,
@@ -55,9 +54,10 @@ final class AIMedicalTriageService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Triage failed', [
+                $this->logger->error('AI Triage failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 throw $e;

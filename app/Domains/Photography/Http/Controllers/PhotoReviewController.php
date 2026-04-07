@@ -2,17 +2,15 @@
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotoReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PhotoReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-    		private readonly FraudControlService $fraudControlService,
-    	) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
     	public function index(): JsonResponse
     	{
@@ -21,13 +19,13 @@ final class PhotoReviewController extends Model
     				->latest()
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $reviews,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -40,13 +38,13 @@ final class PhotoReviewController extends Model
     		try {
     			$review = PhotoReview::with('photographer', 'studio')->findOrFail($id);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $review,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Отзыв не найден',
     				'correlation_id' => Str::uuid(),
@@ -57,7 +55,7 @@ final class PhotoReviewController extends Model
     	public function store(int $sessionId, Request $request): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$this->authorize('create', PhotoReview::class);
@@ -67,40 +65,40 @@ final class PhotoReviewController extends Model
     				'comment' => 'nullable|string|max:1000',
     			]);
 
-    			DB::transaction(function () use ($sessionId, $validated, $correlationId) {
+    			$this->db->transaction(function () use ($sessionId, $validated, $correlationId) {
     				$session = \App\Domains\Photography\Models\PhotoSession->findOrFail($sessionId);
 
     				$review = PhotoReview::create([
     					'uuid' => Str::uuid(),
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'photo_studio_id' => $session->photo_studio_id,
     					'photographer_id' => $session->photographer_id,
     					'photo_session_id' => $sessionId,
-    					'user_id' => auth()->id(),
+    					'user_id' => $request->user()?->id,
     					'rating' => $validated['rating'],
     					'comment' => $validated['comment'] ?? null,
     					'is_verified_purchase' => true,
     					'correlation_id' => $correlationId,
     				]);
 
-    				Log::channel('audit')->info('Photography: Review created', [
+    				$this->logger->info('Photography: Review created', [
     					'review_id' => $review->id,
     					'rating' => $validated['rating'],
     					'correlation_id' => $correlationId,
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Отзыв создан',
     				'correlation_id' => $correlationId,
     			], 201);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Photography: Review creation failed', [
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Photography: Review creation failed', [
     				'error' => $e->getMessage(),
     				'correlation_id' => Str::uuid(),
     			]);
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка при создании отзыва',
     				'correlation_id' => Str::uuid(),
@@ -111,7 +109,7 @@ final class PhotoReviewController extends Model
     	public function update(int $id, Request $request): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$review = PhotoReview::findOrFail($id);
@@ -124,18 +122,18 @@ final class PhotoReviewController extends Model
 
     			$review->update($validated);
 
-    			Log::channel('audit')->info('Photography: Review updated', [
+    			$this->logger->info('Photography: Review updated', [
     				'review_id' => $id,
     				'correlation_id' => Str::uuid(),
     			]);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Отзыв обновлен',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -146,7 +144,7 @@ final class PhotoReviewController extends Model
     	public function destroy(int $id): JsonResponse
     	{
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
     		try {
     			$review = PhotoReview::findOrFail($id);
@@ -154,18 +152,18 @@ final class PhotoReviewController extends Model
 
     			$review->delete();
 
-    			Log::channel('audit')->info('Photography: Review deleted', [
+    			$this->logger->info('Photography: Review deleted', [
     				'review_id' => $id,
     				'correlation_id' => Str::uuid(),
     			]);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Отзыв удален',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -180,13 +178,13 @@ final class PhotoReviewController extends Model
     				->latest()
     				->paginate(10);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $reviews,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -201,13 +199,13 @@ final class PhotoReviewController extends Model
     				->latest()
     				->paginate(10);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $reviews,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -220,22 +218,22 @@ final class PhotoReviewController extends Model
     		try {
     			$review = PhotoReview::findOrFail($id);
 
-    			DB::transaction(function () use ($review) {
+    			$this->db->transaction(function () use ($review) {
     				$review->increment('helpful_count');
 
-    				Log::channel('audit')->info('Photography: Review marked helpful', [
+    				$this->logger->info('Photography: Review marked helpful', [
     					'review_id' => $review->id,
     					'correlation_id' => Str::uuid(),
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Спасибо за отзыв',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),

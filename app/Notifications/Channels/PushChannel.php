@@ -2,6 +2,8 @@
 
 namespace App\Notifications\Channels;
 
+
+use Psr\Log\LoggerInterface;
 use App\Services\PushNotificationService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -14,17 +16,18 @@ use Illuminate\Support\Facades\Log;
  * - OneSignal
  * - Apple Push Notification (APN)
  */
-class PushChannel
+final class PushChannel
 {
     /**
      * Инстанс PushNotificationService
      */
-    protected PushNotificationService $pushService;
+    private PushNotificationService $pushService;
 
     /**
      * Конструктор
      */
-    public function __construct(PushNotificationService $pushService)
+    public function __construct(
+        private readonly LoggerInterface $logger,PushNotificationService $pushService)
     {
         $this->pushService = $pushService;
     }
@@ -36,7 +39,7 @@ class PushChannel
     {
         // Проверить, что объект имеет метод toFirebase
         if (!method_exists($notification, 'toFirebase')) {
-            Log::warning('Notification does not have toFirebase method', [
+            $this->logger->warning('Notification does not have toFirebase method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -47,7 +50,7 @@ class PushChannel
             // Получить FCM token или устройства пользователя
             $devices = $this->getDeviceTokens($notifiable);
             if (empty($devices)) {
-                Log::debug('No device tokens found for user', [
+                $this->logger->debug('No device tokens found for user', [
                     'notifiable_id' => $notifiable->id,
                 ]);
                 return;
@@ -66,14 +69,14 @@ class PushChannel
                         tenantId: $notification->getTenantId(),
                     );
                 } catch (\Exception $e) {
-                    Log::warning('Failed to send push to device', [
+                    $this->logger->warning('Failed to send push to device', [
                         'device_token' => substr($deviceToken, 0, 20) . '...',
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            Log::channel('audit')->info('Push notification sent', [
+            $this->logger->info('Push notification sent', [
                 'type' => $notification->getType(),
                 'user_id' => $notifiable->id,
                 'devices_count' => count($devices),
@@ -82,7 +85,14 @@ class PushChannel
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('notifications')->error('Failed to send push notification', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send push notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),

@@ -2,20 +2,19 @@
 
 namespace App\Domains\Sports\Fitness\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CalculateTrainerEarningsJob extends Model
+use Psr\Log\LoggerInterface;
+final class CalculateTrainerEarningsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
+use App\Services\FraudControlService;
         use InteractsWithQueue;
         use Queueable;
         use SerializesModels;
 
-        public function __construct(public ?string $correlationId = null)
+        public function __construct(public ?string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger)
         {
             $this->onQueue('default');
         }
@@ -38,13 +37,13 @@ final class CalculateTrainerEarningsJob extends Model
                         }
                     });
 
-                Log::channel('audit')->info('Trainer earnings calculated', [
+                $this->logger->info('Trainer earnings calculated', [
                     'month' => $month,
                     'year' => $year,
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to calculate trainer earnings', [
+                $this->logger->error('Failed to calculate trainer earnings', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -55,7 +54,7 @@ final class CalculateTrainerEarningsJob extends Model
         private function calculateEarnings(Trainer $trainer, int $month, int $year): void
         {
             try {
-                DB::transaction(function () use ($trainer, $month, $year) {
+                $this->db->transaction(function () use ($trainer, $month, $year) {
                     $startDate = now()->setMonth($month)->setYear($year)->startOfMonth();
                     $endDate = clone $startDate;
                     $endDate = $endDate->endOfMonth();
@@ -68,7 +67,7 @@ final class CalculateTrainerEarningsJob extends Model
                             'trainer_earnings_calculated' => true,
                         ]);
 
-                    Log::channel('audit')->info('Trainer earnings updated', [
+                    $this->logger->info('Trainer earnings updated', [
                         'trainer_id' => $trainer->id,
                         'month' => $month,
                         'year' => $year,
@@ -76,7 +75,7 @@ final class CalculateTrainerEarningsJob extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to calculate earnings for trainer', [
+                $this->logger->error('Failed to calculate earnings for trainer', [
                     'trainer_id' => $trainer->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,

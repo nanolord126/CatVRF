@@ -2,29 +2,37 @@
 
 namespace App\Mail;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 
-final class AppointmentReminderMail extends Model
+/**
+ * Class AppointmentReminderMail
+ *
+ * Component of the CatVRF platform.
+ * Follows strict coding standards:
+ * - final class (no inheritance unless required)
+ * - private readonly properties
+ * - Constructor injection only
+ * - correlation_id in all operations
+ *
+ * @package App\Mail
+ */
+final class AppointmentReminderMail extends Mailable
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Queueable;
-        use SerializesModels;
+    use Queueable, SerializesModels;
 
         public function __construct(
-            public readonly Appointment $appointment,
-        ) {
-        /**
-         * Инициализировать класс
-         */
-        public function __construct()
-        {
-            // TODO: инициализация
-        }
-    }
+            private readonly Appointment $appointment,
+        ) {}
 
+        /**
+         * Handle envelope operation.
+         *
+         * @throws \DomainException
+         */
         public function envelope(): Envelope
         {
             return new Envelope(
@@ -32,6 +40,11 @@ final class AppointmentReminderMail extends Model
             );
         }
 
+        /**
+         * Handle content operation.
+         *
+         * @throws \DomainException
+         */
         public function content(): Content
         {
             return new Content(

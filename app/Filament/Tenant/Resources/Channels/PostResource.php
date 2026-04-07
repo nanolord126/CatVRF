@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PostResource extends Model
+final class PostResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Post::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-newspaper';
@@ -126,7 +123,6 @@ final class PostResource extends Model
                         ->label('Статус')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'published'          => 'success',
                             'draft'              => 'gray',
                             'pending_moderation' => 'warning',
                             'rejected'           => 'danger',
@@ -138,7 +134,6 @@ final class PostResource extends Model
                         ->label('Видимость')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'all' => 'info',
                             'b2c' => 'success',
                             'b2b' => 'warning',
                             default => 'gray',

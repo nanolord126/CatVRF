@@ -2,49 +2,41 @@
 
 namespace App\Domains\Taxi\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TaxiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(private readonly TaxiService $service,
-            private readonly FraudControlService $fraudControlService,) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
             $taxis = Taxi::where('tenant_id', tenant()->id)->paginate();
 
-            return response()->json(['data' => $taxis]);
+            return new \Illuminate\Http\JsonResponse(['data' => $taxis]);
         }
 
         public function show(Taxi $taxi): JsonResponse
         {
             $this->authorize('view', $taxi);
 
-            return response()->json(['data' => $taxi]);
+            return new \Illuminate\Http\JsonResponse(['data' => $taxi]);
         }
 
         public function store(Request $request): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -61,32 +53,25 @@ final class TaxiController extends Model
                     'license' => $request->input('license'),
                 ], tenant()->id, $correlationId);
 
-                return response()->json(['data' => $taxi], 201);
-            } catch (\Exception $e) {
-                \Log::channel('audit')->error('Taxi creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['data' => $taxi], 201);
+            } catch (\Throwable $e) {
+                $this->logger->error('Taxi creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
 
-                return response()->json(['error' => 'Failed to create taxi'], 422);
+                return new \Illuminate\Http\JsonResponse(['error' => 'Failed to create taxi'], 422);
             }
         }
 
         public function update(Request $request, Taxi $taxi): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -98,32 +83,25 @@ final class TaxiController extends Model
 
             try {
                 $taxi->update($request->only(['name', 'phone', 'status']));
-                \Log::channel('audit')->info('Taxi updated', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+                $this->logger->info('Taxi updated', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
 
-                return response()->json(['data' => $taxi]);
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'Failed to update taxi'], 422);
+                return new \Illuminate\Http\JsonResponse(['data' => $taxi]);
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse(['error' => 'Failed to update taxi'], 422);
             }
         }
 
         public function destroy(Taxi $taxi): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -135,11 +113,11 @@ final class TaxiController extends Model
 
             try {
                 $taxi->delete();
-                \Log::channel('audit')->info('Taxi deleted', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+                $this->logger->info('Taxi deleted', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
 
-                return response()->json(null, 204);
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'Failed to delete taxi'], 422);
+                return new \Illuminate\Http\JsonResponse(null, 204);
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse(['error' => 'Failed to delete taxi'], 422);
             }
         }
 }

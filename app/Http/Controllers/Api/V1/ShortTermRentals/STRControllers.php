@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers\Api\V1\ShortTermRentals;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PropertyController extends Model
+final class PropertyController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly PropertyService $propertyService,
             private readonly FraudControlService $fraudService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
 
         /**
          * Получить список доступных квартир с фильтрацией
@@ -82,13 +87,13 @@ final class PropertyController extends Model
 
                 $properties = $query->paginate(20);
 
-                Log::channel('audit')->info('Properties list requested', [
+                $this->logger->channel('audit')->info('Properties list requested', [
                     'count' => count($properties),
                     'filters' => $request->only(['lat', 'lon', 'price_min', 'price_max', 'check_in', 'check_out']),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => PropertyResource::collection($properties),
                     'meta' => [
@@ -102,12 +107,12 @@ final class PropertyController extends Model
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Properties list failed', [
+                $this->logger->channel('audit')->error('Properties list failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to fetch properties',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -139,39 +144,39 @@ final class PropertyController extends Model
                 // Проверяем доступность для B2C/B2B
                 $isB2B = $request->get('b2b') === true;
                 if ($isB2B && !$property->is_b2b_available) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'error' => 'Property not available for B2B',
                         'correlation_id' => $correlationId,
                     ], 403);
                 }
                 if (!$isB2B && !$property->is_b2c_available) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'error' => 'Property not available for B2C',
                         'correlation_id' => $correlationId,
                     ], 403);
                 }
 
-                Log::channel('audit')->info('Property details viewed', [
+                $this->logger->channel('audit')->info('Property details viewed', [
                     'property_id' => $property->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => new PropertyResource($property),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Property details failed', [
+                $this->logger->channel('audit')->error('Property details failed', [
                     'property_id' => $property->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to fetch property',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -190,30 +195,30 @@ final class PropertyController extends Model
                 // Проверяем авторизацию
                 $this->authorize('update', $property);
 
-                DB::transaction(function () use ($request, $property, $correlationId) {
+                $this->db->transaction(function () use ($request, $property, $correlationId) {
                     $this->propertyService->updateProperty($property, $request->validated(), $correlationId);
                 });
 
-                Log::channel('audit')->info('Property updated', [
+                $this->logger->channel('audit')->info('Property updated', [
                     'property_id' => $property->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'fields' => array_keys($request->validated()),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => new PropertyResource($property),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Property update failed', [
+                $this->logger->channel('audit')->error('Property update failed', [
                     'property_id' => $property->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to update property',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -237,23 +242,23 @@ final class PropertyController extends Model
             try {
                 $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
-                DB::transaction(function () use ($request, $correlationId) {
+                $this->db->transaction(function () use ($request, $correlationId) {
                     // Фрод-проверка перед бронированием
                     $fraudScore = $this->fraudService->scoreOperation(
                         operationType: 'property_booking',
-                        userId: auth()->id(),
+                        userId: $this->guard->id(),
                         amount: (int)($request->total_price * 100),
                         correlationId: $correlationId
                     );
 
                     if ($fraudScore > 0.85) {
-                        throw new \Exception('Booking blocked by fraud detection');
+                        throw new \Symfony\Component\HttpKernel\Exception\HttpException(403, 'Booking blocked by fraud detection');
                     }
 
                     // Создаём бронирование
                     $booking = $this->bookingService->createBooking(
                         propertyId: $request->property_id,
-                        userId: auth()->id(),
+                        userId: $this->guard->id(),
                         checkIn: $request->check_in_date,
                         checkOut: $request->check_out_date,
                         guests: $request->guests_count,
@@ -262,26 +267,26 @@ final class PropertyController extends Model
                     );
                 });
 
-                Log::channel('audit')->info('Booking created', [
+                $this->logger->channel('audit')->info('Booking created', [
                     'booking_id' => $booking->id ?? null,
                     'property_id' => $request->property_id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'total_price' => $request->total_price,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => new BookingResource($booking),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Booking creation failed', [
+                $this->logger->channel('audit')->error('Booking creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to create booking',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -299,25 +304,25 @@ final class PropertyController extends Model
 
                 $this->authorize('view', $booking);
 
-                Log::channel('audit')->info('Booking details viewed', [
+                $this->logger->channel('audit')->info('Booking details viewed', [
                     'booking_id' => $booking->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => new BookingResource($booking),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Booking details failed', [
+                $this->logger->channel('audit')->error('Booking details failed', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to fetch booking',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -335,7 +340,7 @@ final class PropertyController extends Model
 
                 $this->authorize('cancel', $booking);
 
-                DB::transaction(function () use ($booking, $correlationId, $request) {
+                $this->db->transaction(function () use ($booking, $correlationId, $request) {
                     $this->bookingService->cancelBooking(
                         booking: $booking,
                         reason: $request->get('reason', 'user_requested'),
@@ -343,25 +348,25 @@ final class PropertyController extends Model
                     );
                 });
 
-                Log::channel('audit')->info('Booking cancelled', [
+                $this->logger->channel('audit')->info('Booking cancelled', [
                     'booking_id' => $booking->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => new BookingResource($booking),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Booking cancellation failed', [
+                $this->logger->channel('audit')->error('Booking cancellation failed', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to cancel booking',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -385,29 +390,29 @@ final class PropertyController extends Model
                 $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
                 $payouts = $this->payoutService->getPayoutHistory(
-                    tenantId: auth()->user()->current_tenant_id,
+                    tenantId: $this->guard->user()->current_tenant_id,
                     page: $request->get('page', 1),
                     perPage: $request->get('per_page', 20)
                 );
 
-                Log::channel('audit')->info('Payouts list requested', [
-                    'tenant_id' => auth()->user()->current_tenant_id,
+                $this->logger->channel('audit')->info('Payouts list requested', [
+                    'tenant_id' => $this->guard->user()->current_tenant_id,
                     'count' => count($payouts),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $payouts,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Payouts list failed', [
+                $this->logger->channel('audit')->error('Payouts list failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to fetch payouts',
                     'correlation_id' => $correlationId ?? 'unknown',
@@ -428,33 +433,33 @@ final class PropertyController extends Model
                     'bank_account' => 'required|string',
                 ]);
 
-                DB::transaction(function () use ($request, $correlationId) {
+                $this->db->transaction(function () use ($request, $correlationId) {
                     $this->payoutService->requestPayout(
-                        tenantId: auth()->user()->current_tenant_id,
+                        tenantId: $this->guard->user()->current_tenant_id,
                         amount: (int)($request->amount * 100),
                         bankAccount: $request->bank_account,
                         correlationId: $correlationId
                     );
                 });
 
-                Log::channel('audit')->info('Payout requested', [
-                    'tenant_id' => auth()->user()->current_tenant_id,
+                $this->logger->channel('audit')->info('Payout requested', [
+                    'tenant_id' => $this->guard->user()->current_tenant_id,
                     'amount' => $request->amount,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Payout request created',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Payout request failed', [
+                $this->logger->channel('audit')->error('Payout request failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Failed to request payout',
                     'correlation_id' => $correlationId ?? 'unknown',

@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class EventResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Event::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -123,7 +128,6 @@ final class EventResource extends Model
                         ->badge()
                         ->label('Тип')
                         ->color(fn (string $state): string => match ($state) {
-                            'wedding' => 'pink',
                             'corporate' => 'indigo',
                             'birthday' => 'success',
                             default => 'gray',
@@ -160,10 +164,10 @@ final class EventResource extends Model
                     ViewAction::make(),
                     EditAction::make()
                         ->before(function (Event $record, array $data) {
-                            Log::channel('audit')->info('Filament: Editing event', [
+                            $this->logger->info('Filament: Editing event', [
                                 'event_uuid' => $record->uuid,
                                 'tenant_id' => $record->tenant_id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                             ]);
                         })
                         ->successNotification(

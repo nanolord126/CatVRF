@@ -44,3 +44,5 @@ return new class extends Migration
         Schema::dropIfExists('beauty_portfolio_items');
     }
 };
+
+

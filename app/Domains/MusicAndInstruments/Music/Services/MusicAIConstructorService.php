@@ -2,17 +2,16 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicAIConstructorService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MusicAIConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
+
+    public function __construct(private readonly \App\Services\FraudControlService $fraud,
             private readonly RecommendationService $recommendation,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * AI Instrument & Lesson Constructor.
@@ -20,7 +19,7 @@ final class MusicAIConstructorService extends Model
          */
         public function constructForUser(string $level, string $genre, int $budgetCents, int $userId): array
         {
-            FraudControlService::check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
             $correlationId = (string) Str::uuid();
 
@@ -60,7 +59,7 @@ final class MusicAIConstructorService extends Model
                 ];
             })->sortByDesc('score');
 
-            Log::channel('audit')->info('Music AI Constructor used', [
+            $this->logger->info('Music AI Constructor used', [
                 'user_id' => $userId,
                 'level' => $level,
                 'genre' => $genre,
@@ -80,7 +79,7 @@ final class MusicAIConstructorService extends Model
          */
         public function saveAIResults(int $userId, array $results): void
         {
-            DB::table('user_ai_designs')->insert([
+            $this->db->table('user_ai_designs')->insert([
                 'user_id' => $userId,
                 'vertical' => 'music',
                 'design_data' => json_encode($results),
@@ -88,7 +87,7 @@ final class MusicAIConstructorService extends Model
                 'created_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Music AI Construction saved', [
+            $this->logger->info('Music AI Construction saved', [
                 'user_id' => $userId,
                 'correlation_id' => $results['correlation_id'],
             ]);

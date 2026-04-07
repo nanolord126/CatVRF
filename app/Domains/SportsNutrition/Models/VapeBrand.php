@@ -2,14 +2,16 @@
 
 namespace App\Domains\SportsNutrition\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class VapeBrand extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'vapes_brands';
@@ -41,8 +43,8 @@ final class VapeBrand extends Model
         {
             // Изоляция данных на уровне базы (Tenant Scoping Канон 2026)
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', (int) tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $builder->where('tenant_id', (int) tenant()?->id);
                 }
             });
 
@@ -55,7 +57,7 @@ final class VapeBrand extends Model
                     $model->correlation_id = (string) Str::uuid();
                 }
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = (int) tenant('id');
+                    $model->tenant_id = (int) tenant()?->id;
                 }
             });
         }

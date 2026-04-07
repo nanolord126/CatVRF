@@ -2,17 +2,17 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CarDetailingController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CarDetailingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -25,18 +25,18 @@ final class CarDetailingController extends Model
                     ->with(['client', 'vehicle'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $detailings,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing index failed', [
+                $this->logger->error('Car detailing index failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve car detailing bookings',
                     'correlation_id' => $correlationId,
@@ -59,12 +59,9 @@ final class CarDetailingController extends Model
             ]);
 
             try {
-                $this->fraudControl->check('car_detailing_booking', $request->ip(), [
-                    'user_id' => auth()->id(),
-                    'amount' => $validated['price'],
-                ]);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'amount', amount: 0, correlationId: $correlationId ?? '');
 
-                $detailing = DB::transaction(function () use ($validated, $correlationId) {
+                $detailing = $this->db->transaction(function () use ($validated, $correlationId) {
                     return CarDetailing::create([
                         ...$validated,
                         'tenant_id' => tenant()->id,
@@ -75,23 +72,23 @@ final class CarDetailingController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Car detailing booking created', [
+                $this->logger->info('Car detailing booking created', [
                     'correlation_id' => $correlationId,
                     'detailing_id' => $detailing->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $detailing->load(['client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing booking creation failed', [
+                $this->logger->error('Car detailing booking creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create car detailing booking',
                     'correlation_id' => $correlationId,
@@ -101,7 +98,7 @@ final class CarDetailingController extends Model
 
         public function show(CarDetailing $detailing): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $detailing->load(['client', 'vehicle']),
             ]);
@@ -118,27 +115,27 @@ final class CarDetailingController extends Model
             ]);
 
             try {
-                DB::transaction(function () use ($detailing, $validated) {
+                $this->db->transaction(function () use ($detailing, $validated) {
                     $detailing->update($validated);
                 });
 
-                Log::channel('audit')->info('Car detailing booking updated', [
+                $this->logger->info('Car detailing booking updated', [
                     'correlation_id' => $correlationId,
                     'detailing_id' => $detailing->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $detailing->fresh(['client', 'vehicle']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing booking update failed', [
+                $this->logger->error('Car detailing booking update failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update car detailing booking',
                     'correlation_id' => $correlationId,
@@ -151,30 +148,30 @@ final class CarDetailingController extends Model
             $correlationId = Str::uuid()->toString();
 
             try {
-                DB::transaction(function () use ($detailing) {
+                $this->db->transaction(function () use ($detailing) {
                     $detailing->update([
                         'status' => 'completed',
-                        'completed_at' => now(),
+                        'completed_at' => Carbon::now(),
                     ]);
                 });
 
-                Log::channel('audit')->info('Car detailing completed', [
+                $this->logger->info('Car detailing completed', [
                     'correlation_id' => $correlationId,
                     'detailing_id' => $detailing->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $detailing->fresh(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing completion failed', [
+                $this->logger->error('Car detailing completion failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to complete car detailing',
                     'correlation_id' => $correlationId,
@@ -187,27 +184,27 @@ final class CarDetailingController extends Model
             $correlationId = Str::uuid()->toString();
 
             try {
-                DB::transaction(function () use ($detailing) {
+                $this->db->transaction(function () use ($detailing) {
                     $detailing->update(['status' => 'cancelled']);
                 });
 
-                Log::channel('audit')->info('Car detailing cancelled', [
+                $this->logger->info('Car detailing cancelled', [
                     'correlation_id' => $correlationId,
                     'detailing_id' => $detailing->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $detailing->fresh(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing cancellation failed', [
+                $this->logger->error('Car detailing cancellation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to cancel car detailing',
                     'correlation_id' => $correlationId,
@@ -222,23 +219,23 @@ final class CarDetailingController extends Model
             try {
                 $detailing->delete();
 
-                Log::channel('audit')->info('Car detailing deleted', [
+                $this->logger->info('Car detailing deleted', [
                     'correlation_id' => $correlationId,
                     'detailing_id' => $detailing->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Car detailing booking deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Car detailing deletion failed', [
+                $this->logger->error('Car detailing deletion failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete car detailing booking',
                     'correlation_id' => $correlationId,

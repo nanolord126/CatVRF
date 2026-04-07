@@ -1,15 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\Review;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
 
-final class ReviewResource extends Model
+final class ReviewResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Review::class;
 
         protected static ?string $slug = 'marketplace/beauty/reviews';
@@ -48,7 +59,7 @@ final class ReviewResource extends Model
                 TextColumn::make('user.name')->searchable(),
                 TextColumn::make('rating')->numeric(),
                 TextColumn::make('title')->searchable(),
-                BadgeColumn::make('status')->colors([
+                TextColumn::make('status')->badge()->colors([
                     'pending' => 'warning',
                     'approved' => 'success',
                     'rejected' => 'danger',

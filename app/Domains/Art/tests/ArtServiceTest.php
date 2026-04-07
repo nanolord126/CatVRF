@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Tests\Domains\Art;
 
+use Illuminate\Config\Repository as ConfigRepository;
+
 use App\Domains\Art\Models\Artist;
 use App\Domains\Art\Models\Project;
 use App\Domains\Art\Services\AIArtConstructor;
@@ -21,8 +23,8 @@ final class ArtServiceTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('fraud.ml.skip', true);
-        config()->set('art.integrations.skip_insights', true);
+        $this->config->get()->set('fraud.ml.skip', true);
+        $this->config->get()->set('art.integrations.skip_insights', true);
 
         Artisan::call('migrate', [
             '--path' => 'app/Domains/Art/database/migrations/art',

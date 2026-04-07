@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 final class PostReactionLog extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'post_reaction_logs';
 
         public $timestamps = false;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'post_id',
             'tenant_id',
             'user_id',
@@ -31,6 +32,22 @@ final class PostReactionLog extends Model
             'fraud_score' => 'float',
             'reacted_at'  => 'datetime',
         ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         public function post(): BelongsTo
         {

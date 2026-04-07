@@ -1,21 +1,195 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\AssuranceServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Insurance\AssuranceServices\Models\QualityAudit;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class AssuranceServicesService extends Model
+/**
+ * AssuranceServicesService — управление аудитами качества.
+ *
+ * Создание, завершение и отмена аудитов качества для страховых компаний.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class AssuranceServicesService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createAudit(int $auditorId,$auditType,$hoursSpent,$dueDate,string $correlationId=""):QualityAudit{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("assur:audit:".auth()->id(),8))throw new \RuntimeException("Too many",429);RateLimiter::hit("assur:audit:".auth()->id(),3600);
-    return DB::transaction(function()use($auditorId,$auditType,$hoursSpent,$dueDate,$correlationId){$a=AssuranceAuditor::findOrFail($auditorId);$total=(int)($a->price_kopecks_per_hour*$hoursSpent);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'assurance','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$q=QualityAudit::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'auditor_id'=>$auditorId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','audit_type'=>$auditType,'hours_spent'=>$hoursSpent,'due_date'=>$dueDate,'tags'=>['assurance'=>true]]);Log::channel('audit')->info('Quality audit created',['audit_id'=>$q->id,'correlation_id'=>$correlationId]);return $q;});
+    /**
+     * Создать аудит качества.
+     */
+    public function createAudit(
+        int    $auditorId,
+        string $auditType,
+        int    $hoursSpent,
+        string $dueDate,
+        string $correlationId = '',
+    ): QualityAudit {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($auditorId, $auditType, $hoursSpent, $dueDate, $correlationId): QualityAudit {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'assurance',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $ratePerHourKopecks = 200000;
+            $total = $ratePerHourKopecks * $hoursSpent;
+
+            $audit = QualityAudit::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'auditor_id'     => $auditorId,
+                'client_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $total,
+                'payout_kopecks' => $total - (int) ($total * 0.14),
+                'payment_status' => 'pending',
+                'audit_type'     => $auditType,
+                'hours_spent'    => $hoursSpent,
+                'due_date'       => $dueDate,
+                'tags'           => ['assurance' => true],
+            ]);
+
+            $this->logger->info('Quality audit created', [
+                'audit_id'       => $audit->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
     }
-    public function completeAudit(int $auditId,string $correlationId=""):QualityAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$q=QualityAudit::findOrFail($auditId);if($q->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$q->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$q->payout_kopecks,'assur_payout',['correlation_id'=>$correlationId,'audit_id'=>$q->id]);Log::channel('audit')->info('Quality audit completed',['audit_id'=>$q->id]);return $q;});}
-    public function cancelAudit(int $auditId,string $correlationId=""):QualityAudit{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($auditId,$correlationId){$q=QualityAudit::findOrFail($auditId);if($q->status==='completed')throw new \RuntimeException("Cannot cancel",400);$q->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($q->payment_status==='completed')$this->wallet->credit(tenant()->id,$q->total_kopecks,'assur_refund',['correlation_id'=>$correlationId,'audit_id'=>$q->id]);Log::channel('audit')->info('Quality audit cancelled',['audit_id'=>$q->id]);return $q;});}
-    public function getAudit(int $auditId):QualityAudit{return QualityAudit::findOrFail($auditId);}
-    public function getUserAudits(int $clientId){return QualityAudit::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершить аудит и выплатить аудитору.
+     */
+    public function completeAudit(int $auditId, string $correlationId = ''): QualityAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($auditId, $correlationId): QualityAudit {
+            $audit = QualityAudit::findOrFail($auditId);
+
+            if ($audit->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $audit->update([
+                'status'         => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $audit->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['audit_id' => $audit->id],
+            );
+
+            $this->logger->info('Quality audit completed', [
+                'audit_id'       => $audit->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
+    }
+
+    /**
+     * Отменить аудит и вернуть средства.
+     */
+    public function cancelAudit(int $auditId, string $correlationId = ''): QualityAudit
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($auditId, $correlationId): QualityAudit {
+            $audit = QualityAudit::findOrFail($auditId);
+
+            if ($audit->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed audit', 400);
+            }
+
+            $wasPaid = $audit->payment_status === 'completed';
+
+            $audit->update([
+                'status'         => 'cancelled',
+                'payment_status' => $wasPaid ? 'refunded' : $audit->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($wasPaid) {
+                $this->wallet->credit(
+                    walletId: tenant()->id,
+                    amount: $audit->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['audit_id' => $audit->id],
+                );
+            }
+
+            $this->logger->info('Quality audit cancelled', [
+                'audit_id'       => $audit->id,
+                'refunded'       => $wasPaid,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $audit;
+        });
+    }
+
+    /**
+     * Получить аудит по ID.
+     */
+    public function getAudit(int $auditId): QualityAudit
+    {
+        return QualityAudit::findOrFail($auditId);
+    }
+
+    /**
+     * Получить последние аудиты клиента.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, QualityAudit>
+     */
+    public function getUserAudits(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return QualityAudit::where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->take($limit)
+            ->get();
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

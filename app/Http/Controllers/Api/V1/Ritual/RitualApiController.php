@@ -2,20 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1\Ritual;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class RitualApiController extends Model
+final class RitualApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с инъекцией сервиса (DI).
          */
         public function __construct(
             private RitualCoreService $ritualService,
-        ) {}
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
         /**
          * Список заказов текущего пользователя (Tenant + User Scoping).
          */
@@ -23,26 +28,26 @@ final class RitualApiController extends Model
         {
             $correlation_id = (string) Str::uuid();
             try {
-                $orders = FuneralOrder::where('client_id', auth()->id())
+                $orders = FuneralOrder::where('client_id', $this->guard->id())
                     ->latest()
                     ->paginate(20);
-                Log::channel('audit')->info('Ritual orders list requested', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Ritual orders list requested', [
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlation_id,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $orders,
                     'correlation_id' => $correlation_id,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to list ritual orders', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->error('Failed to list ritual orders', [
+                    'user_id' => $this->guard->id(),
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlation_id,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Не удалось получить список заказов',
                     'correlation_id' => $correlation_id,
@@ -59,27 +64,27 @@ final class RitualApiController extends Model
                 // Валидированные данные (FormRequest)
                 $data = $request->validated();
                 // Фиксируем ID авторизованного клиента
-                $data['client_id'] = auth()->id();
+                $data['client_id'] = $this->guard->id();
                 $data['correlation_id'] ??= $correlation_id;
-                // Вызов сервиса (DB::transaction внутри)
+                // Вызов сервиса ($this->db->transaction внутри)
                 $order = $this->ritualService->createFuneralOrder($data, $correlation_id);
-                Log::channel('audit')->info('Ritual order created via API', [
+                $this->logger->channel('audit')->info('Ritual order created via API', [
                     'order_uuid' => $order->uuid,
                     'client_id' => $order->client_id,
                     'correlation_id' => $correlation_id,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $order,
                     'correlation_id' => $correlation_id,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create ritual order via API', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->error('Failed to create ritual order via API', [
+                    'user_id' => $this->guard->id(),
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlation_id,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при оформлении заказа: ' . $e->getMessage(),
                     'correlation_id' => $correlation_id,
@@ -95,19 +100,19 @@ final class RitualApiController extends Model
             try {
                 // Поиск с проверкой прав доступа (Tenant Global Scope активен)
                 $order = FuneralOrder::where('uuid', $uuid)
-                    ->where('client_id', auth()->id())
+                    ->where('client_id', $this->guard->id())
                     ->firstOrFail();
-                Log::channel('audit')->info('Ritual order detail viewed', [
+                $this->logger->channel('audit')->info('Ritual order detail viewed', [
                     'order_uuid' => $uuid,
                     'correlation_id' => $correlation_id,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $order,
                     'correlation_id' => $correlation_id,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Заказ не найден или доступ запрещен',
                     'correlation_id' => $correlation_id,

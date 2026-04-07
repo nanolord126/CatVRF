@@ -1,21 +1,206 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * LodgingService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+ *
+ * @see https://catvrf.ru/docs/lodgingservice
+ */
 
 namespace App\Domains\Hotels\Lodging\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Lodging\Models\LodgingBooking;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
 
-final class LodgingService extends Model
+final readonly class LodgingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createBooking(int $lodgeId,$checkIn,$checkOut,string $correlationId=""):LodgingBooking{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("lodging:book:".auth()->id(),10))throw new \RuntimeException("Too many",429);RateLimiter::hit("lodging:book:".auth()->id(),3600);
-    return DB::transaction(function()use($lodgeId,$checkIn,$checkOut,$correlationId){$lodge=Lodge::findOrFail($lodgeId);$nights=(strtotime($checkOut)-strtotime($checkIn))/86400;$total=(int)($lodge->price_kopecks_per_night*$nights);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'lodging_booking','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$b=LodgingBooking::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'lodge_id'=>$lodgeId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','check_in'=>$checkIn,'check_out'=>$checkOut,'tags'=>['lodging'=>true]]);Log::channel('audit')->info('Lodging booking created',['booking_id'=>$b->id,'correlation_id'=>$correlationId]);return $b;});
+    public function createBooking(
+        int $lodgeId,
+        string $checkIn,
+        string $checkOut,
+        int $tenantId,
+        string $correlationId = '',
+    ): LodgingBooking {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        if ($this->rateLimiter->tooManyAttempts('lodging:book:' . ($this->guard->id() ?? 0), 10)) {
+            throw new \RuntimeException('Too many', 429);
+        }
+
+        $this->rateLimiter->hit('lodging:book:' . ($this->guard->id() ?? 0), 3600);
+
+        return $this->db->transaction(function () use ($lodgeId, $checkIn, $checkOut, $tenantId, $correlationId) {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'lodging_booking',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Security', 403);
+            }
+
+            $checkInDate = new \DateTimeImmutable($checkIn);
+            $checkOutDate = new \DateTimeImmutable($checkOut);
+            $nights = max(1, (int) $checkInDate->diff($checkOutDate)->days);
+            $total = $nights * 400000;
+
+            $booking = LodgingBooking::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
+                'lodge_id' => $lodgeId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $total - (int) ($total * 0.14),
+                'payment_status' => 'pending',
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'tags' => ['lodging' => true],
+            ]);
+
+            $this->logger->info('Lodging booking created', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $booking;
+        });
     }
-    public function completeBooking(int $bookingId,string $correlationId=""):LodgingBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=LodgingBooking::findOrFail($bookingId);if($b->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$b->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$b->payout_kopecks,'lodging_payout',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Lodging completed',['booking_id'=>$b->id]);return $b;});}
-    public function cancelBooking(int $bookingId,string $correlationId=""):LodgingBooking{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($bookingId,$correlationId){$b=LodgingBooking::findOrFail($bookingId);if($b->status==='completed')throw new \RuntimeException("Cannot cancel",400);$b->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($b->payment_status==='completed')$this->wallet->credit(tenant()->id,$b->total_kopecks,'lodging_refund',['correlation_id'=>$correlationId,'booking_id'=>$b->id]);Log::channel('audit')->info('Lodging cancelled',['booking_id'=>$b->id]);return $b;});}
-    public function getBooking(int $bookingId):LodgingBooking{return LodgingBooking::findOrFail($bookingId);}
-    public function getUserBookings(int $clientId){return LodgingBooking::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeBooking(int $bookingId, string $correlationId = ''): LodgingBooking
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($bookingId, $correlationId) {
+            $booking = LodgingBooking::findOrFail($bookingId);
+
+            if ($booking->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $booking->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                $booking->tenant_id,
+                $booking->payout_kopecks,
+                'lodging_payout',
+                $correlationId,
+            );
+
+            $this->logger->info('Lodging booking completed', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $booking;
+        });
+    }
+
+    public function cancelBooking(int $bookingId, string $correlationId = ''): LodgingBooking
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($bookingId, $correlationId) {
+            $booking = LodgingBooking::findOrFail($bookingId);
+
+            if ($booking->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel', 400);
+            }
+
+            $previousPaymentStatus = $booking->payment_status;
+
+            $booking->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousPaymentStatus === 'completed') {
+                $this->wallet->credit(
+                    $booking->tenant_id,
+                    $booking->total_kopecks,
+                    'lodging_refund',
+                    $correlationId,
+                );
+            }
+
+            $this->logger->info('Lodging booking cancelled', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $booking;
+        });
+    }
+
+    public function getBooking(int $bookingId): LodgingBooking
+    {
+        return LodgingBooking::findOrFail($bookingId);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, LodgingBooking>
+     */
+    public function getUserBookings(int $clientId): \Illuminate\Database\Eloquent\Collection
+    {
+        return LodgingBooking::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

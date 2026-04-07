@@ -2,14 +2,11 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class EntertainmentVenueResource extends Model
+final class EntertainmentVenueResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = EntertainmentVenue::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';

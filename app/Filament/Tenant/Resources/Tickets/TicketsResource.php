@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TicketsResource extends Model
+final class TicketsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Event::class;
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
         protected static ?string $navigationGroup = 'Вертикали';

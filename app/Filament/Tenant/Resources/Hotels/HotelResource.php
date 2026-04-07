@@ -2,14 +2,16 @@
 
 namespace App\Filament\Tenant\Resources\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Hotel;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class HotelResource extends Model
+final class HotelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Hotel::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office';
@@ -322,7 +324,7 @@ final class HotelResource extends Model
                     ]),
 
                 Forms\Components\Hidden::make('tenant_id')
-                    ->default(fn () => tenant('id')),
+                    ->default(fn () => filament()->getTenant()?->id),
                 Forms\Components\Hidden::make('correlation_id')
                     ->default(fn () => (string) Str::uuid()),
                 Forms\Components\Hidden::make('business_group_id')
@@ -355,7 +357,6 @@ final class HotelResource extends Model
                     ->label('Тип')
                     ->badge()
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'hotel' => 'Гостиница',
                         'hostel' => 'Хостел',
                         'boutique' => 'Бутик-отель',
                         'resort' => 'Курортный отель',
@@ -364,7 +365,6 @@ final class HotelResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'hotel' => 'blue',
                         'hostel' => 'green',
                         'boutique' => 'purple',
                         'resort' => 'orange',
@@ -408,12 +408,14 @@ final class HotelResource extends Model
                     ->copyable()
                     ->limit(20),
 
-                Tables\Columns\BooleanColumn::make('is_verified')
+                Tables\Columns\IconColumn::make('is_verified')
+                    ->boolean()
                     ->label('Проверена')
                     ->toggleable()
                     ->sortable(),
 
-                Tables\Columns\BooleanColumn::make('is_active')
+                Tables\Columns\IconColumn::make('is_active')
+                    ->boolean()
                     ->label('Активна')
                     ->toggleable()
                     ->sortable(),
@@ -493,9 +495,9 @@ final class HotelResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Hotel verified', [
+                            app(LoggerInterface::class)->info('Hotel verified', [
                                 'hotel_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => filament()->auth()->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -508,9 +510,9 @@ final class HotelResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Hotel featured', [
+                            app(LoggerInterface::class)->info('Hotel featured', [
                                 'hotel_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => filament()->auth()->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -522,9 +524,9 @@ final class HotelResource extends Model
                     Tables\Actions\DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Hotel bulk deleted', [
+                                app(LoggerInterface::class)->info('Hotel bulk deleted', [
                                     'hotel_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => filament()->auth()->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -537,9 +539,9 @@ final class HotelResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Hotel activated', [
+                                app(LoggerInterface::class)->info('Hotel activated', [
                                     'hotel_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => filament()->auth()->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -554,9 +556,9 @@ final class HotelResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => false]);
-                                Log::channel('audit')->info('Hotel deactivated', [
+                                app(LoggerInterface::class)->info('Hotel deactivated', [
                                     'hotel_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => filament()->auth()->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -571,9 +573,9 @@ final class HotelResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Hotel bulk verified', [
+                                app(LoggerInterface::class)->info('Hotel bulk verified', [
                                     'hotel_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => filament()->auth()->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -603,6 +605,6 @@ final class HotelResource extends Model
         protected static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
-                ->where('tenant_id', filament()->getTenant()->id);
+                ->where('tenant_id', filament()->getTenant()?->id);
         }
 }

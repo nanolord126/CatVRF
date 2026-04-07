@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Photography;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PhotographyResource extends Model
+final class PhotographyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Photographer::class;
         protected static ?string $navigationIcon = 'heroicon-o-camera';
         protected static ?string $navigationGroup = 'Вертикали';

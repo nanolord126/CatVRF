@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Api\V2\Realtime;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class PresenceController extends Model
+final class PresenceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RealtimeService $realtimeService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {
             parent::__construct();
         }
         /**
@@ -25,35 +26,35 @@ final class PresenceController extends Model
         public function track(Request $request): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
+            $tenantId = filament()->getTenant()?->id ?? $this->guard->user()?->tenant_id;
             try {
                 $request->validate([
                     'status' => 'required|in:online,away,busy',
                     'location' => 'nullable|string|max:255',
                 ]);
                 $this->realtimeService->trackPresence(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     tenantId: $tenantId,
                     data: [
                         'status' => $request->get('status'),
                         'location' => $request->get('location'),
                     ]
                 );
-                Log::channel('audit')->info('Presence tracked', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Presence tracked', [
+                    'user_id' => $this->guard->id(),
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
                 return $this->successResponse(
                     data: [
                         'status' => 'tracked',
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                     ],
                     message: 'Presence tracked successfully',
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to track presence', [
+                $this->logger->channel('audit')->error('Failed to track presence', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
@@ -74,10 +75,10 @@ final class PresenceController extends Model
         public function getOnline(): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
+            $tenantId = filament()->getTenant()?->id ?? $this->guard->user()?->tenant_id;
             try {
                 $onlineUsers = $this->realtimeService->getOnlineUsers($tenantId);
-                Log::channel('audit')->info('Online users retrieved', [
+                $this->logger->channel('audit')->info('Online users retrieved', [
                     'tenant_id' => $tenantId,
                     'count' => count($onlineUsers),
                     'correlation_id' => $correlationId,
@@ -91,7 +92,7 @@ final class PresenceController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get online users', [
+                $this->logger->channel('audit')->error('Failed to get online users', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -112,9 +113,9 @@ final class PresenceController extends Model
         {
             $correlationId = (string) Str::uuid()->toString();
             try {
-                cache()->forget("presence:user." . auth()->id());
-                Log::channel('audit')->info('Presence tracking stopped', [
-                    'user_id' => auth()->id(),
+                cache()->forget("presence:user." . $this->guard->id());
+                $this->logger->channel('audit')->info('Presence tracking stopped', [
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                 ]);
                 return $this->successResponse(
@@ -123,7 +124,7 @@ final class PresenceController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to stop tracking presence', [
+                $this->logger->channel('audit')->error('Failed to stop tracking presence', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

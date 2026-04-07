@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class ReferralPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -20,7 +21,7 @@ final class ReferralPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($referral->tenant_id) && $user->tenant_id !== $referral->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $referral->tenant_id,
@@ -35,7 +36,7 @@ final class ReferralPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized referral view attempt', [
+                $this->logger->warning('Unauthorized referral view attempt', [
                     'user_id' => $user->id,
                     'referral_id' => $referral->id,
                 ]);
@@ -62,7 +63,7 @@ final class ReferralPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -72,7 +73,7 @@ final class ReferralPolicy extends Model
             $allowed = $user->email_verified_at !== null;
 
             if (!$allowed) {
-                Log::info('Unverified user referral creation attempt', [
+                $this->logger->info('Unverified user referral creation attempt', [
                     'user_id' => $user->id,
                 ]);
             }
@@ -207,7 +208,7 @@ final class ReferralPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized referral bonus revocation attempt', [
+                $this->logger->warning('Unauthorized referral bonus revocation attempt', [
                     'user_id' => $user->id,
                     'referral_id' => $referral->id,
                 ]);
@@ -241,7 +242,7 @@ final class ReferralPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -259,7 +260,7 @@ final class ReferralPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -278,7 +279,7 @@ final class ReferralPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

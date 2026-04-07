@@ -1,33 +1,69 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\AppointmentScheduled;
+use App\Domains\Beauty\Jobs\SendAppointmentRemindersJob;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class SendAppointmentReminder extends Model
+/**
+ * SendAppointmentReminder — CatVRF 2026.
+ *
+ * Запускает джоб напоминания при планировании записи.
+ * Runs asynchronously via queue (ShouldQueue).
+ * Maintains correlation_id chain.
+ *
+ * @package App\Domains\Beauty\Listeners
+ */
+final class SendAppointmentReminder implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private Dispatcher $bus,
+        private LoggerInterface $auditLogger,
+    ) {}
+
     public function handle(AppointmentScheduled $event): void
-        {
-            try {
-                Log::channel('audit')->info('Appointment reminder scheduled', [
-                    'appointment_id' => $event->appointmentId,
-                    'master_id' => $event->masterId,
-                    'client_id' => $event->clientId,
-                    'scheduled_at' => $event->scheduledAt,
-                    'correlation_id' => $event->correlationId,
-                    'action' => 'appointment_reminder_scheduled',
-                ]);
-                // Notification::dispatch(new AppointmentReminderNotification($event), delay: 23 hours);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Failed to schedule appointment reminder', [
-                    'correlation_id' => $event->correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
+    {
+        $this->bus->dispatch(new SendAppointmentRemindersJob($event->correlationId));
+
+        $this->auditLogger->info('Appointment reminder job dispatched.', [
+            'appointment_id' => $event->appointmentId,
+            'master_id'      => $event->masterId,
+            'client_id'      => $event->clientId,
+            'scheduled_at'   => $event->scheduledAt,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
+
+    public function failed(AppointmentScheduled $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('SendAppointmentReminder listener failed.', [
+            'appointment_id' => $event->appointmentId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
+
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(AppointmentScheduled $event): bool
+    {
+        return $event->appointmentId > 0;
+    }
+
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-events';
+    }
 }

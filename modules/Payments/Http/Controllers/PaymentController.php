@@ -2,275 +2,94 @@
 
 namespace Modules\Payments\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use App\Models\PaymentTransaction;
+use App\Models\Tenant;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
+use Modules\Payments\Services\PaymentOrchestrator;
 
-final class PaymentController extends Model
+final class PaymentController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly PaymentService $paymentService,
-            private readonly FraudControlService $fraudControl,
-        ) {}
-    
-        /**
-         * Получить все платежи пользователя.
-         */
-        public function index(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid();
-            
-            try {
-                Log::channel('audit')->info('payment.transactions.index.start', [
-                    'correlation_id' => $correlationId,
-                    'tenant_id' => tenant('id'),
-                    'user_id' => auth()->id(),
-                ]);
-    
-                $perPage = (int) $request->input('per_page', 15);
-                $transactions = PaymentTransaction::where('tenant_id', tenant('id'))
-                    ->where('user_id', auth()->id())
-                    ->orderBy('created_at', 'desc')
-                    ->paginate($perPage);
-    
-                Log::channel('audit')->info('payment.transactions.index.success', [
-                    'correlation_id' => $correlationId,
-                    'count' => $transactions->count(),
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'data' => $transactions,
-                    'correlation_id' => (string) $correlationId,
-                ]);
-            } catch (Throwable $e) {
-                Log::channel('audit')->critical('payment.transactions.index.error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка при получении платежей',
-                    'correlation_id' => (string) $correlationId,
-                ], 500);
-            }
-        }
-    
-        /**
-         * Инициировать платёж.
-         */
-        public function store(StorePaymentRequest $request): JsonResponse
-        {
-            $correlationId = Str::uuid();
-            
-            try {
-                // Fraud check
-                $fraudScore = $this->fraudControl->assessRisk(auth()->user(), [
-                    'amount' => $request->amount,
-                    'type' => 'payment_init',
-                    'correlation_id' => $correlationId,
-                ]);
-    
-                if ($fraudScore > 80) {
-                    Log::channel('audit')->warning('payment.init.fraud.blocked', [
-                        'correlation_id' => $correlationId,
-                        'fraud_score' => $fraudScore,
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Операция заблокирована системой безопасности',
-                        'correlation_id' => (string) $correlationId,
-                    ], 403);
-                }
-    
-                Log::channel('audit')->info('payment.init.start', [
-                    'correlation_id' => $correlationId,
-                    'amount' => $request->amount,
-                    'fraud_score' => $fraudScore,
-                ]);
-    
-                // Инициирование платежа через сервис
-                $transaction = DB::transaction(function () use ($request, $correlationId) {
-                    return $this->paymentService->initPayment(
-                        userId: auth()->id(),
-                        tenantId: tenant('id'),
-                        amount: (int) ($request->amount * 100), // копейки
-                        currency: $request->currency ?? 'RUB',
-                        paymentMethod: $request->payment_method,
-                        idempotencyKey: $request->idempotency_key ?? (string) Str::uuid(),
-                        correlationId: $correlationId,
-                        metadata: $request->metadata ?? [],
-                    );
-                });
-    
-                Log::channel('audit')->info('payment.init.success', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $transaction->id,
-                    'amount' => $transaction->amount,
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'data' => $transaction,
-                    'correlation_id' => (string) $correlationId,
-                ], 201);
-            } catch (Throwable $e) {
-                Log::channel('audit')->critical('payment.init.error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка при инициировании платежа',
-                    'correlation_id' => (string) $correlationId,
-                ], 500);
-            }
-        }
-    
-        /**
-         * Захватить платёж (hold → capture).
-         */
-        public function capture(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid();
-            
-            try {
-                $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
-                    ->where('user_id', auth()->id())
-                    ->findOrFail($request->transaction_id);
-    
-                Log::channel('audit')->info('payment.capture.start', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $transaction->id,
-                ]);
-    
-                $captured = DB::transaction(function () use ($transaction, $correlationId) {
-                    return $this->paymentService->capturePayment(
-                        transaction: $transaction,
-                        correlationId: $correlationId,
-                    );
-                });
-    
-                Log::channel('audit')->info('payment.capture.success', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $captured->id,
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'data' => $captured,
-                    'correlation_id' => (string) $correlationId,
-                ]);
-            } catch (Throwable $e) {
-                Log::channel('audit')->critical('payment.capture.error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка при захвате платежа',
-                    'correlation_id' => (string) $correlationId,
-                ], 500);
-            }
-        }
-    
-        /**
-         * Отменить платёж (refund).
-         */
-        public function refund(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid();
-            
-            try {
-                $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
-                    ->where('user_id', auth()->id())
-                    ->findOrFail($request->transaction_id);
-    
-                Log::channel('audit')->info('payment.refund.start', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $transaction->id,
-                ]);
-    
-                $refunded = DB::transaction(function () use ($transaction, $correlationId) {
-                    return $this->paymentService->refundPayment(
-                        transaction: $transaction,
-                        reason: $request->reason ?? 'User requested',
-                        correlationId: $correlationId,
-                    );
-                });
-    
-                Log::channel('audit')->info('payment.refund.success', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $refunded->id,
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'data' => $refunded,
-                    'correlation_id' => (string) $correlationId,
-                ]);
-            } catch (Throwable $e) {
-                Log::channel('audit')->critical('payment.refund.error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка при возврате платежа',
-                    'correlation_id' => (string) $correlationId,
-                ], 500);
-            }
-        }
-    
-        /**
-         * Получить статус платежа.
-         */
-        public function status(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid();
-            
-            try {
-                $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
-                    ->where('user_id', auth()->id())
-                    ->findOrFail($request->transaction_id);
-    
-                Log::channel('audit')->info('payment.status.check', [
-                    'correlation_id' => $correlationId,
-                    'transaction_id' => $transaction->id,
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'status' => $transaction->status,
-                        'amount' => $transaction->amount,
-                        'currency' => $transaction->currency,
-                        'provider_code' => $transaction->provider_code,
-                    ],
-                    'correlation_id' => (string) $correlationId,
-                ]);
-            } catch (Throwable $e) {
-                Log::channel('audit')->critical('payment.status.error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Платёж не найден',
-                    'correlation_id' => (string) $correlationId,
-                ], 404);
-            }
-        }
+        private readonly PaymentOrchestrator $payments,
+        private readonly LogManager $log,
+    ) {}
+
+    public function init(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'integer', 'min:1'],
+            'currency' => ['sometimes', 'string', 'size:3'],
+            'payment_method' => ['required', 'string'],
+            'idempotency_key' => ['sometimes', 'string'],
+            'wallet_id' => ['required', 'integer'],
+            'description' => ['sometimes', 'string', 'max:255'],
+            'metadata' => ['sometimes', 'array'],
+            'recurrent' => ['sometimes', 'boolean'],
+        ]);
+
+        $tenant = $request->user()?->tenant ?: Tenant::findOrFail(tenant('id'));
+        $service = $this->payments->forTenant($tenant)->withCorrelationId(Str::uuid()->toString());
+
+        $result = $service->initPayment(
+            amount: (int) $validated['amount'],
+            currency: $validated['currency'] ?? 'RUB',
+            paymentMethod: $validated['payment_method'],
+            walletId: (int) $validated['wallet_id'],
+            idempotencyKey: $validated['idempotency_key'] ?? Str::uuid()->toString(),
+            description: $validated['description'] ?? 'Payment',
+            metadata: $validated['metadata'] ?? [],
+            recurrent: (bool) ($validated['recurrent'] ?? false),
+            ip: $request->ip(),
+            device: (string) $request->header('X-Device-Fingerprint', ''),
+        );
+
+        return response()->json([
+            'success' => true,
+            'payment_url' => $result['payment_url'],
+            'transaction_id' => $result['transaction_id'],
+            'provider_payment_id' => $result['provider_payment_id'],
+            'correlation_id' => $service->getCorrelationId(),
+        ], 201);
+    }
+
+    public function status(PaymentTransaction $transaction): JsonResponse
+    {
+        $tenant = Tenant::findOrFail(tenant('id'));
+        $service = $this->payments->forTenant($tenant)->withCorrelationId(Str::uuid()->toString());
+
+        $status = $service->syncStatus($transaction);
+
+        return response()->json([
+            'success' => true,
+            'status' => $status,
+            'correlation_id' => $service->getCorrelationId(),
+        ]);
+    }
+
+    public function refund(Request $request, PaymentTransaction $transaction): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['sometimes', 'integer', 'min:1'],
+            'reason' => ['sometimes', 'string', 'max:255'],
+        ]);
+
+        $tenant = Tenant::findOrFail(tenant('id'));
+        $service = $this->payments->forTenant($tenant)->withCorrelationId(Str::uuid()->toString());
+
+        $refunded = $service->refundPayment(
+            transaction: $transaction,
+            amount: $validated['amount'] ?? null,
+            reason: $validated['reason'] ?? 'user_request',
+        );
+
+        return response()->json([
+            'success' => true,
+            'transaction' => $refunded,
+            'correlation_id' => $service->getCorrelationId(),
+        ]);
+    }
 }

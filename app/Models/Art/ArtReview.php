@@ -4,12 +4,14 @@ namespace App\Models\Art;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 final class ArtReview extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'art_reviews';
 
         protected $fillable = [

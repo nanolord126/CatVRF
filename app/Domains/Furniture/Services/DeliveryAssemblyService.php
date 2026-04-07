@@ -2,20 +2,23 @@
 
 namespace App\Domains\Furniture\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeliveryAssemblyService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class DeliveryAssemblyService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание заказа на изготовление/доставку мебели.
@@ -25,23 +28,18 @@ final class DeliveryAssemblyService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting - защита от спама заказами мебели
-            if (RateLimiter::tooManyAttempts("furniture:order:{$tenantId}", 5)) {
+            if ($this->rateLimiter->tooManyAttempts("furniture:order:{$tenantId}", 5)) {
                 throw new \RuntimeException("Слишком много заказов. Подождите.", 429);
             }
-            RateLimiter::hit("furniture:order:{$tenantId}", 3600);
+            $this->rateLimiter->hit("furniture:order:{$tenantId}", 3600);
 
-            return DB::transaction(function () use ($tenantId, $items, $data, $correlationId) {
+            return $this->db->transaction(function () use ($tenantId, $items, $data, $correlationId) {
 
                 // 2. Fraud Check - проверка на аномально крупные заказы или частые смены адреса
-                $fraud = $this->fraud->check([
-                    "user_id" => auth()->id() ?? 0,
-                    "operation_type" => "furniture_order_create",
-                    "correlation_id" => $correlationId,
-                    "meta" => ["tenant_id" => $tenantId, "amount" => $data["total_price"] ?? 0]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->error("Furniture Security Block", ["tenant_id" => $tenantId, "score" => $fraud["score"]]);
+                    $this->logger->error("Furniture Security Block", ["tenant_id" => $tenantId, "score" => $fraud["score"]]);
                     throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
                 }
 
@@ -49,7 +47,7 @@ final class DeliveryAssemblyService extends Model
                 $order = FurnitureOrder::create([
                     "uuid" => (string) Str::uuid(),
                     "tenant_id" => $tenantId,
-                    "client_id" => auth()->id(),
+                    "client_id" => $this->guard->id(),
                     "status" => "pending_payment",
                     "total_price_kopecks" => $data["total_price_kopecks"] ?? 0,
                     "address" => $data["address"],
@@ -67,7 +65,7 @@ final class DeliveryAssemblyService extends Model
                     );
                 }
 
-                Log::channel("audit")->info("Furniture: order created", ["order_id" => $order->id, "corr" => $correlationId]);
+                $this->logger->info("Furniture: order created", ["order_id" => $order->id, "corr" => $correlationId]);
 
                 return $order;
             });
@@ -81,13 +79,13 @@ final class DeliveryAssemblyService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = FurnitureOrder::findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update([
                     "status" => "assembling",
-                    "assembly_started_at" => now()
+                    "assembly_started_at" => Carbon::now()
                 ]);
 
-                Log::channel("audit")->info("Furniture: assembly started", ["order_id" => $order->id, "corr" => $correlationId]);
+                $this->logger->info("Furniture: assembly started", ["order_id" => $order->id, "corr" => $correlationId]);
             });
         }
 
@@ -99,10 +97,10 @@ final class DeliveryAssemblyService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = FurnitureOrder::with("items")->findOrFail($orderId);
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update([
                     "status" => "completed",
-                    "finished_at" => now()
+                    "finished_at" => Carbon::now()
                 ]);
 
                 // 5. Окончательное списание из InventoryManagementService
@@ -131,7 +129,7 @@ final class DeliveryAssemblyService extends Model
                     correlationId: $correlationId
                 );
 
-                Log::channel("audit")->info("Furniture: order completed + payout", ["order_id" => $order->id, "payout" => $payout]);
+                $this->logger->info("Furniture: order completed + payout", ["order_id" => $order->id, "payout" => $payout]);
             });
         }
 }

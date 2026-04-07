@@ -2,14 +2,11 @@
 
 namespace App\Domains\RealEstate\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PropertyResource extends Model
+final class PropertyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Property::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home';
@@ -72,7 +69,7 @@ final class PropertyResource extends Model
                         ->label('Адрес')
                         ->searchable()
                         ->sortable(),
-                    BadgeColumn::make('type')
+                    TextColumn::make('type')->badge()
                         ->label('Тип')
                         ->colors([
                             'info' => 'apartment',
@@ -83,7 +80,7 @@ final class PropertyResource extends Model
                     TextColumn::make('area')
                         ->label('м²')
                         ->sortable(),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->label('Статус')
                         ->colors([
                             'success' => 'active',

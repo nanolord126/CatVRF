@@ -5,13 +5,13 @@ namespace Database\Factories;
 
 use App\Domains\Art\Models\PortfolioItem;
 use App\Domains\Art\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 final class PortfolioItemFactory extends Factory
 {
-    protected $model = PortfolioItem::class;
+    private $model = PortfolioItem::class;
 
     public function definition(): array
     {
@@ -27,7 +27,7 @@ final class PortfolioItemFactory extends Factory
             'title' => $this->faker->sentence(3),
             'cover_url' => $this->faker->imageUrl(),
             'description' => $this->faker->paragraph(),
-            'published_at' => now(),
+            'published_at' => Carbon::now(),
             'tags' => ['type' => 'portfolio'],
             'meta' => ['source' => 'factory'],
         ];

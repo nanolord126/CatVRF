@@ -60,22 +60,15 @@ final class UserCrmResource extends Resource
             ]),
         ]);
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListUserCrm::route('/'),
-            'create' => Pages\\CreateUserCrm::route('/create'),
-            'edit' => Pages\\EditUserCrm::route('/{record}/edit'),
-            'view' => Pages\\ViewUserCrm::route('/{record}'),
-        ];
+    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\\ListUserCrm::route('/'),
-            'create' => Pages\\CreateUserCrm::route('/create'),
-            'edit' => Pages\\EditUserCrm::route('/{record}/edit'),
-            'view' => Pages\\ViewUserCrm::route('/{record}'),
+            'index' => Pages\ListUserCrm::route('/'),
+            'create' => Pages\CreateUserCrm::route('/create'),
+            'edit' => Pages\EditUserCrm::route('/{record}/edit'),
+            'view' => Pages\ViewUserCrm::route('/{record}'),
         ];
-    }
+        }
 }

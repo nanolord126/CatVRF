@@ -2,20 +2,188 @@
 
 namespace App\Domains\Education\AcademicTutoring\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Education\AcademicTutoring\Models\TutorSession;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class AcademicTutoringService extends Model
+final readonly class AcademicTutoringService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.14;
+    private const RATE_LIMIT_KEY = 'tut:sess:';
+    private const RATE_LIMIT_MAX = 15;
+    private const RATE_LIMIT_DECAY = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createSession(int $tutorId,$subject,$sessionHours,$dueDate,string $correlationId=""):TutorSession{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("tut:sess:".auth()->id(),15))throw new \RuntimeException("Too many",429);RateLimiter::hit("tut:sess:".auth()->id(),3600);
-    return DB::transaction(function()use($tutorId,$subject,$sessionHours,$dueDate,$correlationId){$t=Tutor::findOrFail($tutorId);$total=(int)($t->price_kopecks_per_hour*$sessionHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'tutoring','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$s=TutorSession->create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'tutor_id'=>$tutorId,'student_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','subject'=>$subject,'session_hours'=>$sessionHours,'due_date'=>$dueDate,'tags'=>['tutoring'=>true]]);Log::channel('audit')->info('Tutor session created',['session_id'=>$s->id,'correlation_id'=>$correlationId]);return $s;});
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
+
+    /**
+     * Создать сессию академического тьюторинга.
+     */
+    public function createSession(
+        int $tutorId,
+        string $subject,
+        int $sessionHours,
+        string $dueDate,
+        int $priceKopecks,
+        string $correlationId = '',
+    ): TutorSession {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'tutoring',
+            amount: $priceKopecks,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($tutorId, $subject, $sessionHours, $dueDate, $priceKopecks, $correlationId, $userId): TutorSession {
+            $payoutKopecks = $priceKopecks - (int) ($priceKopecks * self::COMMISSION_RATE);
+
+            $session = TutorSession::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'tutor_id' => $tutorId,
+                'student_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $priceKopecks,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'subject' => $subject,
+                'session_hours' => $sessionHours,
+                'due_date' => $dueDate,
+                'tags' => ['tutoring' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'tutor_session_created',
+                subjectType: TutorSession::class,
+                subjectId: $session->id,
+                old: [],
+                new: $session->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Tutor session created', [
+                'session_id' => $session->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session;
+        });
     }
-    public function completeSession(int $sessionId,string $correlationId=""):TutorSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$s=TutorSession->findOrFail($sessionId);if($s->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$s->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$s->payout_kopecks,'tutor_payout',['correlation_id'=>$correlationId,'session_id'=>$s->id]);Log::channel('audit')->info('Tutor session completed',['session_id'=>$s->id]);return $s;});}
-    public function cancelSession(int $sessionId,string $correlationId=""):TutorSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$s=TutorSession->findOrFail($sessionId);if($s->status==='completed')throw new \RuntimeException("Cannot cancel",400);$s->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($s->payment_status==='completed')$this->wallet->credit(tenant()->id,$s->total_kopecks,'tutor_refund',['correlation_id'=>$correlationId,'session_id'=>$s->id]);Log::channel('audit')->info('Tutor session cancelled',['session_id'=>$s->id]);return $s;});}
-    public function getSession(int $sessionId):TutorSession{return TutorSession->findOrFail($sessionId);}
-    public function getUserSessions(int $studentId){return TutorSession->where('student_id',$studentId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершить сессию и выплатить тьютору.
+     */
+    public function completeSession(int $sessionId, string $correlationId = ''): TutorSession
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $correlationId): TutorSession {
+            $session = TutorSession::findOrFail($sessionId);
+
+            if ($session->payment_status !== 'completed') {
+                throw new \RuntimeException('Session payment not completed', 400);
+            }
+
+            $session->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) $session->tenant_id,
+                amount: $session->payout_kopecks,
+                reason: 'education_' . strtolower('PAYOUT'),
+                correlationId: $correlationId,
+            );
+
+            $this->audit->log(
+                action: 'tutor_session_completed',
+                subjectType: TutorSession::class,
+                subjectId: $session->id,
+                old: ['status' => 'pending_payment'],
+                new: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Отменить сессию и вернуть оплату если была.
+     */
+    public function cancelSession(int $sessionId, string $correlationId = ''): TutorSession
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $correlationId): TutorSession {
+            $session = TutorSession::findOrFail($sessionId);
+
+            if ($session->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed session', 400);
+            }
+
+            $previousStatus = $session->payment_status;
+
+            $session->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousStatus === 'completed') {
+                $this->wallet->credit(
+                walletId: (int) $session->tenant_id,
+                amount: $session->total_kopecks,
+                reason: 'education_' . strtolower('REFUND'),
+                correlationId: $correlationId,
+            );
+            }
+
+            $this->audit->log(
+                action: 'tutor_session_cancelled',
+                subjectType: TutorSession::class,
+                subjectId: $session->id,
+                old: ['status' => $previousStatus],
+                new: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Получить сессию по идентификатору.
+     */
+    public function getSession(int $sessionId): TutorSession
+    {
+        return TutorSession::findOrFail($sessionId);
+    }
+
+    /**
+     * Получить список сессий студента.
+     */
+    public function getUserSessions(int $studentId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return TutorSession::where('student_id', $studentId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 }

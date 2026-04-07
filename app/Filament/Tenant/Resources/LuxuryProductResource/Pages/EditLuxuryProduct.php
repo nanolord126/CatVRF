@@ -1,15 +1,41 @@
 <?php declare(strict_types=1);
 
+/**
+ * EditLuxuryProduct — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ * @see https://catvrf.ru/docs/editluxuryproduct
+ */
+
+
 namespace App\Filament\Tenant\Resources\LuxuryProductResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditLuxuryProduct extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditLuxuryProduct extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = LuxuryProductResource::class;
 
         protected function getHeaderActions(): array
@@ -26,9 +52,9 @@ final class EditLuxuryProduct extends Model
         {
             $data['correlation_id'] = (string) Str::uuid();
 
-            Log::channel('audit')->info('Editing Luxury Product via Filament', [
+            $this->logger->info('Editing Luxury Product via Filament', [
                 'product_id' => $this->record->id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $data['correlation_id'],
             ]);
 
@@ -39,4 +65,10 @@ final class EditLuxuryProduct extends Model
         {
             return $this->getResource()::getUrl('index');
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

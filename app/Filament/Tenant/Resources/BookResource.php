@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BookResource extends Model
+final class BookResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Book::class;
         protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
         protected static ?string $navigationGroup = 'Books & Education';
@@ -119,31 +116,15 @@ final class BookResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBook::route('/'),
-                'create' => Pages\\CreateBook::route('/create'),
-                'edit' => Pages\\EditBook::route('/{record}/edit'),
-                'view' => Pages\\ViewBook::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBook::route('/'),
-                'create' => Pages\\CreateBook::route('/create'),
-                'edit' => Pages\\EditBook::route('/{record}/edit'),
-                'view' => Pages\\ViewBook::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBook::route('/'),
-                'create' => Pages\\CreateBook::route('/create'),
-                'edit' => Pages\\EditBook::route('/{record}/edit'),
-                'view' => Pages\\ViewBook::route('/{record}'),
+                'index' => Pages\ListBook::route('/'),
+                'create' => Pages\CreateBook::route('/create'),
+                'edit' => Pages\EditBook::route('/{record}/edit'),
+                'view' => Pages\ViewBook::route('/{record}'),
             ];
         }
 }

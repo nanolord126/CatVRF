@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ConstructionMaterialsResource extends Model
+final class ConstructionMaterialsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ConstructionMaterial::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -280,31 +277,15 @@ final class ConstructionMaterialsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListConstructionMaterials::route('/'),
-                'create' => Pages\\CreateConstructionMaterials::route('/create'),
-                'edit' => Pages\\EditConstructionMaterials::route('/{record}/edit'),
-                'view' => Pages\\ViewConstructionMaterials::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListConstructionMaterials::route('/'),
-                'create' => Pages\\CreateConstructionMaterials::route('/create'),
-                'edit' => Pages\\EditConstructionMaterials::route('/{record}/edit'),
-                'view' => Pages\\ViewConstructionMaterials::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListConstructionMaterials::route('/'),
-                'create' => Pages\\CreateConstructionMaterials::route('/create'),
-                'edit' => Pages\\EditConstructionMaterials::route('/{record}/edit'),
-                'view' => Pages\\ViewConstructionMaterials::route('/{record}'),
+                'index' => Pages\ListConstructionMaterials::route('/'),
+                'create' => Pages\CreateConstructionMaterials::route('/create'),
+                'edit' => Pages\EditConstructionMaterials::route('/{record}/edit'),
+                'view' => Pages\ViewConstructionMaterials::route('/{record}'),
             ];
         }
 }

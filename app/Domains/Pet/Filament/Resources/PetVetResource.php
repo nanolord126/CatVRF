@@ -2,14 +2,11 @@
 
 namespace App\Domains\Pet\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetVetResource extends Model
+final class PetVetResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetVet::class;
 
         protected static ?string $slug = 'pet-vets';
@@ -67,7 +64,7 @@ final class PetVetResource extends Model
                         ->searchable(),
                     TextColumn::make('rating')
                         ->numeric(),
-                    BooleanColumn::make('is_active'),
+                    IconColumn::make('is_active')->boolean(),
                 ])
                 ->filters([
                     //

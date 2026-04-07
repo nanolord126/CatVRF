@@ -2,16 +2,21 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Log\LogManager;
 
 /**
  * Email Service - отправляет письма через Mailgun/SendGrid/SES
  *
  * Интегрируется с Laravel Mail facade
  */
-class EmailService
+abstract class EmailService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
+
     /**
      * Отправить email
      */
@@ -39,7 +44,7 @@ class EmailService
                 }
             });
 
-            Log::channel('audit')->info('Email sent', [
+            $this->logger->channel('audit')->info('Email sent', [
                 'to' => $to,
                 'subject' => $subject,
                 'correlation_id' => $correlationId,
@@ -48,7 +53,14 @@ class EmailService
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Failed to send email', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->error('Failed to send email', [
                 'to' => $to,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

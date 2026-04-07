@@ -1,23 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Notifications;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentReminderNotification extends Model
+use Carbon\Carbon;
+use App\Domains\Beauty\Models\Appointment;
+use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+final class AppointmentReminderNotification extends Notification
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Queueable;
 
         public function __construct(
-            private readonly Appointment $appointment,
-            private readonly int $hoursBeforeAppointment,
-            private readonly string $correlationId,
-        ) {
-        }
+            private Appointment $appointment,
+            private int $hoursBeforeAppointment,
+            private string $correlationId,
+        ) {}
 
         public function via(object $notifiable): array
         {
@@ -55,4 +59,27 @@ final class AppointmentReminderNotification extends Model
                 'vertical' => 'beauty',
             ];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

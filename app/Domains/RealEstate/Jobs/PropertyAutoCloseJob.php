@@ -1,49 +1,68 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\RealEstate\Models\Listing;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
 
-final class PropertyAutoCloseJob extends Model
+/**
+ * Class PropertyAutoCloseJob
+ *
+ * Part of the RealEstate vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Domains\RealEstate\Jobs
+ */
+final class PropertyAutoCloseJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            public readonly ?RentalListing $listing = null,
-            public readonly string $correlationId = '',
-        ) {
-            $this->onQueue('default');
+    public int $tries = 3;
+    public int $timeout = 120;
 
-        }
+    public function __construct(
+        private readonly Listing $listing,
+        private readonly string $correlationId) {
+        $this->onQueue('default');
+    }
 
-        public function retryUntil()
-        {
-            return now()->addHours(6);
-        }
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(6)->toDateTime();
+    }
 
-        public function handle(): void
-        {
-            try {
-                // Если объявление было активным более 90 дней без просмотров, закрыть
-                if ($this->listing->status === 'active' && $this->listing->created_at->addDays(90) < now()) {
-                    $this->listing->update(['status' => 'archived']);
+    public function handle(LoggerInterface $logger): void
+    {
+        try {
+            // Если объявление было активным более 90 дней без просмотров, закрыть
+            if ($this->listing->status === 'active' && $this->listing->created_at->addDays(90) < now()) {
+                $this->listing->update(['status' => 'archived']);
 
-                    Log::channel('audit')->info('Property listing auto-closed', [
-                        'listing_id' => $this->listing->id,
-                        'reason' => 'Inactive for 90 days',
-                        'correlation_id' => $this->correlationId,
-                    ]);
-                }
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('Property auto-close job failed', [
-                    'error' => $e->getMessage(),
+                $logger->info('Property listing auto-closed', [
+                    'listing_id' => $this->listing->id,
+                    'reason' => 'Inactive for 90 days',
                     'correlation_id' => $this->correlationId,
                 ]);
-                throw $e;
             }
+        } catch (\Throwable $e) {
+            $logger->error('Property auto-close job failed', [
+                'listing_id' => $this->listing->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $this->correlationId,
+            ]);
+            throw $e;
         }
+    }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeautyProductResource extends Model
+final class BeautyProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeautyProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -54,31 +51,15 @@ final class BeautyProductResource extends Model
                     ->default(true),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeautyProduct::route('/'),
-                'create' => Pages\\CreateBeautyProduct::route('/create'),
-                'edit' => Pages\\EditBeautyProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewBeautyProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeautyProduct::route('/'),
-                'create' => Pages\\CreateBeautyProduct::route('/create'),
-                'edit' => Pages\\EditBeautyProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewBeautyProduct::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeautyProduct::route('/'),
-                'create' => Pages\\CreateBeautyProduct::route('/create'),
-                'edit' => Pages\\EditBeautyProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewBeautyProduct::route('/{record}'),
+                'index' => Pages\ListBeautyProduct::route('/'),
+                'create' => Pages\CreateBeautyProduct::route('/create'),
+                'edit' => Pages\EditBeautyProduct::route('/{record}/edit'),
+                'view' => Pages\ViewBeautyProduct::route('/{record}'),
             ];
         }
 }

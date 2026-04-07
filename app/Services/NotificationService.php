@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
-final class NotificationService extends Model
+use Illuminate\Support\Str;
+use Throwable;
+use Illuminate\Log\LogManager;
+
+final readonly class NotificationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Отправляет уведомление пользователю/бизнесу по всем каналам.
          *
@@ -29,7 +34,7 @@ final class NotificationService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
             try {
-                Log::channel('audit')->info('Notification send initiated', [
+                $this->logger->channel('audit')->info('Notification send initiated', [
                     'recipient_id' => $recipientId,
                     'type' => $type,
                     'correlation_id' => $correlationId,
@@ -53,7 +58,7 @@ final class NotificationService extends Model
                     try {
                         // Mail::to($user->email)->queue(new NotificationMailable($notification));
                     } catch (Throwable $e) {
-                        Log::channel('audit')->warning('Email send failed', [
+                        $this->logger->channel('audit')->warning('Email send failed', [
                             'user_id' => $recipientId,
                             'error' => $e->getMessage(),
                             'correlation_id' => $correlationId,
@@ -66,7 +71,7 @@ final class NotificationService extends Model
                     try {
                         // SmsService::send($user->phone, $data['sms_text'] ?? '');
                     } catch (Throwable $e) {
-                        Log::channel('audit')->warning('SMS send failed', [
+                        $this->logger->channel('audit')->warning('SMS send failed', [
                             'user_id' => $recipientId,
                             'error' => $e->getMessage(),
                             'correlation_id' => $correlationId,
@@ -79,7 +84,7 @@ final class NotificationService extends Model
                     try {
                         // FirebaseService::send($user, $notification);
                     } catch (Throwable $e) {
-                        Log::channel('audit')->warning('Push send failed', [
+                        $this->logger->channel('audit')->warning('Push send failed', [
                             'user_id' => $recipientId,
                             'error' => $e->getMessage(),
                             'correlation_id' => $correlationId,
@@ -87,7 +92,7 @@ final class NotificationService extends Model
                     }
                 }
 
-                Log::channel('audit')->info('Notification queued successfully', [
+                $this->logger->channel('audit')->info('Notification queued successfully', [
                     'notification_id' => $notification->id,
                     'recipient_id' => $recipientId,
                     'type' => $type,
@@ -96,7 +101,7 @@ final class NotificationService extends Model
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Notification send failed', [
+                $this->logger->channel('audit')->error('Notification send failed', [
                     'recipient_id' => $recipientId,
                     'type' => $type,
                     'error' => $e->getMessage(),
@@ -121,7 +126,7 @@ final class NotificationService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
             try {
-                Log::channel('audit')->info('Daily report sending', [
+                $this->logger->channel('audit')->info('Daily report sending', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -132,14 +137,14 @@ final class NotificationService extends Model
                 // Отправка на email
                 $this->send($tenantId, 'daily_report', $metrics, $correlationId);
 
-                Log::channel('audit')->info('Daily report sent successfully', [
+                $this->logger->channel('audit')->info('Daily report sent successfully', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Daily report send failed', [
+                $this->logger->channel('audit')->error('Daily report send failed', [
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -163,7 +168,7 @@ final class NotificationService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
             try {
-                Log::channel('audit')->info('Weekly report sending', [
+                $this->logger->channel('audit')->info('Weekly report sending', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -174,14 +179,14 @@ final class NotificationService extends Model
                 // Отправка на email
                 $this->send($tenantId, 'weekly_report', $metrics, $correlationId);
 
-                Log::channel('audit')->info('Weekly report sent successfully', [
+                $this->logger->channel('audit')->info('Weekly report sent successfully', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Weekly report send failed', [
+                $this->logger->channel('audit')->error('Weekly report send failed', [
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

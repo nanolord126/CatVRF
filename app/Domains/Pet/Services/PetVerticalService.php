@@ -2,18 +2,18 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetVerticalService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class PetVerticalService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private InventoryManagementService $inventory
-        ) {}
+    public function __construct(private FraudControlService $fraud,
+        private InventoryManagementService $inventory,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создание записи на прием (Veterinary/Grooming).
@@ -23,18 +23,12 @@ final class PetVerticalService extends Model
         {
             $correlationId = $data['correlation_id'] ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 1. Fraud Check
-                $this->fraudControl->check([
-                    'type' => 'pet_appointment_init',
-                    'user_id' => auth()->id(),
-                    'pet_id' => $data['pet_id'],
-                    'amount' => $data['total_price'] ?? 0,
-                    'correlation_id' => $correlationId,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'pet_appointment_init', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Логирование начала операции
-                Log::channel('audit')->info('Creating pet appointment', [
+                $this->logger->info('Creating pet appointment', [
                     'pet_id' => $data['pet_id'],
                     'clinic_id' => $data['clinic_id'],
                     'correlation_id' => $correlationId,
@@ -54,7 +48,7 @@ final class PetVerticalService extends Model
                     $this->reserveConsumables($service->consumables_json, $appointment);
                 }
 
-                Log::channel('audit')->info('Pet appointment created successfully', [
+                $this->logger->info('Pet appointment created successfully', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -68,11 +62,11 @@ final class PetVerticalService extends Model
          */
         public function completeAppointment(int $appointmentId): bool
         {
-            return DB::transaction(function () use ($appointmentId) {
+            return $this->db->transaction(function () use ($appointmentId) {
                 $appointment = PetAppointment::findOrFail($appointmentId);
 
                 if ($appointment->isCompleted()) {
-                    throw new Exception('Appointment already completed');
+                    throw new \LogicException('Appointment already completed');
                 }
 
                 $appointment->update([
@@ -86,7 +80,7 @@ final class PetVerticalService extends Model
                     $this->deductConsumables($appointment->service->consumables_json, $appointment);
                 }
 
-                Log::channel('audit')->info('Pet appointment completed', [
+                $this->logger->info('Pet appointment completed', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $appointment->correlation_id,
                 ]);
@@ -102,7 +96,7 @@ final class PetVerticalService extends Model
         public function analyzeHealthFromPhoto(\Illuminate\Http\UploadedFile $photo, int $petId): array
         {
             $correlationId = (string) Str::uuid();
-            Log::channel('audit')->info('AI Health analysis started', ['pet_id' => $petId, 'correlation_id' => $correlationId]);
+            $this->logger->info('AI Health analysis started', ['pet_id' => $petId, 'correlation_id' => $correlationId]);
 
             // Эмуляция работы Vision AI для 2026 канона
             $mockAnalysis = [
@@ -136,26 +130,22 @@ final class PetVerticalService extends Model
          */
         public function purchaseProduct(int $productId, int $quantity): bool
         {
-            return DB::transaction(function () use ($productId, $quantity) {
+            return $this->db->transaction(function () use ($productId, $quantity) {
                 $product = PetProduct::findOrFail($productId);
 
                 if ($product->current_stock < $quantity) {
-                    throw new Exception("Insufficient stock for product: {$product->name}");
+                    throw new \DomainException("Insufficient stock for product: {$product->name}");
                 }
 
-                $this->fraudControl->check([
-                    'type' => 'pet_product_purchase',
-                    'product_id' => $productId,
-                    'quantity' => $quantity,
-                    'amount' => $product->price * $quantity,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'pet_product_purchase', amount: 0, correlationId: $correlationId ?? '');
 
                 $product->decrementStock($quantity);
 
-                Log::channel('audit')->info('Pet product purchased', [
+                $this->logger->info('Pet product purchased', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'tenant_id' => $product->tenant_id,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return true;

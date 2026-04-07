@@ -2,14 +2,17 @@
 
 namespace App\Filament\Tenant\Resources\ShortTermRentals;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ApartmentResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+final class ApartmentResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Apartment::class;
         protected static ?string $navigationIcon = 'heroicon-o-home';
         protected static ?string $navigationGroup = 'Short-Term Rentals';
@@ -373,7 +376,6 @@ final class ApartmentResource extends Model
                     ->label('Тип')
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'studio' => 'Студия',
                         '1room' => '1-комн.',
                         '2room' => '2-комн.',
                         '3room' => '3-комн.',
@@ -384,7 +386,6 @@ final class ApartmentResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'studio' => 'blue',
                         '1room' => 'green',
                         '2room' => 'blue',
                         '3room' => 'purple',
@@ -508,9 +509,9 @@ final class ApartmentResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Apartment verified', [
+                            $this->logger->info('Apartment verified', [
                                 'apartment_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -523,9 +524,9 @@ final class ApartmentResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Apartment featured', [
+                            $this->logger->info('Apartment featured', [
                                 'apartment_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -537,9 +538,9 @@ final class ApartmentResource extends Model
                     Tables\Actions\DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Apartment bulk deleted', [
+                                $this->logger->info('Apartment bulk deleted', [
                                     'apartment_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -552,9 +553,9 @@ final class ApartmentResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_available' => true]);
-                                Log::channel('audit')->info('Apartment activated', [
+                                $this->logger->info('Apartment activated', [
                                     'apartment_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -569,9 +570,9 @@ final class ApartmentResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_available' => false]);
-                                Log::channel('audit')->info('Apartment deactivated', [
+                                $this->logger->info('Apartment deactivated', [
                                     'apartment_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -586,9 +587,9 @@ final class ApartmentResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Apartment bulk verified', [
+                                $this->logger->info('Apartment bulk verified', [
                                     'apartment_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

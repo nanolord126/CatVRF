@@ -2,22 +2,21 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TaxiService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с инъекцией зависимостей (по канону).
          */
-        public function __construct(
-            private readonly SurgeService $surgeService,
+        public function __construct(private readonly SurgeService $surgeService,
             private readonly \App\Services\WalletService $walletService,
             private readonly \App\Services\NotificationService $notificationService,
-        ) {}
+            private readonly \App\Services\FraudControlService $fraud,
+            private readonly \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Сценарий создания поездки (Passenger Request -> Pending Ride).
@@ -29,7 +28,12 @@ final class TaxiService extends Model
             ?int $fleetId = null
         ): TaxiRide {
             // 1. Fraud Check (по канону перед любой мутацией)
-            FraudControlService::check($passenger->id, 'taxi_ride_create');
+            $this->fraud->check(
+                userId: $passenger->id,
+                operationType: 'taxi_ride_create',
+                amount: 0,
+                correlationId: (string) Str::uuid()
+            );
 
             // 2. Расчет стомости с учетом Surge и Расстояния
             $surgeMultiplier = $this->surgeService->getMultiplierAtPoint(
@@ -44,7 +48,7 @@ final class TaxiService extends Model
             $estimatedDistance = (float)($params['estimated_distance'] ?? 1.0);
             $totalPrice = (int)(($basePrice + ($perKmPrice * $estimatedDistance)) * $surgeMultiplier);
 
-            return DB::transaction(function () use ($passenger, $params, $fleetId, $totalPrice, $surgeMultiplier) {
+            return $this->db->transaction(function () use ($passenger, $params, $fleetId, $totalPrice, $surgeMultiplier) {
                 $correlationId = (string)Str::uuid();
 
                 // 3. Создание записи в БД (Layer 1-2 integration)
@@ -72,8 +76,8 @@ final class TaxiService extends Model
                     'tags' => ['b2c', 'taxi', 'on_demand']
                 ]);
 
-                // 4. Audit Log (Log::channel('audit') по канону)
-                Log::channel('audit')->info('Taxi ride created', [
+                // 4. Audit Log ($this->logger->channel('audit') по канону)
+                $this->logger->info('Taxi ride created', [
                     'ride_uuid' => $ride->uuid,
                     'passenger_id' => $passenger->id,
                     'total_price' => $totalPrice,
@@ -93,7 +97,7 @@ final class TaxiService extends Model
          */
         public function acceptRide(int $driverId, int $rideId): bool
         {
-            return DB::transaction(function () use ($driverId, $rideId) {
+            return $this->db->transaction(function () use ($driverId, $rideId) {
                 $ride = TaxiRide::where('id', $rideId)
                     ->where('status', 'pending')
                     ->lockForUpdate() // Предотвращаем Race Condition (Double Acceptance)
@@ -107,7 +111,7 @@ final class TaxiService extends Model
                 $vehicle = $driver->vehicles()->where('is_active', true)->first();
 
                 if (!$vehicle) {
-                    throw new \Exception('Driver has no active vehicle and cannot accept ride');
+                    throw new \DomainException('Driver has no active vehicle and cannot accept ride');
                 }
 
                 $ride->update([
@@ -120,7 +124,7 @@ final class TaxiService extends Model
                 // Переключаем статус водителя на "Busy"
                 $driver->update(['status' => 'busy']);
 
-                Log::channel('audit')->info('Taxi ride accepted', [
+                $this->logger->info('Taxi ride accepted', [
                     'ride_id' => $rideId,
                     'driver_id' => $driverId,
                     'vehicle_id' => $vehicle->id,
@@ -137,13 +141,13 @@ final class TaxiService extends Model
          */
         public function completeRide(int $rideId): void
         {
-            DB::transaction(function () use ($rideId) {
+            $this->db->transaction(function () use ($rideId) {
                 $ride = TaxiRide::where('id', $rideId)
                     ->lockForUpdate()
                     ->firstOrFail();
 
                 if ($ride->status !== 'in_progress') {
-                    throw new \Exception('Cannot complete ride that is not in progress');
+                    throw new \DomainException('Cannot complete ride that is not in progress');
                 }
 
                 $ride->update([
@@ -155,31 +159,9 @@ final class TaxiService extends Model
                 $driverReward = $ride->price - $ride->commission;
 
                 // 1. Прямая выплата водителю на Wallet
-                $this->walletService->credit($ride->driver->wallet(), $driverReward, 'taxi_ride_income', [
+                $this->walletService->credit($ride->driver->wallet(), $driverReward, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $ride, null, null, [
                     'ride_uuid' => $ride->uuid,
-                    'correlation_id' => $ride->correlation_id
-                ]);
-
-                // 2. Начисление комиссии Платформе (Tenant Wallet)
-                $this->walletService->credit(tenant()->wallet(), $ride->commission, 'taxi_ride_platform_commission', [
-                    'ride_uuid' => $ride->uuid,
-                    'correlation_id' => $ride->correlation_id
-                ]);
-
-                // 3. Выплата Автопарку (если B2B контракт)
-                if ($ride->fleet_id && $ride->fleet) {
-                    // Дополнительная доля автопарка (например 5% от Грязной суммы)
-                    $fleetShare = (int)($ride->price * 0.05);
-                    $this->walletService->credit($ride->fleet->wallet(), $fleetShare, 'fleet_ride_share', [
-                        'ride_uuid' => $ride->uuid,
-                        'correlation_id' => $ride->correlation_id
-                    ]);
-                }
-
-                // 4. Возвращаем водителя в статус "Active"
-                $ride->driver->update(['status' => 'active']);
-
-                Log::channel('audit')->info('Taxi ride completed successfully', [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::COMMISSION, $ride, null, null, [
                     'ride_uuid' => $ride->uuid,
                     'total_price' => $ride->price,
                     'driver_earned' => $driverReward,

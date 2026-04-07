@@ -2,17 +2,15 @@
 
 namespace App\Domains\Pet\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetClinicController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PetClinicController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -22,14 +20,14 @@ final class PetClinicController extends Model
                     ->with(['vets', 'services', 'reviews'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Failed to get clinics', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to get clinics', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve clinics',
                     'correlation_id' => Str::uuid(),
@@ -43,13 +41,13 @@ final class PetClinicController extends Model
                 $clinic = PetClinic::with(['vets', 'services', 'reviews'])
                     ->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinic,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Clinic not found',
                     'correlation_id' => Str::uuid(),
@@ -60,7 +58,7 @@ final class PetClinicController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $this->authorize('create', PetClinic::class);
@@ -68,19 +66,19 @@ final class PetClinicController extends Model
                 $clinic = PetClinic::create([
                     ...$request->validated(),
                     'tenant_id' => tenant()->id,
-                    'owner_id' => auth()->id(),
+                    'owner_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinic,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::error('Failed to create clinic', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to create clinic', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create clinic',
                     'correlation_id' => Str::uuid(),
@@ -91,7 +89,7 @@ final class PetClinicController extends Model
         public function update(Request $request, $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $clinic = PetClinic::findOrFail($id);
@@ -102,13 +100,13 @@ final class PetClinicController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinic,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update clinic',
                     'correlation_id' => Str::uuid(),
@@ -125,13 +123,13 @@ final class PetClinicController extends Model
 
                 $clinic->delete();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Clinic deleted successfully',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete clinic',
                     'correlation_id' => Str::uuid(),
@@ -142,18 +140,18 @@ final class PetClinicController extends Model
         public function myList(): JsonResponse
         {
             try {
-                $clinics = PetClinic::where('owner_id', auth()->id())
+                $clinics = PetClinic::where('owner_id', $request->user()?->id)
                     ->where('tenant_id', tenant()->id)
                     ->with(['vets', 'services', 'appointments'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve clinics',
                     'correlation_id' => Str::uuid(),
@@ -167,13 +165,13 @@ final class PetClinicController extends Model
                 $clinic = PetClinic::findOrFail($id);
                 $vets = $clinic->vets()->with('reviews')->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $vets,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve vets',
                     'correlation_id' => Str::uuid(),
@@ -187,13 +185,13 @@ final class PetClinicController extends Model
                 $clinic = PetClinic::findOrFail($id);
                 $services = $clinic->services()->where('is_active', true)->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $services,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve services',
                     'correlation_id' => Str::uuid(),
@@ -207,13 +205,13 @@ final class PetClinicController extends Model
                 $clinic = PetClinic::findOrFail($id);
                 $reviews = $clinic->reviews()->where('status', 'approved')->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reviews',
                     'correlation_id' => Str::uuid(),
@@ -228,13 +226,13 @@ final class PetClinicController extends Model
                     ->with(['clinic', 'reviews'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $vets,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve vets',
                     'correlation_id' => Str::uuid(),
@@ -248,13 +246,13 @@ final class PetClinicController extends Model
                 $vet = PetVet::with(['clinic', 'reviews', 'appointments'])
                     ->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $vet,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Vet not found',
                     'correlation_id' => Str::uuid(),
@@ -271,13 +269,13 @@ final class PetClinicController extends Model
                     ->orderBy('scheduled_at')
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointments,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve appointments',
                     'correlation_id' => Str::uuid(),
@@ -291,13 +289,13 @@ final class PetClinicController extends Model
                 $vet = PetVet::findOrFail($id);
                 $reviews = $vet->reviews()->where('status', 'approved')->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reviews',
                     'correlation_id' => Str::uuid(),
@@ -312,13 +310,13 @@ final class PetClinicController extends Model
                     ->with('clinic')
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $services,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve services',
                     'correlation_id' => Str::uuid(),
@@ -332,13 +330,13 @@ final class PetClinicController extends Model
                 $service = PetGroomingService::with('clinic')
                     ->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $service,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Service not found',
                     'correlation_id' => Str::uuid(),
@@ -363,13 +361,13 @@ final class PetClinicController extends Model
                     ->where('is_active', true)
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Search failed',
                     'correlation_id' => Str::uuid(),
@@ -392,13 +390,13 @@ final class PetClinicController extends Model
 
                 $clinics = $query->where('is_active', true)->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Filter failed',
                     'correlation_id' => Str::uuid(),
@@ -418,13 +416,13 @@ final class PetClinicController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $clinic,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to verify clinic',
                     'correlation_id' => Str::uuid(),
@@ -435,7 +433,7 @@ final class PetClinicController extends Model
         public function stats(): JsonResponse
         {
             try {
-                $clinics = PetClinic::where('owner_id', auth()->id())
+                $clinics = PetClinic::where('owner_id', $request->user()?->id)
                     ->where('tenant_id', tenant()->id)
                     ->get();
 
@@ -446,13 +444,13 @@ final class PetClinicController extends Model
                     'average_rating' => $clinics->avg('rating'),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $stats,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get stats',
                     'correlation_id' => Str::uuid(),
@@ -472,13 +470,13 @@ final class PetClinicController extends Model
                     'reviews_count' => $clinic->reviews()->count(),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get analytics',
                     'correlation_id' => Str::uuid(),
@@ -499,13 +497,13 @@ final class PetClinicController extends Model
                     'boarding_count' => $clinic->boardingReservations()->where('payment_status', 'paid')->count(),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $earnings,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get earnings',
                     'correlation_id' => Str::uuid(),
@@ -529,13 +527,13 @@ final class PetClinicController extends Model
                     ];
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $report,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get report',
                     'correlation_id' => Str::uuid(),

@@ -2,14 +2,11 @@
 
 namespace App\Domains\ShortTermRentals\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Tests\TestCase;
 
-final class StrBookingFlowTest extends Model
+final class StrBookingFlowTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         private StrBookingService $bookingService;

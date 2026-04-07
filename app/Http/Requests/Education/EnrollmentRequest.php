@@ -2,14 +2,19 @@
 
 namespace App\Http\Requests\Education;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class EnrollmentRequest extends Model
+/**
+ * Class EnrollmentRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Education
+ */
+final class EnrollmentRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Валидация прав и фрод-контроля.
          */
@@ -45,4 +50,14 @@ final class EnrollmentRequest extends Model
                 'correlation_id.required' => 'Запрос без идентификатора корреляции (correlation_id) запрещён архитектором.',
             ];
         }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

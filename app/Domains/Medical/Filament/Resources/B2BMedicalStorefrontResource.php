@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BMedicalStorefrontResource extends Model
+final class B2BMedicalStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BMedicalStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';

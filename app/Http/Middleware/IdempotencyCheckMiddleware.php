@@ -4,9 +4,12 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
 
 /**
  * IdempotencyCheckMiddleware — Детекция дубликатов платежей
@@ -29,6 +32,12 @@ use Illuminate\Support\Str;
  */
 final class IdempotencyCheckMiddleware
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+        private readonly Guard $guard,
+    ) {}
+
     /**
      * Handle the request - проверить idempotency перед обработкой
      */
@@ -54,7 +63,7 @@ final class IdempotencyCheckMiddleware
 
         // Валидировать формат (должен быть UUID или алфанумерический)
         if (!$this->isValidIdempotencyKey($idempotencyKey)) {
-            return response()->json([
+            return $this->response->json([
                 'error' => 'Invalid Idempotency-Key format. Must be UUID or alphanumeric string.',
                 'correlation_id' => $correlationId,
             ], 400);
@@ -67,20 +76,20 @@ final class IdempotencyCheckMiddleware
         $cacheKey = "idempotency:" . $idempotencyKey . ":" . $payloadHash;
 
         // Проверить, есть ли уже такой запрос в кэше
-        if (Cache::has($cacheKey)) {
-            $cachedResponse = Cache::get($cacheKey);
+        if ($this->cache->has($cacheKey)) {
+            $cachedResponse = $this->cache->get($cacheKey);
 
-            Log::channel('audit')->info('Idempotency: Duplicate request detected', [
+            $this->logger->channel('audit')->info('Idempotency: Duplicate request detected', [
                 'idempotency_key' => $idempotencyKey,
                 'payload_hash' => $payloadHash,
                 'endpoint' => $request->path(),
                 'method' => $request->method(),
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $correlationId,
             ]);
 
             // Вернуть кэшированный ответ (не повторять операцию)
-            return response()->json($cachedResponse['body'], $cachedResponse['status']);
+            return $this->response->json($cachedResponse['body'], $cachedResponse['status']);
         }
 
         // Запрос новый - обработать
@@ -94,9 +103,9 @@ final class IdempotencyCheckMiddleware
             ];
 
             // Сохранить в cache на 24 часа
-            Cache::put($cacheKey, $responseData, now()->addHours(24));
+            $this->cache->put($cacheKey, $responseData, now()->addHours(24));
 
-            Log::channel('audit')->debug('Idempotency: Response cached', [
+            $this->logger->channel('audit')->debug('Idempotency: Response cached', [
                 'idempotency_key' => $idempotencyKey,
                 'payload_hash' => $payloadHash,
                 'status' => $response->getStatusCode(),

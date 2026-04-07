@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers\Api\V1\Food;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class OrderController extends Model
+final class OrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly FraudControlService $fraudService,
             private readonly WalletService $walletService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * POST /api/v1/food/orders
          * Создать заказ в ресторане.
@@ -25,7 +30,7 @@ final class OrderController extends Model
             $correlationId = $request->getCorrelationId();
             $tenantId = $request->getTenantId();
             try {
-                return DB::transaction(function () use ($request, $correlationId, $tenantId) {
+                return $this->db->transaction(function () use ($request, $correlationId, $tenantId) {
                     // 1. Рассчитать сумму заказа с учётом surge pricing
                     $subtotal = $request->integer('subtotal');
                     $deliveryPrice = $request->integer('delivery_price', 0);
@@ -38,16 +43,16 @@ final class OrderController extends Model
                     $fraudResult = $this->fraudService->scoreOperation([
                         'type' => 'food_order',
                         'amount' => $totalAmount,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'ip_address' => $request->ip(),
                         'correlation_id' => $correlationId,
                     ]);
                     if ($fraudResult['decision'] === 'block') {
-                        Log::channel('fraud_alert')->warning('Food order blocked', [
+                        $this->logger->channel('fraud_alert')->warning('Food order blocked', [
                             'correlation_id' => $correlationId,
                             'amount' => $totalAmount,
                         ]);
-                        return response()->json([
+                        return $this->response->json([
                             'success' => false,
                             'message' => 'Order creation blocked',
                             'correlation_id' => $correlationId,
@@ -57,7 +62,7 @@ final class OrderController extends Model
                     $order = RestaurantOrder::create([
                         'tenant_id' => $tenantId,
                         'restaurant_id' => $request->integer('restaurant_id'),
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'subtotal' => $subtotal,
                         'delivery_price' => $surgeDeliveryPrice,
                         'surge_multiplier' => $surgePriceMultiplier,
@@ -75,14 +80,14 @@ final class OrderController extends Model
                         correlation_id: $correlationId,
                     );
                     // 5. Логирование
-                    Log::channel('audit')->info('Food order created', [
+                    $this->logger->channel('audit')->info('Food order created', [
                         'correlation_id' => $correlationId,
                         'order_id' => $order->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'total' => $totalAmount,
                         'surge_multiplier' => $surgePriceMultiplier,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Order created successfully',
                         'correlation_id' => $correlationId,
@@ -95,11 +100,18 @@ final class OrderController extends Model
                     ], 201);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Food order creation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Food order creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Order creation failed',
                     'correlation_id' => $correlationId,
@@ -114,19 +126,19 @@ final class OrderController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($order, $correlationId) {
+                return $this->db->transaction(function () use ($order, $correlationId) {
                     // Обновить статус на "cooking"
                     $order->update([
                         'status' => 'cooking',
                         'correlation_id' => $correlationId,
                     ]);
                     // KDS: отправить на кухню (в реальном приложении - вебсокет)
-                    Log::channel('kds')->info('Order sent to kitchen', [
+                    $this->logger->channel('kds')->info('Order sent to kitchen', [
                         'correlation_id' => $correlationId,
                         'order_id' => $order->id,
                         'restaurant_id' => $order->restaurant_id,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Order sent to kitchen',
                         'correlation_id' => $correlationId,
@@ -137,11 +149,18 @@ final class OrderController extends Model
                     ], 200);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('KDS send failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('KDS send failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'KDS operation failed',
                     'correlation_id' => $correlationId,
@@ -156,29 +175,36 @@ final class OrderController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($order, $correlationId) {
+                return $this->db->transaction(function () use ($order, $correlationId) {
                     $order->update([
                         'status' => 'delivered',
                         'delivered_at' => now(),
                         'correlation_id' => $correlationId,
                     ]);
-                    Log::channel('audit')->info('Food order delivered', [
+                    $this->logger->channel('audit')->info('Food order delivered', [
                         'correlation_id' => $correlationId,
                         'order_id' => $order->id,
                         'total' => $order->total_price,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Order delivered',
                         'correlation_id' => $correlationId,
                     ], 200);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Order delivery failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Order delivery failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Delivery failed',
                     'correlation_id' => $correlationId,

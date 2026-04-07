@@ -2,23 +2,21 @@
 
 namespace App\Domains\FarmDirect\FreshProduce\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FreshProductController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FreshProductController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id ?? 0;
+                $tenantId = $request->user()?->tenant_id ?? 0;
 
                 $products = FreshProduct::where('tenant_id', $tenantId)
                     ->when($request->input('category'), fn ($q, $v) => $q->where('category', $v))
@@ -26,14 +24,14 @@ final class FreshProductController extends Model
                     ->orderByDesc('rating')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => true,
                     'data'           => $products,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -42,9 +40,9 @@ final class FreshProductController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $product = FreshProduct::findOrFail($id);
-                return response()->json(['success' => true, 'data' => $product, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $product, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Продукт не найден', 'correlation_id' => $correlationId], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Продукт не найден', 'correlation_id' => $correlationId], 404);
             }
         }
 
@@ -52,17 +50,17 @@ final class FreshProductController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id ?? 0;
+                $tenantId = $request->user()?->tenant_id ?? 0;
 
                 $boxes = ProduceBox::where('tenant_id', $tenantId)
                     ->where('is_active', true)
                     ->orderBy('price_kopecks')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $boxes, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $boxes, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: boxes error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка загрузки боксов', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: boxes error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки боксов', 'correlation_id' => $correlationId], 500);
             }
         }
 }

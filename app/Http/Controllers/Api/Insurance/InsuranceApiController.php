@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Api\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class InsuranceApiController extends Model
+final class InsuranceApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly PolicyService $policyService,
             private readonly ClaimService $claimService,
-            private readonly FraudControlService $fraudControl,
+            private readonly FraudControlService $fraud,
             private readonly PricingService $pricingService,
-            private readonly AIRiskAssessmentService $aiService
-        ) {}
+            private readonly AIRiskAssessmentService $aiService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Get AI-Powered Recommendations for Insurance (GET /api/insurance/recommendations).
          */
@@ -24,7 +25,7 @@ final class InsuranceApiController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
             try {
-                Log::channel('audit')->info('[InsuranceAPI] Requesting AI recommendations', [
+                $this->logger->channel('audit')->info('[InsuranceAPI] Requesting AI recommendations', [
                     'correlation_id' => $correlationId,
                     'user_id' => $request->user()?->id,
                 ]);
@@ -32,12 +33,19 @@ final class InsuranceApiController extends Model
                     $request->user(),
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $recommendations,
                 ]);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->errorResponse($e, $correlationId);
             }
         }
@@ -62,12 +70,19 @@ final class InsuranceApiController extends Model
                     $validated['is_b2b'] ?? false,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'estimated_premium_cents' => $premium,
                 ]);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->errorResponse($e, $correlationId);
             }
         }
@@ -92,12 +107,19 @@ final class InsuranceApiController extends Model
                     isB2B: $validated['is_b2b'] ?? false,
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $policy->load(['type', 'contract']),
                 ], 201);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->errorResponse($e, $correlationId);
             }
         }
@@ -117,7 +139,7 @@ final class InsuranceApiController extends Model
                 $policy = \App\Models\Insurance\InsurancePolicy::findOrFail($validated['policy_id']);
                 // Authorization Check
                 if ($policy->user_id !== $request->user()->id) {
-                    return response()->json(['error' => 'Forbidden Access to Policy'], 403);
+                    return $this->response->json(['error' => 'Forbidden Access to Policy'], 403);
                 }
                 $claim = $this->claimService->fileClaim(
                     policy: $policy,
@@ -127,13 +149,20 @@ final class InsuranceApiController extends Model
                     correlationId: $correlationId
                 );
                 // Background Fraud Check
-                $this->fraudControl->scoreClaim($claim, $correlationId);
-                return response()->json([
+                $this->fraud->scoreClaim($claim, $correlationId);
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $claim->fresh(),
                 ], 201);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->errorResponse($e, $correlationId);
             }
         }
@@ -142,12 +171,12 @@ final class InsuranceApiController extends Model
          */
         private function errorResponse(Exception $e, string $correlationId): JsonResponse
         {
-            Log::channel('audit')->error('[InsuranceAPI] Operation Failed', [
+            $this->logger->channel('audit')->error('[InsuranceAPI] Operation Failed', [
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),

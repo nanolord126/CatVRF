@@ -2,20 +2,18 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\BouquetResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\BouquetResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListBouquets extends Model
+final class ListBouquets extends ListRecords
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BouquetResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\CreateAction::make(),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

@@ -2,14 +2,17 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateEvent extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateEvent extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = EventResource::class;
 
         /**
@@ -22,7 +25,7 @@ final class CreateEvent extends Model
         {
             $correlationId = (string) Str::uuid();
 
-            Log::channel('audit')->info('Filament: Creating new event plan', [
+            $this->logger->info('Filament: Creating new event plan', [
                 'tenant_id' => tenant()->id,
                 'correlation_id' => $correlationId,
                 'title' => $data['title'] ?? 'untitled',

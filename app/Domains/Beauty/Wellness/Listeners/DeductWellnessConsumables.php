@@ -1,19 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * DeductWellnessConsumables — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/deductwellnessconsumables
+ */
+
 
 namespace App\Domains\Beauty\Wellness\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductWellnessConsumables extends Model
+use Psr\Log\LoggerInterface;
+final class DeductWellnessConsumables
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         public function __construct(
-            private readonly InventoryManagementService $inventoryService,
+            private InventoryManagementService $inventoryService,
+            private LoggerInterface $logger,
         ) {}
 
         /**
@@ -28,7 +45,7 @@ final class DeductWellnessConsumables extends Model
                 return;
             }
 
-            Log::channel('inventory')->info('Deducting Consumables for Wellness Appointment', [
+            $this->logger->info('Deducting Consumables for Wellness Appointment', [
                 'appointment_uuid' => $appointment->uuid,
                 'service_id' => $service->id,
                 'correlation_id' => $event->correlation_id,
@@ -45,4 +62,15 @@ final class DeductWellnessConsumables extends Model
                  );
             }
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

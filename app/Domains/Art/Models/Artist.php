@@ -80,23 +80,18 @@ final class Artist extends Model
             return (int) tenant()->id;
         }
 
-        $request = app()->bound('request') ? app('request') : null;
-        if ($request && $request->user() && isset($request->user()->tenant_id)) {
-            return (int) $request->user()->tenant_id;
-        }
-
-        return (int) config('app.tenant_id', 0);
+        return 0;
     }
 
-    private static function resolveBusinessGroupId(): ?int
+    private static function resolveBusinessGroupId(): int
     {
-        if (function_exists('filament') && filament()->getTenant()) {
-            $tenant = filament()->getTenant();
+        if (tenant()) {
+            $tenant = tenant();
             if (isset($tenant->active_business_group_id)) {
                 return (int) $tenant->active_business_group_id;
             }
         }
 
-        return null;
+        return 0;
     }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FarmOrderResource extends Model
+final class FarmOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FarmOrder::class;
         protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
         protected static ?string $navigationLabel = 'Farm Orders';
@@ -52,31 +49,15 @@ final class FarmOrderResource extends Model
                         ->columnSpanFull(),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFarmOrder::route('/'),
-                'create' => Pages\\CreateFarmOrder::route('/create'),
-                'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFarmOrder::route('/'),
-                'create' => Pages\\CreateFarmOrder::route('/create'),
-                'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFarmOrder::route('/'),
-                'create' => Pages\\CreateFarmOrder::route('/create'),
-                'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewFarmOrder::route('/{record}'),
+                'index' => Pages\ListFarmOrder::route('/'),
+                'create' => Pages\CreateFarmOrder::route('/create'),
+                'edit' => Pages\EditFarmOrder::route('/{record}/edit'),
+                'view' => Pages\ViewFarmOrder::route('/{record}'),
             ];
         }
 }

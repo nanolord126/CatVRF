@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Services;
 
+
+
+
 use App\Domains\Art\Events\ProjectCreated;
 use App\Domains\Art\Models\Artwork;
 use App\Domains\Art\Models\Project;
@@ -11,22 +14,29 @@ use App\Services\AI\DemandForecastService;
 use App\Services\Fraud\FraudMLService;
 use App\Services\FraudControlService;
 use App\Services\RecommendationService;
+use Carbon\Carbon;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class ArtService
+final readonly class ArtService
 {
     public function __construct(
-        private readonly FraudControlService $fraudControl,
+        private readonly FraudControlService $fraud,
         private readonly FraudMLService $fraudML,
         private readonly RecommendationService $recommendation,
         private readonly DemandForecastService $demandForecast,
-    )
-    {
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config,
+        private readonly RateLimiter $rateLimiter,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {
     }
 
     public function createProject(array $payload): Project
@@ -38,18 +48,11 @@ final class ArtService
         $userId = (int) ($payload['user_id'] ?? $payload['artist_id'] ?? 0);
         $budget = (int) ($payload['budget_cents'] ?? 0);
 
-        $this->fraudControl->check(
-            $userId,
-            'art_project_create',
-            $budget,
-            $payload['ip'] ?? null,
-            $payload['device_fingerprint'] ?? null,
-            $correlationId,
-        );
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'art_project_create', amount: 0, correlationId: $correlationId ?? '');
         $this->scoreFraudMl($userId, 'art_project_create', $budget, $payload, $correlationId);
         $this->enforceRateLimit($tenantId, $audience, $correlationId);
 
-        $project = DB::transaction(function () use ($payload, $correlationId, $tenantId, $audience): Project {
+        $project = $this->db->transaction(function () use ($payload, $correlationId, $tenantId, $audience): Project {
             $project = Project::query()->create([
                 'uuid' => $payload['uuid'] ?? (string) Str::uuid(),
                 'correlation_id' => $correlationId,
@@ -67,7 +70,7 @@ final class ArtService
                 'meta' => $payload['meta'] ?? [],
             ]);
 
-            Log::channel('audit')->info('Art project created', [
+            $this->logger->info('Art project created', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'audience' => $audience,
@@ -90,18 +93,11 @@ final class ArtService
         $userId = (int) ($data['user_id'] ?? $project->artist_id);
         $amount = (int) ($data['price_cents'] ?? 0);
 
-        $this->fraudControl->check(
-            $userId,
-            'artwork_attach',
-            $amount,
-            $data['ip'] ?? null,
-            $data['device_fingerprint'] ?? null,
-            $correlationId,
-        );
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'artwork_attach', amount: 0, correlationId: $correlationId ?? '');
         $this->scoreFraudMl($userId, 'artwork_attach', $amount, $data, $correlationId);
         $this->enforceRateLimit($project->tenant_id, $project->mode, $correlationId);
 
-        $artwork = DB::transaction(function () use ($project, $data, $correlationId): Artwork {
+        $artwork = $this->db->transaction(function () use ($project, $data, $correlationId): Artwork {
             $artwork = $project->artworks()->create([
                 'uuid' => $data['uuid'] ?? (string) Str::uuid(),
                 'correlation_id' => $correlationId,
@@ -116,7 +112,7 @@ final class ArtService
                 'meta' => $data['meta'] ?? [],
             ]);
 
-            Log::channel('audit')->info('Artwork attached to project', [
+            $this->logger->info('Artwork attached to project', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
                 'artwork_id' => $artwork->id,
@@ -133,17 +129,10 @@ final class ArtService
         $correlationId = $data['correlation_id'] ?? (string) Str::uuid();
         $userId = (int) ($data['user_id'] ?? $project->artist_id);
 
-        $this->fraudControl->check(
-            $userId,
-            'art_review',
-            (int) (($data['rating'] ?? 0) * 100),
-            $data['ip'] ?? null,
-            $data['device_fingerprint'] ?? null,
-            $correlationId,
-        );
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'art_review', amount: 0, correlationId: $correlationId ?? '');
         $this->scoreFraudMl($userId, 'art_review', (int) (($data['rating'] ?? 0) * 100), $data, $correlationId);
 
-        $review = DB::transaction(function () use ($project, $data, $correlationId): Review {
+        $review = $this->db->transaction(function () use ($project, $data, $correlationId): Review {
             $review = $project->reviews()->create([
                 'uuid' => $data['uuid'] ?? (string) Str::uuid(),
                 'correlation_id' => $correlationId,
@@ -157,7 +146,7 @@ final class ArtService
                 'meta' => $data['meta'] ?? [],
             ]);
 
-            Log::channel('audit')->info('Project review saved', [
+            $this->logger->info('Project review saved', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
                 'review_id' => $review->id,
@@ -185,11 +174,10 @@ final class ArtService
     private function enforceRateLimit(int $tenantId, string $audience, string $correlationId): void
     {
         $key = "art:{$audience}:tenant:{$tenantId}:correlation:{$correlationId}";
-        $allowed = RateLimiter::attempt($key, $perMinute = 10, static function (): void {
-        }, 60);
+        $allowed = $this->rateLimiter->attempt($key, $perMinute = 10, static function (): bool { return true; }, 60);
 
         if (!$allowed) {
-            Log::channel('fraud_alert')->warning('Art vertical rate limit hit', [
+            $this->logger->warning('Art vertical rate limit hit', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'audience' => $audience,
@@ -209,17 +197,16 @@ final class ArtService
             return (int) tenant()->id;
         }
 
-        $request = app()->bound('request') ? app('request') : null;
-        if ($request && $request->user() && isset($request->user()->tenant_id)) {
-            return (int) $request->user()->tenant_id;
+        if ($this->request->user() && isset($this->request->user()->tenant_id)) {
+            return (int) $this->request->user()->tenant_id;
         }
 
-        return (int) config('app.tenant_id', 0);
+        return (int) $this->config->get('app.tenant_id', 0);
     }
 
     private function scoreFraudMl(int $userId, string $operation, int $amount, array $payload, string $correlationId): void
     {
-        if (config('fraud.ml.skip', false)) {
+        if ($this->config->get('fraud.ml.skip', false)) {
             return;
         }
 
@@ -227,18 +214,18 @@ final class ArtService
             userId: $userId,
             operationType: $operation,
             amount: $amount,
-            ipAddress: (string) ($payload['ip'] ?? request()->ip()),
+            ipAddress: (string) ($payload['ip'] ?? $this->request->ip()),
             deviceFingerprint: $payload['device_fingerprint'] ?? null,
             context: [
                 'tenant_id' => $payload['tenant_id'] ?? null,
                 'business_group_id' => $payload['business_group_id'] ?? null,
                 'tags' => $payload['tags'] ?? [],
             ],
-            correlationId: $correlationId,
-        );
+            correlationId: $correlationId
+    );
 
         if (($decision['decision'] ?? 'allow') !== 'allow') {
-            Log::channel('fraud_alert')->warning('FraudML blocked art operation', [
+            $this->logger->warning('FraudML blocked art operation', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'operation' => $operation,
@@ -252,7 +239,7 @@ final class ArtService
 
     private function enrichWithInsights(Project $project, int $userId, string $audience, string $correlationId): void
     {
-        if (config('art.integrations.skip_insights', false)) {
+        if ($this->config->get('art.integrations.skip_insights', false)) {
             return;
         }
 
@@ -265,16 +252,16 @@ final class ArtService
                     'geo_hash' => $project->tags['geo'] ?? null,
                     'audience' => $audience,
                 ],
-                correlationId: $correlationId,
-            );
+                correlationId: $correlationId
+    );
 
             $forecast = $this->demandForecast->forecastForItem(
                 itemId: $project->id,
                 dateFrom: Carbon::now(),
                 dateTo: Carbon::now()->addDays(7),
                 context: ['use_for_critical' => false],
-                correlationId: $correlationId,
-            );
+                correlationId: $correlationId
+    );
 
             $project->forceFill([
                 'meta' => array_merge($project->meta ?? [], [
@@ -284,7 +271,7 @@ final class ArtService
                 ]),
             ])->save();
         } catch (\Throwable $e) {
-            Log::channel('audit')->warning('Art insights enrichment failed', [
+            $this->logger->warning('Art insights enrichment failed', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
                 'error' => $e->getMessage(),

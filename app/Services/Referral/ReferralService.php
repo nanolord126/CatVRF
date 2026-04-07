@@ -2,6 +2,10 @@
 
 namespace App\Services\Referral;
 
+
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Models\Referral;
 use App\Services\Bonus\BonusService;
 use App\Services\FraudControlService;
@@ -26,19 +30,22 @@ use Throwable;
  *
  * Требования:
  * 1. FraudControlService::check() перед каждой операцией
- * 2. DB::transaction() для атомарности
+ * 2. $this->db->transaction() для атомарности
  * 3. correlation_id для трейсирования
- * 4. Log::channel('audit') для всех операций
+ * 4. $this->logger->channel('audit') для всех операций
  * 5. Exception handling с полным backtrace
  * 6. Защита от накрутки рефералов (ML fraud scoring)
  */
 final readonly class ReferralService
 {
     public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
         private ConnectionInterface $db,
         private LogManager $log,
         private FraudControlService $fraud,
         private BonusService $bonus,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -65,20 +72,20 @@ final readonly class ReferralService
             $this->fraud->check([
                 'operation_type' => 'referral_link_generate',
                 'user_id' => $referrerId,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Referral: Link generation initiated', [
+            $this->logger->channel('audit')->info('Referral: Link generation initiated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
             ]);
 
             // 2. CREATE or UPDATE referral code
             $code = Str::random(12);
-            $url = config('app.url') . "/join?ref={$code}";
+            $url = $this->config->get('app.url') . "/join?ref={$code}";
 
-            $referral = DB::transaction(function () use (
+            $referral = $this->db->transaction(function () use (
                 $referrerId,
                 $tenantId,
                 $code,
@@ -100,7 +107,7 @@ final readonly class ReferralService
             });
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Referral: Link generated', [
+            $this->logger->channel('audit')->info('Referral: Link generated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
                 'referral_id' => $referral->id,
@@ -112,8 +119,15 @@ final readonly class ReferralService
                 'referral_id' => $referral->id,
             ];
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Referral: Link generation failed', [
+            $this->logger->channel('audit')->error('Referral: Link generation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -148,7 +162,7 @@ final readonly class ReferralService
             $this->fraud->check([
                 'operation_type' => 'referral_registration',
                 'referee_id' => $newUserId,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
@@ -161,14 +175,14 @@ final readonly class ReferralService
                 throw new DomainException('Cannot use own referral code');
             }
 
-            Log::channel('audit')->info('Referral: Registration initiated', [
+            $this->logger->channel('audit')->info('Referral: Registration initiated', [
                 'correlation_id' => $correlationId,
                 'referral_code' => $referralCode,
                 'referee_id' => $newUserId,
             ]);
 
             // 3. UPDATE referral
-            $referral = DB::transaction(function () use (
+            $referral = $this->db->transaction(function () use (
                 $referral,
                 $newUserId,
                 $newUserTenantId,
@@ -185,7 +199,7 @@ final readonly class ReferralService
             });
 
             // 4. SUCCESS LOG
-            Log::channel('audit')->info('Referral: Registration succeeded', [
+            $this->logger->channel('audit')->info('Referral: Registration succeeded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referral->id,
                 'referrer_id' => $referral->referrer_id,
@@ -194,8 +208,15 @@ final readonly class ReferralService
 
             return $referral;
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Referral: Registration failed', [
+            $this->logger->channel('audit')->error('Referral: Registration failed', [
                 'correlation_id' => $correlationId,
                 'referral_code' => $referralCode,
                 'error' => $e->getMessage(),
@@ -228,7 +249,7 @@ final readonly class ReferralService
             $qualified = $totalSpent >= 1000000;  // 10 000 ₽ = 1 000 000 копеек
             $bonusAmount = $qualified ? 100000 : 0;  // 1000 ₽ = 100 000 копеек
 
-            Log::channel('audit')->info('Referral: Qualification checked', [
+            $this->logger->channel('audit')->info('Referral: Qualification checked', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'total_spent' => $totalSpent,
@@ -243,7 +264,14 @@ final readonly class ReferralService
                 'threshold_reached' => $totalSpent,
             ];
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Referral: Qualification check failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Referral: Qualification check failed', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'error' => $e->getMessage(),
@@ -277,7 +305,7 @@ final readonly class ReferralService
                 throw new DomainException('Referral not in registered status');
             }
 
-            Log::channel('audit')->info('Referral: Bonus award initiated', [
+            $this->logger->channel('audit')->info('Referral: Bonus award initiated', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'referrer_id' => $referral->referrer_id,
@@ -285,7 +313,7 @@ final readonly class ReferralService
             ]);
 
             // Award bonus through BonusService
-            DB::transaction(function () use (
+            $this->db->transaction(function () use (
                 $referral,
                 $bonusAmount,
                 $correlationId,
@@ -314,15 +342,22 @@ final readonly class ReferralService
             });
 
             // SUCCESS LOG
-            Log::channel('audit')->info('Referral: Bonus awarded', [
+            $this->logger->channel('audit')->info('Referral: Bonus awarded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'referrer_id' => $referral->referrer_id,
                 'bonus_amount' => $bonusAmount,
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // ERROR LOG
-            Log::channel('audit')->error('Referral: Bonus award failed', [
+            $this->logger->channel('audit')->error('Referral: Bonus award failed', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'error' => $e->getMessage(),

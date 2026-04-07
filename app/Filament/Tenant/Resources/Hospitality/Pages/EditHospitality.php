@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Hospitality\Pages;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Hospitality\HospitalityResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -11,6 +17,11 @@ use Illuminate\Support\Str;
 
 final class EditHospitality extends EditRecord
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = HospitalityResource::class;
 
     protected function getHeaderActions(): array
@@ -24,12 +35,12 @@ final class EditHospitality extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function () use (&$data) {
+        $this->db->transaction(function () use (&$data) {
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            Log::channel('audit')->info('Hospitality updated', [
-                'user_id' => auth()->id(),
+            $this->logger->info('Hospitality updated', [
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'record_id' => $this->record->id,
@@ -41,9 +52,9 @@ final class EditHospitality extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Hospitality edit page saved', [
+        $this->logger->info('Hospitality edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
+            'user_id' => $this->guard->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

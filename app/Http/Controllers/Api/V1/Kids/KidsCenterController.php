@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1\Kids;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class KidsCenterController extends Model
+final class KidsCenterController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly KidsCenterService $centerService,
             private readonly FraudControlService $fraud,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Get children centers with location filtering.
          * GET /api/v1/kids/centers
@@ -27,7 +28,7 @@ final class KidsCenterController extends Model
                 ->when($request->get('verified'), fn($q) => $q->where('is_safety_verified', true))
                 ->latest()
                 ->paginate($request->get('limit', 20));
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $centers,
                 'correlation_id' => $correlationId,
@@ -42,7 +43,7 @@ final class KidsCenterController extends Model
             $correlationId = (string) Str::uuid();
             $center = KidsCenter::with(['store', 'events', 'reviews'])
                 ->findOrFail($id);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $center,
                 'correlation_id' => $correlationId,
@@ -65,7 +66,7 @@ final class KidsCenterController extends Model
                 $event = KidsEvent::findOrFail($request->get('event_id'));
                 // Business rule: Event must belong to the center
                 if ((int) $event->center_id !== (int) $id) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'message' => 'Requested event does not belong to this center.',
                         'correlation_id' => $correlationId,
@@ -78,23 +79,23 @@ final class KidsCenterController extends Model
                     correlationId: $correlationId
                 );
                 if (!$bookingResult) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'message' => 'Booking failed: Center at capacity or event expired.',
                         'correlation_id' => $correlationId,
                     ], 400);
                 }
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Event successfully booked.',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Kids Center Booking API Failure', [
+                $this->logger->channel('audit')->error('Kids Center Booking API Failure', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Booking system failure.',
                     'correlation_id' => $correlationId,

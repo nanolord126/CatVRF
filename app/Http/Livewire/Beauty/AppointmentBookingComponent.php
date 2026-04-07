@@ -2,14 +2,19 @@
 
 namespace App\Http\Livewire\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentBookingComponent extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Livewire\Component;
+
+final class AppointmentBookingComponent extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public int $masterId = 0;
         public int $serviceId = 0;
         public ?string $appointmentDate = null;
@@ -41,7 +46,7 @@ final class AppointmentBookingComponent extends Model
                     $date
                 );
             } catch (\Exception $e) {
-                \Log::channel('error')->error('Failed to load available slots', [
+                $this->logger->error('Failed to load available slots', [
                     'master_id' => $this->masterId,
                     'date' => $this->appointmentDate,
                     'exception' => $e->getMessage(),
@@ -69,7 +74,7 @@ final class AppointmentBookingComponent extends Model
                 $appointment = $this->appointmentService->createAppointment([
                     'master_id' => $this->masterId,
                     'service_id' => $this->serviceId,
-                    'client_id' => auth()->user()->id,
+                    'client_id' => $this->guard->user()->id,
                     'datetime' => $dateTime,
                     'correlation_id' => (string) Str::uuid(),
                 ]);
@@ -77,10 +82,10 @@ final class AppointmentBookingComponent extends Model
                 $this->emit('appointmentBooked', $appointment->id);
                 $this->message = 'Запись успешно создана!';
 
-                \Log::channel('audit')->info('Appointment booked', [
+                $this->logger->info('Appointment booked', [
                     'appointment_id' => $appointment->id,
                     'master_id' => $this->masterId,
-                    'user_id' => auth()->user()->id,
+                    'user_id' => $this->guard->user()->id,
                     'correlation_id' => $appointment->correlation_id,
                 ]);
 
@@ -88,7 +93,7 @@ final class AppointmentBookingComponent extends Model
                 $this->reset(['masterId', 'serviceId', 'appointmentDate', 'appointmentTime']);
 
             } catch (\Exception $e) {
-                \Log::channel('error')->error('Failed to book appointment', [
+                $this->logger->error('Failed to book appointment', [
                     'exception' => $e->getMessage(),
                     'correlation_id' => (string) Str::uuid(),
                 ]);

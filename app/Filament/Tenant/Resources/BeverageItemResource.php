@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeverageItemResource extends Model
+final class BeverageItemResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeverageItem::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-beaker';
@@ -118,31 +115,15 @@ final class BeverageItemResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageItem::route('/'),
-                'create' => Pages\\CreateBeverageItem::route('/create'),
-                'edit' => Pages\\EditBeverageItem::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageItem::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeverageItem::route('/'),
-                'create' => Pages\\CreateBeverageItem::route('/create'),
-                'edit' => Pages\\EditBeverageItem::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageItem::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageItem::route('/'),
-                'create' => Pages\\CreateBeverageItem::route('/create'),
-                'edit' => Pages\\EditBeverageItem::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageItem::route('/{record}'),
+                'index' => Pages\ListBeverageItem::route('/'),
+                'create' => Pages\CreateBeverageItem::route('/create'),
+                'edit' => Pages\EditBeverageItem::route('/{record}/edit'),
+                'view' => Pages\ViewBeverageItem::route('/{record}'),
             ];
         }
 }

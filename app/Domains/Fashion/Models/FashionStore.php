@@ -2,14 +2,20 @@
 
 namespace App\Domains\Fashion\Models;
 
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class FashionStore extends Model
 {
+
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'fashion_stores';
@@ -46,7 +52,7 @@ final class FashionStore extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant_id', function (Builder $builder) {
-                $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
+                $tenantId = (function_exists('tenant') && tenant()) ? tenant()->id : null;
                 if ($tenantId) {
                     $builder->where('tenant_id', $tenantId);
                 }
@@ -57,10 +63,10 @@ final class FashionStore extends Model
                     $model->uuid = \Illuminate\Support\Str::uuid()->toString();
                 }
                 if (empty($model->tenant_id)) {
-                    $model->tenant_id = filament()->getTenant()?->id ?? auth()->user()?->tenant_id ?? 0;
+                    $model->tenant_id = (function_exists('tenant') && tenant()) ? tenant()->id : 0;
                 }
                 if (empty($model->correlation_id)) {
-                    $model->correlation_id = request()->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+                    $model->correlation_id = (string) Str::uuid();
                 }
             });
         }
@@ -94,42 +100,3 @@ final class FashionStore extends Model
             return !empty($this->inn);
         }
     }
-            'correlation_id',
-        ];
-
-        protected $casts = [
-            'categories' => 'collection',
-            'rating' => 'float',
-            'is_verified' => 'boolean',
-            'is_active' => 'boolean',
-        ];
-
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
-                }
-            });
-        }
-
-        public function owner(): BelongsTo
-        {
-            return $this->belongsTo(\App\Models\User::class, 'owner_id');
-        }
-
-        public function businessGroup(): BelongsTo
-        {
-            return $this->belongsTo(\App\Models\BusinessGroup::class);
-        }
-
-        public function products(): HasMany
-        {
-            return $this->hasMany(FashionProduct::class);
-        }
-
-        public function orders(): HasMany
-        {
-            return $this->hasMany(FashionOrder::class);
-        }
-}

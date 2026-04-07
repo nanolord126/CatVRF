@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Kids\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class KidsEvent extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'kids_events';
@@ -37,7 +38,6 @@ final class KidsEvent extends Model
             'scheduled_at' => 'datetime',
             'duration_minutes' => 'integer',
             'price_per_child' => 'integer', // Kopecks (Canon 2026)
-            'max_children' => 'integer',
             'min_age_months' => 'integer',
             'max_age_months' => 'integer',
             'is_public_holiday' => 'boolean',
@@ -75,7 +75,7 @@ final class KidsEvent extends Model
          */
         public function scopeUpcoming(Builder $query): Builder
         {
-            return $query->where('scheduled_at', '>', now());
+            return $query->where('scheduled_at', '>', Carbon::now());
         }
 
         /**

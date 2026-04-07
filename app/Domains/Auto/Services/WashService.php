@@ -2,20 +2,25 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class WashService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class WashService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Создание записи на мойку.
          */
         public function bookWash(int $clientId, Vehicle $vehicle, array $data, string $correlationId): WashBooking
         {
-            return DB::transaction(function () use ($clientId, $vehicle, $data, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            return $this->db->transaction(function () use ($clientId, $vehicle, $data, $correlationId) {
                 $data['uuid'] = (string) Str::uuid();
                 $data['tenant_id'] = tenant()->id;
                 $data['vehicle_id'] = $vehicle->id;
@@ -25,7 +30,7 @@ final class WashService extends Model
 
                 $booking = WashBooking::create($data);
 
-                Log::channel('audit')->info('Wash booking created', [
+                $this->logger->info('Wash booking created', [
                     'booking_uuid' => $booking->uuid,
                     'vehicle_uuid' => $vehicle->uuid,
                     'client_id' => $clientId,
@@ -41,13 +46,13 @@ final class WashService extends Model
          */
         public function startWash(WashBooking $booking, string $correlationId): void
         {
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update([
                     'status' => 'active',
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Wash service started', [
+                $this->logger->info('Wash service started', [
                     'booking_uuid' => $booking->uuid,
                     'vehicle_uuid' => $booking->vehicle->uuid,
                     'correlation_id' => $correlationId,
@@ -60,14 +65,14 @@ final class WashService extends Model
          */
         public function finishWash(WashBooking $booking, string $correlationId): void
         {
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update([
                     'status' => 'completed',
-                    'finished_at' => now(),
+                    'finished_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Wash service completed', [
+                $this->logger->info('Wash service completed', [
                     'booking_uuid' => $booking->uuid,
                     'final_price' => $booking->price_kopecks,
                     'correlation_id' => $correlationId,
@@ -84,13 +89,13 @@ final class WashService extends Model
                 return;
             }
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update([
                     'status' => 'cancelled',
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->warning('Wash booking cancelled', [
+                $this->logger->warning('Wash booking cancelled', [
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId,
                 ]);

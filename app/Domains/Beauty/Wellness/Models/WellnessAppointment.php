@@ -1,15 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Models;
 
+
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class WellnessAppointment extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'wellness_appointments';
@@ -108,7 +109,7 @@ final class WellnessAppointment extends Model
          */
         public function scopeToday(Builder $query): Builder
         {
-            return $query->whereDate('datetime_start', now()->toDateString());
+            return $query->whereDate('datetime_start', Carbon::now()->toDateString());
         }
 
         /**

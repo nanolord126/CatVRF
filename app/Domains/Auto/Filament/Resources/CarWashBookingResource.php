@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CarWashBookingResource extends Model
+final class CarWashBookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CarWashBooking::class;
 
         protected static ?string $navigationLabel = 'Бронь мойки';

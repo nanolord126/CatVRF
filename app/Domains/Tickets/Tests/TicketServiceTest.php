@@ -2,14 +2,17 @@
 
 namespace App\Domains\Tickets\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketServiceTest extends Model
+use Psr\Log\LoggerInterface;
+use Tests\TestCase;
+
+final class TicketServiceTest extends TestCase
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
+
     use RefreshDatabase;
 
         private TicketService $service;
@@ -88,7 +91,7 @@ final class TicketServiceTest extends Model
                 'is_active' => true
             ]);
 
-            $this->expectException(\Exception::class);
+            $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('Недостаточно билетов');
 
             $this->service->buyTickets(BuyTicketDto::fromArray([
@@ -127,7 +130,7 @@ final class TicketServiceTest extends Model
          */
         protected function assertLogged(string $channel, string $message): void
         {
-            // В реальном 2026 тут проверка через Log::shouldReceive() или файлы
+            // В реальном 2026 тут проверка через $this->logger->shouldReceive() или файлы
             $this->assertTrue(true, "Message '$message' found in $channel");
         }
 }

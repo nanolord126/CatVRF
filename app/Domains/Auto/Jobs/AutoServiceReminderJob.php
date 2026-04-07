@@ -2,20 +2,22 @@
 
 namespace App\Domains\Auto\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class AutoServiceReminderJob extends Model
+
+
+use App\Services\FraudControlService;
+use Psr\Log\LoggerInterface;
+final class AutoServiceReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
         private readonly string $type; // '24h' or '2h'
 
-        public function __construct(string $type = '24h')
+        public function __construct(
+        private readonly FraudControlService $fraud,string $type = '24h', private readonly LoggerInterface $logger)
         {
             $this->correlationId = Str::uuid()->toString();
             $this->type = $type;
@@ -24,15 +26,15 @@ final class AutoServiceReminderJob extends Model
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Auto service reminder job started', [
+            $this->logger->info('Auto service reminder job started', [
                 'correlation_id' => $this->correlationId,
                 'type' => $this->type,
             ]);
 
             try {
                 $targetTime = $this->type === '24h'
-                    ? now()->addHours(24)
-                    : now()->addHours(2);
+                    ? Carbon::now()->addHours(24)
+                    : Carbon::now()->addHours(2);
 
                 $orders = AutoServiceOrder::where('status', 'confirmed')
                     ->whereBetween('appointment_datetime', [
@@ -41,7 +43,7 @@ final class AutoServiceReminderJob extends Model
                     ])
                     ->whereDoesntHave('reminders', function ($query) {
                         $query->where('type', $this->type)
-                            ->where('sent_at', '>=', now()->subHours(1));
+                            ->where('sent_at', '>=', Carbon::now()->subHours(1));
                     })
                     ->with('client')
                     ->get();
@@ -50,13 +52,13 @@ final class AutoServiceReminderJob extends Model
                     $order->client->notify(new ServiceOrderReminderNotification($order, $this->type));
                 }
 
-                Log::channel('audit')->info('Auto service reminders sent', [
+                $this->logger->info('Auto service reminders sent', [
                     'correlation_id' => $this->correlationId,
                     'type' => $this->type,
                     'sent_count' => $orders->count(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Auto service reminder job failed', [
+                $this->logger->error('Auto service reminder job failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

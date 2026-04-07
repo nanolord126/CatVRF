@@ -2,31 +2,40 @@
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateDentalClinic extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateDentalClinic extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = DentalClinicResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
         {
             $data['uuid'] = (string) Str::uuid();
             $data['tenant_id'] = tenant()->id;
-            $data['correlation_id'] = request()->header('X-Correlation-ID') ?? (string) Str::uuid();
+            $data['correlation_id'] = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
             return $data;
         }
 
         protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $record = parent::handleRecordCreation($data);
 
-                Log::channel('audit')->info('Dental Clinic Created', [
+                $this->logger->info('Dental Clinic Created', [
                     'clinic_id' => $record->id,
                     'name' => $record->name,
                     'correlation_id' => $data['correlation_id']
@@ -40,4 +49,27 @@ final class CreateDentalClinic extends Model
         {
             return $this->getResource()::getUrl('index');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

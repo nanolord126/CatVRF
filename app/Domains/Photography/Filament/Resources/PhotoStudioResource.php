@@ -2,14 +2,11 @@
 
 namespace App\Domains\Photography\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PhotoStudioResource extends Model
+final class PhotoStudioResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PhotoStudio::class;
 
     	protected static ?string $navigationIcon = 'heroicon-o-camera';

@@ -2,24 +2,25 @@
 
 namespace App\Livewire\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Contracts\Auth\Guard;
 
-final class BusinessNewsFeed extends Model
+final class BusinessNewsFeed extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use WithPagination;
 
-        public string $channelSlug = '';
+        private string $channelSlug = '';
 
-        public string $audience = 'all';
+        private string $audience = 'all';
 
-        public bool $personalFeed = false;
+        private bool $personalFeed = false;
 
         /** @var \Illuminate\Database\Eloquent\Collection|null */
-        public $channel = null;
+        private $channel = null;
 
         protected $queryString = ['audience' => ['except' => 'all']];
 
@@ -49,9 +50,9 @@ final class BusinessNewsFeed extends Model
 
         public function render(): View
         {
-            if ($this->personalFeed && auth()->check()) {
+            if ($this->personalFeed && $this->guard->check()) {
                 $posts = app(ChannelSubscriptionService::class)
-                    ->getPersonalFeed((int) auth()->id(), $this->audience, 10);
+                    ->getPersonalFeed((int) $this->guard->id(), $this->audience, 10);
             } elseif ($this->channel !== null) {
                 $posts = Post::withoutGlobalScopes()
                     ->where('channel_id', $this->channel->id)

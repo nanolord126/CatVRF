@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class SportingGoodsResource extends Model
+final class SportingGoodsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = SportingGood::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -55,22 +52,15 @@ final class SportingGoodsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListSportingGoods::route('/'),
-                'create' => Pages\\CreateSportingGoods::route('/create'),
-                'edit' => Pages\\EditSportingGoods::route('/{record}/edit'),
-                'view' => Pages\\ViewSportingGoods::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListSportingGoods::route('/'),
-                'create' => Pages\\CreateSportingGoods::route('/create'),
-                'edit' => Pages\\EditSportingGoods::route('/{record}/edit'),
-                'view' => Pages\\ViewSportingGoods::route('/{record}'),
+                'index' => Pages\ListSportingGoods::route('/'),
+                'create' => Pages\CreateSportingGoods::route('/create'),
+                'edit' => Pages\EditSportingGoods::route('/{record}/edit'),
+                'view' => Pages\ViewSportingGoods::route('/{record}'),
             ];
         }
 }

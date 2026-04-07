@@ -2,115 +2,196 @@
 
 namespace App\Domains\Freelance\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Freelance\Models\FreelanceProject;
+use App\Domains\Freelance\Models\FreelanceProposal;
+use App\Domains\Freelance\Events\ProposalAccepted;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FreelanceService extends Model
+/**
+ * FreelanceService — управление фриланс-проектами и предложениями.
+ *
+ * Создание проектов, подача и принятие предложений,
+ * fraud-check и wallet-интеграция.
+ *
+ * @package App\Domains\Freelance\Services
+ */
+final readonly class FreelanceService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraudControl,
-            private WalletService $walletService,
-            private ContractService $contractService
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {}
 
-        /**
-         * Создать новый заказ на фриланс (B2C/B2B).
-         */
-        public function createOrder(array $data): FreelanceOrder
-        {
-            $correlationId = $data['correlation_id'] ?? (string) Str::uuid();
+    /**
+     * Создать фриланс-проект.
+     */
+    public function createProject(
+        int $clientId,
+        string $title,
+        string $description,
+        int $budget,
+        string $category,
+        string $correlationId = '',
+    ): FreelanceProject {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-            return DB::transaction(function () use ($data, $correlationId) {
-                // 1. Фрод-контроль перед сделкой
-                $this->fraudControl->check([
-                    'user_id' => $data['client_id'],
-                    'operation' => 'freelance_order_create',
-                    'amount' => $data['budget_kopecks'],
-                    'correlation_id' => $correlationId
-                ]);
+        $this->fraud->check(
+            userId: $clientId,
+            operationType: 'freelance_project_create',
+            amount: $budget,
+            correlationId: $correlationId,
+        );
 
-                // 2. Создание заказа с комиссией 14% (Канон 2026)
-                $order = FreelanceOrder::create([
-                    'tenant_id' => $data['tenant_id'] ?? tenant()->id,
-                    'client_id' => $data['client_id'],
-                    'freelancer_id' => $data['freelancer_id'],
-                    'offer_id' => $data['offer_id'] ?? null,
-                    'title' => $data['title'],
-                    'requirements' => $data['requirements'],
-                    'budget_kopecks' => $data['budget_kopecks'],
-                    'commission_kopecks' => (int) ($data['budget_kopecks'] * 0.14),
-                    'status' => 'pending',
-                    'deadline_at' => $data['deadline_at'] ?? now()->addDays(7),
-                    'is_b2b' => $data['is_b2b'] ?? false,
-                    'correlation_id' => $correlationId,
-                ]);
+        return $this->db->transaction(function () use ($clientId, $title, $description, $budget, $category, $correlationId) {
+            $project = FreelanceProject::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'correlation_id' => $correlationId,
+                'client_id' => $clientId,
+                'title' => $title,
+                'description' => $description,
+                'budget' => $budget,
+                'category' => $category,
+                'status' => 'open',
+                'tags' => ['category' => $category],
+            ]);
 
-                // 3. Инициализация эскроу-контракта
-                $this->contractService->initEscrow($order);
+            $this->audit->log(
+                action: 'freelance_project_created',
+                subjectType: FreelanceProject::class,
+                subjectId: $project->id,
+                old: [],
+                new: $project->toArray(),
+                correlationId: $correlationId,
+            );
 
-                Log::channel('audit')->info('Freelance order created successfully', [
-                    'order_id' => $order->id,
-                    'client_id' => $order->client_id,
-                    'budget' => $order->budget_kopecks,
-                    'correlation_id' => $correlationId
-                ]);
+            $this->logger->info('Freelance project created', [
+                'project_id' => $project->id,
+                'client_id' => $clientId,
+                'budget' => $budget,
+                'correlation_id' => $correlationId,
+            ]);
 
-                return $order;
-            });
-        }
+            return $project;
+        });
+    }
 
-        /**
-         * Подтвердить старт работы.
-         */
-        public function startOrder(int $orderId): void
-        {
-            $order = FreelanceOrder::findOrFail($orderId);
+    /**
+     * Подать предложение от фрилансера.
+     */
+    public function submitProposal(
+        int $projectId,
+        int $freelancerId,
+        int $price,
+        string $coverLetter,
+        int $deliveryDays,
+        string $correlationId = '',
+    ): FreelanceProposal {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-            DB::transaction(function () use ($order) {
-                $order->update(['status' => 'in_progress']);
+        $this->fraud->check(
+            userId: $freelancerId,
+            operationType: 'freelance_proposal_submit',
+            amount: $price,
+            correlationId: $correlationId,
+        );
 
-                Log::channel('audit')->info('Freelance work started', [
-                    'order_id' => $order->id,
-                    'freelancer_id' => $order->freelancer_id,
-                    'correlation_id' => $order->correlation_id
-                ]);
-            });
-        }
+        return $this->db->transaction(function () use ($projectId, $freelancerId, $price, $coverLetter, $deliveryDays, $correlationId) {
+            $proposal = FreelanceProposal::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'correlation_id' => $correlationId,
+                'project_id' => $projectId,
+                'freelancer_id' => $freelancerId,
+                'price' => $price,
+                'cover_letter' => $coverLetter,
+                'delivery_days' => $deliveryDays,
+                'status' => 'pending',
+                'tags' => [],
+            ]);
 
-        /**
-         * Завершить заказ и выплатить средства исполнителю.
-         */
-        public function completeOrder(int $orderId): void
-        {
-            $order = FreelanceOrder::with(['freelancer.user.wallet'])->findOrFail($orderId);
+            $this->audit->log(
+                action: 'freelance_proposal_submitted',
+                subjectType: FreelanceProposal::class,
+                subjectId: $proposal->id,
+                old: [],
+                new: $proposal->toArray(),
+                correlationId: $correlationId,
+            );
 
-            DB::transaction(function () use ($order) {
-                // 1. Смена статуса заказа
-                $order->update([
-                    'status' => 'completed',
-                    'completed_at' => now()
-                ]);
+            $this->logger->info('Freelance proposal submitted', [
+                'proposal_id' => $proposal->id,
+                'project_id' => $projectId,
+                'freelancer_id' => $freelancerId,
+                'correlation_id' => $correlationId,
+            ]);
 
-                // 2. Выплата фрилансеру (бюджет минус комиссия)
-                $payoutAmount = $order->budget_kopecks - $order->commission_kopecks;
-                $this->walletService->credit(
-                    walletId: $order->freelancer->user->wallet->id,
-                    amount: $payoutAmount,
-                    type: 'freelance_payout',
-                    correlationId: $order->correlation_id
-                );
+            return $proposal;
+        });
+    }
 
-                // 3. Обновление рейтинга и статистики
-                $order->freelancer->increment('completed_orders_count');
+    /**
+     * Принять предложение.
+     */
+    public function acceptProposal(int $proposalId, string $correlationId = ''): FreelanceProposal
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-                Log::channel('audit')->info('Freelance order finalized and paid', [
-                    'order_id' => $order->id,
-                    'payout' => $payoutAmount,
-                    'correlation_id' => $order->correlation_id
-                ]);
-            });
-        }
+        return $this->db->transaction(function () use ($proposalId, $correlationId) {
+            $proposal = FreelanceProposal::findOrFail($proposalId);
+
+            $proposal->update([
+                'status' => 'accepted',
+                'correlation_id' => $correlationId,
+            ]);
+
+            event(new ProposalAccepted(
+                proposal: $proposal,
+                correlationId: $correlationId,
+            ));
+
+            $this->audit->log(
+                action: 'freelance_proposal_accepted',
+                subjectType: FreelanceProposal::class,
+                subjectId: $proposal->id,
+                old: ['status' => 'pending'],
+                new: ['status' => 'accepted'],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Freelance proposal accepted', [
+                'proposal_id' => $proposal->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $proposal;
+        });
+    }
+
+    /**
+     * Получить открытые проекты.
+     */
+    public function getOpenProjects(): Collection
+    {
+        return FreelanceProject::where('status', 'open')
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+    }
+
+    /**
+     * Получить проект по ID.
+     */
+    public function getProject(int $projectId): FreelanceProject
+    {
+        return FreelanceProject::findOrFail($projectId);
+    }
 }

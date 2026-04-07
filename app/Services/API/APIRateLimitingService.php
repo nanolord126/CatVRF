@@ -2,14 +2,19 @@
 
 namespace App\Services\API;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class APIRateLimitingService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+
+final readonly class APIRateLimitingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Стандартные лимиты
          */
@@ -59,11 +64,12 @@ final class APIRateLimitingService extends Model
                 Redis::incr($keyHour);
                 Redis::expire($keyHour, 3600);
             } else {
-                Log::channel('rate_limit')->warning('Rate limit exceeded', [
+                $this->logger->channel('rate_limit')->warning('Rate limit exceeded', [
                     'identifier' => $identifier,
                     'plan' => $plan,
                     'endpoint' => $endpoint,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
             }
 
             return $result;
@@ -130,7 +136,7 @@ final class APIRateLimitingService extends Model
                 3600 * 24 * 30 // 30 дней
             );
 
-            Log::channel('rate_limit')->info('Custom limit set', $custom);
+            $this->logger->channel('rate_limit')->info('Custom limit set', $custom);
 
             return $custom;
         }
@@ -182,10 +188,11 @@ final class APIRateLimitingService extends Model
                 'duration_minutes' => $durationMinutes,
             ]), $durationMinutes * 60);
 
-            Log::channel('rate_limit')->alert('Identifier blocked', [
+            $this->logger->channel('rate_limit')->alert('Identifier blocked', [
                 'identifier' => $identifier,
                 'reason' => $reason,
                 'duration_minutes' => $durationMinutes,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [
@@ -206,8 +213,9 @@ final class APIRateLimitingService extends Model
         {
             Redis::del("blocked:{$identifier}");
 
-            Log::channel('rate_limit')->info('Identifier unblocked', [
+            $this->logger->channel('rate_limit')->info('Identifier unblocked', [
                 'identifier' => $identifier,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 

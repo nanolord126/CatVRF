@@ -2,19 +2,16 @@
 
 namespace App\Domains\Taxi\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SurgeRecalculationJob extends Model
+use Psr\Log\LoggerInterface;
+final class SurgeRecalculationJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
 
-        public function __construct()
+        public function __construct(private readonly LoggerInterface $logger)
         {
             $this->correlationId = Str::uuid()->toString();
             $this->onQueue('auto');
@@ -22,7 +19,7 @@ final class SurgeRecalculationJob extends Model
 
         public function handle(SurgeService $surgeService): void
         {
-            Log::channel('audit')->info('Surge recalculation started', [
+            $this->logger->info('Surge recalculation started', [
                 'correlation_id' => $this->correlationId,
                 'job' => self::class,
             ]);
@@ -42,12 +39,12 @@ final class SurgeRecalculationJob extends Model
                     ]);
                 }
 
-                Log::channel('audit')->info('Surge recalculation completed', [
+                $this->logger->info('Surge recalculation completed', [
                     'correlation_id' => $this->correlationId,
                     'zones_updated' => $activeZones->count(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Surge recalculation failed', [
+                $this->logger->error('Surge recalculation failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

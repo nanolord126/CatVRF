@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BakeryOrderResource extends Model
+final class BakeryOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BakeryOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cake';
@@ -108,31 +105,15 @@ final class BakeryOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBakeryOrder::route('/'),
-                'create' => Pages\\CreateBakeryOrder::route('/create'),
-                'edit' => Pages\\EditBakeryOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBakeryOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBakeryOrder::route('/'),
-                'create' => Pages\\CreateBakeryOrder::route('/create'),
-                'edit' => Pages\\EditBakeryOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBakeryOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBakeryOrder::route('/'),
-                'create' => Pages\\CreateBakeryOrder::route('/create'),
-                'edit' => Pages\\EditBakeryOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewBakeryOrder::route('/{record}'),
+                'index' => Pages\ListBakeryOrder::route('/'),
+                'create' => Pages\CreateBakeryOrder::route('/create'),
+                'edit' => Pages\EditBakeryOrder::route('/{record}/edit'),
+                'view' => Pages\ViewBakeryOrder::route('/{record}'),
             ];
         }
 }

@@ -1,43 +1,54 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CosmeticService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/cosmeticservice
+ */
+
 
 namespace App\Domains\Beauty\Cosmetics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class CosmeticService extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+final readonly class CosmeticService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: Str::uuid()->toString();
-        }
+        private FraudControlService $fraud,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        public function orderProduct(int $productId, int $quantity, int $userId, int $tenantId): CosmeticOrder
+        public function orderProduct(int $productId, int $quantity, int $userId, int $tenantId, ?string $correlationId = null): CosmeticOrder
         {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($productId, $quantity, $userId, $tenantId) {
+            $correlationId = $correlationId ?? Str::uuid()->toString();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId);
+    return $this->db->transaction(function () use ($productId, $quantity, $userId, $tenantId, $correlationId) {
                 $product = CosmeticProduct::lockForUpdate()->find($productId);
 
                 if (!$product || $product->stock < $quantity) {
-                    throw new \Exception('Insufficient stock');
+                    throw new \RuntimeException('Insufficient stock');
                 }
 
                 $order = CosmeticOrder::create([
                     'tenant_id' => $tenantId,
                     'uuid' => Str::uuid(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                     'product_id' => $productId,
                     'user_id' => $userId,
                     'quantity' => $quantity,
@@ -45,12 +56,18 @@ final class CosmeticService extends Model
                     'status' => 'pending',
                 ]);
 
-                Log::channel('audit')->info('Cosmetic order created', [
-                    'correlation_id' => $this->correlationId,
+                $this->logger->info('Cosmetic order created', [
+                    'correlation_id' => $correlationId,
                     'product_id' => $productId,
                 ]);
 
                 return $order;
             });
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

@@ -2,14 +2,18 @@
 
 namespace App\Domains\Logistics\Models;
 
+
+use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Vehicle extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'logistics_vehicles';
@@ -51,14 +55,14 @@ final class Vehicle extends Model
             'year' => 'integer',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant('id')) {
-                    $model->tenant_id = (int) tenant('id');
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()?->id) {
+                    $model->tenant_id = (int) tenant()?->id;
                 }
                 if (empty($model->status)) {
                     $model->status = 'active';
@@ -66,8 +70,8 @@ final class Vehicle extends Model
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -112,7 +116,7 @@ final class Vehicle extends Model
                 'correlation_id' => $correlationId,
             ]);
 
-            \Illuminate\Support\Facades\Log::channel('audit')->warning('Vehicle sent to maintenance', [
+            $this->logger->warning('Vehicle sent to maintenance', [
                 'vehicle_uuid' => $this->uuid,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -122,7 +126,6 @@ final class Vehicle extends Model
         public function getTypeLabel(): string
         {
             return match($this->type) {
-                'car' => 'Автомобиль',
                 'bike' => 'Велосипед',
                 'electric_scooter' => 'Электросамокат',
                 'truck' => 'Грузовик',
@@ -134,7 +137,6 @@ final class Vehicle extends Model
         public function getStatusColor(): string
         {
             return match($this->status) {
-                'active' => 'success',
                 'maintenance' => 'warning',
                 'broken' => 'danger',
                 'retired' => 'gray',

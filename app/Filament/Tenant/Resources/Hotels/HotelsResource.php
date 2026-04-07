@@ -2,14 +2,34 @@
 
 namespace App\Filament\Tenant\Resources\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Hotel;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
-final class HotelsResource extends Model
+final class HotelsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Hotel::class;
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
         protected static ?string $navigationGroup = 'Вертикали';
@@ -17,7 +37,7 @@ final class HotelsResource extends Model
         public static function form(Form $form): Form
         {
             return $form->schema([
-                Hidden::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                Hidden::make('tenant_id')->default(fn () => filament()->getTenant()?->id),
                 Hidden::make('correlation_id')->default(fn () => Str::uuid()->toString()),
 
                 Section::make('Основная информация')
@@ -132,7 +152,7 @@ final class HotelsResource extends Model
                     ->collapsed()
                     ->columns(2)
                     ->schema([
-                        TextInput::make('avg_rating')->label('Средний рейтинг')->numeric(decimals: 1)->max(5)->columnSpan(1),
+                        TextInput::make('avg_rating')->label('Средний рейтинг')->numeric()->max(5)->columnSpan(1),
                         TextInput::make('review_count')->label('Количество отзывов')->numeric()->columnSpan(1),
                         TextInput::make('occupancy_rate')->label('Заполняемость (%)')->numeric()->columnSpan(1),
                         TextInput::make('repeat_guest_percent')->label('% постоянных гостей')->numeric()->columnSpan(1),
@@ -178,10 +198,10 @@ final class HotelsResource extends Model
                 TextColumn::make('star_rating')->label('Звёзды')->badge()->color('warning'),
                 TextColumn::make('total_rooms')->label('Номеров')->numeric(),
                 TextColumn::make('avg_room_price')->label('Средняя цена (₽)')->numeric()->badge()->color('success'),
-                TextColumn::make('avg_rating')->label('Рейтинг')->numeric(decimals: 1)->badge()->color('info'),
-                BadgeColumn::make('has_pool')->label('Бассейн')->colors(['success' => true, 'gray' => false]),
-                BadgeColumn::make('has_spa')->label('СПА')->colors(['secondary' => true, 'gray' => false]),
-                BadgeColumn::make('is_featured')->label('Избранное')->colors(['warning' => true, 'gray' => false]),
+                TextColumn::make('avg_rating')->label('Рейтинг')->numeric()->badge()->color('info'),
+                TextColumn::make('has_pool')->label('Бассейн')->badge()->color(fn ($state) => $state ? 'success' : 'gray'),
+                TextColumn::make('has_spa')->label('СПА')->badge()->color(fn ($state) => $state ? 'success' : 'gray'),
+                TextColumn::make('is_featured')->label('Избранное')->badge()->color(fn ($state) => $state ? 'warning' : 'gray'),
                 TextColumn::make('phone')->label('Телефон')->toggleable(isToggledHiddenByDefault: true),
             ])->filters([
                 SelectFilter::make('star_rating')->options([
@@ -209,6 +229,6 @@ final class HotelsResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()?->id);
         }
 }

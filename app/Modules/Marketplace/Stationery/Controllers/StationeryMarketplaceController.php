@@ -2,18 +2,24 @@
 
 namespace App\Modules\Marketplace\Stationery\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StationeryMarketplaceController extends Model
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Http\Controllers\Controller;
+
+final class StationeryMarketplaceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * StationeryMarketplaceController constructor.
          */
         public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly ResponseFactory $responseFactory,
             private readonly StationeryService $stationery,
             private readonly AIStationeryConstructor $ai,
             private readonly FraudControlService $fraud,
@@ -30,7 +36,7 @@ final class StationeryMarketplaceController extends Model
             try {
                 // 1. Audit Security Check
                 $this->fraud->check();
-                Log::channel('audit')->info('Stationery catalog accessed', [
+                $this->logger->info('Stationery catalog accessed', [
                     'user_id' => $request->user()?->id,
                     'correlation_id' => $correlation_id,
                     'ip' => $request->ip(),
@@ -86,7 +92,7 @@ final class StationeryMarketplaceController extends Model
                         ];
                     });
 
-                return response()->json([
+                return $this->responseFactory->json([
                     'success' => true,
                     'correlation_id' => $correlation_id,
                     'data' => $products,
@@ -97,13 +103,13 @@ final class StationeryMarketplaceController extends Model
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Catalog loading failed', [
+                $this->logger->error('Catalog loading failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlation_id,
                 ]);
 
-                return response()->json([
+                return $this->responseFactory->json([
                     'success' => false,
                     'message' => 'Internal Catalog Error',
                     'correlation_id' => $correlation_id,
@@ -124,7 +130,7 @@ final class StationeryMarketplaceController extends Model
             ]);
 
             try {
-                DB::beginTransaction();
+                $this->db->beginTransaction();
 
                 // AI Logic from AIStationeryConstructor
                 $kitItems = $this->ai->constructRecommendedKit(
@@ -132,9 +138,9 @@ final class StationeryMarketplaceController extends Model
                     (int) $request->get('budget_cents')
                 );
 
-                DB::commit();
+                $this->db->commit();
 
-                return response()->json([
+                return $this->responseFactory->json([
                     'success' => true,
                     'theme' => $request->get('theme'),
                     'total_items' => count($kitItems),
@@ -143,13 +149,13 @@ final class StationeryMarketplaceController extends Model
                 ]);
 
             } catch (\Throwable $e) {
-                DB::rollBack();
-                Log::channel('audit')->error('AI Kit Construction failed', [
+                $this->db->rollBack();
+                $this->logger->error('AI Kit Construction failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlation_id,
                 ]);
 
-                return response()->json([
+                return $this->responseFactory->json([
                     'success' => false,
                     'message' => 'AI Service Unavailable',
                     'correlation_id' => $correlation_id,

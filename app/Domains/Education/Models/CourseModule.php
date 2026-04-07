@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class CourseModule extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'course_modules';
 
         protected $fillable = [
@@ -44,5 +43,21 @@ final class CourseModule extends Model
         public function lessons()
         {
             return $this->hasMany(Lesson::class)->orderBy('order');
-        }
+        }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 }

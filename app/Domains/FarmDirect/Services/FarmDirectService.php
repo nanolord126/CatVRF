@@ -2,17 +2,18 @@
 
 namespace App\Domains\FarmDirect\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FarmDirectService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+use Psr\Log\LoggerInterface;
+final readonly class FarmDirectService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создать заказ с фермы.
@@ -26,23 +27,22 @@ final class FarmDirectService extends Model
             int    $tenantId,
         ): FarmOrder {
 
-
             $correlationId = Str::uuid()->toString();
             $key           = "farm_order:{$tenantId}:{$clientId}";
 
-            if (RateLimiter::tooManyAttempts($key, 10)) {
-                Log::channel('audit')->warning('FarmDirect: rate limit exceeded', [
+            if ($this->rateLimiter->tooManyAttempts($key, 10)) {
+                $this->logger->warning('FarmDirect: rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'client_id'      => $clientId,
                     'tenant_id'      => $tenantId,
                 ]);
                 throw new RuntimeException('Превышен лимит заказов. Попробуйте позже.');
             }
-            RateLimiter::hit($key, 3600);
+            $this->rateLimiter->hit($key, 3600);
 
             $totalAmount = array_sum(array_column($items, 'amount'));
 
-            $fraudResult = $this->fraudControlService->check(
+            $fraudResult = $this->fraud->check(
                 userId:        $clientId,
                 operationType: 'farm_order_create',
                 amount:        $totalAmount,
@@ -50,7 +50,7 @@ final class FarmDirectService extends Model
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('audit')->warning('FarmDirect: fraud block', [
+                $this->logger->warning('FarmDirect: fraud block', [
                     'correlation_id' => $correlationId,
                     'ml_score'       => $fraudResult['score'],
                     'client_id'      => $clientId,
@@ -63,14 +63,14 @@ final class FarmDirectService extends Model
             if (FarmOrder::where('idempotency_key', $idempotencyKey)->exists()) {
                 /** @var FarmOrder $existing */
                 $existing = FarmOrder::where('idempotency_key', $idempotencyKey)->firstOrFail();
-                Log::channel('audit')->info('FarmDirect: duplicate order (idempotency)', [
+                $this->logger->info('FarmDirect: duplicate order (idempotency)', [
                     'correlation_id' => $correlationId,
                     'order_id'       => $existing->id,
                 ]);
                 return $existing;
             }
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $clientId, $farmId, $items, $deliveryAddress,
                 $deliveryDate, $tenantId, $correlationId, $idempotencyKey, $totalAmount
             ) {
@@ -90,7 +90,7 @@ final class FarmDirectService extends Model
 
                 event(new FarmOrderCreated($order, $correlationId));
 
-                Log::channel('audit')->info('FarmDirect: order created', [
+                $this->logger->info('FarmDirect: order created', [
                     'correlation_id' => $correlationId,
                     'order_id'       => $order->id,
                     'total_amount'   => $totalAmount,
@@ -107,10 +107,9 @@ final class FarmDirectService extends Model
         public function markShipped(int $orderId): FarmOrder
         {
 
-
             $correlationId = Str::uuid()->toString();
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
+            return $this->db->transaction(function () use ($orderId, $correlationId) {
                 /** @var FarmOrder $order */
                 $order = FarmOrder::lockForUpdate()->findOrFail($orderId);
 
@@ -118,11 +117,11 @@ final class FarmDirectService extends Model
                     throw new RuntimeException("Нельзя отправить заказ со статусом {$order->status}.");
                 }
 
-                $order->update(['status' => 'shipped', 'shipped_at' => now()]);
+                $order->update(['status' => 'shipped', 'shipped_at' => Carbon::now()]);
 
                 event(new FarmOrderShipped($order, $correlationId));
 
-                Log::channel('audit')->info('FarmDirect: order shipped', [
+                $this->logger->info('FarmDirect: order shipped', [
                     'correlation_id' => $correlationId,
                     'order_id'       => $order->id,
                 ]);
@@ -137,16 +136,15 @@ final class FarmDirectService extends Model
         public function markDelivered(int $orderId): FarmOrder
         {
 
-
             $correlationId = Str::uuid()->toString();
 
-            return DB::transaction(function () use ($orderId, $correlationId) {
+            return $this->db->transaction(function () use ($orderId, $correlationId) {
                 /** @var FarmOrder $order */
                 $order = FarmOrder::lockForUpdate()->findOrFail($orderId);
 
-                $order->update(['status' => 'delivered', 'delivered_at' => now()]);
+                $order->update(['status' => 'delivered', 'delivered_at' => Carbon::now()]);
 
-                Log::channel('audit')->info('FarmDirect: order delivered', [
+                $this->logger->info('FarmDirect: order delivered', [
                     'correlation_id' => $correlationId,
                     'order_id'       => $order->id,
                 ]);
@@ -160,7 +158,6 @@ final class FarmDirectService extends Model
          */
         public function getProductsBySeason(int $farmId, int $month): \Illuminate\Database\Eloquent\Collection
         {
-
 
             return FarmProduct::where('farm_id', $farmId)
                 ->where('status', 'active')
@@ -177,7 +174,6 @@ final class FarmDirectService extends Model
          */
         public function getVerifiedFarms(int $tenantId): \Illuminate\Database\Eloquent\Collection
         {
-
 
             return Farm::where('tenant_id', $tenantId)
                 ->where('is_verified', true)

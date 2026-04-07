@@ -2,20 +2,18 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeAgeVerificationService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class VapeAgeVerificationService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP зависимостями.
          */
-        public function __construct(
-            private FraudControlService $fraud,
-        ) {}
+        public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Инициировать проверку возраста через выбранный метод.
@@ -26,13 +24,13 @@ final class VapeAgeVerificationService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            Log::channel('audit')->info('Age verification started for vapes', [
+            $this->logger->info('Age verification started for vapes', [
                 'user_id' => $userId,
                 'method' => $method,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($userId, $method, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $method, $correlationId) {
 
                 // 1. Создаем запись верификации со статусом 'pending'
                 $verification = VapeAgeVerification::create([
@@ -43,12 +41,7 @@ final class VapeAgeVerificationService extends Model
                 ]);
 
                 // 2. Fraud Check инициации проверки
-                $this->fraud->check([
-                    'operation' => 'vape_age_verify_init',
-                    'user_id' => $userId,
-                    'method' => $method,
-                    'correlation_id' => $correlationId,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vape_age_verify_init', amount: 0, correlationId: $correlationId ?? '');
 
                 return $verification->uuid;
             });
@@ -62,7 +55,7 @@ final class VapeAgeVerificationService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($uuid, $providerData, $correlationId) {
+            return $this->db->transaction(function () use ($uuid, $providerData, $correlationId) {
 
                 $verification = VapeAgeVerification::where('uuid', $uuid)->lockForUpdate()->firstOrFail();
 
@@ -86,7 +79,7 @@ final class VapeAgeVerificationService extends Model
                     'external_id' => $providerData['external_id'] ?? null,
                 ]);
 
-                Log::channel('audit')->info('Age verification completed for vapes', [
+                $this->logger->info('Age verification completed for vapes', [
                     'user_id' => $verification->user_id,
                     'status' => $status,
                     'is_adult' => $isAdult,

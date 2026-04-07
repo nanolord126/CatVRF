@@ -2,21 +2,18 @@
 
 namespace App\Domains\Tickets\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TicketAIService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TicketAIService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
         public function __construct(
             private readonly \App\Services\RecommendationService $recommendation,
-            private readonly \App\Services\DemandForecastService $forecast
-        ) {}
+            private readonly \App\Services\DemandForecastService $forecast,
+        private \Illuminate\Contracts\Cache\Repository $cache, private readonly LoggerInterface $logger) {}
 
         /**
          * Персонализированные рекомендации эвентов для пользователя.
@@ -26,8 +23,8 @@ final class TicketAIService extends Model
             $correlationId = $context['correlation_id'] ?? (string) \Illuminate\Support\Str::uuid();
             $cacheKey = "tickets:ai:suggest:user:{$userId}";
 
-            return Cache::remember($cacheKey, 3600, function () use ($userId, $context, $correlationId) {
-                Log::channel('recommend')->info('AI event suggestion initiated', [
+            return $this->cache->remember($cacheKey, 3600, function () use ($userId, $context, $correlationId) {
+                $this->logger->info('AI event suggestion initiated', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId
                 ]);
@@ -59,7 +56,7 @@ final class TicketAIService extends Model
                     ];
                 });
 
-                Log::channel('recommend')->info('AI event scoring completed', [
+                $this->logger->info('AI event scoring completed', [
                     'candidates_count' => $scored->count(),
                     'top_score' => $scored->max('score')
                 ]);
@@ -76,7 +73,7 @@ final class TicketAIService extends Model
             $event = Event::findOrFail($eventId);
             $correlationId = $event->correlation_id ?? (string) \Illuminate\Support\Str::uuid();
 
-            Log::channel('forecast')->info('Event demand prediction requested', [
+            $this->logger->info('Event demand prediction requested', [
                 'event_id' => $eventId,
                 'correlation_id' => $correlationId
             ]);
@@ -110,7 +107,7 @@ final class TicketAIService extends Model
          */
         public function designSeatMapLayout(array $requirements): array
         {
-            Log::channel('audit')->info('AI SeatMap design requested', $requirements);
+            $this->logger->info('AI SeatMap design requested', $requirements);
 
             // Имитация вызова OpenAI для генерации JSON структуры зале
             // В реальном 2026 — OpenAI vision анализирует чертеж или текст требований

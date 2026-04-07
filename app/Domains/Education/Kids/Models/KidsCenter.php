@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class KidsCenter extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'kids_centers';
@@ -33,7 +32,6 @@ final class KidsCenter extends Model
 
         protected $casts = [
             'hourly_rate' => 'integer', // Kopecks (Canon 2026)
-            'capacity_limit' => 'integer',
             'is_safety_verified' => 'boolean',
             'facility_details' => 'json', // pool, cafe, lockers, cameras, parking
             'schedule_hours' => 'json', // mon-sun: open/close

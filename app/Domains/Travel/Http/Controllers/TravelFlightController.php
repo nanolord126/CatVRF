@@ -2,18 +2,16 @@
 
 namespace App\Domains\Travel\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelFlightController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TravelFlightController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FlightService $flightService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FlightService $flightService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -37,7 +35,7 @@ final class TravelFlightController extends Model
 
                 $flights = $query->paginate($per_page, ['*'], 'page', $page);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $flights->items(),
                     'pagination' => [
@@ -46,7 +44,7 @@ final class TravelFlightController extends Model
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list flights',
                     'correlation_id' => Str::uuid(),
@@ -59,13 +57,13 @@ final class TravelFlightController extends Model
             try {
                 $flight = TravelFlight::where('tenant_id', tenant()->id)->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $flight,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Flight not found',
                     'correlation_id' => Str::uuid(),
@@ -76,7 +74,7 @@ final class TravelFlightController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'flight_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'flight_store', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $request->validate([
@@ -92,7 +90,7 @@ final class TravelFlightController extends Model
                 ]);
 
                 $validated = $request->all();
-                $flight = DB::transaction(function () use ($validated, $correlationId) {
+                $flight = $this->db->transaction(function () use ($validated, $correlationId) {
                     return TravelFlight::create([
                         'tenant_id' => tenant()->id,
                         'airline' => ($validated['airline'] ?? null),
@@ -112,19 +110,19 @@ final class TravelFlightController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Flight created', [
+                $this->logger->info('Flight created', [
                     'flight_id' => $flight->id,
                     'flight_number' => $flight->flight_number,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $flight,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create flight',
                     'correlation_id' => $correlationId,
@@ -135,7 +133,7 @@ final class TravelFlightController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'flight_update', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'flight_update', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $flight = TravelFlight::where('tenant_id', tenant()->id)->findOrFail($id);
@@ -143,7 +141,7 @@ final class TravelFlightController extends Model
                 $this->authorize('update', $flight);
 
                 $validated = $request->all();
-                $flight = DB::transaction(function () use ($validated, $flight, $correlationId) {
+                $flight = $this->db->transaction(function () use ($validated, $flight, $correlationId) {
                     $flight->update([
                         'available_seats' => ($validated['available_seats'] ?? $flight->available_seats),
                         'price' => ($validated['price'] ?? $flight->price),
@@ -154,13 +152,13 @@ final class TravelFlightController extends Model
                     return $flight;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $flight,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update flight',
                     'correlation_id' => $correlationId,
@@ -171,28 +169,28 @@ final class TravelFlightController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'flight_destroy', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'flight_destroy', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $flight = TravelFlight::where('tenant_id', tenant()->id)->findOrFail($id);
 
                 $this->authorize('delete', $flight);
 
-                DB::transaction(function () use ($flight) {
+                $this->db->transaction(function () use ($flight) {
                     $flight->delete();
                 });
 
-                Log::channel('audit')->info('Flight deleted', [
+                $this->logger->info('Flight deleted', [
                     'flight_id' => $flight->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete flight',
                     'correlation_id' => $correlationId,

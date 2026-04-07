@@ -1,15 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * EnsureApiVersion — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/ensureapiversion
+ * @see https://catvrf.ru/docs/ensureapiversion
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class EnsureApiVersion extends Model
+final class EnsureApiVersion
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @var array<string>
          */
@@ -20,7 +38,7 @@ final class EnsureApiVersion extends Model
             $version = $this->getApiVersion($request);
 
             if (!in_array($version, $this->supportedVersions, true)) {
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Unsupported API version',
                     'supported_versions' => $this->supportedVersions,
                     'correlation_id' => $request->header('X-Correlation-ID'),
@@ -47,4 +65,10 @@ final class EnsureApiVersion extends Model
             // Default to v1
             return 'v1';
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

@@ -2,14 +2,24 @@
 
 namespace App\Services\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Insurance\InsuranceClaim;
+use App\Models\Insurance\InsurancePolicy;
+use Exception;
+use Illuminate\Support\Collection;
 
-final class ClaimService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class ClaimService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * File a new claim for an incident on an active policy.
          */
@@ -23,7 +33,7 @@ final class ClaimService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Log Start (Audit Trace: Canon 2026)
-            Log::channel('audit')->info('[ClaimService] Filing new insurance claim', [
+            $this->logger->channel('audit')->info('[ClaimService] Filing new insurance claim', [
                 'correlation_id' => $correlationId,
                 'policy_uuid' => $policy->uuid,
                 'user_id' => $policy->user_id,
@@ -33,15 +43,15 @@ final class ClaimService extends Model
             try {
                 // 2. Initial Validation (Layer 4 Domain Logic)
                 if ($requestedAmount <= 0) {
-                    throw new Exception('[ClaimService] Requested payout must be positive.');
+                    throw new \InvalidArgumentException('[ClaimService] Requested payout must be positive.');
                 }
 
                 if ($requestedAmount > $policy->coverage_amount) {
-                    throw new Exception('[ClaimService] Requested amount exceeds policy coverage.');
+                    throw new \DomainException('[ClaimService] Requested amount exceeds policy coverage.');
                 }
 
                 // 3. Transaction Scope (Atomic Operation)
-                return DB::transaction(function () use ($policy, $description, $requestedAmount, $evidenceFiles, $correlationId) {
+                return $this->db->transaction(function () use ($policy, $description, $requestedAmount, $evidenceFiles, $correlationId) {
                     // 4. Create Claim Record
                     $claim = InsuranceClaim::create([
                         'uuid' => (string) Str::uuid(),
@@ -62,7 +72,7 @@ final class ClaimService extends Model
                     ]);
 
                     // 5. Success Log Audit
-                    Log::channel('audit')->info('[ClaimService] Claim filed successfully', [
+                    $this->logger->channel('audit')->info('[ClaimService] Claim filed successfully', [
                         'correlation_id' => $correlationId,
                         'claim_uuid' => $claim->uuid,
                         'claim_number' => $claim->claim_number,
@@ -72,8 +82,15 @@ final class ClaimService extends Model
                 });
 
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 6. Error handling (Canon 2026: Logging errors)
-                Log::channel('audit')->error('[ClaimService] Claim filing failed', [
+                $this->logger->channel('audit')->error('[ClaimService] Claim filing failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -95,17 +112,17 @@ final class ClaimService extends Model
         ): bool {
             $correlationId = $correlationId ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($claimId, $newStatus, $approvedAmount, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($claimId, $newStatus, $approvedAmount, $reason, $correlationId) {
                 $claim = InsuranceClaim::lockForUpdate()->findOrFail($claimId);
 
                 if ($claim->isProcessed()) {
-                    throw new Exception('[ClaimService] Cannot update a processed claim.');
+                    throw new \LogicException('[ClaimService] Cannot update a processed claim.');
                 }
 
                 // check state machine
                 $allowedStatuses = ['investigating', 'approved', 'rejected', 'paid'];
                 if (!in_array($newStatus, $allowedStatuses, true)) {
-                    throw new Exception('[ClaimService] Invalid claim status: ' . $newStatus);
+                    throw new \InvalidArgumentException('[ClaimService] Invalid claim status: ' . $newStatus);
                 }
 
                 $updateData = [
@@ -118,7 +135,7 @@ final class ClaimService extends Model
 
                 $claim->update($updateData);
 
-                Log::channel('audit')->info('[ClaimService] Claim status updated', [
+                $this->logger->channel('audit')->info('[ClaimService] Claim status updated', [
                     'claim_id' => $claimId,
                     'new_status' => $newStatus,
                     'correlation_id' => $correlationId,

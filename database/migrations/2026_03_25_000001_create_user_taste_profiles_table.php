@@ -1,3 +1,4 @@
+<?php
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
@@ -8,13 +9,18 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('ml_decision_logs');
+        Schema::dropIfExists('ml_recommendation_cache');
+        Schema::dropIfExists('product_embeddings');
+        Schema::dropIfExists('user_interactions');
+        Schema::dropIfExists('user_taste_profiles');
         Schema::create('user_taste_profiles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')
                 ->unique()
                 ->constrained('users')
                 ->onDelete('cascade');
-            $table->tenant_id();
+            $table->foreignId('tenant_id')->index();
 
             // Основные embeddings (384 или 768 размерность)
             $table->json('embedding')->nullable()->comment('Vectorized representation of user tastes (SentenceTransformers)');
@@ -81,7 +87,7 @@ return new class extends Migration
         Schema::create('user_interactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->tenant_id();
+            $table->foreignId('tenant_id')->index();
 
             // Тип взаимодействия
             $table->enum('interaction_type', [
@@ -97,7 +103,7 @@ return new class extends Migration
             ])->index();
 
             // Контекст взаимодействия
-            $table->morphs('interactable')->comment('Product, Service, or other entity user interacted with');
+            $table->morphs('interactable');
 
             // Вертикаль
             $table->string('vertical')->nullable()->index();
@@ -128,10 +134,10 @@ return new class extends Migration
         // Таблица для сохранения embeddings товаров (для поиска похожих)
         Schema::create('product_embeddings', function (Blueprint $table) {
             $table->id();
-            $table->tenant_id();
+            $table->foreignId('tenant_id')->index();
 
             // Товар/услуга (polymorphic)
-            $table->morphs('embeddable')->comment('Product, Service, or other entity');
+            $table->morphs('embeddable');
 
             // Embedding (вектор)
             $table->json('embedding')->comment('Vectorized representation of product (SentenceTransformers)');
@@ -149,7 +155,6 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
 
             // Индексы
-            $table->index(['embeddable_type', 'embeddable_id']);
             $table->index(['tenant_id', 'model_version']);
 
             $table->comment('Product embeddings for cosine similarity search in recommendations (CANON 2026)');
@@ -159,7 +164,7 @@ return new class extends Migration
         Schema::create('ml_recommendation_cache', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->tenant_id();
+            $table->foreignId('tenant_id')->index();
 
             // Ключ кэша (user_id + vertical + context)
             $table->string('cache_key')->unique()->index();
@@ -191,7 +196,7 @@ return new class extends Migration
         Schema::create('ml_decision_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->tenant_id();
+            $table->foreignId('tenant_id')->index();
 
             // Тип решения
             $table->enum('decision_type', [

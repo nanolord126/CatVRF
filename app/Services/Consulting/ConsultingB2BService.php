@@ -2,21 +2,38 @@
 
 namespace App\Services\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultingB2BService extends Model
+use Illuminate\Http\Request;
+use App\Models\Consulting\ConsultingContract;
+use App\Models\Consulting\ConsultingFirm;
+use App\Models\Consulting\ConsultingProject;
+use App\Models\Consulting\ConsultingSession;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ConsultingB2BService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @param string $correlationId Unified audit trace.
          */
         public function __construct(
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -24,20 +41,20 @@ final class ConsultingB2BService extends Model
          */
         public function enrollBusinessRetainer(int $businessGroupId, int $consultingFirmId, int $serviceId): ConsultingContract
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'b2b_enroll_retainer', $this->request->ip());
 
-            return DB::transaction(function() use ($businessGroupId, $consultingFirmId, $serviceId) {
+            return $this->db->transaction(function() use ($businessGroupId, $consultingFirmId, $serviceId) {
                 $firm = ConsultingFirm::findOrFail($consultingFirmId);
                 $service = \App\Models\Consulting\ConsultingService::findOrFail($serviceId);
 
                 if (!$service->isSubscription()) {
-                    throw new \Exception("Subscription service required for retainer enrollment.");
+                    throw new \DomainException('Subscription service required for retainer enrollment.');
                 }
 
-                Log::channel('audit')->info('Enrolling Business into Retainer', [
+                $this->logger->channel('audit')->info('Enrolling Business into Retainer', [
                     'business_group_id' => $businessGroupId,
                     'firm_id' => $consultingFirmId,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $contract = ConsultingContract::create([
@@ -54,7 +71,7 @@ final class ConsultingB2BService extends Model
                        'billing_cycle' => '1st day',
                        'hours_included' => 20
                    ],
-                   'correlation_id' => $this->correlationId,
+                   'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $contract;
@@ -66,15 +83,15 @@ final class ConsultingB2BService extends Model
          */
         public function fulfillProjectDeliverable(int $projectId, string $deliverableName): void
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'b2b_fulfill_deliverable', $this->request->ip());
 
-            DB::transaction(function() use ($projectId, $deliverableName) {
+            $this->db->transaction(function() use ($projectId, $deliverableName) {
                 $project = ConsultingProject::findOrFail($projectId);
 
-                Log::channel('audit')->info('Fulfilling B2B Project Deliverable', [
+                $this->logger->channel('audit')->info('Fulfilling B2B Project Deliverable', [
                     'project_id' => $projectId,
                     'deliverable' => $deliverableName,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $deliverables = $project->deliverables ?? [];

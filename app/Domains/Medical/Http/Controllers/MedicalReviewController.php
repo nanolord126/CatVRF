@@ -2,17 +2,15 @@
 
 namespace App\Domains\Medical\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class MedicalReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function doctorReviews(int $doctorId): JsonResponse
         {
@@ -21,28 +19,28 @@ final class MedicalReviewController extends Model
                     ->where('status', 'approved')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch reviews'], 500);
             }
         }
 
         public function store(Request $request, int $doctorId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $validated = $request->all();
-                $review = DB::transaction(function () use ($validated, $doctorId) {
+                $review = $this->db->transaction(function () use ($validated, $doctorId) {
                     return MedicalReview::create([
-                        'tenant_id' => auth()->user()->tenant_id,
+                        'tenant_id' => $request->user()->tenant_id,
                         'doctor_id' => $doctorId,
-                        'reviewer_id' => auth()->user()->id,
+                        'reviewer_id' => $request->user()->id,
                         'appointment_id' => ($validated['appointment_id'] ?? null),
                         'rating' => ($validated['rating'] ?? null),
                         'comment' => ($validated['comment'] ?? null),
@@ -53,22 +51,22 @@ final class MedicalReviewController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Review created', ['review_id' => $review->id]);
+                $this->logger->info('Review created', ['review_id' => $review->id]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ], 201);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to create review'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to create review'], 500);
             }
         }
 
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $review = MedicalReview::findOrFail($id);
@@ -80,11 +78,11 @@ final class MedicalReviewController extends Model
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Review updated', ['review_id' => $review->id]);
+                $this->logger->info('Review updated', ['review_id' => $review->id]);
 
-                return response()->json(['success' => true, 'data' => $review]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Update failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Update failed'], 500);
             }
         }
 
@@ -96,11 +94,11 @@ final class MedicalReviewController extends Model
 
                 $review->delete();
 
-                Log::channel('audit')->info('Review deleted', ['review_id' => $review->id]);
+                $this->logger->info('Review deleted', ['review_id' => $review->id]);
 
-                return response()->json(['success' => true]);
+                return new \Illuminate\Http\JsonResponse(['success' => true]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Delete failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Delete failed'], 500);
             }
         }
 
@@ -111,11 +109,11 @@ final class MedicalReviewController extends Model
 
                 $review->increment('helpful_count');
 
-                Log::channel('audit')->info('Review marked helpful', ['review_id' => $review->id]);
+                $this->logger->info('Review marked helpful', ['review_id' => $review->id]);
 
-                return response()->json(['success' => true, 'data' => $review]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Operation failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Operation failed'], 500);
             }
         }
 
@@ -124,13 +122,13 @@ final class MedicalReviewController extends Model
             try {
                 $reviews = MedicalReview::paginate(50);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch reviews'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch reviews'], 500);
             }
         }
 
@@ -141,11 +139,11 @@ final class MedicalReviewController extends Model
 
                 $review->update(['status' => 'approved']);
 
-                Log::channel('audit')->info('Review approved', ['review_id' => $review->id]);
+                $this->logger->info('Review approved', ['review_id' => $review->id]);
 
-                return response()->json(['success' => true, 'data' => $review]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $review]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Approval failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Approval failed'], 500);
             }
         }
 
@@ -156,11 +154,11 @@ final class MedicalReviewController extends Model
 
                 $review->delete();
 
-                Log::channel('audit')->info('Review rejected', ['review_id' => $review->id]);
+                $this->logger->info('Review rejected', ['review_id' => $review->id]);
 
-                return response()->json(['success' => true]);
+                return new \Illuminate\Http\JsonResponse(['success' => true]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Rejection failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Rejection failed'], 500);
             }
         }
 
@@ -176,13 +174,13 @@ final class MedicalReviewController extends Model
                     'helpful_count' => $reviews->sum('helpful_count'),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Analytics failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Analytics failed'], 500);
             }
         }
 }

@@ -2,14 +2,18 @@
 
 namespace App\Domains\Education\Channels\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class PostSchedulerJob extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final class PostSchedulerJob
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -21,7 +25,7 @@ final class PostSchedulerJob extends Model
             $due = Post::withoutGlobalScopes()
                 ->where('status', 'draft')
                 ->whereNotNull('scheduled_at')
-                ->where('scheduled_at', '<=', now())
+                ->where('scheduled_at', '<=', Carbon::now())
                 ->with('channel')
                 ->get();
 
@@ -29,14 +33,14 @@ final class PostSchedulerJob extends Model
                 return;
             }
 
-            Log::channel('audit')->info('PostSchedulerJob processing', [
+            $this->logger->info('PostSchedulerJob processing', [
                 'correlation_id' => $correlationId,
                 'count'          => $due->count(),
             ]);
 
             foreach ($due as $post) {
                 try {
-                    $needsModeration = config('channels.moderation.enabled', true);
+                    $needsModeration = $this->config->get('channels.moderation.enabled', true);
 
                     if ($needsModeration) {
                         $post->update(['status' => 'pending_moderation']);
@@ -44,7 +48,7 @@ final class PostSchedulerJob extends Model
                         $postService->publishPost($post, 'scheduler', $correlationId);
                     }
                 } catch (\Throwable $e) {
-                    Log::channel('audit')->error('PostSchedulerJob failed for post', [
+                    $this->logger->error('PostSchedulerJob failed for post', [
                         'correlation_id' => $correlationId,
                         'post_id'        => $post->id,
                         'error'          => $e->getMessage(),

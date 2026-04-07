@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ComparisonHeatmapController extends Model
+final class ComparisonHeatmapController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ComparisonHeatmapService $comparisonService,
-        ) {
-        }
+            private readonly LogManager $logger,
+            private readonly CacheManager $cache,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
+
+    }
         /**
          * GET /api/analytics/heatmaps/compare/geo
          *
@@ -46,17 +52,17 @@ final class ComparisonHeatmapController extends Model
                 ]);
                 // Rate limiting (100 req/min per tenant)
                 $tenant = filament()->getTenant();
-                $tenantId = $tenant?->id ?? auth()->id() ?? 0;
+                $tenantId = $tenant?->id ?? $this->guard->id() ?? 0;
                 $rateLimitKey = "ratelimit:compare:geo:{$tenantId}:{$validated['vertical']}";
-                $count = Cache::increment($rateLimitKey, 1, 60);
+                $count = $this->cache->increment($rateLimitKey, 1, 60);
                 if ($count > 100) {
-                    Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('Rate limit exceeded', [
                         'correlation_id' => $correlationId,
                         'tenant_id' => $tenantId,
                         'endpoint' => '/compare/geo',
                         'requests' => $count,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Rate limit exceeded',
                         'correlation_id' => $correlationId,
                     ], 429)
@@ -81,7 +87,7 @@ final class ComparisonHeatmapController extends Model
                     $period2To,
                     $metric
                 );
-                Log::channel('audit')->info('Geo comparison API called', [
+                $this->logger->channel('audit')->info('Geo comparison API called', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
@@ -89,27 +95,34 @@ final class ComparisonHeatmapController extends Model
                     'period1_days' => $period1From->diffInDays($period1To),
                     'period2_days' => $period2From->diffInDays($period2To),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $result,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (ValidationException $e) {
-                Log::channel('error')->warning('Geo comparison validation failed', [
+                $this->logger->channel('error')->warning('Geo comparison validation failed', [
                     'correlation_id' => $correlationId,
                     'errors' => $e->errors(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('Geo comparison API error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('Geo comparison API error', [
                     'correlation_id' => $correlationId,
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -146,18 +159,18 @@ final class ComparisonHeatmapController extends Model
                 ]);
                 // Rate limiting
                 $tenant = filament()->getTenant();
-                $tenantId = $tenant?->id ?? auth()->id() ?? 0;
+                $tenantId = $tenant?->id ?? $this->guard->id() ?? 0;
                 $pageUrlHash = md5($validated['page_url']);
                 $rateLimitKey = "ratelimit:compare:click:{$tenantId}:{$pageUrlHash}";
-                $count = Cache::increment($rateLimitKey, 1, 60);
+                $count = $this->cache->increment($rateLimitKey, 1, 60);
                 if ($count > 100) {
-                    Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('Rate limit exceeded', [
                         'correlation_id' => $correlationId,
                         'tenant_id' => $tenantId,
                         'endpoint' => '/compare/click',
                         'requests' => $count,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Rate limit exceeded',
                         'correlation_id' => $correlationId,
                     ], 429)
@@ -182,7 +195,7 @@ final class ComparisonHeatmapController extends Model
                     $period2From,
                     $period2To
                 );
-                Log::channel('audit')->info('Click comparison API called', [
+                $this->logger->channel('audit')->info('Click comparison API called', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
@@ -190,27 +203,34 @@ final class ComparisonHeatmapController extends Model
                     'period1_days' => $period1From->diffInDays($period1To),
                     'period2_days' => $period2From->diffInDays($period2To),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $result,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (ValidationException $e) {
-                Log::channel('error')->warning('Click comparison validation failed', [
+                $this->logger->channel('error')->warning('Click comparison validation failed', [
                     'correlation_id' => $correlationId,
                     'errors' => $e->errors(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('Click comparison API error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('Click comparison API error', [
                     'correlation_id' => $correlationId,
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId,
                 ], 500);

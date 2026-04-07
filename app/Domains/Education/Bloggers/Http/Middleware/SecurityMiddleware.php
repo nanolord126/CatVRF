@@ -2,17 +2,27 @@
 
 namespace App\Domains\Education\Bloggers\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class RateLimitBloggers extends Model
+
+
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final class RateLimitBloggers
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly Guard $guard,private readonly \Illuminate\Cache\CacheManager $cache,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(Request $request, Closure $next): Response
         {
-            $userId = auth()->id();
+            $userId = $this->guard->id();
             if (! $userId) {
                 return $next($request);
             }
@@ -28,29 +38,30 @@ final class RateLimitBloggers extends Model
             $window = $this->getWindow($operation);
 
             $key = "rate_limit:{$operation}:{$userId}";
-            $current = Cache::get($key, 0);
+            $current = cache()->get($key, 0);
 
             if ($current >= $limit) {
-                Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                $this->logger->warning('Rate limit exceeded', [
                     'user_id' => $userId,
                     'operation' => $operation,
                     'limit' => $limit,
                     'window' => $window,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Too many requests. Please try again later.',
                     'retry_after' => $window,
                 ], 429, [
                     'Retry-After' => $window,
                     'X-RateLimit-Limit' => $limit,
                     'X-RateLimit-Remaining' => max(0, $limit - $current),
-                    'X-RateLimit-Reset' => now()->addSeconds($window)->timestamp,
+                    'X-RateLimit-Reset' => Carbon::now()->addSeconds($window)->timestamp,
                 ]);
             }
 
-            Cache::increment($key);
-            Cache::expire($key, $window);
+            $this->cache->increment($key);
+            $this->cache->put($key, $window);
 
             return $next($request);
         }
@@ -73,16 +84,16 @@ final class RateLimitBloggers extends Model
                 return 'chat:message';
             }
 
-            return null;
+            throw new \RuntimeException('Unexpected null return');
         }
 
         private function getLimit(string $operation): int
         {
             return match ($operation) {
-                'stream:create' => config('bloggers.rate_limit.create_stream'),
-                'gift:send' => config('bloggers.rate_limit.send_gift'),
-                'live_commerce:add' => config('bloggers.rate_limit.live_commerce_add'),
-                'chat:message' => config('bloggers.rate_limit.chat_message'),
+                'stream:create' => $this->config->get('bloggers.rate_limit.create_stream'),
+                'gift:send' => $this->config->get('bloggers.rate_limit.send_gift'),
+                'live_commerce:add' => $this->config->get('bloggers.rate_limit.live_commerce_add'),
+                'chat:message' => $this->config->get('bloggers.rate_limit.chat_message'),
                 default => 100,
             };
         }
@@ -102,7 +113,7 @@ final class RateLimitBloggers extends Model
     /**
      * SECURITY: Protect against IDOR (Insecure Direct Object Reference)
      */
-    class EnsureStreamAccess
+    final class EnsureStreamAccess
     {
         public function handle(Request $request, Closure $next): Response
         {
@@ -115,7 +126,7 @@ final class RateLimitBloggers extends Model
             $stream = \App\Domains\Content\Bloggers\Models\Stream::find($streamId);
 
             if (! $stream) {
-                return response()->json(['message' => 'Stream not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['message' => 'Stream not found'], 404);
             }
 
             // Allow viewers to access live streams
@@ -124,23 +135,23 @@ final class RateLimitBloggers extends Model
             }
 
             // Blogger can access their own stream
-            if (auth()->check() && auth()->user()->id === $stream->blogger->user_id) {
+            if ($this->guard->check() && $this->guard->user()->id === $stream->blogger->user_id) {
                 return $next($request);
             }
 
             // Admin can access any stream
-            if (auth()->check() && auth()->user()->is_admin) {
+            if ($this->guard->check() && $this->guard->user()->is_admin) {
                 return $next($request);
             }
 
-            return response()->json(['message' => 'Unauthorized access to stream'], 403);
+            return new \Illuminate\Http\JsonResponse(['message' => 'Unauthorized access to stream'], 403);
         }
     }
 
     /**
      * SECURITY: Validate WebRTC/Reverb connection tokens
      */
-    class ValidateReverbAuth
+    final class ValidateReverbAuth
     {
         public function handle(Request $request, Closure $next): Response
         {
@@ -151,12 +162,13 @@ final class RateLimitBloggers extends Model
             $token = $request->bearerToken();
 
             if (! $token || ! $this->validateToken($token)) {
-                Log::channel('fraud_alert')->warning('Invalid Reverb token', [
-                    'user_id' => auth()->id() ?? 'anonymous',
+                $this->logger->warning('Invalid Reverb token', [
+                    'user_id' => $this->guard->id() ?? 'anonymous',
                     'ip' => $request->ip(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
-                return response()->json(['message' => 'Unauthorized Reverb access'], 403);
+                return new \Illuminate\Http\JsonResponse(['message' => 'Unauthorized Reverb access'], 403);
             }
 
             return $next($request);
@@ -171,7 +183,7 @@ final class RateLimitBloggers extends Model
     /**
      * SECURITY: XSS Protection for Chat Messages
      */
-    class SanitizeChatInput
+    final class SanitizeChatInput
     {
         private const ALLOWED_TAGS = [];
 

@@ -2,14 +2,20 @@
 
 namespace App\Models\Insurance;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class InsurancePolicy extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'insurance_policies';
@@ -55,8 +61,8 @@ final class InsurancePolicy extends Model
             });
 
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if ($this->guard->check()) {
+                    $builder->where('tenant_id', $this->guard->user()->tenant_id);
                 }
             });
         }

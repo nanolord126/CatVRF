@@ -2,21 +2,24 @@
 
 namespace App\Http\Requests\Taxi;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RideCreateRequest extends Model
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class RideCreateRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Валидация прав и защита от фрода.
          */
         public function authorize(): bool
         {
             // 1. По канону: Fraud check перед выполнением запроса
-            FraudControlService::check($this->user()->id, 'taxi_ride_request_authorize');
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->user()->id,
+                operationType: 'taxi_ride_request_authorize',
+                amount: 0,
+                correlationId: $this->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
 
             // 2. Базовая проверка прав (может ли юзер создавать поездки)
             return $this->user()->can('create_rides');
@@ -62,7 +65,7 @@ final class RideCreateRequest extends Model
          */
         protected function failedValidation(Validator $validator): void
         {
-            $response = response()->json([
+            $response = $this->responseFactory->json([
                 'status' => 'error',
                 'message' => 'Ошибка валидации данных для поездки.',
                 'errors' => $validator->errors(),

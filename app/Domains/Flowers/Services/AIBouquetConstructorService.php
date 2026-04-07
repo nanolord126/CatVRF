@@ -1,32 +1,51 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\Bouquet;
+use App\Domains\Flowers\Models\FlowerProduct;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+use OpenAI\Client as OpenAIClient;
+use Psr\Log\LoggerInterface;
 
-final class AIBouquetConstructorService extends Model
+final readonly class AIBouquetConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private OpenAI $openai,
-        ) {}
+        private readonly OpenAIClient $openai,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        /**
-         * Подобрать букет на базе параметров пользователя.
-         */
-        public function recommendBouquet(array $params, int $userId): array
-        {
-            $correlationId = $params['correlation_id'] ?? (string) Str::uuid();
+    /**
+     * Подобрать букет на базе параметров пользователя.
+     *
+     * @param array{shop_id: int, budget: int, occasion: string, correlation_id?: string} $params
+     * @param int $userId ID пользователя
+     *
+     * @return array{confidence_score: float, correlation_id: string}
+     */
+    public function recommendBouquet(array $params, int $userId): array
+    {
+        $correlationId = $params['correlation_id'] ?? Str::uuid()->toString();
 
-            // 1. Получение текущих доступных товаров в магазине
-            $availableProducts = FlowerProduct::where('shop_id', $params['shop_id'])
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'ai_bouquet_recommend',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        $availableProducts = FlowerProduct::where('shop_id', $params['shop_id'])
                 ->where('current_stock', '>', 0)
                 ->get();
 
-            Log::channel('audit')->info('AI Bouquet Recommendation Started', [
+            $this->logger->info('AI Bouquet Recommendation Started', [
                 'user_id' => $userId,
                 'budget' => $params['budget'],
                 'occasion' => $params['occasion'],
@@ -53,7 +72,7 @@ final class AIBouquetConstructorService extends Model
             $aiResult['confidence_score'] = 0.92;
             $aiResult['correlation_id'] = $correlationId;
 
-            Log::channel('audit')->info('AI Bouquet Recommendation Finished', [
+            $this->logger->info('AI Bouquet Recommendation Finished', [
                 'user_id' => $userId,
                 'rec_name' => $aiResult['name'] ?? 'Custom AI Bouquet',
                 'correlation_id' => $correlationId,
@@ -62,17 +81,35 @@ final class AIBouquetConstructorService extends Model
             return $aiResult;
         }
 
-        /**
-         * Создать новый шаблон букета на основе рекомендации AI.
-         */
-        public function saveAIRecommendationAsTemplate(array $aiResult, int $shopId): Bouquet
-        {
-            $correlationId = $aiResult['correlation_id'] ?? (string) Str::uuid();
+    /**
+     * Создать новый шаблон букета на основе рекомендации AI.
+     *
+     * @param array  $aiResult      Результат AI-рекомендации
+     * @param int    $shopId        ID магазина
+     * @param int    $tenantId      ID тенанта
+     * @param int    $userId        ID пользователя (для fraud-check)
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function saveAIRecommendationAsTemplate(
+        array $aiResult,
+        int $shopId,
+        int $tenantId,
+        int $userId,
+        string $correlationId = '',
+    ): Bouquet {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            return DB::transaction(function () use ($aiResult, $shopId, $correlationId) {
-                $bouquet = Bouquet::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => tenant()->id,
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'ai_bouquet_template_save',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($aiResult, $shopId, $tenantId, $correlationId): Bouquet {
+            $bouquet = Bouquet::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
                     'shop_id' => $shopId,
                     'name' => 'AI: ' . ($aiResult['name'] ?? 'New Design'),
                     'description' => $aiResult['description'] ?? 'Автоматически сгенерированный дизайн',
@@ -83,7 +120,7 @@ final class AIBouquetConstructorService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('AI Recommendation saved as template', [
+                $this->logger->info('AI Recommendation saved as template', [
                     'bouquet_id' => $bouquet->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -92,26 +129,42 @@ final class AIBouquetConstructorService extends Model
             });
         }
 
-        /**
-         * Анализ фото букета (Vision API).
-         */
-        public function analyzeBouquetPhoto(\Illuminate\Http\UploadedFile $photo): array
-        {
-            $correlationId = (string) Str::uuid();
+    /**
+     * Анализ фото букета (Vision API).
+     *
+     * @param UploadedFile $photo         Загруженное фото
+     * @param int          $userId        ID пользователя
+     * @param string       $correlationId Трейсинг-идентификатор
+     *
+     * @return array{analysis: array, correlation_id: string}
+     */
+    public function analyzeBouquetPhoto(
+        UploadedFile $photo,
+        int $userId,
+        string $correlationId = '',
+    ): array {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            // Отправка в OpenAI Vision
-            $analysis = $this->openai->vision()->analyze([
-                'image' => $photo->getRealPath(),
-                'prompt' => 'Определи состав букета на фото (список цветов).',
-            ]);
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'ai_bouquet_photo_analysis',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-            Log::channel('audit')->info('Flower Bouquet Photo Analysis finished', [
-                'correlation_id' => $correlationId,
-            ]);
+        $analysis = $this->openai->vision()->analyze([
+            'image' => $photo->getRealPath(),
+            'prompt' => 'Определи состав букета на фото (список цветов).',
+        ]);
 
-            return [
-                'analysis' => $analysis,
-                'correlation_id' => $correlationId,
-            ];
-        }
+        $this->logger->info('Flower Bouquet Photo Analysis finished', [
+            'user_id' => $userId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return [
+            'analysis' => $analysis,
+            'correlation_id' => $correlationId,
+        ];
+    }
 }

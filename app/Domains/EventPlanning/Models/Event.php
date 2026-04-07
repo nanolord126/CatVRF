@@ -2,14 +2,15 @@
 
 namespace App\Domains\EventPlanning\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Event extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'event_planning_events';
@@ -59,7 +60,7 @@ final class Event extends Model
                     $model->uuid = (string) Str::uuid();
                 }
                 if (empty($model->tenant_id)) {
-                    $model->tenant_id = tenant()->id ?? auth()->user()?->current_tenant_id ?? 1;
+                    $model->tenant_id = tenant()->id ?? $this->guard->user()?->current_tenant_id ?? 1;
                 }
             });
 

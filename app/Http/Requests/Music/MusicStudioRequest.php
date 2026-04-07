@@ -2,37 +2,26 @@
 
 namespace App\Http\Requests\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicStudioRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class MusicStudioRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Determine if the user is authorized to make this request.
          */
         public function authorize(): bool
         {
             // Fraud check for studio management
-            $fraudCheck = FraudControlService::check([
-                'user_id' => auth()->id(),
-                'ip' => $this->ip(),
-                'action' => 'studio_mutation',
-                'tenant_id' => tenant()->id,
-            ]);
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->guard->id(),
+                operationType: 'music_studio_mutation',
+                amount: 0,
+                correlationId: $this->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
 
-            if (!$fraudCheck->isAllowed()) {
-                Log::channel('fraud_alert')->warning('Blocked music studio mutation attempt', [
-                    'user_id' => auth()->id(),
-                    'ip' => $this->ip(),
-                    'reason' => $fraudCheck->reason(),
-                ]);
-                return false;
-            }
-
-            return auth()->check();
+            return $this->guard->check();
         }
 
         /**

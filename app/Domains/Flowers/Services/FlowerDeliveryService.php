@@ -1,36 +1,52 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Events\FlowerDeliveryCompleted;
+use App\Domains\Flowers\Models\FlowerDelivery;
+use App\Domains\Flowers\Models\FlowerOrder;
+use App\Services\FraudControlService;
+use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FlowerDeliveryService extends Model
+final readonly class FlowerDeliveryService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        public function assignDelivery(
-            int $orderId,
-            string $courierName,
-            string $courierPhone,
-            string $correlationId = '',
-        ): FlowerDelivery {
-            $correlationId = $correlationId ?: (string)Str::uuid()->toString();
+    /**
+     * Назначить курьера на доставку цветов.
+     *
+     * @param int    $orderId       ID заказа
+     * @param string $courierName   Имя курьера
+     * @param string $courierPhone  Телефон курьера
+     * @param int    $userId        ID пользователя (для fraud-check)
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function assignDelivery(
+        int $orderId,
+        string $courierName,
+        string $courierPhone,
+        int $userId,
+        string $correlationId = '',
+    ): FlowerDelivery {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId) {
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'flower_delivery_assign',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId): FlowerDelivery {
                 $order = FlowerOrder::query()
                     ->where('id', $orderId)
                     ->lockForUpdate()
@@ -43,13 +59,13 @@ final class FlowerDeliveryService extends Model
                     'courier_name' => $courierName,
                     'courier_phone' => $courierPhone,
                     'status' => 'assigned',
-                    'assigned_at' => now(),
+                    'assigned_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
                 $order->update(['status' => 'ready']);
 
-                Log::channel('audit')->info('Flower delivery assigned', [
+                $this->logger->info('Flower delivery assigned', [
                     'delivery_id' => $delivery->id,
                     'order_id' => $order->id,
                     'courier_name' => $courierName,
@@ -60,23 +76,32 @@ final class FlowerDeliveryService extends Model
             });
         }
 
-        public function updateDeliveryStatus(
-            int $deliveryId,
-            string $status,
-            array $location = null,
-            string $correlationId = '',
-        ): FlowerDelivery {
-            $correlationId = $correlationId ?: (string)Str::uuid()->toString();
+    /**
+     * Обновить статус доставки.
+     *
+     * @param int         $deliveryId    ID доставки
+     * @param string      $status        Новый статус
+     * @param int         $userId        ID пользователя (для fraud-check)
+     * @param array|null  $location      Текущая локация
+     * @param string      $correlationId Трейсинг-идентификатор
+     */
+    public function updateDeliveryStatus(
+        int $deliveryId,
+        string $status,
+        int $userId,
+        ?array $location = null,
+        string $correlationId = '',
+    ): FlowerDelivery {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($deliveryId, $status, $location, $correlationId) {
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'flower_delivery_status_update',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($deliveryId, $status, $location, $correlationId): FlowerDelivery {
                 $delivery = FlowerDelivery::query()
                     ->where('id', $deliveryId)
                     ->lockForUpdate()
@@ -87,9 +112,9 @@ final class FlowerDeliveryService extends Model
                     $data['current_location'] = $location;
                 }
                 if ($status === 'in_transit') {
-                    $data['picked_up_at'] = now();
+                    $data['picked_up_at'] = Carbon::now();
                 } elseif ($status === 'delivered') {
-                    $data['delivered_at'] = now();
+                    $data['delivered_at'] = Carbon::now();
                 }
 
                 $delivery->update($data);
@@ -98,7 +123,7 @@ final class FlowerDeliveryService extends Model
                     FlowerDeliveryCompleted::dispatch($delivery, $correlationId);
                 }
 
-                Log::channel('audit')->info('Flower delivery status updated', [
+                $this->logger->info('Flower delivery status updated', [
                     'delivery_id' => $delivery->id,
                     'status' => $status,
                     'correlation_id' => $correlationId,
@@ -108,14 +133,16 @@ final class FlowerDeliveryService extends Model
             });
         }
 
-        public function trackDelivery(int $deliveryId): FlowerDelivery
-        {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-
-            return FlowerDelivery::query()
-                ->where('id', $deliveryId)
-                ->with('order.shop')
-                ->firstOrFail();
-        }
+    /**
+     * Получить текущий статус доставки.
+     *
+     * @param int $deliveryId ID доставки
+     */
+    public function trackDelivery(int $deliveryId): FlowerDelivery
+    {
+        return FlowerDelivery::query()
+            ->where('id', $deliveryId)
+            ->with('order.shop')
+            ->firstOrFail();
+    }
 }

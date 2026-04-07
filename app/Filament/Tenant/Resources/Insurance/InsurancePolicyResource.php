@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class InsurancePolicyResource extends Model
+final class InsurancePolicyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = InsurancePolicy::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shield-check';
@@ -116,7 +113,6 @@ final class InsurancePolicyResource extends Model
                     Tables\Columns\TextColumn::make('status')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'active' => 'success',
                             'pending' => 'warning',
                             'cancelled', 'expired' => 'danger',
                             default => 'gray',

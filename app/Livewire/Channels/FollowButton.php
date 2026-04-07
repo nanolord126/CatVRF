@@ -2,21 +2,22 @@
 
 namespace App\Livewire\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Contracts\Auth\Guard;
 
-final class FollowButton extends Model
+final class FollowButton extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $channelSlug;
+    private string $channelSlug;
 
-        public string $channelName;
+        private string $channelName;
 
-        public bool $isSubscribed = false;
+        private bool $isSubscribed = false;
 
-        public bool $loading = false;
+        private bool $loading = false;
 
         protected $listeners = ['channel-subscribed' => '$refresh'];
 
@@ -25,21 +26,21 @@ final class FollowButton extends Model
             $this->channelSlug = $channelSlug;
             $this->channelName = $channelName;
 
-            if (auth()->check()) {
+            if ($this->guard->check()) {
                 $channel = BusinessChannel::withoutGlobalScopes()
                     ->where('slug', $channelSlug)
                     ->first();
 
                 if ($channel !== null) {
                     $this->isSubscribed = app(ChannelSubscriptionService::class)
-                        ->isSubscribed((int) auth()->id(), $channel->id);
+                        ->isSubscribed((int) $this->guard->id(), $channel->id);
                 }
             }
         }
 
         public function toggle(): void
         {
-            if (!auth()->check()) {
+            if (!$this->guard->check()) {
                 $this->redirect(route('login'));
                 return;
             }
@@ -55,11 +56,11 @@ final class FollowButton extends Model
                 $service = app(ChannelSubscriptionService::class);
 
                 if ($this->isSubscribed) {
-                    $service->unsubscribe((int) auth()->id(), $channel);
+                    $service->unsubscribe((int) $this->guard->id(), $channel);
                     $this->isSubscribed = false;
                     $this->dispatch('notify', type: 'info', message: "Вы отписались от «{$this->channelName}»");
                 } else {
-                    $service->subscribe((int) auth()->id(), $channel);
+                    $service->subscribe((int) $this->guard->id(), $channel);
                     $this->isSubscribed = true;
                     $this->dispatch('notify', type: 'success', message: "Вы подписались на «{$this->channelName}»");
                 }

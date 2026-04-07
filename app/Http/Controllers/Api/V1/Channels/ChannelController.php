@@ -2,24 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ChannelController extends Model
+final class ChannelController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    uuid}          — обновить канал
-     * GET    /api/v1/channels/{slug}/public   — публичный просмотр канала
-     * POST   /api/v1/channels/{uuid}/subscribe/{planSlug} — оформить тариф
-     */
-    final class ChannelController extends BaseApiV1Controller
-    {
-        public function __construct(
+    public function __construct(
             private readonly ChannelService $channelService,
             private readonly ChannelTariffService $tariffService,
-        ) {}
+            private readonly ResponseFactory $response,
+    ) {}
         /** Получить канал текущего тенанта */
         public function show(Request $request): JsonResponse
         {
@@ -28,13 +20,13 @@ final class ChannelController extends Model
                 $tenantId = $request->user()->current_tenant_id ?? $request->user()->id;
                 $channel  = $this->channelService->getChannelForTenant((string) $tenantId);
                 if ($channel === null) {
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'error'   => 'Канал не найден. Создайте канал для вашего бизнеса.',
                         'correlation_id' => $correlationId,
                     ], 404);
                 }
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $this->formatChannel($channel, true),
                     'correlation_id' => $correlationId,
@@ -63,7 +55,7 @@ final class ChannelController extends Model
                     coverUrl:      $validated['cover_url'] ?? null,
                     correlationId: $correlationId,
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => 'Канал успешно создан.',
                     'data'           => $this->formatChannel($channel, true),
@@ -89,7 +81,7 @@ final class ChannelController extends Model
                     ->firstOrFail();
                 $this->authorize('update', $channel);
                 $channel = $this->channelService->updateChannel($channel, $validated, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => 'Канал обновлён.',
                     'data'           => $this->formatChannel($channel, true),
@@ -109,7 +101,7 @@ final class ChannelController extends Model
                     ->where('status', 'active')
                     ->with(['plan'])
                     ->firstOrFail();
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $this->formatChannel($channel, false),
                     'correlation_id' => $correlationId,
@@ -128,7 +120,7 @@ final class ChannelController extends Model
                     ->firstOrFail();
                 $this->authorize('update', $channel);
                 $usage = $this->tariffService->subscribe($channel, $planSlug, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => "Тариф «{$usage->plan->name}» успешно активирован.",
                     'data'    => [
@@ -159,7 +151,7 @@ final class ChannelController extends Model
                 'advanced_stats'  => $p->advanced_stats,
                 'scheduled_posts' => $p->scheduled_posts,
             ]);
-            return response()->json(['success' => true, 'data' => $plans]);
+            return $this->response->json(['success' => true, 'data' => $plans]);
         }
         // ──────────────────────────────────────────────────────
         // Private helpers

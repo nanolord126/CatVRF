@@ -2,38 +2,49 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoPartsOrderController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final class AutoPartsOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
+        private readonly Request $request,
             private VINCompatibilityService $service,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {}
         public function index(): JsonResponse
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $orders = AutoPartOrder::where('tenant_id', $tenantId)
                     ->with('part')
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('AutoParts orders list error', ['error' => $e->getMessage()]);
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('AutoParts orders list error', ['error' => $e->getMessage()]);
                 return $this->errorResponse('Failed to fetch orders', 500);
             }
         }
         public function store(StoreOrderRequest $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check($this->guard->id() ?? 0, 'operation', 0, $this->request->ip(), null, $correlationId);
             try {
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $order = $this->service->createOrder(
                     partId: $request->integer('part_id'),
                     clientId: $request->integer('client_id'),
@@ -43,10 +54,17 @@ final class AutoPartsOrderController extends Model
                     tenantId: $tenantId,
                     correlationId: $correlationId,
                 );
-                Log::channel('audit')->info('AutoParts order created', ['order_id' => $order->id]);
+                $this->logger->channel('audit')->info('AutoParts order created', ['order_id' => $order->id]);
                 return $this->successResponse($order, 'Order created successfully', 201);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('AutoParts order creation failed', ['error' => $e->getMessage()]);
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('AutoParts order creation failed', ['error' => $e->getMessage()]);
                 return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
             }
         }
@@ -54,12 +72,19 @@ final class AutoPartsOrderController extends Model
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $parts = $this->service->findCompatibleParts($vin, $tenantId);
-                Log::channel('audit')->info('AutoParts compatible search', ['vin' => $vin]);
+                $this->logger->channel('audit')->info('AutoParts compatible search', ['vin' => $vin]);
                 return $this->successResponse($parts, 'Compatible parts found');
             } catch (\Exception $e) {
-                Log::channel('audit')->error('AutoParts compatibility search failed', ['error' => $e->getMessage()]);
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('AutoParts compatibility search failed', ['error' => $e->getMessage()]);
                 return $this->errorResponse('Failed to search parts: ' . $e->getMessage(), 400);
             }
         }

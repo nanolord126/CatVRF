@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers\Api\V2\Collaboration;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CollaborationController extends Model
+final class CollaborationController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly CollaborationService $collaboration,
             private readonly ConflictResolutionService $conflicts,
-            private readonly TeamPresenceService $presence
-        ) {
+            private readonly TeamPresenceService $presence,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Team Collaboration
              // Командная работа требует авторизации
              // 500 запросов/час (real-time операции)
@@ -33,7 +36,7 @@ final class CollaborationController extends Model
                     'document_id' => 'required|integer|min:1',
                 ]);
                 $session = $this->collaboration->startEditingSession(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
@@ -41,7 +44,7 @@ final class CollaborationController extends Model
                 );
                 // Регистрируем присутствие
                 $this->presence->registerPresence(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
@@ -49,30 +52,30 @@ final class CollaborationController extends Model
                 );
                 // Отправляем событие
                 broadcast(new EditStarted(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
-                    userName: auth()->user()->name,
+                    userName: $this->guard->user()->name,
                     correlationId: $correlationId
                 ));
-                Log::channel('audit')->info('Editing session started', [
+                $this->logger->channel('audit')->info('Editing session started', [
                     'correlation_id' => $correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'document' => "{$validated['document_type']}:{$validated['document_id']}",
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'session' => $session,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to start editing session', [
+                $this->logger->channel('audit')->error('Failed to start editing session', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to start editing session',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -99,22 +102,22 @@ final class CollaborationController extends Model
                 );
                 // Удаляем присутствие
                 $this->presence->unregisterPresence(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to end editing session', [
+                $this->logger->channel('audit')->error('Failed to end editing session', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to end editing session',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -136,17 +139,17 @@ final class CollaborationController extends Model
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id']
                 );
-                return response()->json([
+                return $this->response->json([
                     'editors' => $editors,
                     'count' => $editors->count(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get active editors', [
+                $this->logger->channel('audit')->error('Failed to get active editors', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to get active editors',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -170,7 +173,7 @@ final class CollaborationController extends Model
                 // Регистрируем изменение
                 $edit = $this->conflicts->recordEdit(
                     sessionId: Str::uuid()->toString(),
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
                     tenantId: filament()->getTenant()->id,
@@ -179,25 +182,25 @@ final class CollaborationController extends Model
                 );
                 // Отправляем событие
                 broadcast(new EditCompleted(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id'],
-                    userName: auth()->user()->name,
+                    userName: $this->guard->user()->name,
                     editData: $edit,
                     correlationId: $correlationId
                 ));
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'edit' => $edit,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to submit edit', [
+                $this->logger->channel('audit')->error('Failed to submit edit', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to submit edit',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -219,17 +222,17 @@ final class CollaborationController extends Model
                     documentType: $validated['document_type'],
                     documentId: $validated['document_id']
                 );
-                return response()->json([
+                return $this->response->json([
                     'presence' => $presence,
                     'count' => count($presence),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get team presence', [
+                $this->logger->channel('audit')->error('Failed to get team presence', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to get team presence',
                     'correlation_id' => $correlationId,
                 ], 500);

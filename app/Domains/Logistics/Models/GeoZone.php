@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class GeoZone extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'logistics_geo_zones';
@@ -42,7 +41,7 @@ final class GeoZone extends Model
             'correlation_id' => 'string',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
@@ -51,14 +50,14 @@ final class GeoZone extends Model
                 if (empty($model->slug)) {
                     $model->slug = Str::slug($model->name);
                 }
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant('id')) {
-                    $model->tenant_id = (int) tenant('id');
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()?->id) {
+                    $model->tenant_id = (int) tenant()?->id;
                 }
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -123,7 +122,6 @@ final class GeoZone extends Model
         public function getTypeLabel(): string
         {
             return match($this->type) {
-                'district' => 'Район города',
                 'service_area' => 'Зона обслуживания',
                 'restricted' => 'Запретная зона',
                 'high_demand' => 'Зона высокого спроса',

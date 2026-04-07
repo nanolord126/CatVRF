@@ -2,139 +2,202 @@
 
 namespace App\Domains\Fashion\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Fashion\Models\FashionReturn;
+use App\Domains\Fashion\Services\ReturnService;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FashionReturnController extends Model
+final class FashionReturnController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly ReturnService $returnService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+        private readonly ReturnService $returnService,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        public function myReturns(): JsonResponse
-        {
-            try {
-                $returns = FashionReturn::where('customer_id', auth()->id())->paginate(20);
-                return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()->toString()]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+    /**
+     * Список возвратов текущего пользователя.
+     */
+    public function myReturns(Request $request): JsonResponse
+    {
+        $userId = (int) $request->user()?->id;
 
-        public function store(): JsonResponse
-        {
-            $correlationId = (string) Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'fashion_return_store', 0, request()->ip(), null, $correlationId);
+        $returns = FashionReturn::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
-            try {
-                $correlationId = Str::uuid()->toString();
+        return new JsonResponse([
+            'success' => true,
+            'data' => $returns,
+            'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
+    }
 
-                $return = $this->returnService->requestReturn(
-                    tenant('id'),
-                    request('order_id'),
-                    auth()->id(),
-                    request('return_amount'),
-                    request('reason'),
-                    $correlationId,
-                );
+    /**
+     * Создать заявку на возврат.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $userId = (int) $request->user()?->id;
 
-                return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId], 201);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 400);
-            }
-        }
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'fashion_return',
+            amount: (int) $request->get('amount_kopecks', 0),
+            correlationId: $correlationId,
+        );
 
-        public function show(int $id): JsonResponse
-        {
-            try {
-                $return = FashionReturn::findOrFail($id);
-                return response()->json(['success' => true, 'data' => $return, 'correlation_id' => Str::uuid()->toString()]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Return not found', 'correlation_id' => Str::uuid()->toString()], 404);
-            }
-        }
+        $return = $this->returnService->createReturn(
+            userId: $userId,
+            orderId: (int) $request->get('order_id'),
+            reason: (string) $request->get('reason'),
+            amountKopecks: (int) $request->get('amount_kopecks'),
+            correlationId: $correlationId,
+        );
 
-        public function update(int $id): JsonResponse
-        {
-            try {
-                $return = FashionReturn::findOrFail($id);
-                $correlationId = (string) Str::uuid()->toString();
-                $this->fraudControlService->check(auth()->id() ?? 0, 'fashion_return_update', 0, request()->ip(), null, $correlationId);
+        return new JsonResponse([
+            'success' => true,
+            'data' => $return,
+            'correlation_id' => $correlationId,
+        ], 201);
+    }
 
-                DB::transaction(function () use ($return, $id, $correlationId) {
-                    $return->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Fashion return updated', ['return_id' => $id, 'correlation_id' => $correlationId]);
-                });
+    /**
+     * Получить заявку на возврат по ID.
+     */
+    public function show(Request $request, int $returnId): JsonResponse
+    {
+        $return = FashionReturn::findOrFail($returnId);
 
-                return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+        return new JsonResponse([
+            'success' => true,
+            'data' => $return,
+            'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
+    }
 
-        public function all(): JsonResponse
-        {
-            try {
-                $returns = FashionReturn::with('order', 'customer')->paginate(50);
-                return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()->toString()]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+    /**
+     * Обновить заявку на возврат.
+     */
+    public function update(Request $request, int $returnId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        public function approve(int $id): JsonResponse
-        {
-            try {
-                $return = FashionReturn::findOrFail($id);
-                $correlationId = (string) Str::uuid()->toString();
+        $return = FashionReturn::findOrFail($returnId);
+        $previousData = $return->toArray();
 
-                $this->returnService->approveReturn($return, request('refund_amount'), $correlationId);
+        $return->update([
+            'reason' => $request->get('reason', $return->reason),
+            'correlation_id' => $correlationId,
+        ]);
 
-                return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+        $this->audit->log(
+            action: 'fashion_return_updated',
+            subjectType: FashionReturn::class,
+            subjectId: $returnId,
+            old: $previousData,
+            new: $return->fresh()->toArray(),
+            correlationId: $correlationId,
+        );
 
-        public function reject(int $id): JsonResponse
-        {
-            try {
-                $return = FashionReturn::findOrFail($id);
-                $correlationId = Str::uuid()->toString();
+        return new JsonResponse([
+            'success' => true,
+            'data' => $return->fresh(),
+            'correlation_id' => $correlationId,
+        ]);
+    }
 
-                DB::transaction(function () use ($return, $id, $correlationId) {
-                    $return->update(['status' => 'rejected', 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Fashion return rejected', ['return_id' => $id, 'correlation_id' => $correlationId]);
-                });
+    /**
+     * Все возвраты (для менеджера / Tenant Panel).
+     */
+    public function all(Request $request): JsonResponse
+    {
+        $returns = FashionReturn::orderBy('created_at', 'desc')
+            ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+        return new JsonResponse([
+            'success' => true,
+            'data' => $returns,
+            'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
+    }
 
-        public function analytics(): JsonResponse
-        {
-            try {
-                $totalReturns = FashionReturn::count();
-                $approvedReturns = FashionReturn::where('status', 'refunded')->count();
-                $totalRefundAmount = FashionReturn::sum('refund_amount');
+    /**
+     * Утвердить возврат.
+     */
+    public function approve(Request $request, int $returnId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'total_returns' => $totalReturns,
-                        'approved' => $approvedReturns,
-                        'total_refunded' => round($totalRefundAmount, 2),
-                    ],
-                    'correlation_id' => Str::uuid()->toString(),
-                ]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
-            }
-        }
+        $return = $this->returnService->approveReturn(
+            returnId: $returnId,
+            correlationId: $correlationId,
+        );
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $return,
+            'correlation_id' => $correlationId,
+        ]);
+    }
+
+    /**
+     * Отклонить возврат.
+     */
+    public function reject(Request $request, int $returnId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $reason = (string) $request->get('rejection_reason', '');
+
+        $return = $this->returnService->rejectReturn(
+            returnId: $returnId,
+            reason: $reason,
+            correlationId: $correlationId,
+        );
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $return,
+            'correlation_id' => $correlationId,
+        ]);
+    }
+
+    /**
+     * Аналитика по возвратам.
+     */
+    public function analytics(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $totalReturns = FashionReturn::count();
+        $pendingReturns = FashionReturn::where('status', 'pending')->count();
+        $approvedReturns = FashionReturn::where('status', 'approved')->count();
+        $rejectedReturns = FashionReturn::where('status', 'rejected')->count();
+        $totalAmountKopecks = FashionReturn::where('status', 'approved')->sum('amount_kopecks');
+
+        $this->logger->info('Fashion return analytics accessed', [
+            'correlation_id' => $correlationId,
+        ]);
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => [
+                'total' => $totalReturns,
+                'pending' => $pendingReturns,
+                'approved' => $approvedReturns,
+                'rejected' => $rejectedReturns,
+                'total_amount_kopecks' => (int) $totalAmountKopecks,
+            ],
+            'correlation_id' => $correlationId,
+        ]);
+    }
 }

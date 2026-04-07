@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StrApartmentResource extends Model
+final class StrApartmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StrApartment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home-modern';
@@ -76,22 +73,15 @@ final class StrApartmentResource extends Model
                         ])->columns(1),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStrApartment::route('/'),
-                'create' => Pages\\CreateStrApartment::route('/create'),
-                'edit' => Pages\\EditStrApartment::route('/{record}/edit'),
-                'view' => Pages\\ViewStrApartment::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStrApartment::route('/'),
-                'create' => Pages\\CreateStrApartment::route('/create'),
-                'edit' => Pages\\EditStrApartment::route('/{record}/edit'),
-                'view' => Pages\\ViewStrApartment::route('/{record}'),
+                'index' => Pages\ListStrApartment::route('/'),
+                'create' => Pages\CreateStrApartment::route('/create'),
+                'edit' => Pages\EditStrApartment::route('/{record}/edit'),
+                'view' => Pages\ViewStrApartment::route('/{record}'),
             ];
         }
 }

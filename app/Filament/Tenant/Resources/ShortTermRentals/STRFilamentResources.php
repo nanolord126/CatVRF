@@ -2,14 +2,15 @@
 
 namespace App\Filament\Tenant\Resources\ShortTermRentals;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PropertyResource extends Model
+use Psr\Log\LoggerInterface;
+final class PropertyResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Property::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home';
@@ -233,7 +234,7 @@ final class PropertyResource extends Model
                         ->action(function (Property $record) {
                             $record->update(['is_active' => !$record->is_active]);
 
-                            Log::channel('audit')->info('Property status toggled', [
+                            $this->logger->info('Property status toggled', [
                                 'property_id' => $record->id,
                                 'new_status' => $record->is_active,
                                 'correlation_id' => $record->correlation_id,
@@ -244,7 +245,7 @@ final class PropertyResource extends Model
                     Tables\Actions\DeleteAction::make()
                         ->label('Удалить')
                         ->after(function (Property $record) {
-                            Log::channel('audit')->warning('Property deleted', [
+                            $this->logger->warning('Property deleted', [
                                 'property_id' => $record->id,
                                 'correlation_id' => $record->correlation_id,
                             ]);
@@ -384,7 +385,6 @@ final class PropertyResource extends Model
                     Tables\Columns\BadgeColumn::make('status')
                         ->label('Статус')
                         ->formatStateUsing(fn (string $state) => match ($state) {
-                            'pending_verification' => 'Ожидание',
                             'confirmed' => 'Подтверждено',
                             'checked_in' => 'Заезд',
                             'checked_out' => 'Выезд',
@@ -392,7 +392,6 @@ final class PropertyResource extends Model
                             default => $state,
                         })
                         ->color(fn (string $state) => match ($state) {
-                            'pending_verification' => 'warning',
                             'confirmed' => 'success',
                             'checked_in' => 'info',
                             'checked_out' => 'gray',
@@ -439,7 +438,7 @@ final class PropertyResource extends Model
                         ->action(function (PropertyBooking $record) {
                             $record->update(['status' => 'confirmed']);
 
-                            Log::channel('audit')->info('Booking approved', [
+                            $this->logger->info('Booking approved', [
                                 'booking_id' => $record->id,
                                 'correlation_id' => $record->correlation_id,
                             ]);
@@ -452,7 +451,7 @@ final class PropertyResource extends Model
                         ->action(function (PropertyBooking $record) {
                             $record->update(['status' => 'cancelled']);
 
-                            Log::channel('audit')->warning('Booking cancelled', [
+                            $this->logger->warning('Booking cancelled', [
                                 'booking_id' => $record->id,
                                 'correlation_id' => $record->correlation_id,
                             ]);

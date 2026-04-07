@@ -2,20 +2,18 @@
 
 namespace App\Domains\Sports\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BSportController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BSportController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
         public function storefronts(): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => B2BSportStorefront::where('is_active', true)
                     ->where('is_verified', true)
@@ -27,14 +25,14 @@ final class B2BSportController extends Model
         public function createStorefront(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_sport_storefront_create', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('B2BSport storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                $this->logger->warning('B2BSport storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id, 'score' => $fraudResult['score']]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
-            Log::channel('audit')->info('B2BSport storefront create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            $this->logger->info('B2BSport storefront create start', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id]);
 
             try {
                 $this->authorize('createStorefront', B2BSportStorefront::class);
@@ -48,32 +46,32 @@ final class B2BSportController extends Model
                     'min_order_amount'   => 'integer|min:1000',
                 ]);
 
-                DB::transaction(function () use ($validated, $correlationId) {
+                $this->db->transaction(function () use ($validated, $correlationId) {
                     B2BSportStorefront::create([
                         'uuid'      => Str::uuid(),
-                        'tenant_id' => auth()->user()->tenant_id,
+                        'tenant_id' => $request->user()->tenant_id,
                         ...$validated,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                Log::channel('audit')->info('B2BSport storefront created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+                $this->logger->info('B2BSport storefront created', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id]);
 
-                return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
-            } catch (\Exception $e) {
-                Log::error('B2BSport storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка при создании витрины', 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
+            } catch (\Throwable $e) {
+                $this->logger->error('B2BSport storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка при создании витрины', 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function createOrder(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_sport_order_create', (int) $request->input('total_amount', 0), $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('B2BSport order create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
-                return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+                $this->logger->warning('B2BSport order create blocked', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id, 'score' => $fraudResult['score']]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
             }
 
             try {
@@ -85,10 +83,10 @@ final class B2BSportController extends Model
                     'total_amount'            => 'required|numeric|min:1',
                 ]);
 
-                DB::transaction(function () use ($validated, $correlationId) {
+                $this->db->transaction(function () use ($validated, $correlationId) {
                     B2BSportOrder::create([
                         'uuid'              => Str::uuid(),
-                        'tenant_id'         => auth()->user()->tenant_id,
+                        'tenant_id'         => $request->user()->tenant_id,
                         'order_number'      => 'B2B-' . Str::random(8),
                         'commission_amount' => (int) ($validated['total_amount'] * 0.14),
                         'status'            => 'pending',
@@ -97,20 +95,20 @@ final class B2BSportController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('B2BSport order created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+                $this->logger->info('B2BSport order created', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id]);
 
-                return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
-            } catch (\Exception $e) {
-                Log::error('B2BSport order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка при создании заказа', 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
+            } catch (\Throwable $e) {
+                $this->logger->error('B2BSport order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка при создании заказа', 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function myB2BOrders(): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
-                'data' => B2BSportOrder::where('tenant_id', auth()->user()->tenant_id)
+                'data' => B2BSportOrder::where('tenant_id', $request->user()->tenant_id)
                     ->latest()
                     ->paginate(20),
                 'correlation_id' => Str::uuid(),
@@ -125,15 +123,15 @@ final class B2BSportController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($order) {
+                $this->db->transaction(function () use ($order) {
                     $order->update(['status' => 'approved']);
                 });
 
-                Log::channel('audit')->info('B2BSport order approved', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id]);
+                $this->logger->info('B2BSport order approved', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id, 'order_id' => $id]);
 
-                return response()->json(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => $correlationId]);
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка при одобрении заказа', 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка при одобрении заказа', 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -146,15 +144,15 @@ final class B2BSportController extends Model
                 $correlationId = Str::uuid()->toString();
                 $reason        = $request->get('reason', '');
 
-                DB::transaction(function () use ($order, $reason) {
+                $this->db->transaction(function () use ($order, $reason) {
                     $order->update(['status' => 'rejected', 'notes' => $reason]);
                 });
 
-                Log::channel('audit')->info('B2BSport order rejected', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id, 'reason' => $reason]);
+                $this->logger->info('B2BSport order rejected', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id, 'order_id' => $id, 'reason' => $reason]);
 
-                return response()->json(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => $correlationId]);
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка при отклонении заказа', 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка при отклонении заказа', 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -166,15 +164,15 @@ final class B2BSportController extends Model
                 $storefront    = B2BSportStorefront::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($storefront) {
+                $this->db->transaction(function () use ($storefront) {
                     $storefront->update(['is_verified' => true]);
                 });
 
-                Log::channel('audit')->info('B2BSport storefront verified', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'storefront_id' => $id]);
+                $this->logger->info('B2BSport storefront verified', ['correlation_id' => $correlationId, 'user_id' => $request->user()?->id, 'storefront_id' => $id]);
 
-                return response()->json(['success' => true, 'message' => 'Витрина верифицирована', 'correlation_id' => $correlationId]);
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка при верификации', 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Витрина верифицирована', 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка при верификации', 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

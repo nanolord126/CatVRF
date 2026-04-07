@@ -2,18 +2,16 @@
 
 namespace App\Domains\Logistics\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CourierServiceController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CourierServiceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly CourierServiceService $courierServiceService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly CourierServiceService $courierServiceService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -23,14 +21,14 @@ final class CourierServiceController extends Model
                     ->with('user')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $couriers,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch couriers', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                $this->logger->error('Failed to fetch couriers', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -38,9 +36,9 @@ final class CourierServiceController extends Model
         {
             try {
                 $courier = CourierService::with('user', 'shipments', 'ratings')->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $courier, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $courier, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Courier not found', 'correlation_id' => Str::uuid()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Courier not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
@@ -50,72 +48,72 @@ final class CourierServiceController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $courier = $this->courierServiceService->createCourierService(
-                    tenant('id'),
-                    auth()->id(),
-                    request('company_name'),
-                    request('license_number'),
-                    request('vehicle_types', []),
-                    request('service_radius'),
-                    request('base_rate'),
-                    request('per_km_rate'),
+                    tenant()?->id,
+                    $request->user()?->id,
+                    $request->input('company_name'),
+                    $request->input('license_number'),
+                    $request->input('vehicle_types', []),
+                    $request->input('service_radius'),
+                    $request->input('base_rate'),
+                    $request->input('per_km_rate'),
                     $correlationId,
                 );
 
-                return response()->json(['success' => true, 'data' => $courier, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $courier, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 
         public function myProfile(): JsonResponse
         {
             try {
-                $courier = CourierService::where('user_id', auth()->id())->firstOrFail();
-                return response()->json(['success' => true, 'data' => $courier, 'correlation_id' => Str::uuid()]);
+                $courier = CourierService::where('user_id', $request->user()?->id)->firstOrFail();
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $courier, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Courier not found', 'correlation_id' => Str::uuid()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Courier not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
         public function updateProfile(): JsonResponse
         {
             try {
-                $courier = CourierService::where('user_id', auth()->id())->firstOrFail();
+                $courier = CourierService::where('user_id', $request->user()?->id)->firstOrFail();
                 $correlationId = Str::uuid()->toString();
 
                 $updated = $this->courierServiceService->updateCourierService(
                     $courier,
-                    request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']),
+                    $request->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']),
                     $correlationId,
                 );
 
-                return response()->json(['success' => true, 'data' => $updated, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $updated, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function myShipments(): JsonResponse
         {
             try {
-                $courier = CourierService::where('user_id', auth()->id())->firstOrFail();
+                $courier = CourierService::where('user_id', $request->user()?->id)->firstOrFail();
                 $shipments = $courier->shipments()->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $shipments, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $shipments, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function myEarnings(): JsonResponse
         {
             try {
-                $courier = CourierService::where('user_id', auth()->id())->firstOrFail();
+                $courier = CourierService::where('user_id', $request->user()?->id)->firstOrFail();
                 $earnings = $courier->shipments()->where('status', 'delivered')->sum('shipping_cost');
 
-                return response()->json(['success' => true, 'data' => ['total_earnings' => $earnings], 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => ['total_earnings' => $earnings], 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -124,16 +122,16 @@ final class CourierServiceController extends Model
             try {
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($shipmentId, $correlationId) {
+                $this->db->transaction(function () use ($shipmentId, $correlationId) {
                     $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
-                    $shipment->update(['status' => request('status'), 'correlation_id' => $correlationId]);
+                    $shipment->update(['status' => $request->input('status'), 'correlation_id' => $correlationId]);
 
-                    Log::channel('audit')->info('Shipment status updated', ['shipment_id' => $shipmentId, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Shipment status updated', ['shipment_id' => $shipmentId, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -145,13 +143,13 @@ final class CourierServiceController extends Model
                 $deliveredCount = $courier->shipments()->where('status', 'delivered')->count();
                 $totalRevenue = $courier->shipments()->sum('shipping_cost');
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => ['total_shipments' => $shipmentCount, 'delivered' => $deliveredCount, 'revenue' => $totalRevenue],
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -161,34 +159,34 @@ final class CourierServiceController extends Model
                 $courier = CourierService::findOrFail($courierId);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($courier, $correlationId) {
+                $this->db->transaction(function () use ($courier, $correlationId) {
                     $courier->update(['is_verified' => true, 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Courier verified', ['courier_id' => $courier->id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Courier verified', ['courier_id' => $courier->id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => $courier, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $courier, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $courier = CourierService::findOrFail($id);
 
                 $updated = $this->courierServiceService->updateCourierService(
                     $courier,
-                    request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']),
+                    $request->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']),
                     $correlationId,
                 );
 
-                return response()->json(['success' => true, 'data' => $updated, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $updated, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -198,14 +196,14 @@ final class CourierServiceController extends Model
                 $courier = CourierService::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($courier, $correlationId) {
+                $this->db->transaction(function () use ($courier, $correlationId) {
                     $courier->delete();
-                    Log::channel('audit')->info('Courier deleted', ['courier_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Courier deleted', ['courier_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

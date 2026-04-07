@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Channels\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class BusinessChannel extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, HasUuids;
 
         protected $table = 'business_channels';
@@ -49,7 +50,7 @@ final class BusinessChannel extends Model
         {
             static::addGlobalScope(
                 'tenant',
-                fn ($query) => $query->where('business_channels.tenant_id', tenant('id') ?? '0')
+                fn ($query) => $query->where('business_channels.tenant_id', tenant()->id ?? '0')
             );
         }
 
@@ -72,7 +73,7 @@ final class BusinessChannel extends Model
             return $this->posts()
                 ->where('status', 'published')
                 ->whereNotNull('published_at')
-                ->where('published_at', '<=', now());
+                ->where('published_at', '<=', Carbon::now());
         }
 
         public function subscribers(): HasMany
@@ -90,7 +91,7 @@ final class BusinessChannel extends Model
         {
             return $this->subscriptionUsages()
                 ->where('status', 'active')
-                ->where('expires_at', '>', now());
+                ->where('expires_at', '>', Carbon::now());
         }
 
         // ──────────────────────────────────────────────────────

@@ -4,12 +4,13 @@ namespace App\Models\Consulting;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class ConsultingSession extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'consulting_sessions';
@@ -54,22 +55,26 @@ final class ConsultingSession extends Model
             'deleted_at',
         ];
 
-        /**
-         * Boot logic for multi-tenancy and consistent UUID generation.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
-            });
+    /**
+     * Boot logic for multi-tenancy and consistent UUID generation.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->tenant_id)) {
+                $model->tenant_id = tenant()->id ?? 0;
+            }
+        });
 
-            static::addGlobalScope('tenant_id', function (Builder $builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+        static::addGlobalScope('tenant_id', function (Builder $builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 
         /**
          * Relationships.

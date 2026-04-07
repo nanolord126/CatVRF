@@ -2,14 +2,17 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class DatabaseIndexingService extends Model
+final readonly class DatabaseIndexingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Рекомендуемые индексы по таблицам (для production)
          */
@@ -72,7 +75,7 @@ final class DatabaseIndexingService extends Model
                             'error' => $e->getMessage()
                         ];
 
-                        Log::channel('performance')->error('Index creation failed', [
+                        $this->logger->channel('performance')->error('Index creation failed', [
                             'table' => $table,
                             'columns' => $indexConfig['columns'],
                             'error' => $e->getMessage()
@@ -81,7 +84,7 @@ final class DatabaseIndexingService extends Model
                 }
             }
 
-            Log::channel('performance')->info('Indexes creation summary', [
+            $this->logger->channel('performance')->info('Indexes creation summary', [
                 'created' => $created,
                 'failed' => $failed,
                 'errors' => $errors
@@ -108,9 +111,9 @@ final class DatabaseIndexingService extends Model
             $sql = "ALTER TABLE {$table} ADD {$indexType} {$indexName} ({$columnsStr})";
 
             try {
-                DB::statement($sql);
+                $this->db->statement($sql);
 
-                Log::channel('performance')->info('Index created', [
+                $this->logger->channel('performance')->info('Index created', [
                     'table' => $table,
                     'index' => $indexName,
                     'columns' => $columns
@@ -135,7 +138,7 @@ final class DatabaseIndexingService extends Model
          */
         public static function getTableIndexes(string $table): array
         {
-            $results = DB::select("SHOW INDEXES FROM {$table}");
+            $results = $this->db->select("SHOW INDEXES FROM {$table}");
 
             $indexes = [];
             foreach ($results as $index) {
@@ -167,7 +170,7 @@ final class DatabaseIndexingService extends Model
          */
         public static function getIndexSizes(): array
         {
-            $results = DB::select("
+            $results = $this->db->select("
                 SELECT
                     TABLE_NAME,
                     INDEX_NAME,
@@ -200,7 +203,7 @@ final class DatabaseIndexingService extends Model
             $dropped = 0;
             $errors = [];
 
-            $results = DB::select("
+            $results = $this->db->select("
                 SELECT
                     OBJECT_SCHEMA,
                     OBJECT_NAME,
@@ -214,10 +217,10 @@ final class DatabaseIndexingService extends Model
 
             foreach ($results as $row) {
                 try {
-                    DB::statement("ALTER TABLE {$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME} DROP INDEX {$row->INDEX_NAME}");
+                    $this->db->statement("ALTER TABLE {$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME} DROP INDEX {$row->INDEX_NAME}");
                     $dropped++;
 
-                    Log::channel('performance')->info('Unused index dropped', [
+                    $this->logger->channel('performance')->info('Unused index dropped', [
                         'table' => "{$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME}",
                         'index' => $row->INDEX_NAME
                     ]);

@@ -2,17 +2,13 @@
 
 namespace App\Domains\Education\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AICourseGeneratorService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AICourseGeneratorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private OpenAI $openai,
-        ) {}
+            private OpenAI $openai, private readonly LoggerInterface $logger) {}
 
         /**
          * Генерация структуры курса (модули и уроки) на базе темы
@@ -21,7 +17,7 @@ final class AICourseGeneratorService extends Model
         {
             $correlationId = (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Course Structure Generation Started', [
+            $this->logger->info('AI Course Structure Generation Started', [
                 'topic' => $topic,
                 'level' => $level,
                 'correlation_id' => $correlationId,
@@ -42,7 +38,7 @@ final class AICourseGeneratorService extends Model
             // 2. Валидация и постобработка
             $modules = $content['modules'] ?? [];
 
-            Log::channel('audit')->info('AI Course Structure Generated', [
+            $this->logger->info('AI Course Structure Generated', [
                 'modules_count' => count($modules),
                 'correlation_id' => $correlationId,
             ]);
@@ -63,7 +59,7 @@ final class AICourseGeneratorService extends Model
             $correlationId = (string) Str::uuid();
             $lesson = Lesson::findOrFail($lessonId);
 
-            Log::channel('audit')->info('AI Lesson Content Generation', [
+            $this->logger->info('AI Lesson Content Generation', [
                 'lesson_id' => $lessonId,
                 'title' => $lesson->title,
                 'correlation_id' => $correlationId,
@@ -100,7 +96,7 @@ final class AICourseGeneratorService extends Model
             // Анализ прогресса для фокуса на слабых местах
             $progress = $enrollment->progress ?? [];
 
-            Log::channel('audit')->info('AI Quiz Generation for Student', [
+            $this->logger->info('AI Quiz Generation for Student', [
                 'user_id' => $userId,
                 'course_id' => $courseId,
                 'correlation_id' => $correlationId,

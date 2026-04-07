@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Medicine extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes, TenantScoped;
 
         protected $table = "pharmacy_medicines";
@@ -44,15 +43,27 @@ final class Medicine extends Model
             "meta" => "array",
         ];
 
-        /**
-         * Глобальный скопинг для тенанта уже в трейте.
-         */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         /**
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function pharmacy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
         {

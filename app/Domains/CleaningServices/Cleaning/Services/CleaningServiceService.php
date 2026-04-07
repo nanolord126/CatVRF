@@ -2,20 +2,180 @@
 
 namespace App\Domains\CleaningServices\Cleaning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\CleaningServices\Cleaning\Models\CleaningOrder;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class CleaningServiceService extends Model
+final readonly class CleaningServiceService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createOrder(int $serviceId,$orderDate,$durationHours,$areaSqm,string $correlationId=""):CleaningOrder{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("cleaning:order:".auth()->id(),20))throw new \RuntimeException("Too many",429);RateLimiter::hit("cleaning:order:".auth()->id(),3600);
-    return DB::transaction(function()use($serviceId,$orderDate,$durationHours,$areaSqm,$correlationId){$s=CleaningServiceModel::findOrFail($serviceId);$total=(int)($s->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'cleaning_order','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$o=CleaningOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'service_id'=>$serviceId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','order_date'=>$orderDate,'duration_hours'=>$durationHours,'area_sqm'=>$areaSqm,'tags'=>['cleaning'=>true]]);Log::channel('audit')->info('Cleaning order created',['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});
+    /**
+     * Создание заказа на клининг.
+     */
+    public function createOrder(
+        int $serviceId,
+        string $orderDate,
+        int $durationHours,
+        int $areaSqm,
+        string $correlationId = '',
+    ): CleaningOrder {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        $userId = (int) ($this->guard->id() ?? 0);
+        $rateLimitKey = 'cleaning:order:' . $userId;
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimitKey, 20)) {
+            throw new \RuntimeException('Too many attempts', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimitKey, 3600);
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'cleaning_order',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($serviceId, $orderDate, $durationHours, $areaSqm, $correlationId, $userId): CleaningOrder {
+            $pricePerHour = 500;
+            $total = $pricePerHour * $durationHours * 100;
+            $payout = $total - (int) ($total * 0.14);
+
+            $order = CleaningOrder::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => tenant()->id,
+                'service_id' => $serviceId,
+                'client_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payout,
+                'payment_status' => 'pending',
+                'order_date' => $orderDate,
+                'duration_hours' => $durationHours,
+                'area_sqm' => $areaSqm,
+                'tags' => ['cleaning' => true],
+            ]);
+
+            $this->logger->info('Cleaning order created', [
+                'order_id' => $order->id,
+                'tenant_id' => tenant()->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
     }
-    public function completeOrder(int $orderId,string $correlationId=""):CleaningOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=CleaningOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks,'cleaning_payout',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Cleaning order completed',['order_id'=>$o->id]);return $o;});}
-    public function cancelOrder(int $orderId,string $correlationId=""):CleaningOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=CleaningOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed')$this->wallet->credit(tenant()->id,$o->total_kopecks,'cleaning_refund',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Cleaning order cancelled',['order_id'=>$o->id]);return $o;});}
-    public function getOrder(int $orderId):CleaningOrder{return CleaningOrder::findOrFail($orderId);}
-    public function getUserOrders(int $clientId){return CleaningOrder::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершение заказа — выплата исполнителю.
+     */
+    public function completeOrder(int $orderId, string $correlationId = ''): CleaningOrder
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): CleaningOrder {
+            $order = CleaningOrder::findOrFail($orderId);
+
+            if ($order->payment_status !== 'completed') {
+                throw new \RuntimeException('Payment not completed', 400);
+            }
+
+            $order->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $order->payout_kopecks,
+                reason: 'cleaning_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Cleaning order completed', [
+                'order_id' => $order->id,
+                'payout_kopecks' => $order->payout_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Отмена заказа — возврат средств клиенту.
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): CleaningOrder
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): CleaningOrder {
+            $order = CleaningOrder::findOrFail($orderId);
+
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed order', 400);
+            }
+
+            $previousPaymentStatus = $order->payment_status;
+
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousPaymentStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $order->total_kopecks,
+                    reason: 'cleaning_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('Cleaning order cancelled', [
+                'order_id' => $order->id,
+                'refunded' => $previousPaymentStatus === 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Получение заказа по ID.
+     */
+    public function getOrder(int $orderId): CleaningOrder
+    {
+        return CleaningOrder::findOrFail($orderId);
+    }
+
+    /**
+     * Получение заказов пользователя (последние 20).
+     */
+    public function getUserOrders(int $clientId): Collection
+    {
+        return CleaningOrder::query()
+            ->where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->take(20)
+            ->get();
+    }
 }

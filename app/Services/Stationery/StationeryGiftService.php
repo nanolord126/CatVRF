@@ -2,21 +2,35 @@
 
 namespace App\Services\Stationery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StationeryGiftService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use App\Models\Stationery\StationeryProduct;
+use App\Models\Stationery\StationeryGiftSet;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class StationeryGiftService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraud,
-            private WalletService $wallet,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Composes a new gift set from individual products.
@@ -24,13 +38,13 @@ final class StationeryGiftService extends Model
          */
         public function createGiftSet(array $data, array $productIds): StationeryGiftSet
         {
-            Log::channel('audit')->info('Attempting to create stationery gift set', [
+            $this->logger->channel('audit')->info('Attempting to create stationery gift set', [
                 'name' => $data['name'],
                 'product_count' => count($productIds),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
-            return DB::transaction(function () use ($data, $productIds) {
+            return $this->db->transaction(function () use ($data, $productIds) {
                 // Validate all products exist and belong to the same tenant
                 $products = StationeryProduct::whereIn('id', $productIds)->get();
 
@@ -46,13 +60,13 @@ final class StationeryGiftService extends Model
                 $giftSet = StationeryGiftSet::create(array_merge($data, [
                     'price_cents' => $setPrice,
                     'product_ids' => $productIds,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]));
 
-                Log::channel('audit')->info('Stationery gift set created', [
+                $this->logger->channel('audit')->info('Stationery gift set created', [
                     'uuid' => $giftSet->uuid,
                     'set_price' => $setPrice,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $giftSet;
@@ -64,14 +78,9 @@ final class StationeryGiftService extends Model
          */
         public function purchaseGiftSet(int $userId, int $giftSetId, bool $withWrapping = false): bool
         {
-            $this->fraud->check([
-                'operation' => 'gift_set_purchase',
-                'user_id' => $userId,
-                'gift_set_id' => $giftSetId,
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check((int) $this->guard->id(), 'gift_set_purchase', $this->request->ip());
 
-            return DB::transaction(function () use ($userId, $giftSetId, $withWrapping) {
+            return $this->db->transaction(function () use ($userId, $giftSetId, $withWrapping) {
                 $giftSet = StationeryGiftSet::findOrFail($giftSetId);
 
                 $finalPrice = $giftSet->price_cents;
@@ -82,15 +91,12 @@ final class StationeryGiftService extends Model
                 }
 
                 // Wallet debit for the user
-                $this->wallet->debit($userId, $finalPrice, 'Stationery Gift Set Purchase', $this->correlationId);
-
-                // Audit the transaction
-                Log::channel('audit')->info('Gift set purchased successfully', [
+                $this->wallet->debit($userId, $finalPrice, \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $this, null, null, [
                     'user_id' => $userId,
                     'gift_set' => $giftSetId,
                     'final_price' => $finalPrice,
                     'wrapping' => $withWrapping,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return true;

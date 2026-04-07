@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\GroceryAndDelivery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GroceryOrderResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Repeater, Components\Textarea, Components\DateTimePicker, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor, Components\FileUpload};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\IconColumn, Columns\BooleanColumn, Filters\Filter, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -22,6 +17,10 @@ final class GroceryOrderResource extends Model
 
     final class GroceryOrderResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = GroceryOrder::class;
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
         protected static ?string $navigationGroup = 'Grocery & Delivery';
@@ -330,7 +329,6 @@ final class GroceryOrderResource extends Model
                 BadgeColumn::make('status')
                     ->label('Статус')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'pending' => 'На ожидании',
                         'confirmed' => 'Подтвержён',
                         'picked' => 'Комплектуется',
                         'in_transit' => 'В пути',
@@ -339,7 +337,6 @@ final class GroceryOrderResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'pending' => 'warning',
                         'confirmed' => 'info',
                         'picked' => 'primary',
                         'in_transit' => 'cyan',
@@ -352,14 +349,12 @@ final class GroceryOrderResource extends Model
                 BadgeColumn::make('payment_status')
                     ->label('Оплата')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'unpaid' => 'Не оплачено',
                         'paid' => 'Оплачено',
                         'partially_paid' => 'Частично',
                         'refunded' => 'Возврачено',
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'paid' => 'success',
                         'partially_paid' => 'warning',
                         'refunded' => 'danger',
                         default => 'gray',
@@ -454,9 +449,9 @@ final class GroceryOrderResource extends Model
                         ->visible(fn ($record) => $record->status === 'pending')
                         ->action(function ($record) {
                             $record->update(['status' => 'confirmed']);
-                            Log::channel('audit')->info('Grocery order confirmed', [
+                            $this->logger->info('Grocery order confirmed', [
                                 'order_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -469,9 +464,9 @@ final class GroceryOrderResource extends Model
                         ->visible(fn ($record) => $record->status === 'confirmed')
                         ->action(function ($record) {
                             $record->update(['status' => 'picked']);
-                            Log::channel('audit')->info('Grocery order marked as picked', [
+                            $this->logger->info('Grocery order marked as picked', [
                                 'order_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -484,9 +479,9 @@ final class GroceryOrderResource extends Model
                         ->visible(fn ($record) => $record->status === 'picked')
                         ->action(function ($record) {
                             $record->update(['status' => 'in_transit']);
-                            Log::channel('audit')->info('Grocery order marked as in transit', [
+                            $this->logger->info('Grocery order marked as in transit', [
                                 'order_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -499,9 +494,9 @@ final class GroceryOrderResource extends Model
                         ->visible(fn ($record) => $record->status === 'in_transit')
                         ->action(function ($record) {
                             $record->update(['status' => 'delivered']);
-                            Log::channel('audit')->info('Grocery order marked as delivered', [
+                            $this->logger->info('Grocery order marked as delivered', [
                                 'order_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -514,9 +509,9 @@ final class GroceryOrderResource extends Model
                         ->visible(fn ($record) => !in_array($record->status, ['delivered', 'cancelled']))
                         ->action(function ($record) {
                             $record->update(['status' => 'cancelled']);
-                            Log::channel('audit')->info('Grocery order cancelled', [
+                            $this->logger->info('Grocery order cancelled', [
                                 'order_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -529,9 +524,9 @@ final class GroceryOrderResource extends Model
                     DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Grocery order bulk deleted', [
+                                $this->logger->info('Grocery order bulk deleted', [
                                     'order_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -545,9 +540,9 @@ final class GroceryOrderResource extends Model
                             $records->each(function ($record) {
                                 if ($record->status === 'pending') {
                                     $record->update(['status' => 'confirmed']);
-                                    Log::channel('audit')->info('Grocery order bulk confirmed', [
+                                    $this->logger->info('Grocery order bulk confirmed', [
                                         'order_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }
@@ -564,9 +559,9 @@ final class GroceryOrderResource extends Model
                             $records->each(function ($record) {
                                 if (in_array($record->status, ['in_transit', 'picked'])) {
                                     $record->update(['status' => 'delivered']);
-                                    Log::channel('audit')->info('Grocery order bulk marked delivered', [
+                                    $this->logger->info('Grocery order bulk marked delivered', [
                                         'order_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }
@@ -583,9 +578,9 @@ final class GroceryOrderResource extends Model
                             $records->each(function ($record) {
                                 if (!in_array($record->status, ['delivered', 'cancelled'])) {
                                     $record->update(['status' => 'cancelled']);
-                                    Log::channel('audit')->info('Grocery order bulk cancelled', [
+                                    $this->logger->info('Grocery order bulk cancelled', [
                                         'order_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }

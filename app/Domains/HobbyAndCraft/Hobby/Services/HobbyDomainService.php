@@ -2,14 +2,20 @@
 
 namespace App\Domains\HobbyAndCraft\Hobby\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HobbyDomainService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class HobbyDomainService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create or Update a Hobby Product with full audit trail.
          */
@@ -17,12 +23,13 @@ final class HobbyDomainService extends Model
         {
             $cid = $dto->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('Hobby Product Upsert Started', [
+            $this->logger->info('Hobby Product Upsert Started', [
                 'sku' => $dto->sku,
-                'cid' => $cid
+                'cid' => $cid,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            return DB::transaction(function () use ($dto, $cid) {
+            return $this->db->transaction(function () use ($dto, $cid) {
                 $product = HobbyProduct::updateOrCreate(
                     ['sku' => $dto->sku],
                     [
@@ -41,9 +48,10 @@ final class HobbyDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Hobby Product Upsert Success', [
+                $this->logger->info('Hobby Product Upsert Success', [
                     'id' => $product->id,
-                    'cid' => $cid
+                    'cid' => $cid,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $product;
@@ -56,17 +64,18 @@ final class HobbyDomainService extends Model
          */
         public function createB2BOrder(VolumeOrderDto $dto): \Illuminate\Database\Eloquent\Model
         {
-            Log::channel('audit')->info('B2B Craft Material Procurement Initiated', [
+            $this->logger->info('B2B Craft Material Procurement Initiated', [
                 'user_id' => $dto->userId,
                 'product_id' => $dto->productId,
-                'quantity' => $dto->quantity
+                'quantity' => $dto->quantity,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            return DB::transaction(function () use ($dto) {
+            return $this->db->transaction(function () use ($dto) {
                 $product = HobbyProduct::lockForUpdate()->findOrFail($dto->productId);
 
                 if ($product->stock_quantity < $dto->quantity) {
-                    throw new \Exception('Insufficient inventory for wholesale volume.');
+                    throw new \RuntimeException('Insufficient inventory for wholesale volume.');
                 }
 
                 // Pricing logic for B2B wholesale
@@ -77,23 +86,24 @@ final class HobbyDomainService extends Model
                 $orderAmount = $finalPrice * $dto->quantity;
 
                 // Simplified Order creation surrogate (Actual Order logic in separate layer)
-                $order = DB::table('hobby_orders')->insertGetId([
+                $order = $this->db->table('hobby_orders')->insertGetId([
                     'user_id' => $dto->userId,
                     'total_amount' => $orderAmount,
                     'status' => 'pending',
                     'is_b2b' => true,
                     'correlation_id' => $dto->correlationId ?: (string) Str::uuid(),
-                    'created_at' => now(),
-                    'updated_at' => now()
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now()
                 ]);
 
                 // Inventory decrement
                 $product->decrement('stock_quantity', $dto->quantity);
 
-                Log::channel('audit')->info('B2B Wholesale Order Created', [
+                $this->logger->info('B2B Wholesale Order Created', [
                     'order_id' => $order,
                     'total' => $orderAmount,
-                    'sku' => $product->sku
+                    'sku' => $product->sku,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return (object) ['id' => $order, 'total_amount' => $orderAmount, 'is_b2b' => true];
@@ -107,7 +117,7 @@ final class HobbyDomainService extends Model
         {
             // Fraud check surrogate (Actual logic in FraudControlService)
             if ($rating === 5 && empty($comment)) {
-                Log::channel('fraud_alert')->warning('Suspicious 5-star review (no comment)', [
+                $this->logger->warning('Suspicious 5-star review (no comment)', [
                     'user_id' => $userId,
                     'item_id' => $reviewableId
                 ]);
@@ -119,7 +129,7 @@ final class HobbyDomainService extends Model
                 'reviewable_id' => $reviewableId,
                 'rating' => $rating,
                 'comment' => $comment,
-                'tenant_id' => auth()->user()->tenant_id ?? 1
+                'tenant_id' => $this->guard->user()->tenant_id ?? 1
             ]);
         }
 }

@@ -148,7 +148,7 @@ final class Tenant extends Model
     public function getUserRole(?int $userId): ?\App\Enums\Role
     {
         if (!$userId) {
-            return null;
+            throw new \DomainException('Entity not found');
         }
 
         $user = $this->users()

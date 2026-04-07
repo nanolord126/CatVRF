@@ -2,17 +2,21 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MenuConstructor extends Model
+use Illuminate\Http\Request;
+use App\Services\RecommendationService;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class MenuConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private RecommendationService $recommendation,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         public function construct(
             array $analysis,
@@ -45,13 +49,14 @@ final class MenuConstructor extends Model
                 $allItems = \array_merge($mainCourses, $appetizers, $desserts, $beverages);
                 $totalPrice = \array_sum(\array_column($allItems, 'price'));
 
-                Log::channel('audit')->info('Menu construction completed', [
+                $this->logger->channel('audit')->info('Menu construction completed', [
                     'event_type' => $eventType,
                     'guest_count' => $guestCount,
                     'budget' => $budget,
                     'items_count' => \count($allItems),
                     'total_price' => $totalPrice,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'data' => [
@@ -77,9 +82,10 @@ final class MenuConstructor extends Model
                     ],
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Menu construction failed', [
+                $this->logger->channel('audit')->error('Menu construction failed', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 throw $e;
             }
         }

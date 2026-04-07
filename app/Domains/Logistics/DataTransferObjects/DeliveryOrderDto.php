@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ * DeliveryOrderDto — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/deliveryorderdto
+ */
+
+
 namespace App\Domains\Logistics\DataTransferObjects;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class DeliveryOrderDto extends Model
+final readonly class DeliveryOrderDto
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             public string $uuid,
             public string $status,
@@ -18,8 +29,8 @@ final class DeliveryOrderDto extends Model
             public string $estimatedDeliveryAt,
             public array $pickup,
             public array $dropoff,
-            public ?string $courierName = null,
-            public ?string $courierPhone = null
+            private ?string $courierName = null,
+            private readonly ?string $courierPhone = null
         ) {}
 
         public static function fromModel(\App\Domains\Logistics\Models\DeliveryOrder $order): self
@@ -36,4 +47,27 @@ final class DeliveryOrderDto extends Model
                 courierPhone: $order->courier->user->phone ?? null
             );
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

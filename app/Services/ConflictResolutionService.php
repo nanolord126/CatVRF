@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class ConflictResolutionService extends Model
+final readonly class ConflictResolutionService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CONFLICT_CACHE_TTL = 1800; // 30 minutes
 
         /**
@@ -43,22 +45,22 @@ final class ConflictResolutionService extends Model
                     'correlation_id' => $correlationId,
                 ];
 
-                Cache::put($editKey, $edit, self::CONFLICT_CACHE_TTL);
+                $this->cache->put($editKey, $edit, self::CONFLICT_CACHE_TTL);
 
                 // Добавляем в историю редактирования
                 $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-                $history = Cache::get($historyKey, []);
+                $history = $this->cache->get($historyKey, []);
                 $history[] = $editId;
 
                 // Сохраняем только последние 100 изменений
                 if (count($history) > 100) {
                     $oldestEditId = array_shift($history);
-                    Cache::forget("collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$oldestEditId}");
+                    $this->cache->forget("collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$oldestEditId}");
                 }
 
-                Cache::put($historyKey, $history, self::CONFLICT_CACHE_TTL);
+                $this->cache->put($historyKey, $history, self::CONFLICT_CACHE_TTL);
 
-                Log::channel('audit')->debug('Edit recorded', [
+                $this->logger->channel('audit')->debug('Edit recorded', [
                     'correlation_id' => $correlationId,
                     'edit_id' => $editId,
                     'user_id' => $userId,
@@ -66,7 +68,7 @@ final class ConflictResolutionService extends Model
 
                 return $edit;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to record edit', [
+                $this->logger->channel('audit')->error('Failed to record edit', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
@@ -85,13 +87,13 @@ final class ConflictResolutionService extends Model
             string $lastKnownVersion
         ): array {
             $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-            $editIds = Cache::get($historyKey, []);
+            $editIds = $this->cache->get($historyKey, []);
 
             $conflicts = [];
 
             foreach ($editIds as $editId) {
                 $editKey = "collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$editId}";
-                $edit = Cache::get($editKey);
+                $edit = $this->cache->get($editKey);
 
                 if ($edit && $edit['version'] > (int)$lastKnownVersion) {
                     $conflicts[] = $edit;
@@ -141,7 +143,7 @@ final class ConflictResolutionService extends Model
             int $limit = 50
         ): Collection {
             $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-            $editIds = Cache::get($historyKey, []);
+            $editIds = $this->cache->get($historyKey, []);
 
             $edits = collect();
 
@@ -150,7 +152,7 @@ final class ConflictResolutionService extends Model
 
             foreach ($recentEditIds as $editId) {
                 $editKey = "collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$editId}";
-                $edit = Cache::get($editKey);
+                $edit = $this->cache->get($editKey);
 
                 if ($edit) {
                     $edits->push($edit);
@@ -170,7 +172,7 @@ final class ConflictResolutionService extends Model
         ): bool {
             $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
 
-            return Cache::has($lockKey);
+            return $this->cache->has($lockKey);
         }
 
         /**
@@ -183,7 +185,7 @@ final class ConflictResolutionService extends Model
             int $lockDurationSeconds = 300
         ): bool {
             $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
-            Cache::put($lockKey, true, $lockDurationSeconds);
+            $this->cache->put($lockKey, true, $lockDurationSeconds);
 
             return true;
         }
@@ -197,7 +199,7 @@ final class ConflictResolutionService extends Model
             int $tenantId
         ): bool {
             $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
-            Cache::forget($lockKey);
+            $this->cache->forget($lockKey);
 
             return true;
         }

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Electronics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ElectronicsResource extends Model
+final class ElectronicsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ElectronicProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-bolt';
         protected static ?string $navigationGroup = 'Вертикали';

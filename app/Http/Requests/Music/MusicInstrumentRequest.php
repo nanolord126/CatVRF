@@ -2,37 +2,31 @@
 
 namespace App\Http\Requests\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicInstrumentRequest extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class MusicInstrumentRequest extends FormRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Determine if the user is authorized to make this request.
          */
         public function authorize(): bool
         {
             // Fraud control check before any mutation
-            $fraudCheck = FraudControlService::check([
-                'user_id' => auth()->id(),
-                'ip' => $this->ip(),
-                'action' => 'instrument_mutation',
-                'tenant_id' => tenant()->id,
-            ]);
-
-            if (!$fraudCheck->isAllowed()) {
-                Log::channel('fraud_alert')->warning('Blocked musical instrument mutation attempt', [
-                    'user_id' => auth()->id(),
-                    'ip' => $this->ip(),
-                    'reason' => $fraudCheck->reason(),
-                ]);
-                return false;
-            }
-
-            return auth()->check();
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->guard->id(),
+                operationType: 'instrument_mutation',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
+return $this->guard->check();
         }
 
         /**

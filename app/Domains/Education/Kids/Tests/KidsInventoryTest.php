@@ -2,14 +2,11 @@
 
 namespace App\Domains\Education\Kids\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Tests\TestCase;
 
-final class KidsInventoryTest extends Model
+final class KidsInventoryTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         private KidsInventoryService $service;

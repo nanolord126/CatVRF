@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ChannelResource extends Model
+final class ChannelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BusinessChannel::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-megaphone';
@@ -161,7 +158,6 @@ final class ChannelResource extends Model
                         ->label('Статус')
                         ->badge()
                         ->color(fn (string $state) => match ($state) {
-                            'active'    => 'success',
                             'archived'  => 'warning',
                             'suspended' => 'danger',
                             default     => 'gray',

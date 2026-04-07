@@ -1,19 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class AppointmentController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly AppointmentService $service
-        ) {}
-
+        private AppointmentService $service,
+        private LoggerInterface $logger,
+    ) {
+    }
         /**
          * Создать запись (POST /appointments).
          */
@@ -22,7 +25,7 @@ final class AppointmentController extends Model
             $correlationId = (string) Str::uuid();
 
             try {
-                Log::channel('audit')->info('API Request: Create Appointment', [
+                $this->logger->info('API Request: Create Appointment', [
                     'correlation_id' => $correlationId,
                     'data' => $request->validated()
                 ]);
@@ -32,20 +35,20 @@ final class AppointmentController extends Model
                     correlationId: $correlationId
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $appointment,
                     'correlation_id' => $correlationId
                 ], 201);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Error: Create Appointment Failed', [
+                $this->logger->error('API Error: Create Appointment Failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Не удалось создать запись: ' . $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -63,19 +66,19 @@ final class AppointmentController extends Model
             try {
                 $this->service->completeAppointment($appointment, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Запись успешно завершена и оплачена.',
                     'correlation_id' => $correlationId
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Error: Complete Appointment Failed', [
+                $this->logger->error('API Error: Complete Appointment Failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -93,19 +96,19 @@ final class AppointmentController extends Model
             try {
                 $this->service->cancelAppointment($appointment, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Запись успешно отменена.',
                     'correlation_id' => $correlationId
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('API Error: Cancel Appointment Failed', [
+                $this->logger->error('API Error: Cancel Appointment Failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при отмене: ' . $e->getMessage(),
                     'correlation_id' => $correlationId

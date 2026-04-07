@@ -2,14 +2,20 @@
 
 namespace App\Services\CarRental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PricingService extends Model
+
+use Illuminate\Http\Request;
+use App\Models\CarRental\Car;
+use Illuminate\Log\LogManager;
+
+final readonly class PricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Standard calculation for rental cost.
          * Incorporates B2B discounts and duration-based tiers.
@@ -32,13 +38,14 @@ final class PricingService extends Model
             $total = $finalDaily * $days;
 
             // 5. Audit Log (Canon Rule 2026: Traceable calculations)
-            Log::channel('audit')->info('[CarPricing] Full Calculation Completed', [
+            $this->logger->channel('audit')->info('[CarPricing] Full Calculation Completed', [
                 'car_uuid' => $car->uuid,
                 'days' => $days,
                 'is_b2b' => $isB2B,
                 'base_daily' => $baseDaily,
                 'final_daily' => $finalDaily,
                 'total' => $total,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return [

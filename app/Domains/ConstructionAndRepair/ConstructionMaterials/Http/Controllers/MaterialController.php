@@ -2,25 +2,23 @@
 
 namespace App\Domains\ConstructionAndRepair\ConstructionMaterials\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MaterialController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class MaterialController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ConstructionMaterialService $materialService,
+
+    public function __construct(private readonly ConstructionMaterialService $materialService,
             private readonly MaterialCalculatorService $calculatorService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $tenantId = auth()->user()?->tenant_id ?? 0;
+                $tenantId = $request->user()?->tenant_id ?? 0;
 
                 $materials = ConstructionMaterial::where('tenant_id', $tenantId)
                     ->when($request->input('category'),  fn ($q, $v) => $q->where('category', $v))
@@ -30,10 +28,10 @@ final class MaterialController extends Model
                     ->orderByDesc('created_at')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $materials, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $materials, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('ConstructionMaterials: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('ConstructionMaterials: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -42,9 +40,9 @@ final class MaterialController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $material = ConstructionMaterial::findOrFail($id);
-                return response()->json(['success' => true, 'data' => $material, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $material, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Материал не найден', 'correlation_id' => $correlationId], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Материал не найден', 'correlation_id' => $correlationId], 404);
             }
         }
 
@@ -65,11 +63,11 @@ final class MaterialController extends Model
                     correlationId: $correlationId,
                 );
 
-                return response()->json(['success' => true, 'data' => $result, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $result, 'correlation_id' => $correlationId]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка расчёта', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка расчёта', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -77,16 +75,16 @@ final class MaterialController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'material_order',
                     amount: (int) $request->input('total_kopecks', 0),
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -97,11 +95,11 @@ final class MaterialController extends Model
                     'comment'          => 'nullable|string|max:500',
                 ]);
 
-                $order = DB::transaction(function () use ($validated, $userId, $correlationId): MaterialOrder {
+                $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): MaterialOrder {
                     $material = ConstructionMaterial::findOrFail($validated['material_id']);
                     $order    = MaterialOrder::create([
                         'uuid'             => Str::uuid(),
-                        'tenant_id'        => auth()->user()?->tenant_id ?? 0,
+                        'tenant_id'        => $request->user()?->tenant_id ?? 0,
                         'client_id'        => $userId,
                         'material_id'      => $validated['material_id'],
                         'quantity'         => $validated['quantity'],
@@ -113,7 +111,7 @@ final class MaterialController extends Model
                         'correlation_id'   => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('ConstructionMaterials: Order created', [
+                    $this->logger->info('ConstructionMaterials: Order created', [
                         'order_id'       => $order->id,
                         'material_id'    => $validated['material_id'],
                         'user_id'        => $userId,
@@ -123,12 +121,12 @@ final class MaterialController extends Model
                     return $order;
                 });
 
-                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('ConstructionMaterials: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('ConstructionMaterials: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -136,14 +134,14 @@ final class MaterialController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $orders = MaterialOrder::where('client_id', auth()->id())
+                $orders = MaterialOrder::where('client_id', $request->user()?->id)
                     ->with('material')
                     ->orderByDesc('created_at')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 }

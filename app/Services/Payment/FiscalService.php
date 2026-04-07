@@ -2,6 +2,8 @@
 
 namespace App\Services\Payment;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Models\PaymentTransaction;
 use App\Services\Fraud\FraudControlService;
 use Exception;
@@ -25,9 +27,11 @@ use Illuminate\Support\Str;
 final readonly class FiscalService
 {
     public function __construct(
+        private readonly ConfigRepository $config,
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -58,7 +62,7 @@ final readonly class FiscalService
             ]);
 
             // 2. AUDIT: Начало fiscalization
-            Log::channel('audit')->info('Fiscal transmission started', [
+            $this->logger->channel('audit')->info('Fiscal transmission started', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
@@ -67,7 +71,7 @@ final readonly class FiscalService
 
             // 3. ПРОВЕРКА СТАТУСА: платёж должен быть CAPTURED
             if ($payment->status !== PaymentTransaction::STATUS_CAPTURED) {
-                throw new Exception(
+                throw new \RuntimeException(
                     "Cannot fiscalize payment with status: {$payment->status}. Expected: captured"
                 );
             }
@@ -75,7 +79,7 @@ final readonly class FiscalService
             // 4. ПОЛУЧИТЬ ДАННЫЕ ЗАКАЗА
             $items = $payment->metadata['items'] ?? [];
             if (empty($items)) {
-                Log::channel('audit')->warning('Fiscal: no items to fiscalize', [
+                $this->logger->channel('audit')->warning('Fiscal: no items to fiscalize', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                 ]);
@@ -89,7 +93,7 @@ final readonly class FiscalService
             $result = $this->sendToOFD($checkData, $payment, $correlationId);
 
             if ($result) {
-                Log::channel('audit')->info('Fiscal transmission succeeded', [
+                $this->logger->channel('audit')->info('Fiscal transmission succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                     'fiscal_number' => $checkData['external_id'] ?? null,
@@ -99,7 +103,14 @@ final readonly class FiscalService
             return $result;
 
         } catch (Exception $e) {
-            Log::channel('audit')->error('Fiscal transmission failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Fiscal transmission failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
@@ -132,15 +143,14 @@ final readonly class FiscalService
                     'phone' => $payment->metadata['customer_phone'] ?? null,
                 ],
                 'company' => [
-                    'email' => config('fiscal.company_email', 'company@example.com'),
-                    'inn' => config('fiscal.company_inn', ''),
-                    'payment_address' => config('fiscal.payment_address', ''),
+                    'email' => $this->config->get('fiscal.company_email', 'company@example.com'),
+                    'inn' => $this->config->get('fiscal.company_inn', ''),
+                    'payment_address' => $this->config->get('fiscal.payment_address', ''),
                 ],
                 'items' => $this->prepareItems($items),
                 'payments' => [
                     [
                         'type' => 2,  // 2 = электронные деньги (card / e-wallet)
-                        'sum' => $payment->amount,
                     ],
                 ],
                 'total' => $payment->amount,
@@ -179,13 +189,12 @@ final readonly class FiscalService
      */
     private function sendToOFD(array $checkData, PaymentTransaction $payment, string $correlationId): bool
     {
-        $ofdProvider = config('fiscal.provider', 'yandex');
+        $ofdProvider = $this->config->get('fiscal.provider', 'yandex');
 
         return match ($ofdProvider) {
-            'yandex' => $this->sendToYandexKassaOFD($checkData, $correlationId),
             'tinkoff' => $this->sendToTinkoffOFD($checkData, $correlationId),
             'custom' => $this->sendToCustomOFD($checkData, $correlationId),
-            default => throw new Exception("Unknown OFD provider: {$ofdProvider}"),
+            default => throw new \InvalidArgumentException("Unknown OFD provider: {$ofdProvider}"),
         };
     }
 
@@ -200,9 +209,9 @@ final readonly class FiscalService
      */
     private function sendToYandexKassaOFD(array $checkData, string $correlationId): bool
     {
-        $apiKey = config('fiscal.yandex_api_key', '');
+        $apiKey = $this->config->get('fiscal.yandex_api_key', '');
         if (!$apiKey) {
-            throw new Exception('Yandex Kassa OFD API key not configured');
+            throw new \RuntimeException('Yandex Kassa OFD API key not configured');
         }
 
         try {
@@ -212,14 +221,21 @@ final readonly class FiscalService
                 ->post('https://api.yandex.com/receipts', $checkData);
 
             if (!$response->successful()) {
-                throw new Exception(
+                throw new \RuntimeException(
                     "Yandex OFD error: {$response->status()} - {$response->body()}"
                 );
             }
 
             return true;
         } catch (Exception $e) {
-            throw new Exception("Failed to send to Yandex Kassa OFD: {$e->getMessage()}");
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            throw new \RuntimeException("Failed to send to Yandex Kassa OFD: {$e->getMessage()}");
         }
     }
 
@@ -234,11 +250,11 @@ final readonly class FiscalService
      */
     private function sendToTinkoffOFD(array $checkData, string $correlationId): bool
     {
-        $apiKey = config('fiscal.tinkoff_api_key', '');
-        $apiPassword = config('fiscal.tinkoff_api_password', '');
+        $apiKey = $this->config->get('fiscal.tinkoff_api_key', '');
+        $apiPassword = $this->config->get('fiscal.tinkoff_api_password', '');
 
         if (!$apiKey || !$apiPassword) {
-            throw new Exception('Tinkoff OFD credentials not configured');
+            throw new \RuntimeException('Tinkoff OFD credentials not configured');
         }
 
         try {
@@ -248,14 +264,21 @@ final readonly class FiscalService
                 ->post('https://api.tinkoff.ru/ofd/receipts', $checkData);
 
             if (!$response->successful()) {
-                throw new Exception(
+                throw new \RuntimeException(
                     "Tinkoff OFD error: {$response->status()} - {$response->body()}"
                 );
             }
 
             return true;
         } catch (Exception $e) {
-            throw new Exception("Failed to send to Tinkoff OFD: {$e->getMessage()}");
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            throw new \RuntimeException("Failed to send to Tinkoff OFD: {$e->getMessage()}");
         }
     }
 
@@ -270,7 +293,7 @@ final readonly class FiscalService
     {
         // Заглушка для кастомного провайдера
         // Имплементируется в подклассах или конкретных реализациях
-        Log::channel('audit')->info('Custom OFD provider not implemented', [
+        $this->logger->channel('audit')->info('Custom OFD provider not implemented', [
             'correlation_id' => $correlationId,
         ]);
 

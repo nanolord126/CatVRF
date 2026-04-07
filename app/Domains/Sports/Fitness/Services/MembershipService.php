@@ -2,17 +2,18 @@
 
 namespace App\Domains\Sports\Fitness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MembershipService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MembershipService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function createMembership(int $gymId, int $memberId, string $type, float $amount, string $correlationId): Membership
         {
-
 
             try {
                 $gym = Gym::findOrFail($gymId);
@@ -21,13 +22,12 @@ final class MembershipService extends Model
 
                 $startDate = now();
                 $expiresAt = match ($type) {
-                    'monthly' => $startDate->addMonth(),
                     'quarterly' => $startDate->addMonths(3),
                     'annual' => $startDate->addYear(),
                     default => $startDate->addMonth(),
                 };
 
-                $membership = DB::transaction(function () use ($gym, $memberId, $type, $amount, $commissionAmount, $startDate, $expiresAt, $correlationId) {
+                $membership = $this->db->transaction(function () use ($gym, $memberId, $type, $amount, $commissionAmount, $startDate, $expiresAt, $correlationId) {
                     $membership = Membership::create([
                         'tenant_id' => $gym->tenant_id,
                         'gym_id' => $gym->id,
@@ -44,7 +44,7 @@ final class MembershipService extends Model
 
                     MembershipCreated::dispatch($membership, $correlationId);
 
-                    Log::channel('audit')->info('Membership created', [
+                    $this->logger->info('Membership created', [
                         'membership_id' => $membership->id,
                         'gym_id' => $gym->id,
                         'member_id' => $memberId,
@@ -58,7 +58,7 @@ final class MembershipService extends Model
 
                 return $membership;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create membership', [
+                $this->logger->error('Failed to create membership', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -69,9 +69,9 @@ final class MembershipService extends Model
         public function cancelMembership(Membership $membership, string $reason, string $correlationId): void
         {
 
-
             try {
-                DB::transaction(function () use ($membership, $reason, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($membership, $reason, $correlationId) {
                     $membership->update([
                         'status' => 'cancelled',
                         'cancellation_reason' => $reason,
@@ -80,14 +80,14 @@ final class MembershipService extends Model
 
                     MembershipExpired::dispatch($membership, $correlationId);
 
-                    Log::channel('audit')->info('Membership cancelled', [
+                    $this->logger->info('Membership cancelled', [
                         'membership_id' => $membership->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to cancel membership', [
+                $this->logger->error('Failed to cancel membership', [
                     'membership_id' => $membership->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

@@ -2,15 +2,18 @@
 
 namespace App\Domains\Sports\Fitness\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RefundMembershipCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class RefundMembershipCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(MembershipExpired $event): void
         {
@@ -22,7 +25,9 @@ final class RefundMembershipCommissionListener extends Model
                 $gym = $event->membership->gym;
                 $commissionAmount = (int) ($event->membership->commission_amount * 100);
 
-                DB::transaction(function () use ($gym, $commissionAmount, $event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($gym, $commissionAmount, $event) {
                     $wallet = Wallet::where('tenant_id', $gym->tenant_id)->lockForUpdate()->first();
                     if ($wallet) {
                         $wallet->increment('balance', $commissionAmount);
@@ -37,7 +42,7 @@ final class RefundMembershipCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Membership commission refunded', [
+                    $this->logger->info('Membership commission refunded', [
                         'membership_id' => $event->membership->id,
                         'gym_id' => $gym->id,
                         'commission_amount' => $event->membership->commission_amount,
@@ -45,7 +50,7 @@ final class RefundMembershipCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to refund membership commission', [
+                $this->logger->error('Failed to refund membership commission', [
                     'membership_id' => $event->membership->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

@@ -2,24 +2,35 @@
 
 namespace App\Jobs\CacheWarmers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class WarmAIConstructorResultJob extends Model
+/**
+ * Class WarmAIConstructorResultJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs\CacheWarmers
+ */
+final class WarmAIConstructorResultJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
-        private int $tries = 3;
-        private int $timeout = 60;
+        protected int $tries = 3;
+        protected int $timeout = 60;
 
         public function __construct(
             private readonly int $userId,
             private readonly string $vertical,
-            private readonly array $designData
-        ) {}
+            private readonly array $designData,
+            private readonly LogManager $logger,
+            private readonly CacheManager $cache,
+    ) {}
 
         public function handle(): void
         {
@@ -35,17 +46,17 @@ final class WarmAIConstructorResultJob extends Model
                     'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
                 ];
 
-                Cache::store('redis')
+                $this->cache->store('redis')
                     ->tags([$cacheTag, "ai_constructor_{$this->vertical}"])
                     ->put($cacheKey, $result, now()->addHours(12));
 
-                Log::channel('audit')->info('AI constructor result cached', [
+                $this->logger->channel('audit')->info('AI constructor result cached', [
                     'user_id' => $this->userId,
                     'vertical' => $this->vertical,
                     'correlation_id' => $result['correlation_id'],
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to cache AI constructor result', [
+                $this->logger->channel('audit')->error('Failed to cache AI constructor result', [
                     'user_id' => $this->userId,
                     'vertical' => $this->vertical,
                     'error' => $e->getMessage(),

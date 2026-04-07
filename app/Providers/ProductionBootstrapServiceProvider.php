@@ -2,104 +2,117 @@
 
 namespace App\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\Infrastructure\DopplerService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 
-final class ProductionBootstrapServiceProvider extends Model
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final class ProductionBootstrapServiceProvider extends ServiceProvider
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Register any application services.
+     */
     public function register(): void
-        {
-            // Регистрация сервисов в production-контексте
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        if ($this->app->environment('production')) {
+            $this->bootProductionFeatures();
         }
+    }
 
-        public function boot(): void
-        {
-            // Кэширование маршрутов и конфига в production
-            if ($this->app->environment('production')) {
-                $this->bootCaching();
-            }
+    /**
+     * Boot production-specific features.
+     */
+    private function bootProductionFeatures(): void
+    {
+        $this->bootDoppler();
+        $this->bootCaching();
+        $this->bootRateLimiting();
+        $this->bootLogging();
+    }
 
-            // RateLimiter для критичных операций
-            $this->bootRateLimiting();
-
-            // Логирование
-            $this->bootLogging();
-        }
-
-        /**
-         * Кэширование маршрутов и конфига в production.
-         */
-        private function bootCaching(): void
-        {
-
-            Log::info('Production caching enabled', [
-                'config_cached' => true,
-                'routes_cached' => true,
+    /**
+     * Initialize Doppler for secrets management.
+     */
+    private function bootDoppler(): void
+    {
+        try {
+            DopplerService::initialize();
+            $this->logger->info('Doppler service initialized successfully.');
+        } catch (\Throwable $e) {
+            $this->logger->critical('Failed to initialize Doppler service.', [
+                'error' => $e->getMessage(),
             ]);
         }
+    }
 
-        /**
-         * Настройка RateLimiter (tenant-aware и user-aware).
-         */
-        private function bootRateLimiting(): void
-        {
-            // Лимит для публичных эндпоинтов платежей
-            RateLimiter::for('payments', function ($request) {
-                return Limit::perMinute(50)
-                    ->by($request->user()?->id ?: $request->ip())
-                    ->response(function ($request, $limit) {
-                        return response()->json([
-                            'error' => 'Too many payment requests',
-                            'retry_after' => $limit->secondsUntilReset,
-                        ], 429);
-                    });
-            });
-
-            // Лимит для промокодов (100 попыток/мин)
-            RateLimiter::for('promo', function ($request) {
-                return Limit::perMinute(100)
-                    ->by($request->user()?->id ?: $request->ip());
-            });
-
-            // Лимит для вишлиста (200 операций/мин)
-            RateLimiter::for('wishlist', function ($request) {
-                return Limit::perMinute(200)
-                    ->by($request->user()?->id ?: $request->ip());
-            });
-
-            // Лимит для рефералов (50 попыток применить код/мин)
-            RateLimiter::for('referral', function ($request) {
-                return Limit::perMinute(50)
-                    ->by($request->user()?->id ?: $request->ip());
-            });
-
-            // Лимит для B2B массовых операций (10 импортов/день)
-            RateLimiter::for('bulk_import', function ($request) {
-                $tenantId = $request->user()?->current_tenant_id ?? 0;
-
-                return Limit::perDay(10)
-                    ->by("bulk_import_{$tenantId}");
-            });
-
-            Log::info('RateLimiter configured for production', [
-                'limiters' => ['payments', 'promo', 'wishlist', 'referral', 'bulk_import'],
-            ]);
+    /**
+     * Configure production caching.
+     */
+    private function bootCaching(): void
+    {
+        if (app()->configurationIsCached() && app()->routesAreCached()) {
+            $this->logger->info('Production caching is active.');
+        } else {
+            $this->logger->warning('Production environment is running without cached config or routes.');
         }
+    }
 
-        /**
-         * Настройка логирования.
-         */
-        private function bootLogging(): void
-        {
-            // Используем канал 'audit' для всех критичных действий
-            // Канал определен в config/logging.php
+    /**
+     * Configure rate limiters.
+     */
+    private function bootRateLimiting(): void
+    {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
 
-            Log::info('Production logging enabled', [
-                'audit_channel' => 'audit',
-                'environment' => app()->environment(),
-            ]);
-        }
+        RateLimiter::for('payments', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
+
+        RateLimiter::for('promo', function (Request $request) {
+            return Limit::perMinute(100)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('wishlist', function (Request $request) {
+            return Limit::perMinute(200)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('referral', function (Request $request) {
+            return Limit::perMinute(50)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('bulk_import', function (Request $request) {
+            $tenantId = $request->user()?->current_tenant_id ?? 0;
+            return Limit::perDay(10)
+                ->by("bulk_import_{$tenantId}");
+        });
+    }
+
+    /**
+     * Configure production logging.
+     */
+    private function bootLogging(): void
+    {
+        $this->logger->shareContext([
+            'correlation_id' => $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString(),
+        ]);
+    }
 }

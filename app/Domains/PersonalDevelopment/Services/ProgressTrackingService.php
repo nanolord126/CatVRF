@@ -2,20 +2,18 @@
 
 namespace App\Domains\PersonalDevelopment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProgressTrackingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ProgressTrackingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
-        public function __construct(
-            private string $correlationId = ''
-        ) {
+        public function __construct(private string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
 
@@ -24,7 +22,7 @@ final class ProgressTrackingService extends Model
          */
         public function addMilestone(Enrollment $enrollment, string $title, string $requirements): Milestone
         {
-            Log::channel('audit')->info('PD Progress: Adding new milestone', [
+            $this->logger->info('PD Progress: Adding new milestone', [
                 'enrollment_uuid' => $enrollment->uuid,
                 'title' => $title,
                 'correlation_id' => $this->correlationId,
@@ -50,14 +48,16 @@ final class ProgressTrackingService extends Model
                 return;
             }
 
-            DB::transaction(function () use ($milestone) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($milestone) {
                 // Помечаем веху выполненной
                 $milestone->markAsCompleted();
 
                 // Обновляем прогресс всей записи
                 $milestone->enrollment->updateProgressFromMilestones();
 
-                Log::channel('audit')->info('PD Progress: Milestone completed', [
+                $this->logger->info('PD Progress: Milestone completed', [
                     'milestone_uuid' => $milestone->uuid,
                     'enrollment_uuid' => $milestone->enrollment->uuid,
                     'new_progress' => $milestone->enrollment->progress_percent,
@@ -71,7 +71,7 @@ final class ProgressTrackingService extends Model
                         'correlation_id' => $this->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('PD Progress: Enrollment fully completed!', [
+                    $this->logger->info('PD Progress: Enrollment fully completed!', [
                         'enrollment_uuid' => $milestone->enrollment->uuid,
                         'correlation_id' => $this->correlationId,
                     ]);

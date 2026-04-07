@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class TimeSeriesHeatmapController extends Model
+final class TimeSeriesHeatmapController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private TimeSeriesHeatmapService $timeSeriesService;
-        public function __construct(TimeSeriesHeatmapService $timeSeriesService)
+        public function __construct(TimeSeriesHeatmapService $timeSeriesService,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    )
         {
             $this->timeSeriesService = $timeSeriesService;
         }
@@ -31,7 +35,7 @@ final class TimeSeriesHeatmapController extends Model
                     'aggregation' => 'sometimes|in:hourly,daily,weekly',
                     'metric' => 'sometimes|in:event_count,unique_users,unique_sessions',
                 ]);
-                $tenantId = auth()->id() ?? filament()->getTenant()->id;
+                $tenantId = $this->guard->id() ?? filament()->getTenant()->id;
                 $vertical = $validated['vertical'];
                 $fromDate = $validated['from_date'];
                 $toDate = $validated['to_date'];
@@ -40,11 +44,11 @@ final class TimeSeriesHeatmapController extends Model
                 // Rate limiting
                 $cacheKey = "ratelimit:timeseries:{$tenantId}:{$vertical}";
                 if (cache()->has($cacheKey) && cache()->get($cacheKey) > 100) {
-                    Log::channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded', [
                         'tenant_id' => $tenantId,
                         'correlation_id' => $correlationId,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Too many requests',
                         'correlation_id' => $correlationId,
                     ], 429);
@@ -59,33 +63,40 @@ final class TimeSeriesHeatmapController extends Model
                     aggregation: $aggregation,
                     metric: $metric
                 );
-                Log::channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap requested', [
+                $this->logger->channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap requested', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                     'aggregation' => $aggregation,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $data,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                Log::channel('error')->warning('[TimeSeriesHeatmap] Validation failed', [
+                $this->logger->channel('error')->warning('[TimeSeriesHeatmap] Validation failed', [
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('[TimeSeriesHeatmap] Geo heatmap request failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('[TimeSeriesHeatmap] Geo heatmap request failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                     'stacktrace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId ?? 'unknown',
                 ], 500);
@@ -107,7 +118,7 @@ final class TimeSeriesHeatmapController extends Model
                     'to_date' => 'required|date_format:Y-m-d|after:from_date',
                     'aggregation' => 'sometimes|in:hourly,daily',
                 ]);
-                $tenantId = auth()->id() ?? filament()->getTenant()->id;
+                $tenantId = $this->guard->id() ?? filament()->getTenant()->id;
                 $vertical = $validated['vertical'];
                 $pageUrl = $validated['page_url'];
                 $fromDate = $validated['from_date'];
@@ -116,11 +127,11 @@ final class TimeSeriesHeatmapController extends Model
                 // Rate limiting
                 $cacheKey = "ratelimit:timeseries:click:{$tenantId}";
                 if (cache()->has($cacheKey) && cache()->get($cacheKey) > 100) {
-                    Log::channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded (click)', [
+                    $this->logger->channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded (click)', [
                         'tenant_id' => $tenantId,
                         'correlation_id' => $correlationId,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Too many requests',
                         'correlation_id' => $correlationId,
                     ], 429);
@@ -135,34 +146,41 @@ final class TimeSeriesHeatmapController extends Model
                     toDate: $toDate,
                     aggregation: $aggregation
                 );
-                Log::channel('audit')->info('[TimeSeriesHeatmap] Click heatmap requested', [
+                $this->logger->channel('audit')->info('[TimeSeriesHeatmap] Click heatmap requested', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                     'page_url' => substr($pageUrl, 0, 100),
                     'aggregation' => $aggregation,
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $data,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                Log::channel('error')->warning('[TimeSeriesHeatmap] Validation failed (click)', [
+                $this->logger->channel('error')->warning('[TimeSeriesHeatmap] Validation failed (click)', [
                     'errors' => $e->errors(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('[TimeSeriesHeatmap] Click heatmap request failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('[TimeSeriesHeatmap] Click heatmap request failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                     'stacktrace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId ?? 'unknown',
                 ], 500);

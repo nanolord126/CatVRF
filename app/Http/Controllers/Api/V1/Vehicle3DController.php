@@ -7,6 +7,7 @@ use App\Services\ThreeD\VehicleVisualizerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * Vehicle3DController
@@ -17,10 +18,25 @@ use Illuminate\Support\Str;
  * @package App\Http\Controllers\API\V1
  * @version 1.0.0
  */
+/**
+ * Class Vehicle3DController
+ *
+ * API Controller following CatVRF canon:
+ * - Constructor injection for all dependencies
+ * - Request validation via Form Requests
+ * - Response via ResponseFactory DI
+ * - correlation_id in all responses
+ *
+ * @see \App\Http\Controllers\BaseApiController
+ * @package App\Http\Controllers\Api\V1
+ */
 final class Vehicle3DController extends Controller
 {
-    public function __construct(private readonly VehicleVisualizerService $service)
+    public function __construct(private readonly VehicleVisualizerService $service,
+        private readonly ResponseFactory $response,
+    )
     {
+
     }
 
     public function visualize(int $vehicleId, Request $request): JsonResponse
@@ -33,7 +49,7 @@ final class Vehicle3DController extends Controller
             'wheels' => 'integer',
         ]);
         $visualization = $this->service->generateVehicleVisualization($vehicleData);
-        return response()->json([
+        return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),
         ]);
@@ -46,7 +62,7 @@ final class Vehicle3DController extends Controller
             'top' => ['position' => [0, 4, 0], 'target' => [0, 1, 0]],
             'interior' => ['position' => [0, 1, 0], 'target' => [0, 1, -1]],
         ];
-        return response()->json([
+        return $this->response->json([
             'data' => $angles,
             'correlation_id' => Str::uuid(),
         ]);

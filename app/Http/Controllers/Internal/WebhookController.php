@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers\Internal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class WebhookController extends Model
+final class WebhookController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly WebhookSignatureService $signatureService,
             private readonly PaymentService $paymentService,
-            private readonly FraudControlService $fraudControl,
-        ) {}
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Обработать вебхук от платёжной системы.
          *
@@ -35,7 +38,7 @@ final class WebhookController extends Model
                 // Получить тело запроса (raw JSON)
                 $payload = $request->getContent();
                 $data = json_decode($payload, true) ?? (array) $request->input();
-                Log::channel('audit')->info('Webhook received', [
+                $this->logger->channel('audit')->info('Webhook received', [
                     'provider' => $provider,
                     'correlation_id' => $correlationId,
                     'ip' => $request->ip(),
@@ -43,7 +46,7 @@ final class WebhookController extends Model
                 ]);
                 // КАНОН 2026: Проверить подпись вебхука
                 if (!$this->signatureService->verify($provider, $payload, $request->headers->all())) {
-                    Log::channel('fraud_alert')->warning('Invalid webhook signature', [
+                    $this->logger->channel('fraud_alert')->warning('Invalid webhook signature', [
                         'provider' => $provider,
                         'ip' => $request->ip(),
                         'correlation_id' => $correlationId,
@@ -55,7 +58,7 @@ final class WebhookController extends Model
                 }
                 // Проверить IP (дополнительная защита)
                 if (!$this->signatureService->isIpWhitelisted($provider, $request->ip())) {
-                    Log::channel('fraud_alert')->warning('Webhook from non-whitelisted IP', [
+                    $this->logger->channel('fraud_alert')->warning('Webhook from non-whitelisted IP', [
                         'provider' => $provider,
                         'ip' => $request->ip(),
                         'correlation_id' => $correlationId,
@@ -73,20 +76,20 @@ final class WebhookController extends Model
                     $paymentInfo['provider_payment_id']
                 )->first();
                 if (!$payment) {
-                    Log::channel('audit')->warning('Webhook payment not found', [
+                    $this->logger->channel('audit')->warning('Webhook payment not found', [
                         'provider' => $provider,
                         'provider_payment_id' => $paymentInfo['provider_payment_id'],
                         'correlation_id' => $correlationId,
                     ]);
                     // Даже если платёж не найден, возвращаем 200 (idempotent)
-                    return response()->json([
+                    return $this->response->json([
                         'status' => 'ok',
                         'message' => 'Webhook processed',
                         'correlation_id' => $correlationId,
                     ]);
                 }
-                // КАНОН 2026: DB::transaction() для всех мутаций
-                \Illuminate\Support\Facades\DB::transaction(function () use ($payment, $paymentInfo, $provider, $correlationId) {
+                // КАНОН 2026: $this->db->transaction() для всех мутаций
+                $this->db->transaction(function () use ($payment, $paymentInfo, $provider, $correlationId) {
                     // Обновить статус платежа
                     $payment->update([
                         'status' => $paymentInfo['status'],
@@ -102,31 +105,38 @@ final class WebhookController extends Model
                         $this->paymentService->capturePayment($payment, $correlationId);
                     }
                 });
-                Log::channel('audit')->info('Webhook processed successfully', [
+                $this->logger->channel('audit')->info('Webhook processed successfully', [
                     'provider' => $provider,
                     'payment_id' => $payment->id,
                     'new_status' => $paymentInfo['status'],
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'ok',
                     'message' => 'Webhook processed',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (InvalidPayloadException $e) {
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ], $e->getCode());
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Webhook processing error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Webhook processing error', [
                     'provider' => $provider,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => 'Webhook processing failed',
                     'correlation_id' => $correlationId,
@@ -139,7 +149,6 @@ final class WebhookController extends Model
         private function extractPaymentInfo(string $provider, array $data): array
         {
             return match ($provider) {
-                'tinkoff' => $this->extractTinkoffInfo($data),
                 'sber' => $this->extractSberInfo($data),
                 'sbp' => $this->extractSbpInfo($data),
                 default => throw new InvalidPayloadException("Unknown payment provider: {$provider}", 400),

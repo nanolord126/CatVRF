@@ -2,16 +2,13 @@
 
 namespace App\Domains\Luxury\Jewelry\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIJewelryConstructor extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIJewelryConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly JewelryDomainService $jewelryService
+            private readonly JewelryDomainService $jewelryService, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -22,7 +19,7 @@ final class AIJewelryConstructor extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-4: AI Jewelry Recommendation Request', [
+            $this->logger->info('LAYER-4: AI Jewelry Recommendation Request', [
                 'style' => $dto->stylePreference,
                 'color' => $dto->colorType,
                 'occasion' => $dto->occasion,
@@ -38,7 +35,7 @@ final class AIJewelryConstructor extends Model
                 $matchedIds = $this->getMatchingJewelry($dto->stylePreference, $dto->budgetLimit, $logicData['suggested_metals']);
 
                 if (empty($matchedIds)) {
-                    throw new Exception("No jewelry products found for style '{$dto->stylePreference}' within budget.");
+                    throw new \DomainException("No jewelry products found for style '{$dto->stylePreference}' within budget.");
                 }
 
                 // 3. Construct Brief Advice for the user
@@ -54,7 +51,7 @@ final class AIJewelryConstructor extends Model
                     correlationId: $correlationId
                 );
 
-                Log::channel('audit')->info('LAYER-4: AI Jewelry Recommendations Generated Successfully', [
+                $this->logger->info('LAYER-4: AI Jewelry Recommendations Generated Successfully', [
                     'items_count' => count($result->recommendedProductIds),
                     'correlation_id' => $correlationId,
                 ]);
@@ -62,7 +59,7 @@ final class AIJewelryConstructor extends Model
                 return $result;
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('LAYER-4: AI Jewelry Construction Failed', [
+                $this->logger->error('LAYER-4: AI Jewelry Construction Failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

@@ -6,12 +6,12 @@ use Livewire\Component;
 
 final class Room3DTour extends Component
 {
-    public int $roomId;
-    public string $hotelId;
-    public array $roomData = [];
-    public array $currentView = [];
-    public int $currentFloorIndex = 0;
-    public bool $showFloorPlan = false;
+    private int $roomId;
+    private string $hotelId;
+    private array $roomData = [];
+    private array $currentView = [];
+    private int $currentFloorIndex = 0;
+    private bool $showFloorPlan = false;
 
     public function mount(int $roomId, string $hotelId): void
     {
@@ -40,7 +40,6 @@ final class Room3DTour extends Component
     public function viewFrom(string $angle): void
     {
         $this->currentView = match ($angle) {
-            'bed' => ['position' => [-2, 1.5, 0], 'target' => [1, 1, 0]],
             'window' => ['position' => [0, 1.5, -3], 'target' => [0, 1, 1]],
             'door' => ['position' => [3, 1.5, 0], 'target' => [-1, 1, 0]],
             'full' => ['position' => [2, 2, 2], 'target' => [0, 1, 0]],

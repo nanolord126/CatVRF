@@ -2,40 +2,37 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeliveryOrderService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class DeliveryOrderService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly SurgePricingService $surgePricing,
             private readonly CourierService $courierService,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Инициация заказа на доставку (Production Ready)
          */
         public function createOrder(array $data, string $correlationId): DeliveryOrder
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 1. Rate Limiting (user-aware)
-                if (RateLimiter::tooManyAttempts("create_delivery_order:".($data['customer_id'] ?? 'guest'), 5)) {
+                if ($this->rateLimiter->tooManyAttempts("create_delivery_order:".($data['customer_id'] ?? 'guest'), 5)) {
                     throw new \RuntimeException("Слишком много попыток создания заказа. Подождите.");
                 }
-                RateLimiter::hit("create_delivery_order:".($data['customer_id'] ?? 'guest'), 300);
+                $this->rateLimiter->hit("create_delivery_order:".($data['customer_id'] ?? 'guest'), 300);
 
                 // 2. Fraud Check перед созданием
-                $this->fraud->check([
-                    'operation_type' => 'delivery_order_create',
-                    'correlation_id' => $correlationId,
-                    'payload' => $data
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'delivery_order_create', amount: 0, correlationId: $correlationId ?? '');
 
                 // 3. Расчет коэффициента Surge
                 $pickup = $data['pickup_point'];
@@ -58,7 +55,7 @@ final class DeliveryOrderService extends Model
                     'tags' => ['surge_applied' => $surge['multiplier'] > 1.0]
                 ]);
 
-                Log::channel('audit')->info('Delivery order created', [
+                $this->logger->info('Delivery order created', [
                     'order_uuid' => $order->uuid,
                     'multiplier' => $order->surge_multiplier,
                     'correlation_id' => $correlationId
@@ -73,7 +70,7 @@ final class DeliveryOrderService extends Model
          */
         public function assignCourier(DeliveryOrder $order, Courier $courier, string $correlationId): void
         {
-            DB::transaction(function () use ($order, $courier, $correlationId) {
+            $this->db->transaction(function () use ($order, $courier, $correlationId) {
                 if (!$courier->is_available) {
                     throw new \RuntimeException("Курьер более не доступен для заказа.");
                 }
@@ -81,7 +78,7 @@ final class DeliveryOrderService extends Model
                 $order->assignCourier($courier->id, $correlationId);
                 $courier->update(['is_available' => false]);
 
-                Log::channel('audit')->info('Courier manual assignment', [
+                $this->logger->info('Courier manual assignment', [
                     'order_id' => $order->id,
                     'courier_id' => $courier->id,
                     'correlation_id' => $correlationId
@@ -94,7 +91,7 @@ final class DeliveryOrderService extends Model
          */
         public function cancelOrder(DeliveryOrder $order, string $reason, string $correlationId): void
         {
-            DB::transaction(function () use ($order, $reason, $correlationId) {
+            $this->db->transaction(function () use ($order, $reason, $correlationId) {
                 if ($order->isCompleted()) {
                     throw new \RuntimeException("Нельзя отменить уже завершенный заказ.");
                 }
@@ -113,7 +110,7 @@ final class DeliveryOrderService extends Model
                     Courier::where('id', $order->courier_id)->update(['is_available' => true]);
                 }
 
-                Log::channel('audit')->warning('Delivery order cancelled', [
+                $this->logger->warning('Delivery order cancelled', [
                     'order_uuid' => $order->uuid,
                     'reason' => $reason,
                     'correlation_id' => $correlationId

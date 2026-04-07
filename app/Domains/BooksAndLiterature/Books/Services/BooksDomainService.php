@@ -2,17 +2,15 @@
 
 namespace App\Domains\BooksAndLiterature\Books\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BooksDomainService extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class BooksDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Create or update a book with bio-data and inventory tracking.
@@ -22,13 +20,14 @@ final class BooksDomainService extends Model
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
             // 1. Audit Entry
-            Log::channel('audit')->info('Book Upsert Initiated', [
+            $this->logger->info('Book Upsert Initiated', [
                 'sku' => $dto->isbn,
                 'cid' => $correlationId,
-                'title' => $dto->title
+                'title' => $dto->title,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 // 2. Fraud Check (Market manipulation)
                 $this->fraudControl::check([
                     'action' => 'book_upsert',
@@ -38,7 +37,7 @@ final class BooksDomainService extends Model
                 ]);
 
                 $book = Book::updateOrCreate(
-                    ['isbn' => $dto->isbn, 'tenant_id' => filament()->getTenant()->id],
+                    ['isbn' => $dto->isbn, 'tenant_id' => tenant()->id],
                     [
                         'title' => $dto->title,
                         'author_id' => $dto->authorId,
@@ -58,7 +57,7 @@ final class BooksDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Book Upsert Completed', ['id' => $book->id, 'cid' => $correlationId]);
+                $this->logger->info('Book Upsert Completed', ['id' => $book->id, 'cid' => $correlationId]);
 
                 return $book;
             });
@@ -72,7 +71,7 @@ final class BooksDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 $totalAmount = 0;
                 $orderItems = [];
 
@@ -86,7 +85,7 @@ final class BooksDomainService extends Model
 
                     // Inventory update
                     if ($book->stock_quantity < $item['qty']) {
-                        throw new \Exception("Insufficient stock for ISBN: {$book->isbn}");
+                        throw new \RuntimeException("Insufficient stock for ISBN: {$book->isbn}");
                     }
                     $book->decrement('stock_quantity', $item['qty']);
 
@@ -110,11 +109,12 @@ final class BooksDomainService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('Corporate Order Created', [
+                $this->logger->info('Corporate Order Created', [
                     'order_id' => $order->id,
                     'type' => $dto->type,
                     'total' => $totalAmount,
-                    'cid' => $correlationId
+                    'cid' => $correlationId,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $order;
@@ -128,9 +128,9 @@ final class BooksDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 $review = BookReview::create([
-                    'tenant_id' => filament()->getTenant()->id,
+                    'tenant_id' => tenant()->id,
                     'user_id' => $dto->userId,
                     'book_id' => $dto->bookId,
                     'rating' => $dto->rating,
@@ -140,7 +140,7 @@ final class BooksDomainService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('Book Review Submitted', ['id' => $review->id, 'cid' => $correlationId]);
+                $this->logger->info('Book Review Submitted', ['id' => $review->id, 'cid' => $correlationId]);
 
                 return $review;
             });

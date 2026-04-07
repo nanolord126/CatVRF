@@ -2,33 +2,32 @@
 
 namespace App\Domains\Hotels\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class BookingController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly BookingService $bookingService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
-        public function index(): JsonResponse
+        public function index(\Illuminate\Http\Request $request): JsonResponse
         {
             try {
                 $this->authorize('viewAny', Booking::class);
 
-                $bookings = Booking::where('guest_id', auth()->id())
+                $bookings = Booking::where('guest_id', $request->user()?->id)
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $bookings,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
@@ -41,27 +40,27 @@ final class BookingController extends Model
                 $booking = Booking::findOrFail($id);
                 $this->authorize('view', $booking);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking->load(['hotel', 'roomType']),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function store(): JsonResponse
+        public function store(\Illuminate\Http\Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $this->authorize('create', Booking::class);
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'hotel_id' => 'required|uuid',
                     'room_type_id' => 'required|uuid',
                     'check_in_date' => 'required|date',
@@ -80,38 +79,38 @@ final class BookingController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Hotel booking created', [
+                $this->logger->info('Hotel booking created', [
                     'correlation_id' => $correlationId,
                     'booking_id' => $booking->id ?? null,
                     'hotel_id' => $data['hotel_id'],
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'check_in' => $data['check_in_date'],
                     'check_out' => $data['check_out_date'],
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function update(string $id): JsonResponse
+        public function update(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $booking = Booking::findOrFail($id);
                 $this->authorize('update', $booking);
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'booking_status' => 'nullable|in:confirmed,checked_in,checked_out,cancelled',
                     'special_requests' => 'nullable|string',
                 ]);
@@ -119,27 +118,27 @@ final class BookingController extends Model
                 $before = $booking->booking_status;
                 $booking->update($data);
 
-                Log::channel('audit')->info('Hotel booking updated', [
+                $this->logger->info('Hotel booking updated', [
                     'correlation_id' => $correlationId,
                     'booking_id' => $booking->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'before' => $before,
                     'after' => $data,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function cancel(string $id): JsonResponse
+        public function cancel(\Illuminate\Http\Request $request, string $id): JsonResponse
         {
             try {
                 $booking = Booking::findOrFail($id);
@@ -147,27 +146,27 @@ final class BookingController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                $this->fraudControlService->check(auth()->id() ?? 0, 'booking_cancel', 0, request()->ip(), null, $correlationId);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'booking_cancel', amount: 0, correlationId: $correlationId ?? '');
 
                 $this->bookingService->cancelBooking(
                     booking: $booking,
-                    reason: request()->input('reason', 'Guest cancelled'),
+                    reason: $request->input('reason', 'Guest cancelled'),
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Hotel booking cancelled', [
+                $this->logger->info('Hotel booking cancelled', [
                     'correlation_id' => $correlationId,
                     'booking_id' => $booking->id,
-                    'user_id' => auth()->id(),
-                    'reason' => request()->input('reason', 'Guest cancelled'),
+                    'user_id' => $request->user()?->id,
+                    'reason' => $request->input('reason', 'Guest cancelled'),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
@@ -182,12 +181,12 @@ final class BookingController extends Model
                 $bookings = Booking::where('hotel_id', $hotelId)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $bookings,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);

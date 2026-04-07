@@ -2,15 +2,20 @@
 
 namespace App\Domains\Logistics\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RefundShipmentCommissionListener extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class RefundShipmentCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(ShipmentCreated $event): void
         {
@@ -19,13 +24,14 @@ final class RefundShipmentCommissionListener extends Model
             }
 
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $wallet = \App\Models\Wallet::where('tenant_id', $event->shipment->tenant_id)
                         ->lockForUpdate()
                         ->first();
 
                     if (!$wallet) {
-                        throw new \Exception('Wallet not found');
+                        throw new \RuntimeException('Wallet not found');
                     }
 
                     $commissionAmount = (int) ($event->shipment->commission_amount * 100);
@@ -40,7 +46,7 @@ final class RefundShipmentCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Shipment commission refunded', [
+                    $this->logger->info('Shipment commission refunded', [
                         'shipment_id' => $event->shipment->id,
                         'tenant_id' => $event->shipment->tenant_id,
                         'customer_id' => $event->shipment->customer_id,
@@ -49,10 +55,11 @@ final class RefundShipmentCommissionListener extends Model
                     ]);
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to refund shipment commission', [
+                $this->logger->error('Failed to refund shipment commission', [
                     'shipment_id' => $event->shipment->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }

@@ -78,7 +78,7 @@ return new class extends Migration
                 $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
                 $table->foreignId('vehicle_id')->nullable()->constrained('logistics_vehicles');
                 $table->enum('status', ['online', 'offline', 'busy'])->default('offline');
-                $table->point('current_location')->nullable();
+                $table->geometry('current_location')->nullable();
                 $table->float('rating')->default(5.0);
                 $table->integer('commission_percent')->default(15)->comment('Комиссия платформы для этого курьера');
                 $table->jsonb('tags')->nullable();
@@ -141,3 +141,5 @@ return new class extends Migration
         Schema::dropIfExists('geo_zones');
     }
 };
+
+

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Flowers\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FlowerPortfolioItem extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'flower_portfolio';
@@ -42,7 +43,7 @@ final class FlowerPortfolioItem extends Model
             static::creating(function (FlowerPortfolioItem $item) {
                 $item->uuid = (string) Str::uuid();
                 $item->tenant_id = $item->tenant_id ?? (tenant()->id ?? 0);
-                $item->correlation_id = $item->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+                $item->correlation_id = $item->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
             });
 
             if (function_exists('tenant') && tenant()) {

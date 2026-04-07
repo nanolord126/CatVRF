@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FashionResource extends Model
+final class FashionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BFashionOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +105,15 @@ final class FashionResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashion::route('/'),
-                'create' => Pages\\CreateFashion::route('/create'),
-                'edit' => Pages\\EditFashion::route('/{record}/edit'),
-                'view' => Pages\\ViewFashion::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFashion::route('/'),
-                'create' => Pages\\CreateFashion::route('/create'),
-                'edit' => Pages\\EditFashion::route('/{record}/edit'),
-                'view' => Pages\\ViewFashion::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFashion::route('/'),
-                'create' => Pages\\CreateFashion::route('/create'),
-                'edit' => Pages\\EditFashion::route('/{record}/edit'),
-                'view' => Pages\\ViewFashion::route('/{record}'),
+                'index' => Pages\ListFashion::route('/'),
+                'create' => Pages\CreateFashion::route('/create'),
+                'edit' => Pages\EditFashion::route('/{record}/edit'),
+                'view' => Pages\ViewFashion::route('/{record}'),
             ];
         }
 }

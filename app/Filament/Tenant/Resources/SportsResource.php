@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class SportsResource extends Model
+final class SportsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BSportStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class SportsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListSports::route('/'),
-                'create' => Pages\\CreateSports::route('/create'),
-                'edit' => Pages\\EditSports::route('/{record}/edit'),
-                'view' => Pages\\ViewSports::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListSports::route('/'),
-                'create' => Pages\\CreateSports::route('/create'),
-                'edit' => Pages\\EditSports::route('/{record}/edit'),
-                'view' => Pages\\ViewSports::route('/{record}'),
+                'index' => Pages\ListSports::route('/'),
+                'create' => Pages\CreateSports::route('/create'),
+                'edit' => Pages\EditSports::route('/{record}/edit'),
+                'view' => Pages\ViewSports::route('/{record}'),
             ];
         }
 }

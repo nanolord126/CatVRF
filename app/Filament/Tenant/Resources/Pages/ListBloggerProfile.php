@@ -2,45 +2,60 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\BloggerProfileResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 
-final class ListBloggerProfile extends Model
+
+use Illuminate\Database\Eloquent\Builder;
+
+/**
+ * Class ListBloggerProfile
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class ListBloggerProfile extends ListRecords
 {
-    use HasFactory;
+    protected static string $resource = BloggerProfileResource::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    EditAction, DeleteAction};
-    use Filament\Tables\Actions\DeleteBulkAction;
-    use Filament\Tables\Columns\TextColumn;
-    use Filament\Tables\Table;
-    use Illuminate\Database\Eloquent\Builder;
-
-    final class ListBloggerProfile extends ListRecords
+    /**
+     * Handle getTitle operation.
+     *
+     * @throws \DomainException
+     */
+    public function getTitle(): string
     {
-        protected static string $resource = BloggerProfileResource::class;
+        return 'List BloggerProfile';
+    }
 
-        public function getTitle(): string
-        {
-            return 'List BloggerProfile';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                CreateAction::make(),
-            ];
-        }
-
-        public function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('id')->sortable(),
-                    TextColumn::make('created_at')->dateTime()->sortable(),
-                ])
-                ->filters([])
-                ->actions([EditAction::make(), DeleteAction::make()])
-                ->bulkActions([DeleteBulkAction::make()]);
-        }
+    public function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('created_at')->dateTime()->sortable(),
+            ])
+            ->filters([])
+            ->actions([EditAction::make(), DeleteAction::make()])
+            ->bulkActions([DeleteBulkAction::make()]);
+    }
 }

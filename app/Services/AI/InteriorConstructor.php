@@ -2,17 +2,21 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class InteriorConstructor extends Model
+use Illuminate\Http\Request;
+use App\Services\RecommendationService;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class InteriorConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private RecommendationService $recommendation,
-        ) {}
+        private readonly LogManager $logger,
+    ) {}
 
         /**
          * Построить рекомендации интерьера
@@ -48,11 +52,12 @@ final class InteriorConstructor extends Model
                 // 7. Рассчитать общую цену
                 $totalPrice = \array_sum(\array_column($allItems, 'price'));
 
-                Log::channel('audit')->info('Interior construction completed', [
+                $this->logger->channel('audit')->info('Interior construction completed', [
                     'style' => $mainStyle,
                     'items_count' => \count($allItems),
                     'total_price' => $totalPrice,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'data' => [
@@ -77,9 +82,10 @@ final class InteriorConstructor extends Model
                     ],
                 ];
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Interior construction failed', [
+                $this->logger->channel('audit')->error('Interior construction failed', [
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 throw $e;
             }
         }

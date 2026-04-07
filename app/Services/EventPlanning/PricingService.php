@@ -2,14 +2,21 @@
 
 namespace App\Services\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\EventPlanning\EventProject;
+use App\Models\EventPlanning\EventService as EventServiceModel;
+use App\Models\EventPlanning\EventVenue;
 
-final class PricingService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class PricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Standard calculation for event total cost.
          * Incorporates B2B multipliers, service tiers, and peak modifiers.
@@ -20,7 +27,7 @@ final class PricingService extends Model
 
             // 1. Base Services Calculation
             $servicesTotal = 0;
-            $services = EventService::whereIn('id', $serviceIds)->get();
+            $services = EventServiceModel::whereIn('id', $serviceIds)->get();
             foreach ($services as $service) {
                 $servicesTotal += (int) $service->base_price;
             }
@@ -47,7 +54,7 @@ final class PricingService extends Model
             $prepaymentRequired = ($event->type === 'b2b') ? (int)($finalTotal * 0.20) : (int)($finalTotal * 0.30);
 
             // 6. Audit Log (Canon Rule 2026: Traceable calculations)
-            Log::channel('audit')->info('[EventPricing] Complete Calculation', [
+            $this->logger->channel('audit')->info('[EventPricing] Complete Calculation', [
                 'event_uuid' => $event->uuid,
                 'correlation_id' => $correlationId,
                 'base_services' => $servicesTotal,

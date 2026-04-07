@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Books;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BooksResource extends Model
+final class BooksResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Book::class;
         protected static ?string $navigationIcon = 'heroicon-o-book-open';
         protected static ?string $navigationGroup = 'Вертикали';

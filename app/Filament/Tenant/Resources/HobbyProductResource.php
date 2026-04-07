@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class HobbyProductResource extends Model
+final class HobbyProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = HobbyProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-scissors';
@@ -102,22 +99,15 @@ final class HobbyProductResource extends Model
                     ])->columns(1),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListHobbyProduct::route('/'),
-                'create' => Pages\\CreateHobbyProduct::route('/create'),
-                'edit' => Pages\\EditHobbyProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewHobbyProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListHobbyProduct::route('/'),
-                'create' => Pages\\CreateHobbyProduct::route('/create'),
-                'edit' => Pages\\EditHobbyProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewHobbyProduct::route('/{record}'),
+                'index' => Pages\ListHobbyProduct::route('/'),
+                'create' => Pages\CreateHobbyProduct::route('/create'),
+                'edit' => Pages\EditHobbyProduct::route('/{record}/edit'),
+                'view' => Pages\ViewHobbyProduct::route('/{record}'),
             ];
         }
 }

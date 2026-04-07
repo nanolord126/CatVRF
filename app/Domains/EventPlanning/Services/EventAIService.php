@@ -2,17 +2,15 @@
 
 namespace App\Domains\EventPlanning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class EventAIService extends Model
+
+use Psr\Log\LoggerInterface;
+final readonly class EventAIService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private AIConstructorService $aiBase,
-        ) {}
+            private AIConstructorService $aiBase, private readonly LoggerInterface $logger) {}
 
         /**
          * Генерирует предварительный план события.
@@ -24,7 +22,7 @@ final class EventAIService extends Model
          */
         public function generateEventPlan(string $eventType, array $preferences, string $correlationId): array
         {
-            Log::channel('audit')->info("EventAIService: Generating plan for {$eventType}", [
+            $this->logger->info("EventAIService: Generating plan for {$eventType}", [
                 'correlation_id' => $correlationId,
                 'preferences' => $preferences,
             ]);
@@ -52,10 +50,10 @@ final class EventAIService extends Model
                 'budget_breakdown' => $this->calculateBudgetBreakdown($budget),
                 'cancellation_rules' => $this->generateCancellationPolicy($eventType, $budget),
                 'ai_score' => 0.98,
-                'generated_at' => now()->toIso8601String(),
+                'generated_at' => Carbon::now()->toIso8601String(),
             ];
 
-            Log::channel('audit')->info("EventAIService: Plan generated successfully", [
+            $this->logger->info("EventAIService: Plan generated successfully", [
                 'correlation_id' => $correlationId,
                 'plan_title' => $plan['overview']['title'],
             ]);
@@ -113,7 +111,6 @@ final class EventAIService extends Model
         private function getTypeLabel(string $type): string
         {
             return match($type) {
-                'wedding' => 'Свадьба',
                 'corporate' => 'Корпоратив',
                 'birthday' => 'День рождения',
                 default => 'Праздник',

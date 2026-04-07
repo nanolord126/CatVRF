@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PropertyResource extends Model
+final class PropertyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Property::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home-modern';
@@ -114,22 +109,15 @@ final class PropertyResource extends Model
                     ])->columns(2),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListProperty::route('/'),
-                'create' => Pages\\CreateProperty::route('/create'),
-                'edit' => Pages\\EditProperty::route('/{record}/edit'),
-                'view' => Pages\\ViewProperty::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListProperty::route('/'),
-                'create' => Pages\\CreateProperty::route('/create'),
-                'edit' => Pages\\EditProperty::route('/{record}/edit'),
-                'view' => Pages\\ViewProperty::route('/{record}'),
+                'index' => Pages\ListProperty::route('/'),
+                'create' => Pages\CreateProperty::route('/create'),
+                'edit' => Pages\EditProperty::route('/{record}/edit'),
+                'view' => Pages\ViewProperty::route('/{record}'),
             ];
         }
 }

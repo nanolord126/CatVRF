@@ -2,14 +2,19 @@
 
 namespace App\Http\Livewire\Food;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class OrderTrackingComponent extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Livewire\Component;
+
+final class OrderTrackingComponent extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public int $orderId = 0;
         public ?RestaurantOrder $order = null;
         public array $timelineEvents = [];
@@ -28,7 +33,7 @@ final class OrderTrackingComponent extends Model
                 $this->isLoading = true;
 
                 $this->order = RestaurantOrder::where('id', $this->orderId)
-                    ->where('client_id', auth()->user()->id)
+                    ->where('client_id', $this->guard->user()->id)
                     ->firstOrFail();
 
                 $this->timelineEvents = [
@@ -59,7 +64,7 @@ final class OrderTrackingComponent extends Model
                 ];
 
             } catch (\Exception $e) {
-                \Log::channel('error')->error('Failed to load order', [
+                $this->logger->error('Failed to load order', [
                     'order_id' => $this->orderId,
                     'exception' => $e->getMessage(),
                     'correlation_id' => (string) Str::uuid(),
@@ -79,13 +84,13 @@ final class OrderTrackingComponent extends Model
 
                     $this->emit('orderCancelled');
 
-                    \Log::channel('audit')->info('Order cancelled', [
+                    $this->logger->info('Order cancelled', [
                         'order_id' => $this->order->id,
-                        'user_id' => auth()->user()->id,
+                        'user_id' => $this->guard->user()->id,
                     ]);
 
                 } catch (\Exception $e) {
-                    \Log::channel('error')->error('Failed to cancel order', [
+                    $this->logger->error('Failed to cancel order', [
                         'exception' => $e->getMessage(),
                     ]);
                 }

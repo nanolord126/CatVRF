@@ -173,3 +173,5 @@ return new class extends Migration
         Schema::dropIfExists('psy_clinics');
     }
 };
+
+

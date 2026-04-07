@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\Insurance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class InsuranceController extends Model
+final class InsuranceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            protected PolicyService $policyService,
-            protected ClaimService $claimService,
-            protected FraudControlService $fraudControl,
-            protected PricingService $pricingService
-        ) {
+            private PolicyService $policyService,
+            private ClaimService $claimService,
+            private FraudControlService $fraud,
+            private PricingService $pricingService,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Insurance вертикали
             $this->middleware('auth:sanctum')->except(['quotePolicy']); // Публичные котировки
              // 50 запросов/мин
@@ -39,7 +40,7 @@ final class InsuranceController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
             // 1. Audit Log Request
-            Log::channel('audit')->info('[InsuranceController] storePolicy request starting', [
+            $this->logger->channel('audit')->info('[InsuranceController] storePolicy request starting', [
                'correlation_id' => $correlationId,
                'user_id' => $request->user()->id,
                'payload' => $request->all(),
@@ -62,23 +63,30 @@ final class InsuranceController extends Model
                     correlationId: $correlationId
                 );
                 // 4. Final Response (Success Audit)
-                Log::channel('audit')->info('[InsuranceController] storePolicy completed successfully', [
+                $this->logger->channel('audit')->info('[InsuranceController] storePolicy completed successfully', [
                     'correlation_id' => $correlationId,
                     'policy_uuid' => $policy->uuid,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $policy->load(['type', 'contract']),
                 ], 201);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 5. Global Error Handling
-                Log::channel('audit')->error('[InsuranceController] storePolicy failed', [
+                $this->logger->channel('audit')->error('[InsuranceController] storePolicy failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'message' => $e->getMessage(),
@@ -91,7 +99,7 @@ final class InsuranceController extends Model
         public function storeClaim(Request $request): JsonResponse
         {
             $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
-            Log::channel('audit')->info('[InsuranceController] storeClaim request starting', [
+            $this->logger->channel('audit')->info('[InsuranceController] storeClaim request starting', [
                 'correlation_id' => $correlationId,
                 'user_id' => $request->user()->id,
             ]);
@@ -106,11 +114,11 @@ final class InsuranceController extends Model
                 // check ownership
                 $policy = InsurancePolicy::findOrFail($validated['policy_id']);
                 if ($policy->user_id !== $request->user()->id) {
-                    return response()->json(['error' => 'Unauthorized policy access.'], 403);
+                    return $this->response->json(['error' => 'Unauthorized policy access.'], 403);
                 }
                 // check status
                 if ($policy->status !== 'active') {
-                    return response()->json(['error' => 'Cannot file claim on non-active policy.'], 400);
+                    return $this->response->json(['error' => 'Cannot file claim on non-active policy.'], 400);
                 }
                 // Create claim via service
                 $claim = $this->claimService->fileClaim(
@@ -121,18 +129,25 @@ final class InsuranceController extends Model
                     correlationId: $correlationId
                 );
                 // Trigger AI Fraud scoring immediately (Background logic)
-                $this->fraudControl->scoreClaim($claim, $correlationId);
-                return response()->json([
+                $this->fraud->scoreClaim($claim, $correlationId);
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $claim->fresh(),
                 ], 201);
             } catch (Exception $e) {
-                Log::channel('audit')->error('[InsuranceController] storeClaim failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('[InsuranceController] storeClaim failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+                return $this->response->json(['success' => false, 'message' => $e->getMessage()], 422);
             }
         }
         /**
@@ -154,13 +169,20 @@ final class InsuranceController extends Model
                     $validated['policy_data'],
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'premium_cents' => $premium,
                 ]);
             } catch (Exception $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 }

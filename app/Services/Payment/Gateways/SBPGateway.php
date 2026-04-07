@@ -2,6 +2,10 @@
 
 namespace App\Services\Payment\Gateways;
 
+
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Models\PaymentTransaction;
 use App\Services\Fraud\FraudControlService;
 use Illuminate\Http\Client\PendingRequest;
@@ -31,13 +35,16 @@ final class SBPGateway implements PaymentGatewayInterface
     private const BASE_URL = 'https://api.sbp.nspk.ru/v1';
 
     public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
         private readonly string $merchantId,
         private readonly string $apiKey,
         private readonly string $webhookSecret,
-        private readonly string $fiscalApiKey = '',
+        private string $fiscalApiKey = '',
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -61,7 +68,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('SBP: Payment initialization started', [
+        $this->logger->channel('audit')->info('SBP: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -93,7 +100,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             $result = $response->json();
 
-            Log::channel('audit')->info('SBP: QR created', [
+            $this->logger->channel('audit')->info('SBP: QR created', [
                 'correlation_id' => $correlationId,
                 'qr_id' => $result['qrId'] ?? null,
                 'order_id' => $data['order_id'] ?? null,
@@ -101,7 +108,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             return $result;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Payment init failed', [
+            $this->logger->channel('audit')->error('SBP: Payment init failed', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
                 'error' => $e->getMessage(),
@@ -154,7 +161,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('SBP: Payment capture started', [
+        $this->logger->channel('audit')->info('SBP: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -177,13 +184,13 @@ final class SBPGateway implements PaymentGatewayInterface
             $success = in_array($result['status'] ?? '', ['CONFIRMED', 'SUCCESS'], true);
 
             if ($success) {
-                Log::channel('audit')->info('SBP: Payment capture succeeded', [
+                $this->logger->channel('audit')->info('SBP: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'status' => $result['status'] ?? null,
                 ]);
             } else {
-                Log::channel('audit')->warning('SBP: Payment capture returned non-success status', [
+                $this->logger->channel('audit')->warning('SBP: Payment capture returned non-success status', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'status' => $result['status'] ?? 'unknown',
@@ -192,7 +199,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Payment capture exception', [
+            $this->logger->channel('audit')->error('SBP: Payment capture exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -225,7 +232,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('SBP: Payment refund initiated', [
+        $this->logger->channel('audit')->info('SBP: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -251,7 +258,7 @@ final class SBPGateway implements PaymentGatewayInterface
             $success = in_array($result['status'] ?? '', ['REFUNDED', 'SUCCESS'], true);
 
             if ($success) {
-                Log::channel('audit')->info('SBP: Payment refund succeeded', [
+                $this->logger->channel('audit')->info('SBP: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -260,7 +267,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Payment refund exception', [
+            $this->logger->channel('audit')->error('SBP: Payment refund exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'refund_amount' => $amount,
@@ -291,7 +298,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('SBP: Payout initiated', [
+        $this->logger->channel('audit')->info('SBP: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'account_number' => $data['account_number'] ?? null,
@@ -316,14 +323,14 @@ final class SBPGateway implements PaymentGatewayInterface
                 throw new RuntimeException('SBP: не удалось создать выплату. Код: ' . $response->status());
             }
 
-            Log::channel('audit')->info('SBP: Payout succeeded', [
+            $this->logger->channel('audit')->info('SBP: Payout succeeded', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
             ]);
 
             return $response->json();
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Payout failed', [
+            $this->logger->channel('audit')->error('SBP: Payout failed', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
                 'error' => $e->getMessage(),
@@ -348,11 +355,11 @@ final class SBPGateway implements PaymentGatewayInterface
     public function handleWebhook(array $payload): array
     {
         // Получить correlation_id из payload или заголовка
-        $correlationId = $payload['correlationId'] ?? request()->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        $correlationId = $payload['correlationId'] ?? $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
         try {
             // 1. Проверка подписи HMAC-SHA256 (КАНОН SECURITY 2026)
-            $signature = $payload['_signature'] ?? request()->header('X-Signature') ?? '';
+            $signature = $payload['_signature'] ?? $this->request->header('X-Signature') ?? '';
 
             // Удалить подпись из payload перед вычислением хеша
             $payloadForHash = $payload;
@@ -361,7 +368,7 @@ final class SBPGateway implements PaymentGatewayInterface
             $expectedSig = hash_hmac('sha256', json_encode($payloadForHash, JSON_UNESCAPED_UNICODE), $this->webhookSecret);
 
             if (!hash_equals($expectedSig, $signature)) {
-                Log::channel('audit')->warning('SBP: Webhook signature invalid', [
+                $this->logger->channel('audit')->warning('SBP: Webhook signature invalid', [
                     'correlation_id' => $correlationId,
                     'transaction_id' => $payload['transactionId'] ?? null,
                     'expected' => substr($expectedSig, 0, 8) . '...',
@@ -371,7 +378,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 throw new RuntimeException('SBP: недействительная подпись вебхука.');
             }
 
-            Log::channel('audit')->info('SBP: Webhook received', [
+            $this->logger->channel('audit')->info('SBP: Webhook received', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $payload['transactionId'] ?? null,
                 'status' => $payload['transactionStatus'] ?? null,
@@ -398,7 +405,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 'raw' => $payloadForHash,
             ];
 
-            Log::channel('audit')->info('SBP: Webhook processed', [
+            $this->logger->channel('audit')->info('SBP: Webhook processed', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $payload['transactionId'] ?? null,
                 'status' => $result['status'],
@@ -406,7 +413,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             return $result;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Webhook processing failed', [
+            $this->logger->channel('audit')->error('SBP: Webhook processing failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -431,7 +438,7 @@ final class SBPGateway implements PaymentGatewayInterface
         $correlationId ??= $transaction->correlation_id ?? Str::uuid()->toString();
 
         if (empty($this->fiscalApiKey)) {
-            Log::channel('audit')->warning('SBP: Fiscal API key not configured, skipping', [
+            $this->logger->channel('audit')->warning('SBP: Fiscal API key not configured, skipping', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
             ]);
@@ -439,7 +446,7 @@ final class SBPGateway implements PaymentGatewayInterface
             return false;
         }
 
-        Log::channel('audit')->info('SBP: Fiscalizing', [
+        $this->logger->channel('audit')->info('SBP: Fiscalizing', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'amount' => $transaction->amount,
@@ -450,7 +457,7 @@ final class SBPGateway implements PaymentGatewayInterface
             // URL и параметры зависят от договора с ОФД-агентом
             $response = $this->http->withToken($this->fiscalApiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post(config('payments.fiscal_api_url', 'https://online.atol.ru/api/v4/') . 'sell', [
+                ->post($this->config->get('payments.fiscal_api_url', 'https://online.atol.ru/api/v4/') . 'sell', [
                     'external_id' => $transaction->id,
                     'correlation_id' => $correlationId,
                     'receipt' => [
@@ -458,9 +465,9 @@ final class SBPGateway implements PaymentGatewayInterface
                             'email' => $transaction->customer_email ?? '',
                         ],
                         'company' => [
-                            'email' => config('app.company_email', ''),
-                            'inn' => config('app.company_inn', ''),
-                            'payment_address' => config('app.company_payment_address', ''),
+                            'email' => $this->config->get('app.company_email', ''),
+                            'inn' => $this->config->get('app.company_inn', ''),
+                            'payment_address' => $this->config->get('app.company_payment_address', ''),
                         ],
                         'items' => [
                             [
@@ -484,7 +491,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 ]);
 
             if ($response->failed()) {
-                Log::channel('audit')->error('SBP: Fiscalization failed', [
+                $this->logger->channel('audit')->error('SBP: Fiscalization failed', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'status' => $response->status(),
@@ -494,7 +501,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 return false;
             }
 
-            Log::channel('audit')->info('SBP: Fiscalization succeeded', [
+            $this->logger->channel('audit')->info('SBP: Fiscalization succeeded', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'uuid' => $response->json()['uuid'] ?? null,
@@ -502,7 +509,7 @@ final class SBPGateway implements PaymentGatewayInterface
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('SBP: Fiscalization error', [
+            $this->logger->channel('audit')->error('SBP: Fiscalization error', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),

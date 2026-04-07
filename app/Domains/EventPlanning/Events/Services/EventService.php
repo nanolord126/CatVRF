@@ -2,139 +2,192 @@
 
 namespace App\Domains\EventPlanning\Events\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventService extends Model
+use Carbon\Carbon;
+use App\Domains\EventPlanning\Events\Models\Event;
+use App\Domains\EventPlanning\Events\Models\Ticket;
+use App\Domains\EventPlanning\Events\Models\TicketOrder;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+
+final readonly class EventService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.14;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        /**
-         * Создание заказа на билеты (Эскроу до начала мероприятия).
-         */
-        public function buyTickets(int $userId, int $eventId, array $data, string $correlationId = ""): TicketOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Покупка билетов на мероприятие (hold средств).
+     */
+    public function buyTickets(int $eventId, int $quantity, string $correlationId = ''): TicketOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
+
+        return $this->db->transaction(function () use ($eventId, $quantity, $correlationId, $userId): TicketOrder {
             $event = Event::findOrFail($eventId);
 
-            if (RateLimiter::tooManyAttempts("events:buy:".$userId, 5)) {
-                throw new \RuntimeException("Ticket purchase limit reached.", 429);
-            }
-            RateLimiter::hit("events:buy:".$userId, 3600);
-
-            return DB::transaction(function () use ($userId, $eventId, $event, $data, $correlationId) {
-                $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "event_ticket_purchase",
-                    "correlation_id" => $correlationId
-                ]);
-
-                $totalAmount = $data["total_amount"];
-                $fee = (int) ($totalAmount * 0.14);
-                $payout = $totalAmount - $fee;
-
-                // Холдирование средств (Эскроу)
-                $this->wallet->hold(
-                    $userId,
-                    $totalAmount,
-                    "event_purchase",
-                    "Event: {$event->title}",
-                    $correlationId
-                );
-
-                $order = TicketOrder::create([
-                    "uuid" => (string) Str::uuid(),
-                    "tenant_id" => auth()->user()->tenant_id ?? 1,
-                    "user_id" => $userId,
-                    "event_id" => $eventId,
-                    "total_price" => $totalAmount,
-                    "platform_fee" => $fee,
-                    "status" => "confirmed",
-                    "correlation_id" => $correlationId,
-                    "tags" => ["vertical:events", "type:ticket_order"]
-                ]);
-
-                // Генерация билетов (упрощенно)
-                foreach ($data["tickets"] as $tData) {
-                    Ticket::create([
-                        "uuid" => (string) Str::uuid(),
-                        "order_id" => $order->id,
-                        "event_id" => $eventId,
-                        "ticket_type_id" => $tData["type_id"],
-                        "qr_code" => (string) Str::uuid(), // В реальности - зашифрованный JWT
-                        "status" => "valid"
-                    ]);
-                }
-
-                Log::channel("audit")->info("Events: tickets ordered", ["order_uuid" => $order->uuid, "fee" => $fee]);
-
-                return $order;
-            });
-        }
-
-        /**
-         * Регистрация гостя на входе (Check-in).
-         */
-        public function checkIn(string $qrCode, int $operatorId, string $correlationId = ""): array
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $ticket = Ticket::where("qr_code", $qrCode)->firstOrFail();
-
-            if ($ticket->status !== "valid") {
-                throw new \RuntimeException("Ticket already used or invalid.", 403);
+            if ($event->available_tickets < $quantity) {
+                throw new \RuntimeException('Not enough tickets available', 400);
             }
 
-            return DB::transaction(function () use ($ticket, $operatorId, $correlationId) {
-                $ticket->update([
-                    "status" => "used",
-                    "checked_in_at" => now(),
-                    "checked_in_by" => $operatorId
+            $total = $event->ticket_price_kopecks * $quantity;
+
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'buy_tickets',
+                amount: $total,
+                correlationId: $correlationId,
+            );
+
+            $payoutKopecks = $total - (int) ($total * self::COMMISSION_RATE);
+
+            $order = TicketOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'event_id' => $eventId,
+                'buyer_id' => $userId,
+                'correlation_id' => $correlationId,
+                'quantity' => $quantity,
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'status' => 'hold',
+                'payment_status' => 'hold',
+                'tags' => ['event_tickets' => true],
+            ]);
+
+            $event->decrement('available_tickets', $quantity);
+
+            for ($i = 0; $i < $quantity; $i++) {
+                Ticket::create([
+                    'uuid' => (string) Str::uuid(),
+                    'ticket_order_id' => $order->id,
+                    'event_id' => $eventId,
+                    'holder_id' => $userId,
+                    'ticket_code' => strtoupper(Str::random(12)),
+                    'status' => 'valid',
+                    'correlation_id' => $correlationId,
                 ]);
+            }
 
-                Log::channel("audit")->info("Events: guest check-in successful", [
-                    "ticket_id" => $ticket->id,
-                    "operator" => $operatorId
-                ]);
+            $this->wallet->hold(
+                walletId: $userId,
+                amount: $total,
+                correlationId: $correlationId,
+                metadata: ['order_id' => $order->id],
+            );
 
-                return [
-                    "success" => true,
-                    "ticket_id" => $ticket->id,
-                    "event_title" => $ticket->event->title ?? "Event"
-                ];
-            });
-        }
+            $this->audit->log(
+                action: 'tickets_purchased',
+                subjectType: TicketOrder::class,
+                subjectId: $order->id,
+                old: [],
+                new: ['quantity' => $quantity, 'total' => $total],
+                correlationId: $correlationId,
+            );
 
-        /**
-         * Финализация выплат организатору после завершения события.
-         */
-        public function settleEventPayouts(int $eventId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+            $this->logger->info('Tickets purchased', [
+                'order_id' => $order->id,
+                'event_id' => $eventId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Чекин посетителя по коду билета.
+     */
+    public function checkIn(string $ticketCode, string $correlationId = ''): Ticket
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($ticketCode, $correlationId): Ticket {
+            $ticket = Ticket::where('ticket_code', $ticketCode)->firstOrFail();
+
+            if ($ticket->status !== 'valid') {
+                throw new \RuntimeException('Ticket already used or invalidated', 400);
+            }
+
+            $ticket->update([
+                'status' => 'checked_in',
+                'checked_in_at' => Carbon::now(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->audit->log(
+                action: 'ticket_checked_in',
+                subjectType: Ticket::class,
+                subjectId: $ticket->id,
+                old: ['status' => 'valid'],
+                new: ['status' => 'checked_in'],
+                correlationId: $correlationId,
+            );
+
+            return $ticket;
+        });
+    }
+
+    /**
+     * Финальный расчёт по завершённому мероприятию.
+     */
+    public function settleEventPayouts(int $eventId, string $correlationId = ''): void
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $this->db->transaction(function () use ($eventId, $correlationId): void {
             $event = Event::findOrFail($eventId);
 
-            if ($event->end_at > now()) {
-                throw new \RuntimeException("Event still in progress. Payout locked.");
-            }
-
-            $orders = TicketOrder::where("event_id", $eventId)->where("status", "confirmed")->get();
+            $orders = TicketOrder::where('event_id', $eventId)
+                ->where('status', 'hold')
+                ->get();
 
             foreach ($orders as $order) {
-                DB::transaction(function () use ($order, $event, $correlationId) {
-                    $payout = $order->total_price - $order->platform_fee;
+                $order->update([
+                    'status' => 'completed',
+                    'payment_status' => 'completed',
+                    'correlation_id' => $correlationId,
+                ]);
 
-                    $this->wallet->releaseHold($order->user_id, $order->total_price, $correlationId);
-                    $this->wallet->credit($event->organizer_id, $payout, "event_organizer_payout", "Event payout #{$event->id}", $correlationId);
-
-                    $order->update(["status" => "finalized_payout"]);
-                });
+                $this->wallet->credit(
+                    walletId: $event->organizer_id,
+                    amount: $order->payout_kopecks,
+                    type: BalanceTransactionType::PAYOUT,
+                    correlationId: $correlationId,
+                    metadata: ['order_id' => $order->id, 'event_id' => $eventId],
+                );
             }
 
-            Log::channel("audit")->info("Events: event payouts settled", ["event_id" => $eventId]);
-        }
+            $event->update(['status' => 'settled']);
+
+            $this->audit->log(
+                action: 'event_settled',
+                subjectType: Event::class,
+                subjectId: $eventId,
+                old: ['status' => $event->status],
+                new: ['status' => 'settled'],
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Event payouts settled', [
+                'event_id' => $eventId,
+                'orders_settled' => $orders->count(),
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 }

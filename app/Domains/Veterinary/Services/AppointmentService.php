@@ -2,19 +2,21 @@
 
 namespace App\Domains\Veterinary\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AppointmentService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
-        }
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+
+    }
 
         private function getCorrelationId(): string
         {
@@ -28,20 +30,20 @@ final class AppointmentService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('AppointmentService: Creating appointment', [
+            $this->logger->info('AppointmentService: Creating appointment', [
                 'data' => $data,
                 'correlation_id' => $correlationId
             ]);
 
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 $appointment = VeterinaryAppointment::create(array_merge($data, [
                     'correlation_id' => $correlationId,
                     'status' => 'pending'
                 ]));
 
-                Log::channel('audit')->info('AppointmentService: Appointment created', [
+                $this->logger->info('AppointmentService: Appointment created', [
                     'id' => $appointment->id,
                     'correlation_id' => $correlationId
                 ]);
@@ -57,10 +59,10 @@ final class AppointmentService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            return DB::transaction(function () use ($id, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($id, $reason, $correlationId) {
                 $appointment = VeterinaryAppointment::findOrFail($id);
 
-                Log::channel('audit')->warning('AppointmentService: Cancelling appointment', [
+                $this->logger->warning('AppointmentService: Cancelling appointment', [
                     'id' => $id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId
@@ -81,14 +83,14 @@ final class AppointmentService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            DB::transaction(function () use ($id, $correlationId) {
+            $this->db->transaction(function () use ($id, $correlationId) {
                 $appointment = VeterinaryAppointment::findOrFail($id);
                 $appointment->update([
                     'status' => 'completed',
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('AppointmentService: Appointment completed', [
+                $this->logger->info('AppointmentService: Appointment completed', [
                     'id' => $id,
                     'correlation_id' => $correlationId
                 ]);

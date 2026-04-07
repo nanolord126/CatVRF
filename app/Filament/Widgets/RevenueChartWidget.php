@@ -2,14 +2,19 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RevenueChartWidget extends Model
+
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Cache;
+
+final class RevenueChartWidget extends ChartWidget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $heading = 'Выручка (30 дней)';
         protected static ?int $columnSpan = 2;
         protected static ?string $maxHeight = '300px';
@@ -21,8 +26,8 @@ final class RevenueChartWidget extends Model
 
         protected function getData(): array
         {
-            $tenantId = auth()->user()->tenant_id;
-            $data = Cache::remember(
+            $tenantId = $this->guard->user()->tenant_id;
+            $data = $this->cache->remember(
                 "revenue_chart:{$tenantId}",
                 3600,
                 function () {

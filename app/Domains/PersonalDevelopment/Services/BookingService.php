@@ -2,128 +2,175 @@
 
 namespace App\Domains\PersonalDevelopment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class BookingService extends Model
+final readonly class BookingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly PricingService $pricingService,
+        private readonly WalletService $walletService,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Конструктор с зависимостями.
-         */
-        public function __construct(
-            private WalletService $walletService,
-            private string $correlationId = ''
-        ) {
-            // Если correlation_id не передан, генерируем новый
-            $this->correlationId = $this->correlationId ?: (string) Str::uuid();
-        }
+     * Бронирование участия в программе личного развития.
+     */
+    public function bookProgram(int $programId, int $userId, string $correlationId): Enrollment
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_booking',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-        /**
-         * Создать бронирование сессии с оплатой через Wallet.
-         *
-         * @param Coach $coach
-         * @param \App\Models\User $client
-         * @param \DateTimeInterface $scheduledAt
-         * @param int $durationMinutes
-         * @return Session
-         * @throws Throwable
-         */
-        public function bookSession(
-            Coach $coach,
-            \App\Models\User $client,
-            \DateTimeInterface $scheduledAt,
-            int $durationMinutes = 60
-        ): Session {
-            // 1. Audit Log на вход
-            Log::channel('audit')->info('PD Booking: Initializing session booking', [
-                'coach_uuid' => $coach->uuid,
-                'client_id' => $client->id,
-                'scheduled_at' => $scheduledAt->format('Y-m-d H:i:s'),
-                'correlation_id' => $this->correlationId,
-            ]);
+        return $this->db->transaction(function () use ($programId, $userId, $correlationId): Enrollment {
+            $program = Program::lockForUpdate()->findOrFail($programId);
 
-            // 2. Fraud Control Check
-            FraudControlService::check([
-                'user_id' => $client->id,
-                'type' => 'pd_session_booking',
-                'amount' => $coach->calculateSessionPrice($durationMinutes),
-                'correlation_id' => $this->correlationId,
-            ]);
-
-            // 3. Расчет стоимости
-            $amount = $coach->calculateSessionPrice($durationMinutes);
-
-            return DB::transaction(function () use ($coach, $client, $scheduledAt, $durationMinutes, $amount) {
-
-                // 4. Оплата через Wallet (списание средств)
-                $this->walletService->debit(
-                    userId: $client->id,
-                    amount: $amount,
-                    type: 'withdrawal',
-                    reason: "Оплата коуч-сессии с {$coach->name}",
-                    correlationId: $this->correlationId
-                );
-
-                // 5. Создание записи сессии
-                /** @var Session $session */
-                $session = Session::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $coach->tenant_id,
-                    'coach_id' => $coach->id,
-                    'client_id' => $client->id,
-                    'scheduled_at' => $scheduledAt,
-                    'duration_minutes' => $durationMinutes,
-                    'status' => 'confirmed',
-                    'amount_kopecks' => $amount,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                // 6. Генерация ссылки на видеовстречу
-                $session->generateVideoLink();
-
-                // 7. Audit Log на выход
-                Log::channel('audit')->info('PD Booking: Session booked successfully', [
-                    'session_uuid' => $session->uuid,
-                    'amount' => $amount,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                return $session;
-            });
-        }
-
-        /**
-         * Отмена сессии с возвратом средств.
-         */
-        public function cancelSession(Session $session, string $reason): void
-        {
-            if ($session->status === 'cancelled') {
-                throw new \Exception('Сессия уже отменена.');
+            if ($program->status !== 'active') {
+                throw new \RuntimeException("Program {$programId} is not available for enrollment.");
             }
 
-            DB::transaction(function () use ($session, $reason) {
-                // Возврат средств в Wallet
+            $currentEnrollments = Enrollment::where('program_id', $programId)
+                ->whereNotIn('status', ['cancelled', 'expired'])
+                ->count();
+
+            if ($program->max_participants > 0 && $currentEnrollments >= $program->max_participants) {
+                throw new \RuntimeException("Program {$programId} is fully booked.");
+            }
+
+            $existingEnrollment = Enrollment::where('program_id', $programId)
+                ->where('user_id', $userId)
+                ->whereNotIn('status', ['cancelled', 'expired'])
+                ->first();
+
+            if ($existingEnrollment !== null) {
+                throw new \RuntimeException("User {$userId} is already enrolled in program {$programId}.");
+            }
+
+            $user = \App\Models\User::findOrFail($userId);
+            $finalPrice = $this->pricingService->calculateFinalPrice($program, $user);
+
+            $enrollment = Enrollment::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $program->tenant_id,
+                'program_id' => $programId,
+                'user_id' => $userId,
+                'price_kopecks' => $finalPrice,
+                'status' => 'pending_payment',
+                'progress_percent' => 0,
+                'correlation_id' => $correlationId,
+                'tags' => ['source' => 'platform_booking'],
+            ]);
+
+            $this->logger->info('PD Booking: Enrollment created', [
+                'enrollment_uuid' => $enrollment->uuid,
+                'program_id' => $programId,
+                'user_id' => $userId,
+                'price_kopecks' => $finalPrice,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $enrollment;
+        });
+    }
+
+    /**
+     * Подтверждение оплаты и активация записи.
+     */
+    public function confirmPayment(int $enrollmentId, string $correlationId): Enrollment
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_payment_confirm',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($enrollmentId, $correlationId): Enrollment {
+            $enrollment = Enrollment::lockForUpdate()->findOrFail($enrollmentId);
+
+            if ($enrollment->status !== 'pending_payment') {
+                throw new \RuntimeException("Enrollment {$enrollmentId} is not awaiting payment.");
+            }
+
+            $enrollment->update([
+                'status' => 'active',
+                'activated_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->logger->info('PD Booking: Payment confirmed, enrollment active', [
+                'enrollment_uuid' => $enrollment->uuid,
+                'enrollment_id' => $enrollmentId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $enrollment->refresh();
+        });
+    }
+
+    /**
+     * Отмена бронирования с возвратом средств.
+     */
+    public function cancelBooking(int $enrollmentId, string $reason, string $correlationId): Enrollment
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_booking_cancel',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($enrollmentId, $reason, $correlationId): Enrollment {
+            $enrollment = Enrollment::lockForUpdate()->findOrFail($enrollmentId);
+
+            if ($enrollment->status === 'completed') {
+                throw new \RuntimeException("Cannot cancel a completed enrollment.");
+            }
+
+            if ($enrollment->status === 'active' && $enrollment->price_kopecks > 0) {
                 $this->walletService->credit(
-                    userId: $session->client_id,
-                    amount: $session->amount_kopecks,
-                    type: 'refund',
-                    reason: "Возврат за отмену сессии: {$reason}",
-                    correlationId: $this->correlationId
+                    userId: $enrollment->user_id,
+                    amount: $enrollment->price_kopecks,
+                    type: 'pd_refund',
+                    reason: "Refund for enrollment #{$enrollment->id}: {$reason}",
+                    correlationId: $correlationId,
                 );
+            }
 
-                $session->update([
-                    'status' => 'cancelled',
-                    'notes_after' => $reason,
-                    'correlation_id' => $this->correlationId,
-                ]);
+            $enrollment->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $reason,
+                'cancelled_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel('audit')->info('PD Booking: Session cancelled and refunded', [
-                    'session_uuid' => $session->uuid,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
-        }
+            $this->logger->info('PD Booking: Enrollment cancelled', [
+                'enrollment_uuid' => $enrollment->uuid,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $enrollment->refresh();
+        });
+    }
+
+    /**
+     * Получение активных записей пользователя.
+     */
+    public function getUserEnrollments(int $userId): \Illuminate\Support\Collection
+    {
+        return Enrollment::where('user_id', $userId)
+            ->whereIn('status', ['active', 'pending_payment'])
+            ->with('program')
+            ->orderByDesc('created_at')
+            ->get();
+    }
 }

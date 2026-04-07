@@ -123,4 +123,80 @@ return [
         'store' => App\Services\Infrastructure\DopplerService::get('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Application Service Providers...
+    |--------------------------------------------------------------------------
+    |
+    | The application's service providers are the components that are
+    | responsible for the application's functionality. These providers
+    | are registered in the "providers" array within the application
+    | configuration file.
+    |
+    */
+
+    'providers' => [
+
+        /*
+         * Laravel Framework Service Providers...
+         */
+        Illuminate\Auth\AuthServiceProvider::class,
+        Illuminate\Broadcasting\BroadcastServiceProvider::class,
+        Illuminate\Bus\BusServiceProvider::class,
+        Illuminate\Cache\CacheServiceProvider::class,
+        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
+        Illuminate\Cookie\CookieServiceProvider::class,
+        Illuminate\Database\DatabaseServiceProvider::class,
+        Illuminate\Encryption\EncryptionServiceProvider::class,
+        Illuminate\Filesystem\FilesystemServiceProvider::class,
+        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
+        Illuminate\Hashing\HashServiceProvider::class,
+        Illuminate\Mail\MailServiceProvider::class,
+        Illuminate\Notifications\NotificationServiceProvider::class,
+        Illuminate\Pagination\PaginationServiceProvider::class,
+        Illuminate\Pipeline\PipelineServiceProvider::class,
+        Illuminate\Queue\QueueServiceProvider::class,
+        Illuminate\Redis\RedisServiceProvider::class,
+        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
+        Illuminate\Session\SessionServiceProvider::class,
+        Illuminate\Translation\TranslationServiceProvider::class,
+        Illuminate\Validation\ValidationServiceProvider::class,
+        Illuminate\View\ViewServiceProvider::class,
+
+        /*
+         * Application Service Providers...
+         */
+        App\Providers\AppServiceProvider::class,
+        App\Providers\AuthServiceProvider::class,
+        // App\Providers\BroadcastServiceProvider::class,
+        App\Providers\EventServiceProvider::class,
+        App\Providers\RouteServiceProvider::class,
+
+        /*
+         * Custom Domain Service Providers...
+         */
+        Modules\FraudDetection\Interfaces\Providers\FraudDetectionServiceProvider::class,
+        App\Domains\Advertising\Infrastructure\Providers\AdvertisingServiceProvider::class,
+        App\Domains\Delivery\Providers\DeliveryServiceProvider::class,
+        App\Domains\Staff\Providers\StaffServiceProvider::class,
+        App\Providers\ModelBootServiceProvider::class,
+
+        /*
+         * Taxi Service Providers...
+         */
+        App\Domains\Auto\Taxi\Application\Providers\TaxiServiceProvider::class,
+        App\Domains\Beauty\Application\Providers\BeautyServiceProvider::class,
+        App\Domains\RealEstate\Application\Providers\RealEstateServiceProvider::class,
+        App\Domains\Hotels\Infrastructure\Providers\HotelsServiceProvider::class,
+
+        /*
+         * Food Service Providers...
+         */
+        App\Providers\JetstreamServiceProvider::class,
+        App\Providers\SocialstreamServiceProvider::class,
+        App\Providers\TelescopeServiceProvider::class,
+        // App\Domains\Food\Providers\FoodServiceProvider::class,
+
+    ],
+
 ];

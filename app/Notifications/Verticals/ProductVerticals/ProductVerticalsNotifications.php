@@ -8,8 +8,8 @@ use App\Notifications\BasePushNotification;
 // ========== COSMETICS ==========
 final class CosmeticsOrderShippedNotification extends BaseMailableNotification
 {
-    protected string $type = 'cosmetics.order.shipped';
-    protected string $template = 'emails.cosmetics.order_shipped';
+    private string $type = 'cosmetics.order.shipped';
+    private string $template = 'emails.cosmetics.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -20,7 +20,7 @@ final class CosmeticsOrderShippedNotification extends BaseMailableNotification
 
 final class CosmeticsArrivedNotification extends BasePushNotification
 {
-    protected string $type = 'cosmetics.delivery.arrived';
+    private string $type = 'cosmetics.delivery.arrived';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -36,8 +36,8 @@ final class CosmeticsArrivedNotification extends BasePushNotification
 // ========== JEWELRY ==========
 final class JewelryOrderShippedNotification extends BaseMailableNotification
 {
-    protected string $type = 'jewelry.order.shipped';
-    protected string $template = 'emails.jewelry.order_shipped';
+    private string $type = 'jewelry.order.shipped';
+    private string $template = 'emails.jewelry.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -48,7 +48,7 @@ final class JewelryOrderShippedNotification extends BaseMailableNotification
 
 final class JewelryDeliveryConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'jewelry.delivery.confirmed';
+    private string $type = 'jewelry.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -65,8 +65,8 @@ final class JewelryDeliveryConfirmedNotification extends BasePushNotification
 // ========== GIFTS ==========
 final class GiftOrderShippedNotification extends BaseMailableNotification
 {
-    protected string $type = 'gifts.order.shipped';
-    protected string $template = 'emails.gifts.order_shipped';
+    private string $type = 'gifts.order.shipped';
+    private string $template = 'emails.gifts.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -77,7 +77,7 @@ final class GiftOrderShippedNotification extends BaseMailableNotification
 
 final class GiftDeliveryArrivedNotification extends BasePushNotification
 {
-    protected string $type = 'gifts.delivery.arrived';
+    private string $type = 'gifts.delivery.arrived';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -93,8 +93,8 @@ final class GiftDeliveryArrivedNotification extends BasePushNotification
 // ========== FURNITURE ==========
 final class FurnitureOrderConfirmedNotification extends BaseMailableNotification
 {
-    protected string $type = 'furniture.order.confirmed';
-    protected string $template = 'emails.furniture.order_confirmed';
+    private string $type = 'furniture.order.confirmed';
+    private string $template = 'emails.furniture.order_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -105,7 +105,7 @@ final class FurnitureOrderConfirmedNotification extends BaseMailableNotification
 
 final class FurnitureDeliveryScheduledNotification extends BasePushNotification
 {
-    protected string $type = 'furniture.delivery.scheduled';
+    private string $type = 'furniture.delivery.scheduled';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -121,8 +121,8 @@ final class FurnitureDeliveryScheduledNotification extends BasePushNotification
 // ========== ELECTRONICS ==========
 final class ElectronicsOrderShippedNotification extends BaseMailableNotification
 {
-    protected string $type = 'electronics.order.shipped';
-    protected string $template = 'emails.electronics.order_shipped';
+    private string $type = 'electronics.order.shipped';
+    private string $template = 'emails.electronics.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -133,7 +133,7 @@ final class ElectronicsOrderShippedNotification extends BaseMailableNotification
 
 final class ElectronicsDeliveryConfirmedNotification extends BasePushNotification
 {
-    protected string $type = 'electronics.delivery.confirmed';
+    private string $type = 'electronics.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -153,7 +153,7 @@ namespace App\Notifications\Verticals\ProductVerticals;
 
 final class BonusEarnedNotification extends BasePushNotification
 {
-    protected string $type = 'bonus.earned';
+    private string $type = 'bonus.earned';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -168,7 +168,7 @@ final class BonusEarnedNotification extends BasePushNotification
 
 final class BonusExpiredNotification extends BasePushNotification
 {
-    protected string $type = 'bonus.expired';
+    private string $type = 'bonus.expired';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -184,7 +184,7 @@ final class BonusExpiredNotification extends BasePushNotification
 
 final class BonusAboutToExpireNotification extends BasePushNotification
 {
-    protected string $type = 'bonus.about_to_expire';
+    private string $type = 'bonus.about_to_expire';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -201,8 +201,8 @@ final class BonusAboutToExpireNotification extends BasePushNotification
 // ========== WALLET NOTIFICATIONS ==========
 final class WalletDepositReceivedNotification extends BaseMailableNotification
 {
-    protected string $type = 'wallet.deposit.received';
-    protected string $template = 'emails.wallet.deposit_received';
+    private string $type = 'wallet.deposit.received';
+    private string $template = 'emails.wallet.deposit_received';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -213,8 +213,8 @@ final class WalletDepositReceivedNotification extends BaseMailableNotification
 
 final class WalletWithdrawalProcessedNotification extends BaseMailableNotification
 {
-    protected string $type = 'wallet.withdrawal.processed';
-    protected string $template = 'emails.wallet.withdrawal_processed';
+    private string $type = 'wallet.withdrawal.processed';
+    private string $template = 'emails.wallet.withdrawal_processed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -225,7 +225,7 @@ final class WalletWithdrawalProcessedNotification extends BaseMailableNotificati
 
 final class WalletLowBalanceNotification extends BasePushNotification
 {
-    protected string $type = 'wallet.low_balance';
+    private string $type = 'wallet.low_balance';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -241,7 +241,7 @@ final class WalletLowBalanceNotification extends BasePushNotification
 
 final class WalletLimitReachedNotification extends BasePushNotification
 {
-    protected string $type = 'wallet.limit_reached';
+    private string $type = 'wallet.limit_reached';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -257,7 +257,7 @@ final class WalletLimitReachedNotification extends BasePushNotification
 // ========== REFERRAL NOTIFICATIONS ==========
 final class ReferralInviteSentNotification extends BasePushNotification
 {
-    protected string $type = 'referral.invite.sent';
+    private string $type = 'referral.invite.sent';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -272,7 +272,7 @@ final class ReferralInviteSentNotification extends BasePushNotification
 
 final class ReferralFriendJoinedNotification extends BasePushNotification
 {
-    protected string $type = 'referral.friend.joined';
+    private string $type = 'referral.friend.joined';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -287,8 +287,8 @@ final class ReferralFriendJoinedNotification extends BasePushNotification
 
 final class ReferralBonusEarnedNotification extends BaseMailableNotification
 {
-    protected string $type = 'referral.bonus.earned';
-    protected string $template = 'emails.referral.bonus_earned';
+    private string $type = 'referral.bonus.earned';
+    private string $template = 'emails.referral.bonus_earned';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -299,7 +299,7 @@ final class ReferralBonusEarnedNotification extends BaseMailableNotification
 
 final class ReferralMilestoneReachedNotification extends BasePushNotification
 {
-    protected string $type = 'referral.milestone.reached';
+    private string $type = 'referral.milestone.reached';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {

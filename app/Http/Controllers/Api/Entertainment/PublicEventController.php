@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers\Api\Entertainment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PublicEventController extends Model
+final class PublicEventController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly BookingService $bookingService
-        ) {
-        }
+            private readonly BookingService $bookingService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
+
+    }
         /**
          * Список активных заведений
          */
@@ -25,17 +29,17 @@ final class PublicEventController extends Model
                     ->where('tenant_id', tenant()->id)
                     ->orderBy('rating', 'desc')
                     ->get();
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $venues,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to list venues', [
+                $this->logger->channel('audit')->error('Failed to list venues', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json(['error' => 'Internal Server Error'], 500);
+                return $this->response->json(['error' => 'Internal Server Error'], 500);
             }
         }
         /**
@@ -52,17 +56,17 @@ final class PublicEventController extends Model
                     $query->where('venue_id', $request->get('venue_id'));
                 }
                 $events = $query->orderBy('start_at', 'asc')->paginate(15);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $events,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Event search failed', [
+                $this->logger->channel('audit')->error('Event search failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json(['error' => 'Search failed'], 500);
+                return $this->response->json(['error' => 'Search failed'], 500);
             }
         }
         /**
@@ -73,12 +77,12 @@ final class PublicEventController extends Model
             $correlationId = $request->get('correlation_id', (string) Str::uuid());
             try {
                 $booking = $this->bookingService->createBooking(
-                    userId: auth()->id() ?? 0, // Fallback for guest if allowed
+                    userId: $this->guard->id() ?? 0, // Fallback for guest if allowed
                     eventId: $request->integer('event_id'),
                     seats: $request->get('seats'),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'booking_uuid' => $booking->uuid,
                     'total_amount' => $booking->total_amount_kopecks,
@@ -86,7 +90,14 @@ final class PublicEventController extends Model
                     'correlation_id' => $correlationId
                 ], 201);
             } catch (\Exception $e) {
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                return $this->response->json([
                     'success' => false,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId

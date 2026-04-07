@@ -2,14 +2,20 @@
 
 namespace App\Domains\Common\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class TasteMLService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class TasteMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Вычислить cosine similarity между двумя vectors
          */
@@ -53,7 +59,7 @@ final class TasteMLService extends Model
         {
             $cacheKey = "taste:recommendations:{$tenantId}:{$userId}:{$vertical}";
 
-            return Cache::remember($cacheKey, 3600, function () use ($userId, $tenantId, $vertical, $limit) {
+            return $this->cache->remember($cacheKey, 3600, function () use ($userId, $tenantId, $vertical, $limit) {
                 try {
                     // 1. Получить профиль пользователя
                     $userProfile = UserTasteProfile::where([
@@ -102,10 +108,11 @@ final class TasteMLService extends Model
                     // 5. Вернуть топ N
                     return array_slice($recommendations, 0, $limit);
                 } catch (\Throwable $e) {
-                    Log::channel('audit')->error('Failed to get ML recommendations', [
+                    $this->logger->error('Failed to get ML recommendations', [
                         'user_id' => $userId,
                         'vertical' => $vertical,
                         'error' => $e->getMessage(),
+                        'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
                     return [];
@@ -124,7 +131,8 @@ final class TasteMLService extends Model
         ): bool
         {
             try {
-                return DB::transaction(function () use ($userId, $tenantId, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                return $this->db->transaction(function () use ($userId, $tenantId, $correlationId) {
                     $profile = UserTasteProfile::where([
                         'user_id' => $userId,
                         'tenant_id' => $tenantId,
@@ -152,11 +160,11 @@ final class TasteMLService extends Model
                     $profile->update([
                         'embedding' => $newEmbedding,
                         'version' => $profile->version + 1,
-                        'last_calculated_at' => now(),
+                        'last_calculated_at' => Carbon::now(),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('User taste profile embedding recalculated', [
+                    $this->logger->info('User taste profile embedding recalculated', [
                         'user_id' => $userId,
                         'new_version' => $profile->version + 1,
                         'interactions_count' => count($interactions),
@@ -166,7 +174,7 @@ final class TasteMLService extends Model
                     return true;
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to recalculate profile embedding', [
+                $this->logger->error('Failed to recalculate profile embedding', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -235,11 +243,12 @@ final class TasteMLService extends Model
                     'tenant_id' => $tenantId,
                 ])->update(['ctr' => $ctr]);
 
-                Cache::forget("taste:profile:{$tenantId}:{$userId}");
+                $this->cache->forget("taste:profile:{$tenantId}:{$userId}");
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update CTR', [
+                $this->logger->error('Failed to update CTR', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }
@@ -255,11 +264,12 @@ final class TasteMLService extends Model
                     'tenant_id' => $tenantId,
                 ])->update(['recommendation_acceptance_rate' => $rate]);
 
-                Cache::forget("taste:profile:{$tenantId}:{$userId}");
+                $this->cache->forget("taste:profile:{$tenantId}:{$userId}");
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update acceptance rate', [
+                $this->logger->error('Failed to update acceptance rate', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }

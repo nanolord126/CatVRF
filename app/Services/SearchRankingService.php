@@ -2,18 +2,25 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\Security\RateLimiterService;
 
-final class SearchRankingService extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class SearchRankingService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraudControlService,
+            private FraudControlService $fraud,
             private RateLimiterService $rateLimiterService,
-        ) {}
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
         /**
          * Ранжирует результаты поиска на основе профиля пользователя и персонализации.
@@ -37,7 +44,7 @@ final class SearchRankingService extends Model
 
                 // Rate limiting
                 if (!$this->rateLimiterService->allowTenant($userId, 'search_ranking', 1000)) {
-                    Log::channel('audit')->warning('Search ranking rate limit exceeded', [
+                    $this->logger->channel('audit')->warning('Search ranking rate limit exceeded', [
                         'user_id' => $userId,
                         'correlation_id' => $correlationId,
                     ]);
@@ -59,7 +66,7 @@ final class SearchRankingService extends Model
                 // Обычные пользователи → embeddings + поведение + гео
                 return $this->rankByEmbeddings($items, $userProfile, $context);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Search ranking failed', [
+                $this->logger->channel('audit')->error('Search ranking failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -73,8 +80,8 @@ final class SearchRankingService extends Model
         {
             $cacheKey = "user_profile:{$userId}";
 
-            return Cache::remember($cacheKey, 3600, function () use ($userId) {
-                $user = DB::table('users')->find($userId);
+            return $this->cache->remember($cacheKey, 3600, function () use ($userId) {
+                $user = $this->db->table('users')->find($userId);
 
                 if (!$user) {
                     return ['is_new' => true];
@@ -83,11 +90,11 @@ final class SearchRankingService extends Model
                 return [
                     'is_new' => now()->diffInDays($user->created_at) < 7,
                     'personalization_disabled' => (bool)($user->personalization_disabled ?? false),
-                    'purchase_count' => DB::table('orders')
+                    'purchase_count' => $this->db->table('orders')
                         ->where('user_id', $userId)
                         ->where('status', 'completed')
                         ->count(),
-                    'avg_order_value' => (int)DB::table('orders')
+                    'avg_order_value' => (int)$this->db->table('orders')
                         ->where('user_id', $userId)
                         ->where('status', 'completed')
                         ->avg('total') ?? 0,
@@ -211,7 +218,7 @@ final class SearchRankingService extends Model
 
         private function getUserPreferences(int $userId): array
         {
-            return DB::table('orders')
+            return $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->where('status', 'completed')
                 ->select('category')

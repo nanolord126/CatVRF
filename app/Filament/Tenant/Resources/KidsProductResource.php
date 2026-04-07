@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class KidsProductResource extends Model
+final class KidsProductResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = KidsProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-gift';
@@ -115,23 +113,15 @@ final class KidsProductResource extends Model
                                 ]),
                         ])->columnSpan(['lg' => 1]),
                 ])->columns(3);
+    }
 
-        public static function getPages(): array
+    public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListKidsProduct::route('/'),
-                'create' => Pages\\CreateKidsProduct::route('/create'),
-                'edit' => Pages\\EditKidsProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsProduct::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListKidsProduct::route('/'),
-                'create' => Pages\\CreateKidsProduct::route('/create'),
-                'edit' => Pages\\EditKidsProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsProduct::route('/{record}'),
+                'index' => Pages\ListKidsProduct::route('/'),
+                'create' => Pages\CreateKidsProduct::route('/create'),
+                'edit' => Pages\EditKidsProduct::route('/{record}/edit'),
+                'view' => Pages\ViewKidsProduct::route('/{record}'),
             ];
         }
 }

@@ -2,25 +2,26 @@
 
 namespace App\Livewire\Marketplace\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Log\LogManager;
 
-final class DentalShowcase extends Model
+final class DentalShowcase extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use WithPagination;
 
-        public string $search = '';
-        public string $selectedSpecialization = '';
-        public float $lat = 55.7558;
-        public float $lon = 37.6173;
-        public int $radius = 15;
-        public bool $isEmergencyOnly = false;
+        private string $search = '';
+        private string $selectedSpecialization = '';
+        private float $lat = 55.7558;
+        private float $lon = 37.6173;
+        private int $radius = 15;
+        private bool $isEmergencyOnly = false;
 
-        public ?int $selectedClinicId = null;
-        public array $appointmentData = [
+        private ?int $selectedClinicId = null;
+        private array $appointmentData = [
             'dentist_id' => null,
             'service_id' => null,
             'date' => null,
@@ -73,7 +74,7 @@ final class DentalShowcase extends Model
                 $this->dispatch('close-modal', 'clinic-details');
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Marketplace booking failed', [
+                $this->logger->channel('audit')->error('Marketplace booking failed', [
                     'error' => $e->getMessage(),
                     'clinic_id' => $this->selectedClinicId
                 ]);

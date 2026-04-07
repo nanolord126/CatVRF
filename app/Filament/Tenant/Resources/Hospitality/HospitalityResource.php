@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Hospitality;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Models\Hospitality;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -24,6 +30,11 @@ use Illuminate\Support\Str;
 
 final class HospitalityResource extends Resource
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static ?string $model = Hospitality::class;
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
     protected static ?string $navigationGroup = 'Вертикали';
@@ -113,9 +124,9 @@ final class HospitalityResource extends Resource
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        DB::transaction(function()use(&$data){
+        $this->db->transaction(function()use(&$data){
             $data['correlation_id'] = Str::uuid()->toString();
-            Log::channel('audit')->info('Hospitality venue action',['user'=>auth()->id(),'correlation_id'=>$data['correlation_id']]);
+            $this->logger->info('Hospitality venue action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
         });
         return $data;
     }

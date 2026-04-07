@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
+
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * BaseApiController — Базовый контроллер для всех API-контроллеров
@@ -31,8 +36,14 @@ abstract class BaseApiController extends Controller
     use DispatchesJobs;
     use ValidatesRequests;
 
-    public function __construct()
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    )
     {
+
     }
 
     /**
@@ -40,8 +51,8 @@ abstract class BaseApiController extends Controller
      */
     protected function getCorrelationId(): string
     {
-        return request()->get('correlation_id')
-            ?? request()->header('X-Correlation-ID')
+        return $this->request->get('correlation_id')
+            ?? $this->request->header('X-Correlation-ID')
             ?? \Illuminate\Support\Str::uuid()->toString();
     }
 
@@ -50,17 +61,17 @@ abstract class BaseApiController extends Controller
      */
     protected function isB2C(): bool
     {
-        return request()->get('b2c_mode') === true;
+        return $this->request->get('b2c_mode') === true;
     }
 
     protected function isB2B(): bool
     {
-        return request()->get('b2b_mode') === true;
+        return $this->request->get('b2b_mode') === true;
     }
 
     protected function getModeType(): string
     {
-        return (string)request()->get('mode_type', 'b2c');
+        return (string)$this->request->get('mode_type', 'b2c');
     }
 
     /**
@@ -68,10 +79,10 @@ abstract class BaseApiController extends Controller
      */
     protected function auditLog(string $action, array $data = []): void
     {
-        Log::channel('audit')->info($action, array_merge([
+        $this->logger->channel('audit')->info($action, array_merge([
             'correlation_id' => $this->getCorrelationId(),
-            'user_id' => auth()->id(),
-            'ip_address' => request()->ip(),
+            'user_id' => $this->guard->id(),
+            'ip_address' => $this->request->ip(),
             'tenant_id' => filament()->getTenant()?->id,
             'mode' => $this->getModeType(),
         ], $data));
@@ -81,7 +92,7 @@ abstract class BaseApiController extends Controller
      */
     protected function successResponse(mixed $data, string $message = 'Success', int $code = 200): \Illuminate\Http\JsonResponse
     {
-        return response()->json([
+        return $this->response->json([
             'success' => true,
             'message' => $message,
             'data' => $data,
@@ -93,7 +104,7 @@ abstract class BaseApiController extends Controller
      */
     protected function errorResponse(string $message, int $code = 400, array $errors = []): \Illuminate\Http\JsonResponse
     {
-        return response()->json([
+        return $this->response->json([
             'success' => false,
             'message' => $message,
             'errors' => $errors,
@@ -105,11 +116,11 @@ abstract class BaseApiController extends Controller
      */
     protected function fraudLog(string $reason, array $context = []): void
     {
-        Log::channel('fraud_alert')->warning("Fraud attempt: {$reason}", array_merge([
+        $this->logger->channel('fraud_alert')->warning("Fraud attempt: {$reason}", array_merge([
             'correlation_id' => $this->getCorrelationId(),
-            'user_id' => auth()->id(),
-            'ip_address' => request()->ip(),
-            'endpoint' => request()->path(),
+            'user_id' => $this->guard->id(),
+            'ip_address' => $this->request->ip(),
+            'endpoint' => $this->request->path(),
             'trace' => debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS, 5),
         ], $context));
     }

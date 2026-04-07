@@ -2,14 +2,20 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SecurityAuditService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class SecurityAuditService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Критические уязвимости
          */
@@ -54,10 +60,11 @@ final class SecurityAuditService extends Model
             // Вычисляем итоги
             $audit['summary'] = self::calculateSummary($audit);
 
-            Log::channel('security')->info('Security audit completed', [
+            $this->logger->channel('security')->info('Security audit completed', [
                 'audit_id' => $audit['id'],
                 'issues_found' => $audit['summary']['total_issues'],
                 'duration' => $duration,
+                'correlation_id' => $this->request?->header('X-Correlation-ID') ?? '',
             ]);
 
             return $audit;

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class HealthyFoodResource extends Model
+final class HealthyFoodResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = HealthyFood::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-heart';
@@ -108,22 +105,15 @@ final class HealthyFoodResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListHealthyFood::route('/'),
-                'create' => Pages\\CreateHealthyFood::route('/create'),
-                'edit' => Pages\\EditHealthyFood::route('/{record}/edit'),
-                'view' => Pages\\ViewHealthyFood::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListHealthyFood::route('/'),
-                'create' => Pages\\CreateHealthyFood::route('/create'),
-                'edit' => Pages\\EditHealthyFood::route('/{record}/edit'),
-                'view' => Pages\\ViewHealthyFood::route('/{record}'),
+                'index' => Pages\ListHealthyFood::route('/'),
+                'create' => Pages\CreateHealthyFood::route('/create'),
+                'edit' => Pages\EditHealthyFood::route('/{record}/edit'),
+                'view' => Pages\ViewHealthyFood::route('/{record}'),
             ];
         }
 }

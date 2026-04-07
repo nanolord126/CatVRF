@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+
 use App\Domains\Art\Models\Review;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-
 final class ReviewRecorded
 {
     use Dispatchable;
@@ -18,17 +17,8 @@ final class ReviewRecorded
     public function __construct(
         public readonly Review $review,
         public readonly string $correlationId,
-        public readonly array $context = [],
-    ) {
-        Log::channel('audit')->info('ReviewRecorded event dispatched', [
-            'correlation_id' => $this->correlationId,
-            'review_id' => $this->review->id,
-            'project_id' => $this->review->project_id,
-            'artist_id' => $this->review->artist_id,
-            'tenant_id' => $this->review->tenant_id,
-            'rating' => $this->review->rating,
-        ]);
-    }
+        public array $context = [],
+    ) {}
 
     public static function dispatch(Review $review, string $correlationId, array $context = []): void
     {

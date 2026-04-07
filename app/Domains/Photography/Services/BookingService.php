@@ -2,18 +2,18 @@
 
 namespace App\Domains\Photography\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class BookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            // private readonly FraudControlService $fraudControl,
-            // private readonly WalletService $walletService
-        ) {}
+
+    public function __construct(// private readonly FraudControlService $fraud,
+            // private readonly WalletService $walletService,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создание бронирования
@@ -29,14 +29,15 @@ final class BookingService extends Model
         ): Booking {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($clientId, $sessionId, $startsAt, $photographerId, $studioId, $correlationId) {
+            return $this->db->transaction(function () use ($clientId, $sessionId, $startsAt, $photographerId, $studioId, $correlationId) {
                 $session = PhotoSession::findOrFail($sessionId);
 
-                // 1. Имитация FraudControlService::check()
-                Log::channel('audit')->info('Photography booking validation (Correlation: '.$correlationId.')', [
+                // 1. Имитация $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '')
+                $this->logger->info('Photography booking validation (Correlation: '.$correlationId.')', [
                     'client_id' => $clientId,
                     'session_type' => $session->name,
                     'starts_at' => $startsAt,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 // 2. Расчет и проверка временных рамок
@@ -54,7 +55,7 @@ final class BookingService extends Model
                         ->where(fn($q) => $q->whereBetween('starts_at', [$starts, $ends])
                                            ->orWhereBetween('ends_at', [$starts, $ends]))
                         ->exists();
-                    if ($isBusy) throw new \Exception('Выбранный фотограф занят в это время.');
+                    if ($isBusy) throw new \RuntimeException('Выбранный фотограф занят в это время.');
                 }
 
                 // 4. Отражение в базе данных (мутация)
@@ -71,7 +72,7 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('Photography booking successfully stored (UUID: '.$booking->uuid.')', [
+                $this->logger->info('Photography booking successfully stored (UUID: '.$booking->uuid.')', [
                     'correlation_id' => $correlationId,
                     'total_amount' => $booking->total_amount_kopecks
                 ]);
@@ -87,7 +88,7 @@ final class BookingService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($bookingId, $newStartsAt, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $newStartsAt, $correlationId) {
                 $booking = Booking::findOrFail($bookingId);
 
                 $duration = $booking->starts_at->diffInMinutes($booking->ends_at);
@@ -101,7 +102,7 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->info('Photography booking rescheduling audit completed', [
+                $this->logger->info('Photography booking rescheduling audit completed', [
                     'booking_id' => $bookingId,
                     'new_starts_at' => $newStartsAt,
                     'correlation_id' => $correlationId
@@ -118,7 +119,7 @@ final class BookingService extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            return DB::transaction(function () use ($bookingId, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $reason, $correlationId) {
                 $booking = Booking::findOrFail($bookingId);
 
                 $booking->update([
@@ -126,7 +127,7 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId
                 ]);
 
-                Log::channel('audit')->warning('Photography session cancellation triggered: '.$reason, [
+                $this->logger->warning('Photography session cancellation triggered: '.$reason, [
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId
                 ]);

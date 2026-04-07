@@ -2,14 +2,16 @@
 
 namespace App\Domains\ToysAndGames\Toys\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 final class ToysDomainTrait extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static function booted(): void
         {
             // 1. Automatic UUID and Correlation Logic
@@ -18,14 +20,14 @@ final class ToysDomainTrait extends Model
                     $model->uuid = (string) Str::uuid();
                 }
                 if (property_exists($model, 'correlation_id') && empty($model->correlation_id)) {
-                    $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
+                    $model->correlation_id = (string) Str::uuid();
                 }
             });
 
             // 2. Global Multi-tenant Scoping (Lute Mode - No leaks)
             static::addGlobalScope('tenant_isolation', function (Builder $builder) {
-                if (auth()->check() && method_exists(auth()->user(), 'tenant')) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
         }

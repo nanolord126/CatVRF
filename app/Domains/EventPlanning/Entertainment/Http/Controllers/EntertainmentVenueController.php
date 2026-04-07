@@ -2,17 +2,15 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EntertainmentVenueController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class EntertainmentVenueController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -23,16 +21,17 @@ final class EntertainmentVenueController extends Model
                     ->with('entertainers', 'entertainmentEvents')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $venues,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch venues', [
+                $this->logger->error('Failed to fetch venues', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to fetch venues',
                     'correlation_id' => Str::uuid(),
@@ -46,35 +45,28 @@ final class EntertainmentVenueController extends Model
                 $venue = EntertainmentVenue::with('entertainers', 'entertainmentEvents', 'bookings')
                     ->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $venue,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch venue', ['id' => $id, 'error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => 'Venue not found', 'correlation_id' => Str::uuid()], 404);
+                $this->logger->error('Failed to fetch venue', ['id' => $id, 'error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Venue not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
         public function store(): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -82,53 +74,46 @@ final class EntertainmentVenueController extends Model
             }
 
             try {
-                DB::transaction(function () {
+                $this->db->transaction(function () {
                     $correlationId = Str::uuid()->toString();
 
                     $venue = EntertainmentVenue::create([
-                        'tenant_id' => tenant('id'),
-                        'name' => request('name'),
-                        'description' => request('description'),
-                        'address' => request('address'),
-                        'seating_capacity' => request('seating_capacity'),
-                        'standard_ticket_price' => request('standard_ticket_price'),
-                        'premium_ticket_price' => request('premium_ticket_price'),
+                        'tenant_id' => tenant()->id,
+                        'name' => $request->input('name'),
+                        'description' => $request->input('description'),
+                        'address' => $request->input('address'),
+                        'seating_capacity' => $request->input('seating_capacity'),
+                        'standard_ticket_price' => $request->input('standard_ticket_price'),
+                        'premium_ticket_price' => $request->input('premium_ticket_price'),
                         'is_active' => true,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Entertainment venue created', [
+                    $this->logger->info('Entertainment venue created', [
                         'venue_id' => $venue->id,
                         'name' => $venue->name,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => Str::uuid()], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => Str::uuid()], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create venue', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                $this->logger->error('Failed to create venue', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -139,24 +124,24 @@ final class EntertainmentVenueController extends Model
                 $venue = EntertainmentVenue::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($venue, $correlationId) {
+                $this->db->transaction(function () use ($venue, $correlationId) {
                     $venue->update([
-                        'name' => request('name', $venue->name),
-                        'description' => request('description', $venue->description),
-                        'address' => request('address', $venue->address),
+                        'name' => $request->input('name', $venue->name),
+                        'description' => $request->input('description', $venue->description),
+                        'address' => $request->input('address', $venue->address),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Entertainment venue updated', [
+                    $this->logger->info('Entertainment venue updated', [
                         'venue_id' => $venue->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => $venue, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $venue, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update venue', ['id' => $id, 'error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                $this->logger->error('Failed to update venue', ['id' => $id, 'error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -166,15 +151,15 @@ final class EntertainmentVenueController extends Model
                 $venue = EntertainmentVenue::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($venue, $correlationId) {
+                $this->db->transaction(function () use ($venue, $correlationId) {
                     $venue->delete();
-                    Log::channel('audit')->info('Entertainment venue deleted', ['venue_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Entertainment venue deleted', ['venue_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to delete venue', ['id' => $id, 'error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                $this->logger->error('Failed to delete venue', ['id' => $id, 'error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -185,13 +170,13 @@ final class EntertainmentVenueController extends Model
                 $bookings = $venue->bookings()->count();
                 $revenue = $venue->bookings()->sum('total_price');
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => ['bookings' => $bookings, 'revenue' => $revenue],
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

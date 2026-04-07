@@ -2,17 +2,15 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ContractController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ContractController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ContractService $contractService,
-        ) {}
+
+    public function __construct(private readonly ContractService $contractService,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -20,18 +18,18 @@ final class ContractController extends Model
                 $contracts = FreelanceContract::where('status', '!=', 'cancelled')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $contracts,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing contracts', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing contracts', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list contracts',
                     'correlation_id' => Str::uuid(),
@@ -46,19 +44,19 @@ final class ContractController extends Model
 
                 $this->authorize('view', $contract);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $contract,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error showing contract', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error showing contract', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Contract not found',
                     'correlation_id' => Str::uuid(),
@@ -81,24 +79,24 @@ final class ContractController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Milestone payment released', [
+                $this->logger->info('Milestone payment released', [
                     'contract_id' => $id,
                     'amount' => $request->input('amount'),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error releasing milestone', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error releasing milestone', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to release milestone',
                     'correlation_id' => Str::uuid(),
@@ -116,18 +114,18 @@ final class ContractController extends Model
 
                 $this->contractService->completeContract($id, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error completing contract', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error completing contract', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to complete contract',
                     'correlation_id' => Str::uuid(),
@@ -145,18 +143,18 @@ final class ContractController extends Model
 
                 $this->contractService->pauseContract($id, $request->input('reason', ''), $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error pausing contract', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error pausing contract', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to pause contract',
                     'correlation_id' => Str::uuid(),
@@ -174,18 +172,18 @@ final class ContractController extends Model
 
                 $this->contractService->cancelContract($id, $request->input('reason', ''), $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error cancelling contract', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error cancelling contract', [
                     'contract_id' => $id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to cancel contract',
                     'correlation_id' => Str::uuid(),
@@ -196,26 +194,26 @@ final class ContractController extends Model
         public function myContracts(): JsonResponse
         {
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $contracts = FreelanceContract::where(function ($q) use ($userId) {
                     $q->whereHas('freelancer', fn($q) => $q->where('user_id', $userId))
                       ->orWhere('client_id', $userId);
                 })->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $contracts,
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error listing my contracts', [
-                    'user_id' => auth()->id(),
+            } catch (\Throwable $e) {
+                $this->logger->error('Error listing my contracts', [
+                    'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list contracts',
                     'correlation_id' => Str::uuid(),
@@ -227,11 +225,11 @@ final class ContractController extends Model
         {
             try {
                 $totalEarnings = FreelanceContract::where('status', 'completed')
-                    ->sum(DB::raw('amount_paid'));
+                    ->sum($this->db->raw('amount_paid'));
 
                 $activeContracts = FreelanceContract::where('status', 'active')->count();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'total_earnings' => $totalEarnings,
@@ -239,13 +237,13 @@ final class ContractController extends Model
                     ],
                     'correlation_id' => Str::uuid(),
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Error getting earnings report', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Error getting earnings report', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get earnings report',
                     'correlation_id' => Str::uuid(),

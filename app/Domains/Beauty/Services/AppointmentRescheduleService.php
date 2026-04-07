@@ -1,105 +1,117 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment;
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
 
-final class AppointmentRescheduleService extends Model
+/**
+ * AppointmentRescheduleService — расчёт комиссии за перенос записи.
+ *
+ * Учитывает групповые, свадебные и детские правила при переносе,
+ * а также сложность услуги и срочность запроса.
+ */
+final readonly class AppointmentRescheduleService
 {
-    use HasFactory;
+    public function __construct(
+        private GroupBookingService $groupBookingService,
+        private WeddingGroupService $weddingGroupService,
+        private KidsPartyService $kidsPartyService,
+        private LoggerInterface $logger,
+    ) {
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Рассчитать комиссию за перенос бронирования.
-         *
-         * @param Appointment $appointment Исходная запись
-         * @param Carbon $newStartTime Новое время записи
-         * @param Carbon $requestedAt Момент запроса на перенос
-         * @return array {fee_amount, fee_percent, is_allowed, reason}
-         */
-        public function calculateRescheduleFee(Appointment $appointment, Carbon $newStartTime, Carbon $requestedAt): array
-        {
-            $policy = ReschedulePolicy::STANDARD; // В 2026 может расширяться из настроек салона
-            $originalStart = $appointment->datetime_start;
-            $hoursBefore = $requestedAt->diffInHours($originalStart, false);
-            $totalPrice = $appointment->price_cents;
+     * Рассчитать комиссию за перенос бронирования.
+     *
+     * @return array{fee_amount: int, fee_percent: int, is_allowed: bool, reason: string}
+     */
+    public function calculateRescheduleFee(
+        BeautyAppointment $appointment,
+        Carbon $newStartTime,
+        Carbon $requestedAt,
+    ): array {
+        $originalStart = $appointment->start_at;
+        $hoursBefore = $requestedAt->diffInHours($originalStart, false);
+        $totalPrice = $appointment->price_cents;
 
-            // 1. Проверка минимально допустимого времени для переноса (<4ч — запрещено)
-            if ($hoursBefore < 4) {
-                return [
-                    'fee_amount' => $totalPrice,
-                    'fee_percent' => 100,
-                    'is_allowed' => false,
-                    'reason' => 'Перенос невозмощен менее чем за 4 часа до начала услуги.',
-                ];
-            }
-
-            // 2. Базовый процент по политике времени
-            $feePercent = (float)$policy->getBaseFeePercent($hoursBefore);
-
-            // 3. Групповые правила (Увеличение штрафа при переносе группы)
-            if ($appointment->is_group) {
-                $groupService = new GroupBookingService();
-                $groupFees = $groupService->calculateGroupFees($appointment, 'reschedule');
-                $penaltyMultiplier = $groupFees['penalty_multiplier'];
-                $feePercent = min(100, $feePercent * $penaltyMultiplier);
-            }
-
-            // 3.1. Свадебные правила (Wedding Canon 2026)
-            if ($appointment->is_wedding_group) {
-                $weddingService = new WeddingGroupService();
-                $weddingFees = $weddingService->calculateWeddingFees($appointment, 'reschedule');
-                $weddingPenalty = (float)$weddingFees['fee_percent'];
-                $weddingMultiplier = (float)$weddingFees['multiplier'];
-
-                // Свадебные штрафы за перенос строже базовых
-                $feePercent = max($feePercent, $weddingPenalty);
-                $feePercent = min(100, $feePercent * $weddingMultiplier);
-            }
-
-            // 3.2. Правила детских праздников (Kids Party Canon 2026)
-            if ($appointment->is_kids_party) {
-                $kidsService = new KidsPartyService();
-                $kidsFees = $kidsService->calculateKidsPartyFees($appointment, 'reschedule');
-                $kidsPenalty = (float)$kidsFees['fee_percent'];
-                $kidsMultiplier = (float)$kidsFees['multiplier'];
-
-                // Выбираем более строгий штраф
-                $feePercent = max($feePercent, $kidsPenalty);
-                $feePercent = min(100, $feePercent * $kidsMultiplier);
-            }
-
-            // 4. Увеличение штрафа для сложных услуг (+10%)
-            $isComplex = isset($appointment->metadata['is_complex']) && $appointment->metadata['is_complex'];
-            if ($isComplex && $feePercent > 0 && $feePercent < 100) {
-                $feePercent += 10;
-            }
-
-            // 5. Увеличение при переносе на более раннюю дату (×1.5)
-            // Если новая дата раньше текущей запланированной даты (срочный перенос)
-            if ($newStartTime->isBefore($originalStart->startOfDay())) {
-                $feePercent = (int)($feePercent * 1.5);
-            }
-
-            $feePercent = min(100, $feePercent);
-            $feeAmount = (int)($totalPrice * ($feePercent / 100));
-
-            Log::channel('audit')->info('Reschedule fee calculated', [
-                'appointment_id' => $appointment->id,
-                'hours_before' => $hoursBefore,
-                'is_group' => $appointment->is_group,
-                'is_early_reschedule' => $newStartTime->isBefore($originalStart),
-                'fee_percent' => $feePercent,
-                'fee_amount' => $feeAmount,
-                'correlation_id' => $appointment->correlation_id,
-            ]);
-
+        if ($hoursBefore < 4) {
             return [
-                'fee_amount' => $feeAmount,
-                'fee_percent' => (int)$feePercent,
-                'is_allowed' => true,
-                'reason' => "Policy: {$policy->value}, Group: " . ($appointment->is_group ? 'yes' : 'no'),
+                'fee_amount' => $totalPrice,
+                'fee_percent' => 100,
+                'is_allowed' => false,
+                'reason' => 'Перенос невозможен менее чем за 4 часа до начала услуги.',
             ];
         }
+
+        $feePercent = $this->getBaseFeePercent($hoursBefore);
+
+        if ($appointment->is_group) {
+            $groupFees = $this->groupBookingService->calculateGroupFees($appointment, 'reschedule');
+            $penaltyMultiplier = (float) $groupFees['penalty_multiplier'];
+            $feePercent = min(100.0, $feePercent * $penaltyMultiplier);
+        }
+
+        if ($appointment->is_wedding_group) {
+            $weddingFees = $this->weddingGroupService->calculateWeddingFees($appointment, 'reschedule');
+            $weddingPenalty = (float) $weddingFees['fee_percent'];
+            $weddingMultiplier = (float) $weddingFees['multiplier'];
+            $feePercent = max($feePercent, $weddingPenalty);
+            $feePercent = min(100.0, $feePercent * $weddingMultiplier);
+        }
+
+        if ($appointment->is_kids_party) {
+            $kidsFees = $this->kidsPartyService->calculateKidsPartyFees($appointment, 'reschedule');
+            $kidsPenalty = (float) $kidsFees['fee_percent'];
+            $kidsMultiplier = (float) $kidsFees['multiplier'];
+            $feePercent = max($feePercent, $kidsPenalty);
+            $feePercent = min(100.0, $feePercent * $kidsMultiplier);
+        }
+
+        $isComplex = isset($appointment->metadata['is_complex']) && $appointment->metadata['is_complex'];
+        if ($isComplex && $feePercent > 0 && $feePercent < 100) {
+            $feePercent += 10;
+        }
+
+        if ($newStartTime->isBefore($originalStart->startOfDay())) {
+            $feePercent = $feePercent * 1.5;
+        }
+
+        $feePercent = min(100.0, $feePercent);
+        $feeAmount = (int) ($totalPrice * ($feePercent / 100));
+
+        $this->logger->info('Reschedule fee calculated', [
+            'appointment_id' => $appointment->id,
+            'hours_before' => $hoursBefore,
+            'is_group' => $appointment->is_group,
+            'is_early_reschedule' => $newStartTime->isBefore($originalStart),
+            'fee_percent' => $feePercent,
+            'fee_amount' => $feeAmount,
+            'correlation_id' => $appointment->correlation_id,
+        ]);
+
+        return [
+            'fee_amount' => $feeAmount,
+            'fee_percent' => (int) $feePercent,
+            'is_allowed' => true,
+            'reason' => 'Group: ' . ($appointment->is_group ? 'yes' : 'no'),
+        ];
+    }
+
+    /**
+     * Базовый процент штрафа за перенос по количеству часов.
+     */
+    private function getBaseFeePercent(int $hoursBefore): float
+    {
+        return match (true) {
+            $hoursBefore >= 48 => 0.0,
+            $hoursBefore >= 24 => 10.0,
+            $hoursBefore >= 12 => 25.0,
+            $hoursBefore >= 4 => 50.0,
+            default => 100.0,
+        };
+    }
 }

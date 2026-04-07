@@ -1,276 +1,361 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Application\B2B\DTOs\CancelAppointmentDTO;
+use App\Domains\Beauty\Application\B2B\DTOs\CompleteAppointmentDTO;
+use App\Domains\Beauty\Application\B2B\DTOs\ConfirmAppointmentDTO;
+use App\Domains\Beauty\Application\B2B\UseCases\CancelAppointmentUseCase;
+use App\Domains\Beauty\Application\B2B\UseCases\CompleteAppointmentUseCase;
+use App\Domains\Beauty\Application\B2B\UseCases\ConfirmAppointmentUseCase;
+use App\Domains\Beauty\Domain\Enums\AppointmentStatus;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyMaster;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautySalon;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyService;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class AppointmentResource extends Model
+/**
+ * Filament Resource: Записи (Beauty Appointments).
+ *
+ * Tenant-scoped через getEloquentQuery().
+ * Сервисы резолвятся через app() — constructor injection в Resource не поддерживается.
+ * Нет Facades, нет статических вызовов.
+ *
+ * @package App\Filament\Tenant\Resources\Beauty
+ */
+final class AppointmentResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = BeautyAppointment::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static ?string $model = Appointment::class;
-        protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-        protected static ?string $navigationLabel = 'Записи на услуги';
-        protected static ?string $navigationGroup = 'Beauty & Wellness';
+    protected static ?string $navigationIcon   = 'heroicon-o-calendar-days';
+    protected static ?string $navigationGroup  = 'Beauty';
+    protected static ?string $navigationLabel  = 'Записи';
+    protected static ?string $modelLabel       = 'Запись';
+    protected static ?string $pluralModelLabel = 'Записи';
+    protected static ?int    $navigationSort   = 40;
 
-        public static function form(Form $form): Form
-        {
-            return $form
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Hidden::make('uuid')
+                ->default(fn () => Str::uuid()->toString()),
+            Hidden::make('correlation_id')
+                ->default(fn () => Str::uuid()->toString()),
+
+            Section::make('Участники записи')
+                ->columns(2)
                 ->schema([
-                    Forms\Components\Section::make('Клиент')
-                        ->description('Информация о клиенте')
-                        ->schema([
-                            Forms\Components\TextInput::make('uuid')
-                                ->default(fn () => (string) Str::uuid())
-                                ->disabled()
-                                ->dehydrated()
-                                ->required(),
-                            Forms\Components\Select::make('client_id')
-                                ->label('Клиент')
-                                ->relationship('client', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id')))
-                                ->searchable()
-                                ->preload(),
-                            Forms\Components\TextInput::make('client_phone')
-                                ->label('Телефон клиента')
-                                ->tel()
-                                ->nullable(),
-                            Forms\Components\TextInput::make('client_email')
-                                ->label('Email клиента')
-                                ->email()
-                                ->nullable(),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Детали услуги')
-                        ->description('Выбор салона, мастера и услуги')
-                        ->schema([
-                            Forms\Components\Select::make('salon_id')
-                                ->label('Салон')
-                                ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id')))
-                                ->required()
-                                ->reactive()
-                                ->preload()
-                                ->afterStateUpdated(fn (callable $set) => $set('master_id', null)),
-                            Forms\Components\Select::make('master_id')
-                                ->label('Мастер')
-                                ->relationship('master', 'full_name', function (Builder $query, callable $get) {
-                                    $salonId = $get('salon_id');
-                                    $query->where('tenant_id', tenant('id'));
-                                    if ($salonId) {
-                                        $query->where('salon_id', $salonId);
-                                    }
-                                    return $query;
-                                })
-                                ->required()
-                                ->reactive()
-                                ->preload(),
-                            Forms\Components\Select::make('service_id')
-                                ->label('Услуга')
-                                ->relationship('service', 'name', function (Builder $query, callable $get) {
-                                    $masterId = $get('master_id');
-                                    if ($masterId) {
-                                        $query->whereHas('master', fn ($q) => $q->where('master_id', $masterId));
-                                    }
-                                    return $query;
-                                })
-                                ->nullable(),
-                            Forms\Components\TextInput::make('service_name')
-                                ->label('Название услуги')
-                                ->nullable()
-                                ->maxLength(255),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('График и время')
-                        ->description('Дата и время проведения')
-                        ->schema([
-                            Forms\Components\DateTimePicker::make('datetime_start')
-                                ->label('Дата и время начала')
-                                ->required()
-                                ->native(false)
-                                ->displayFormat('d.m.Y H:i'),
-                            Forms\Components\TextInput::make('duration_minutes')
-                                ->label('Длительность (мин)')
-                                ->numeric()
-                                ->nullable()
-                                ->default(60),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Финансы')
-                        ->description('Цена и оплата')
-                        ->schema([
-                            Forms\Components\TextInput::make('price')
-                                ->label('Цена (рубли)')
-                                ->numeric()
-                                ->required()
-                                ->step(0.01)
-                                ->prefix('₽'),
-                            Forms\Components\TextInput::make('discount_amount')
-                                ->label('Скидка (копейки)')
-                                ->numeric()
-                                ->default(0)
-                                ->nullable(),
-                            Forms\Components\TextInput::make('total_price')
-                                ->label('Итого (копейки)')
-                                ->numeric()
-                                ->disabled(),
-                            Forms\Components\Select::make('payment_status')
-                                ->label('Статус оплаты')
-                                ->options([
-                                    'pending' => 'Ожидает',
-                                    'paid' => 'Оплачена',
-                                    'failed' => 'Ошибка',
-                                    'refunded' => 'Возвращена',
-                                ])
-                                ->default('pending')
-                                ->required(),
-                        ])->columns(2),
-
-                    Forms\Components\Section::make('Статус')
-                        ->description('Состояние записи')
-                        ->schema([
-                            Forms\Components\Select::make('status')
-                                ->label('Статус записи')
-                                ->options([
-                                    'pending' => 'Ожидает подтверждения',
-                                    'confirmed' => 'Подтверждена',
-                                    'completed' => 'Выполнена',
-                                    'cancelled' => 'Отменена',
-                                    'no_show' => 'Не явился',
-                                ])
-                                ->default('pending')
-                                ->required(),
-                            Forms\Components\TextInput::make('cancellation_reason')
-                                ->label('Причина отмены')
-                                ->nullable()
-                                ->maxLength(500),
-                            Forms\Components\RichEditor::make('notes')
-                                ->label('Заметки')
-                                ->nullable(),
-                        ])->columns(2),
-
-                    Forms\Components\Hidden::make('tenant_id')
-                        ->default(fn () => tenant('id')),
-                    Forms\Components\Hidden::make('correlation_id')
-                        ->default(fn () => (string) Str::uuid()),
-                ]);
-        }
-
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    Tables\Columns\TextColumn::make('datetime_start')
-                        ->label('Время')
-                        ->dateTime('d.m.Y H:i')
-                        ->sortable()
-                        ->searchable(),
-                    Tables\Columns\TextColumn::make('master.full_name')
-                        ->label('Мастер')
-                        ->searchable()
-                        ->sortable(),
-                    Tables\Columns\TextColumn::make('salon.name')
+                    Select::make('salon_id')
                         ->label('Салон')
-                        ->searchable(),
-                    Tables\Columns\TextColumn::make('client_phone')
-                        ->label('Клиент')
-                        ->copyable()
-                        ->icon('heroicon-o-phone'),
-                    Tables\Columns\TextColumn::make('service_name')
-                        ->label('Услуга'),
-                    Tables\Columns\TextColumn::make('total_price')
-                        ->label('Цена')
-                        ->money('RUB', locale: 'ru_RU', divideBy: 100)
-                        ->sortable(),
-                    Tables\Columns\SelectColumn::make('status')
-                        ->label('Статус')
-                        ->options([
-                            'pending' => 'Ожидает',
-                            'confirmed' => 'Подтверждена',
-                            'completed' => 'Выполнена',
-                            'cancelled' => 'Отменена',
-                            'no_show' => 'Не явился',
-                        ]),
-                    Tables\Columns\BadgeColumn::make('payment_status')
-                        ->label('Оплата')
-                        ->colors([
-                            'success' => 'paid',
-                            'warning' => 'pending',
-                            'danger' => 'failed',
-                            'info' => 'refunded',
-                        ]),
-                    Tables\Columns\TextColumn::make('created_at')
-                        ->label('Дата создания')
-                        ->date()
-                        ->sortable()
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('status')
-                        ->label('Статус')
-                        ->options([
-                            'pending' => 'Ожидает',
-                            'confirmed' => 'Подтверждена',
-                            'completed' => 'Выполнена',
-                            'cancelled' => 'Отменена',
-                            'no_show' => 'Не явился',
-                        ]),
-                    Tables\Filters\SelectFilter::make('payment_status')
-                        ->label('Статус оплаты')
-                        ->options([
-                            'pending' => 'Ожидает',
-                            'paid' => 'Оплачена',
-                            'failed' => 'Ошибка',
-                            'refunded' => 'Возвращена',
-                        ]),
-                    Tables\Filters\SelectFilter::make('master_id')
+                        ->options(fn () => BeautySalon::query()
+                            ->where('tenant_id', filament()->getTenant()?->id)
+                            ->where('is_active', true)
+                            ->pluck('name', 'id'))
+                        ->required()
+                        ->searchable()
+                        ->live()
+                        ->columnSpan(2),
+                    Select::make('master_id')
                         ->label('Мастер')
-                        ->relationship('master', 'full_name', fn (Builder $query) => $query->where('tenant_id', tenant('id'))),
-                    Tables\Filters\Filter::make('datetime_start')
-                        ->label('Дата записи')
-                        ->form([
-                            Forms\Components\DatePicker::make('from')->label('С'),
-                            Forms\Components\DatePicker::make('until')->label('По'),
-                        ])
-                        ->query(function (Builder $query, array $data): Builder {
-                            return $query
-                                ->when($data['from'], fn (Builder $query, $date): Builder => $query->whereDate('datetime_start', '>=', $date))
-                                ->when($data['until'], fn (Builder $query, $date): Builder => $query->whereDate('datetime_start', '<=', $date));
-                        }),
-                ])
-                ->actions([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
-                        Tables\Actions\BulkAction::make('confirm')
-                            ->label('Подтвердить')
-                            ->icon('heroicon-o-check')
-                            ->action(fn ($records) => $records->each->update(['status' => 'confirmed'])),
-                        Tables\Actions\BulkAction::make('cancel')
-                            ->label('Отменить')
-                            ->icon('heroicon-o-x-mark')
-                            ->action(fn ($records) => $records->each->update(['status' => 'cancelled'])),
-                    ]),
-                ]);
-        }
+                        ->options(function ($get) {
+                            $salonId = $get('salon_id');
+                            if (! $salonId) {
+                                return [];
+                            }
+                            return BeautyMaster::query()
+                                ->where('salon_id', $salonId)
+                                ->where('is_active', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->required()
+                        ->searchable(),
+                    Select::make('service_id')
+                        ->label('Услуга')
+                        ->options(function ($get) {
+                            $salonId = $get('salon_id');
+                            if (! $salonId) {
+                                return [];
+                            }
+                            return BeautyService::query()
+                                ->where('salon_id', $salonId)
+                                ->where('is_active', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->required()
+                        ->searchable(),
+                    TextInput::make('client_id')
+                        ->label('ID клиента')
+                        ->required()
+                        ->numeric(),
+                ]),
 
-        public static function getEloquentQuery(): Builder
-        {
-            return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'));
-        }
+            Section::make('Время и стоимость')
+                ->columns(2)
+                ->schema([
+                    DateTimePicker::make('start_at')
+                        ->label('Начало')
+                        ->required()
+                        ->seconds(false),
+                    DateTimePicker::make('end_at')
+                        ->label('Окончание')
+                        ->seconds(false),
+                    TextInput::make('price_cents')
+                        ->label('Стоимость (в копейках)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0),
+                ]),
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => \App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages\ListAppointments::route('/'),
-                'create' => \App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages\CreateAppointment::route('/create'),
-                'view' => \App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages\ViewAppointment::route('/{record}'),
-                'edit' => \App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages\EditAppointment::route('/{record}/edit'),
-            ];
-        }
+            Section::make('Статус')
+                ->schema([
+                    Select::make('status')
+                        ->label('Статус')
+                        ->options(fn () => collect(AppointmentStatus::cases())
+                            ->mapWithKeys(fn (AppointmentStatus $s) => [$s->value => $s->label()]))
+                        ->required()
+                        ->disabled(fn (string $operation): bool => $operation === 'create')
+                        ->default(AppointmentStatus::PENDING->value),
+                    Textarea::make('cancellation_reason')
+                        ->label('Причина отмены')
+                        ->rows(2)
+                        ->visible(fn ($get) => $get('status') === AppointmentStatus::CANCELLED->value),
+                ]),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('uuid')
+                    ->label('UUID')
+                    ->formatStateUsing(fn (string $state): string => substr($state, 0, 8) . '...')
+                    ->searchable(),
+                TextColumn::make('salon.name')
+                    ->label('Салон')
+                    ->searchable(),
+                TextColumn::make('master.name')
+                    ->label('Мастер')
+                    ->searchable(),
+                TextColumn::make('service.name')
+                    ->label('Услуга'),
+                TextColumn::make('start_at')
+                    ->label('Начало')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable(),
+                TextColumn::make('price_cents')
+                    ->label('Стоимость')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->sortable(),
+                TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => AppointmentStatus::from($state)->label())
+                    ->color(fn (string $state): string => AppointmentStatus::from($state)->color())
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->label('Создан')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Статус')
+                    ->options(fn () => collect(AppointmentStatus::cases())
+                        ->mapWithKeys(fn (AppointmentStatus $s) => [$s->value => $s->label()])),
+                SelectFilter::make('salon_id')
+                    ->label('Салон')
+                    ->options(fn () => BeautySalon::query()
+                        ->where('tenant_id', filament()->getTenant()?->id)
+                        ->pluck('name', 'id')),
+            ])
+            ->actions([
+                Action::make('confirm')
+                    ->label('Подтвердить')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalDescription('Подтвердить запись клиента?')
+                    ->visible(fn (BeautyAppointment $record): bool => $record->status === AppointmentStatus::PENDING->value)
+                    ->action(function (BeautyAppointment $record, ConfirmAppointmentUseCase $useCase): void {
+                        $correlationId = Str::uuid()->toString();
+                        $logger = app(LoggerInterface::class);
+
+                        try {
+                            $useCase->handle(new ConfirmAppointmentDTO(
+                                tenantId: filament()->getTenant()?->id ?? 0,
+                                confirmedByUserId: filament()->auth()->id() ?? 0,
+                                appointmentUuid: $record->uuid,
+                                correlationId: $correlationId,
+                            ));
+
+                            Notification::make()
+                                ->title('Запись подтверждена')
+                                ->success()
+                                ->send();
+
+                            $logger->info('Beauty: запись подтверждена', [
+                                'appointment_uuid' => $record->uuid,
+                                'correlation_id'   => $correlationId,
+                            ]);
+                        } catch (\DomainException $e) {
+                            $logger->error('Beauty: ошибка подтверждения записи', [
+                                'appointment_uuid' => $record->uuid,
+                                'error'            => $e->getMessage(),
+                                'correlation_id'   => $correlationId,
+                            ]);
+
+                            Notification::make()
+                                ->title('Ошибка: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                Action::make('complete')
+                    ->label('Завершить')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalDescription('Отметить запись как выполненную?')
+                    ->visible(fn (BeautyAppointment $record): bool => $record->status === AppointmentStatus::CONFIRMED->value)
+                    ->action(function (BeautyAppointment $record, CompleteAppointmentUseCase $useCase): void {
+                        $correlationId = Str::uuid()->toString();
+                        $logger = app(LoggerInterface::class);
+
+                        try {
+                            $useCase->handle(new CompleteAppointmentDTO(
+                                tenantId: filament()->getTenant()?->id ?? 0,
+                                completedByUserId: filament()->auth()->id() ?? 0,
+                                appointmentUuid: $record->uuid,
+                                correlationId: $correlationId,
+                            ));
+
+                            Notification::make()
+                                ->title('Запись завершена')
+                                ->success()
+                                ->send();
+
+                            $logger->info('Beauty: запись завершена', [
+                                'appointment_uuid' => $record->uuid,
+                                'correlation_id'   => $correlationId,
+                            ]);
+                        } catch (\DomainException $e) {
+                            $logger->error('Beauty: ошибка завершения записи', [
+                                'appointment_uuid' => $record->uuid,
+                                'error'            => $e->getMessage(),
+                                'correlation_id'   => $correlationId,
+                            ]);
+
+                            Notification::make()
+                                ->title('Ошибка: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                Action::make('cancel')
+                    ->label('Отменить')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalDescription('Отменить запись? Укажите причину.')
+                    ->form([
+                        Textarea::make('reason')
+                            ->label('Причина отмены')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->visible(fn (BeautyAppointment $record): bool => ! in_array(
+                        $record->status,
+                        [AppointmentStatus::COMPLETED->value, AppointmentStatus::CANCELLED->value],
+                        true
+                    ))
+                    ->action(function (BeautyAppointment $record, array $data, CancelAppointmentUseCase $useCase): void {
+                        $correlationId = Str::uuid()->toString();
+                        $logger = app(LoggerInterface::class);
+
+                        try {
+                            $useCase->handle(new CancelAppointmentDTO(
+                                tenantId: filament()->getTenant()?->id ?? 0,
+                                cancelledByUserId: filament()->auth()->id() ?? 0,
+                                appointmentUuid: $record->uuid,
+                                reason: $data['reason'],
+                                correlationId: $correlationId,
+                            ));
+
+                            Notification::make()
+                                ->title('Запись отменена')
+                                ->warning()
+                                ->send();
+
+                            $logger->info('Beauty: запись отменена', [
+                                'appointment_uuid' => $record->uuid,
+                                'reason'           => $data['reason'],
+                                'correlation_id'   => $correlationId,
+                            ]);
+                        } catch (\DomainException $e) {
+                            $logger->error('Beauty: ошибка отмены записи', [
+                                'appointment_uuid' => $record->uuid,
+                                'error'            => $e->getMessage(),
+                                'correlation_id'   => $correlationId,
+                            ]);
+
+                            Notification::make()
+                                ->title('Ошибка: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                EditAction::make(),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ])
+            ->defaultSort('start_at', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->whereHas('salon', function (Builder $query) {
+                $query->where('tenant_id', filament()->getTenant()?->id);
+            })
+            ->with(['salon', 'master', 'service']);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index'  => Pages\ListAppointments::route('/'),
+            'create' => Pages\CreateAppointment::route('/create'),
+            'edit'   => Pages\EditAppointment::route('/{record}/edit'),
+        ];
+    }
 }
+

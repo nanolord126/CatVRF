@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoServiceOrderResource extends Model
+final class AutoServiceOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoServiceOrder::class;
 
         protected static ?string $navigationLabel = 'Заказы СТО';

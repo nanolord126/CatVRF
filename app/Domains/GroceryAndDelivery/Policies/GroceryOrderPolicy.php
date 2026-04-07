@@ -2,19 +2,17 @@
 
 namespace App\Domains\GroceryAndDelivery\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class GroceryOrderPolicy extends Model
+
+use Psr\Log\LoggerInterface;
+final class GroceryOrderPolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         public function __construct(
-            private readonly FraudControlService $fraudService,
-        ) {}
+            private readonly FraudControlService $fraudService, private readonly LoggerInterface $logger) {}
 
         /**
          * Проверка, может ли пользователь просматривать заказ
@@ -23,7 +21,7 @@ final class GroceryOrderPolicy extends Model
         {
             $canView = $user->id === $order->user_id || $user->isTenantAdmin();
 
-            Log::channel('audit')->info('GroceryOrderPolicy::view checked', [
+            $this->logger->info('GroceryOrderPolicy::view checked', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'can_view' => $canView,
@@ -52,7 +50,7 @@ final class GroceryOrderPolicy extends Model
                 );
 
                 if ($fraudScore > 0.75) {
-                    Log::channel('fraud_alert')->warning('Order modification blocked by fraud score', [
+                    $this->logger->warning('Order modification blocked by fraud score', [
                         'user_id' => $user->id,
                         'order_id' => $order->id,
                         'fraud_score' => $fraudScore,
@@ -62,7 +60,7 @@ final class GroceryOrderPolicy extends Model
                 }
             }
 
-            Log::channel('audit')->info('GroceryOrderPolicy::update checked', [
+            $this->logger->info('GroceryOrderPolicy::update checked', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'status' => $order->status,
@@ -86,11 +84,11 @@ final class GroceryOrderPolicy extends Model
             if ($canCancel) {
                 $cancelCount = GroceryOrder::where('user_id', $user->id)
                     ->where('status', 'cancelled')
-                    ->where('created_at', '>=', now()->subHours(24))
+                    ->where('created_at', '>=', Carbon::now()->subHours(24))
                     ->count();
 
                 if ($cancelCount > 10) {
-                    Log::channel('fraud_alert')->warning('User cancel limit exceeded', [
+                    $this->logger->warning('User cancel limit exceeded', [
                         'user_id' => $user->id,
                         'cancel_count_24h' => $cancelCount,
                         'correlation_id' => $order->correlation_id,
@@ -99,7 +97,7 @@ final class GroceryOrderPolicy extends Model
                 }
             }
 
-            Log::channel('audit')->info('GroceryOrderPolicy::cancel checked', [
+            $this->logger->info('GroceryOrderPolicy::cancel checked', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'status' => $order->status,
@@ -121,7 +119,7 @@ final class GroceryOrderPolicy extends Model
                 || $order->created_at->addDays(30)->isPast()
             );
 
-            Log::channel('audit')->info('GroceryOrderPolicy::delete checked', [
+            $this->logger->info('GroceryOrderPolicy::delete checked', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'is_admin' => $user->isTenantAdmin(),
@@ -141,7 +139,7 @@ final class GroceryOrderPolicy extends Model
             $isStoreAdmin = $user->id === $order->store->owner_id || $user->isTenantAdmin();
             $canConfirm = $isStoreAdmin && $order->status === 'pending';
 
-            Log::channel('audit')->info('GroceryOrderPolicy::confirm checked', [
+            $this->logger->info('GroceryOrderPolicy::confirm checked', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'is_store_admin' => $isStoreAdmin,
@@ -159,13 +157,13 @@ final class GroceryOrderPolicy extends Model
         {
             // Rate limit: максимум 10 заказов в час
             $recentOrderCount = GroceryOrder::where('user_id', $user->id)
-                ->where('created_at', '>=', now()->subHour())
+                ->where('created_at', '>=', Carbon::now()->subHour())
                 ->count();
 
             $canCreate = $recentOrderCount < 10;
 
             if (!$canCreate) {
-                Log::channel('fraud_alert')->warning('User order creation rate limited', [
+                $this->logger->warning('User order creation rate limited', [
                     'user_id' => $user->id,
                     'orders_in_hour' => $recentOrderCount,
                 ]);

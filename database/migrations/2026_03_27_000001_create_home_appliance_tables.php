@@ -114,3 +114,5 @@ return new class extends Migration
         Schema::dropIfExists('appliance_brands');
     }
 };
+
+

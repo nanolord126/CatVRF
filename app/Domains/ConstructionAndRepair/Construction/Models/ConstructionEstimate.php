@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class ConstructionEstimate extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, BelongsToTenant;
 
         protected $table = 'construction_estimates';
@@ -29,6 +28,22 @@ final class ConstructionEstimate extends Model
             'items_json' => 'json',
         ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
+
         protected static function booted(): void
         {
             static::creating(function (self $model) {
@@ -40,7 +55,7 @@ final class ConstructionEstimate extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function project(): BelongsTo
         {

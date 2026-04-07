@@ -2,14 +2,19 @@
 
 namespace App\Domains\Logistics\Models;
 
+
+use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\FraudControlService;
 
 final class DeliveryOrder extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'logistics_delivery_orders';
@@ -53,14 +58,14 @@ final class DeliveryOrder extends Model
             'correlation_id' => 'string',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant('id')) {
-                    $model->tenant_id = (int) tenant('id');
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()?->id) {
+                    $model->tenant_id = (int) tenant()?->id;
                 }
 
                 // Расчет итоговой цены, если не задана
@@ -70,8 +75,8 @@ final class DeliveryOrder extends Model
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -112,7 +117,6 @@ final class DeliveryOrder extends Model
         public function getStatusLabel(): string
         {
             return match($this->status) {
-                'pending' => 'Ожидает назначения',
                 'assigned' => 'Курьер назначен',
                 'at_pickup' => 'На точке забора',
                 'in_transit' => 'В пути',
@@ -127,7 +131,6 @@ final class DeliveryOrder extends Model
         public function getStatusColor(): string
         {
             return match($this->status) {
-                'pending' => 'gray',
                 'assigned' => 'blue',
                 'at_pickup' => 'orange',
                 'in_transit' => 'info',
@@ -144,14 +147,14 @@ final class DeliveryOrder extends Model
          */
         public function assignCourier(int $courierId, string $correlationId): void
         {
-            \Illuminate\Support\Facades\DB::transaction(function() use ($courierId, $correlationId) {
+            $this->db->transaction(function() use ($courierId, $correlationId) {
                 $this->update([
                     'courier_id' => $courierId,
                     'status' => 'assigned',
                     'correlation_id' => $correlationId,
                 ]);
 
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Courier assigned to delivery order', [
+                $this->logger->info('Courier assigned to delivery order', [
                     'order_uuid' => $this->uuid,
                     'courier_id' => $courierId,
                     'correlation_id' => $correlationId,
@@ -161,20 +164,17 @@ final class DeliveryOrder extends Model
 
         public function markAsDelivered(string $correlationId): void
         {
-            \Illuminate\Support\Facades\DB::transaction(function() use ($correlationId) {
+            $this->db->transaction(function() use ($correlationId) {
                 $this->update([
                     'status' => 'completed',
                     'actual_delivery_at' => now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Delivery order completed', [
+                $this->logger->info('Delivery order completed', [
                     'order_uuid' => $this->uuid,
                     'correlation_id' => $correlationId,
                 ]);
             });
         }
     }
-            });
-        }
-}

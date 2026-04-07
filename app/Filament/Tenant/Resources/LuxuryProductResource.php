@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class LuxuryProductResource extends Model
+final class LuxuryProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = LuxuryProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -74,22 +71,15 @@ final class LuxuryProductResource extends Model
                         ->columnSpanFull(),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListLuxuryProduct::route('/'),
-                'create' => Pages\\CreateLuxuryProduct::route('/create'),
-                'edit' => Pages\\EditLuxuryProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewLuxuryProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListLuxuryProduct::route('/'),
-                'create' => Pages\\CreateLuxuryProduct::route('/create'),
-                'edit' => Pages\\EditLuxuryProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewLuxuryProduct::route('/{record}'),
+                'index' => Pages\ListLuxuryProduct::route('/'),
+                'create' => Pages\CreateLuxuryProduct::route('/create'),
+                'edit' => Pages\EditLuxuryProduct::route('/{record}/edit'),
+                'view' => Pages\ViewLuxuryProduct::route('/{record}'),
             ];
         }
 }

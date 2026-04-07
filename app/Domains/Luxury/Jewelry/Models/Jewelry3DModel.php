@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Jewelry3DModel extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = '3d_models';
 
         protected $fillable = [
@@ -44,10 +43,33 @@ final class Jewelry3DModel extends Model
             return $this->belongsTo(JewelryItem::class, 'jewelry_item_id');
         }
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                $query->where('tenant_id', filament()->getTenant()->id);
+                $query->where('tenant_id', tenant()->id);
             });
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

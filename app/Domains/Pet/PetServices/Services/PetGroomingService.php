@@ -2,151 +2,160 @@
 
 namespace App\Domains\Pet\PetServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class PetGroomingService extends Model
+final readonly class PetGroomingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly WalletService $walletService,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-        public function createGroomingAppointment(array $data): PetGroomingServiceModel
-        {
-            Log::channel('audit')->info('PetGroomingService: Creating grooming appointment', [
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'pet_clinic_id' => $data['pet_clinic_id'],
-                'tenant_id' => filament()->getTenant()->id,
+    /**
+     * Создание записи на груминг.
+     */
+    public function createSession(
+        int $groomerId,
+        string $sessionDate,
+        int $durationMinutes,
+        string $petType,
+        string $serviceType,
+        int $priceKopecks,
+        string $correlationId,
+    ): PetGroomingSession {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pet_grooming_book',
+            amount: $priceKopecks,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($groomerId, $sessionDate, $durationMinutes, $petType, $serviceType, $priceKopecks, $correlationId): PetGroomingSession {
+            $platformFee = (int) ($priceKopecks * 0.14);
+            $payoutAmount = $priceKopecks - $platformFee;
+
+            $session = PetGroomingSession::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'groomer_id' => $groomerId,
+                'client_id' => $this->guard->id(),
+                'session_date' => $sessionDate,
+                'duration_minutes' => $durationMinutes,
+                'pet_type' => $petType,
+                'service_type' => $serviceType,
+                'total_kopecks' => $priceKopecks,
+                'platform_fee_kopecks' => $platformFee,
+                'payout_kopecks' => $payoutAmount,
+                'status' => 'pending_payment',
+                'payment_status' => 'pending',
+                'correlation_id' => $correlationId,
+                'tags' => ['pet_type' => $petType, 'service' => $serviceType],
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(fn () => PetGroomingServiceModel::create([
-                'uuid' => Str::uuid(),
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tenant_id' => filament()->getTenant()->id,
-                'pet_clinic_id' => $data['pet_clinic_id'],
-                'pet_id' => $data['pet_id'],
-                'groomer_id' => $data['groomer_id'],
-                'service_type' => $data['service_type'] ?? 'basic',
-                'appointment_date' => $data['appointment_date'],
-                'duration_minutes' => $data['duration_minutes'] ?? 60,
-                'price' => $data['price'] ?? 150000,
-                'status' => 'pending',
-                'tags' => $data['tags'] ?? [],
-            ]));
-        }
-
-        public function confirmGroomingAppointment(int $appointmentId): bool
-        {
-            $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
-
-            Log::channel('audit')->info('PetGroomingService: Confirming grooming appointment', [
-                'correlation_id' => $appointment->correlation_id,
-                'appointment_id' => $appointmentId,
+            $this->logger->info('Pet grooming session booked', [
+                'session_id' => $session->id,
+                'session_uuid' => $session->uuid,
+                'groomer_id' => $groomerId,
+                'pet_type' => $petType,
+                'service_type' => $serviceType,
+                'total_kopecks' => $priceKopecks,
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($appointment) {
-                $appointment->update(['status' => 'confirmed']);
-                return true;
-            });
-        }
+            return $session;
+        });
+    }
 
-        public function completeGroomingAppointment(int $appointmentId, array $photoUrls = []): bool
-        {
-            $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
+    /**
+     * Завершение сессии груминга и выплата грумеру.
+     */
+    public function completeSession(int $sessionId, string $correlationId): PetGroomingSession
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pet_grooming_complete',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-            Log::channel('audit')->info('PetGroomingService: Completing grooming appointment', [
-                'correlation_id' => $appointment->correlation_id,
-                'appointment_id' => $appointmentId,
+        return $this->db->transaction(function () use ($sessionId, $correlationId): PetGroomingSession {
+            $session = PetGroomingSession::lockForUpdate()->findOrFail($sessionId);
+
+            if ($session->payment_status !== 'completed') {
+                throw new \RuntimeException("Session {$sessionId} payment not completed.");
+            }
+
+            if ($session->status === 'completed') {
+                throw new \RuntimeException("Session {$sessionId} already completed.");
+            }
+
+            $session->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            $this->wallet->credit(
+                userId: $session->groomer_id,
+                amount: $session->payout_kopecks,
+                type: 'grooming_payout',
+                reason: "Grooming session #{$session->id} completed",
+                correlationId: $correlationId,
             );
-    DB::transaction(function () use ($appointment, $photoUrls) {
-                $appointment->update([
-                    'status' => 'completed',
-                    'completed_at' => now(),
-                    'photo_urls' => $photoUrls,
-                ]);
 
-                // Credit to clinic wallet
-                $this->walletService->credit(
-                    tenantId: $appointment->tenant_id,
-                    amount: (int) ($appointment->price * 0.86),
-                    reason: 'grooming_service_completed',
-                    correlationId: $appointment->correlation_id,
+            $this->logger->info('Pet grooming session completed with payout', [
+                'session_id' => $session->id,
+                'payout_kopecks' => $session->payout_kopecks,
+                'groomer_id' => $session->groomer_id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session->refresh();
+        });
+    }
+
+    /**
+     * Отмена записи на груминг с возвратом средств.
+     */
+    public function cancelSession(int $sessionId, string $reason, string $correlationId): PetGroomingSession
+    {
+        return $this->db->transaction(function () use ($sessionId, $reason, $correlationId): PetGroomingSession {
+            $session = PetGroomingSession::lockForUpdate()->findOrFail($sessionId);
+
+            if ($session->status === 'completed') {
+                throw new \RuntimeException("Cannot cancel a completed grooming session.");
+            }
+
+            if ($session->payment_status === 'completed') {
+                $this->wallet->credit(
+                    userId: $session->client_id,
+                    amount: $session->total_kopecks,
+                    type: 'grooming_refund',
+                    reason: "Grooming session #{$session->id} cancelled: {$reason}",
+                    correlationId: $correlationId,
                 );
+            }
 
-                return true;
-            });
-        }
-
-        public function getAvailableSlots(int $groomerIdId, string $date): Collection
-        {
-            $appointmentCount = PetGroomingServiceModel::where('groomer_id', $groomerIdId)
-                ->whereDate('appointment_date', $date)
-                ->where('status', '!=', 'cancelled')
-                ->count();
-
-            return collect(range(9, 17))->map(function (int $hour) use ($appointmentCount) {
-                return [
-                    'hour' => $hour,
-                    'available' => $appointmentCount < 8,
-                ];
-            })->filter(fn ($slot) => $slot['available']);
-        }
-
-        public function cancelGroomingAppointment(int $appointmentId, string $reason = ''): bool
-        {
-            $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
-
-            Log::channel('audit')->info('PetGroomingService: Cancelling grooming appointment', [
-                'correlation_id' => $appointment->correlation_id,
-                'appointment_id' => $appointmentId,
-                'reason' => $reason,
+            $session->update([
+                'status' => 'cancelled',
+                'payment_status' => $session->payment_status === 'completed' ? 'refunded' : $session->payment_status,
+                'cancellation_reason' => $reason,
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($appointment, $reason) {
-                $appointment->update([
-                    'status' => 'cancelled',
-                    'cancellation_reason' => $reason,
-                    'cancelled_at' => now(),
-                ]);
+            $this->logger->info('Pet grooming session cancelled', [
+                'session_id' => $session->id,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
 
-                return true;
-            });
-        }
+            return $session->refresh();
+        });
+    }
 }

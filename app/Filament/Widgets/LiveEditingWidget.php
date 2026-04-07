@@ -2,14 +2,25 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LiveEditingWidget extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Widgets\Widget;
+
+/**
+ * Class LiveEditingWidget
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Widgets
+ */
+final class LiveEditingWidget extends Widget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $view = 'filament.widgets.live-editing-widget';
 
         public array $activeEditors = [];
@@ -36,7 +47,7 @@ final class LiveEditingWidget extends Model
                 $this->activePresence = [];
                 $this->presenceCount = 0;
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load live editing data', [
+                $this->logger->error('Failed to load live editing data', [
                     'error' => $e->getMessage(),
                 ]);
             }

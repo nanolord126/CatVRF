@@ -2,14 +2,13 @@
 
 namespace App\Domains\Luxury\Jewelry\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AuditJewelryCertificateJob extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final class AuditJewelryCertificateJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -18,54 +17,58 @@ final class AuditJewelryCertificateJob extends Model
         /**
          * Create a new job instance.
          */
-        public function __construct(
-            public readonly int $productId,
-            public readonly string $correlationId
-        ) {}
+        public function __construct(private readonly int $productId,
+            private readonly string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Execute the job.
          */
-        public function handle(FraudControlService $fraudControl): void
+        public function handle(FraudControlService $fraud): void
         {
             try {
-                Log::channel('audit')->info('Starting jewelry certificate audit', [
+                $this->logger->info('Starting jewelry certificate audit', [
                     'cid' => $this->correlationId,
                     'pid' => $this->productId,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 $product = JewelryProduct::findOrFail($this->productId);
 
                 if (!$product->has_certification || empty($product->certificate_number)) {
-                    Log::channel('audit')->warning('Jewelry audit skipped: no certificate recorded.', [
+                    $this->logger->warning('Jewelry audit skipped: no certificate recorded.', [
                         'cid' => $this->correlationId,
                         'pid' => $this->productId,
-                    ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return;
                 }
 
                 // Simulate External API Check (GIA/IGI/HRD)
                 $isVerified = $this->verifyWithGemologicalInstitute($product->certificate_number);
 
-                DB::transaction(function () use ($product, $isVerified, $fraudControl) {
+                $this->db->transaction(function () use ($product, $isVerified, $fraudControl) {
                     if ($isVerified) {
                         $product->update([
                             'tags' => array_unique(array_merge($product->tags ?? [], ['verified-authentic'])),
                         ]);
 
-                        Log::channel('audit')->info('Jewelry certificate verified successfully.', [
+                        $this->logger->info('Jewelry certificate verified successfully.', [
                             'cid' => $this->correlationId,
                             'cert' => $product->certificate_number,
-                        ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     } else {
                         // Critical Alert: Potential fraudulent certificate
                         $product->update(['is_published' => false]);
 
-                        Log::channel('fraud_alert')->error('CRITICAL: Jewelry certificate verification FAILED.', [
+                        $this->logger->error('CRITICAL: Jewelry certificate verification FAILED.', [
                             'cid' => $this->correlationId,
                             'pid' => $product->id,
                             'cert' => $product->certificate_number,
-                        ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                         // Trigger additional fraud scoring
                         $fraudControl->recordViolation($product->tenant_id, 'fake-gem-certificate', $this->correlationId);
@@ -73,10 +76,11 @@ final class AuditJewelryCertificateJob extends Model
                 });
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Jewelry audit job failed', [
+                $this->logger->error('Jewelry audit job failed', [
                     'cid' => $this->correlationId,
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 $this->fail($e);
             }

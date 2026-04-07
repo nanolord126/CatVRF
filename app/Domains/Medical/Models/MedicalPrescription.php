@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalPrescription extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'medical_prescriptions';
@@ -34,7 +33,7 @@ final class MedicalPrescription extends Model
             'is_digital_signed' => 'boolean',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 $query->where('tenant_id', tenant()->id ?? 0);
@@ -55,4 +54,27 @@ final class MedicalPrescription extends Model
         {
             return $this->belongsTo(\App\Models\User::class, 'patient_id');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

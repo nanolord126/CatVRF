@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Sports;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SportProductResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\RichEditor, Components\Toggle, Components\TagsInput, Components\Hidden, Components\FileUpload, Components\Repeater, Components\Grid};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\Filter, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction, ActionGroup};
@@ -20,6 +15,10 @@ final class SportProductResource extends Model
 
     final class SportProductResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = SportProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-fire';
         protected static ?string $navigationGroup = 'Sports & Active';
@@ -317,7 +316,6 @@ final class SportProductResource extends Model
                 BadgeColumn::make('sport_type')
                     ->label('Вид спорта')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'fitness' => 'Фитнес',
                         'running' => 'Бег',
                         'cycling' => 'Велоспорт',
                         'hiking' => 'Туризм',
@@ -330,7 +328,6 @@ final class SportProductResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'fitness' => 'purple',
                         'running' => 'blue',
                         'cycling' => 'info',
                         'swimming' => 'cyan',
@@ -489,9 +486,9 @@ final class SportProductResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Sport product verified', [
+                            $this->logger->info('Sport product verified', [
                                 'product_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -504,9 +501,9 @@ final class SportProductResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Sport product featured', [
+                            $this->logger->info('Sport product featured', [
                                 'product_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -519,9 +516,9 @@ final class SportProductResource extends Model
                         ->visible(fn ($record) => !$record->is_bestseller)
                         ->action(function ($record) {
                             $record->update(['is_bestseller' => true]);
-                            Log::channel('audit')->info('Sport product marked as bestseller', [
+                            $this->logger->info('Sport product marked as bestseller', [
                                 'product_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -533,9 +530,9 @@ final class SportProductResource extends Model
                     DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Sport product bulk deleted', [
+                                $this->logger->info('Sport product bulk deleted', [
                                     'product_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -548,9 +545,9 @@ final class SportProductResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Sport product activated', [
+                                $this->logger->info('Sport product activated', [
                                     'product_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -565,9 +562,9 @@ final class SportProductResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Sport product bulk verified', [
+                                $this->logger->info('Sport product bulk verified', [
                                     'product_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

@@ -2,39 +2,30 @@
 
 namespace App\Domains\Pet\PetServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetBoardingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PetBoardingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly WalletService $walletService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createBoardingReservation(array $data): PetBoarding
         {
-            Log::channel('audit')->info('PetBoardingService: Creating boarding reservation', [
+            $this->logger->info('PetBoardingService: Creating boarding reservation', [
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
                 'pet_clinic_id' => $data['pet_clinic_id'],
-                'tenant_id' => filament()->getTenant()->id,
+                'tenant_id' => tenant()->id,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(fn () => PetBoarding::create([
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(fn () => PetBoarding::create([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tenant_id' => filament()->getTenant()->id,
+                'tenant_id' => tenant()->id,
                 'pet_clinic_id' => $data['pet_clinic_id'],
                 'pet_id' => $data['pet_id'],
                 'check_in_date' => $data['check_in_date'],
@@ -52,20 +43,13 @@ final class PetBoardingService extends Model
         {
             $reservation = PetBoarding::findOrFail($reservationId);
 
-            Log::channel('audit')->info('PetBoardingService: Confirming boarding reservation', [
+            $this->logger->info('PetBoardingService: Confirming boarding reservation', [
                 'correlation_id' => $reservation->correlation_id,
                 'reservation_id' => $reservationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($reservation) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($reservation) {
                 $reservation->update(['status' => 'confirmed']);
                 return true;
             });
@@ -75,20 +59,13 @@ final class PetBoardingService extends Model
         {
             $reservation = PetBoarding::findOrFail($reservationId);
 
-            Log::channel('audit')->info('PetBoardingService: Pet check-in', [
+            $this->logger->info('PetBoardingService: Pet check-in', [
                 'correlation_id' => $reservation->correlation_id,
                 'reservation_id' => $reservationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($reservation) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($reservation) {
                 $reservation->update([
                     'status' => 'checked_in',
                     'actual_check_in' => now(),
@@ -101,20 +78,13 @@ final class PetBoardingService extends Model
         {
             $reservation = PetBoarding::findOrFail($reservationId);
 
-            Log::channel('audit')->info('PetBoardingService: Pet check-out', [
+            $this->logger->info('PetBoardingService: Pet check-out', [
                 'correlation_id' => $reservation->correlation_id,
                 'reservation_id' => $reservationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($reservation, $notes) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($reservation, $notes) {
                 $reservation->update([
                     'status' => 'completed',
                     'actual_check_out' => now(),
@@ -135,45 +105,15 @@ final class PetBoardingService extends Model
 
         public function getAvailableRooms(string $checkInDate, string $checkOutDate): Collection
         {
-            $roomTypes = ['standard', 'premium', 'luxury'];
-
-            return collect($roomTypes)->map(function (string $type) use ($checkInDate, $checkOutDate) {
-                $occupied = PetBoarding::where('room_type', $type)
-                    ->whereBetween('check_in_date', [$checkInDate, $checkOutDate])
-                    ->where('status', '!=', 'cancelled')
-                    ->count();
-
-                return [
-                    'room_type' => $type,
-                    'available' => $occupied < 5,
-                    'price_multiplier' => match ($type) {
-                        'premium' => 1.5,
-                        'luxury' => 2.0,
-                        default => 1.0,
-                    },
-                ];
-            });
-        }
-
-        public function cancelBoardingReservation(int $reservationId, string $reason = ''): bool
-        {
-            $reservation = PetBoarding::findOrFail($reservationId);
-
-            Log::channel('audit')->info('PetBoardingService: Cancelling boarding reservation', [
+            $roomTypes = ['standard', \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [$checkInDate, $checkOutDate])
+                    ->where('status', \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $reservation, null, null, [
                 'correlation_id' => $reservation->correlation_id,
                 'reservation_id' => $reservationId,
                 'reason' => $reason,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($reservation, $reason) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($reservation, $reason) {
                 $reservation->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,

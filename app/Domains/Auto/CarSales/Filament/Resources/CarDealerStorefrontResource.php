@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\CarSales\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CarDealerStorefrontResource extends Model
+final class CarDealerStorefrontResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CarDealerStorefront::class;
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
         protected static ?string $navigationGroup = 'Продажи авто';

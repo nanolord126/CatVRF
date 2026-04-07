@@ -2,27 +2,34 @@
 
 namespace App\Http\Controllers\Api\V2;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BaseApiV2Controller extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class BaseApiV2Controller extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected string $apiVersion = 'v2';
+
+    private string $apiVersion = 'v2';
         /**
          * Обработчик ошибок для try/catch
          */
         protected function errorResponse(\Throwable $e, string $correlationId, int $code = 500): ResponseFactory
         {
-            \Illuminate\Support\Facades\Log::channel('audit')->error('Controller error', [
+            $this->logger->channel('audit')->error('Controller error', [
                 'error' => $e->getMessage(),
                 'code' => $code,
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -36,13 +43,13 @@ final class BaseApiV2Controller extends Model
             string $message = 'Success',
             int $code = 200
         ): ResponseFactory {
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => $message,
                 'data' => $data,
                 'api_version' => $this->apiVersion,
                 'timestamp' => now()->toIso8601String(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $this->request->header('X-Correlation-ID'),
             ], $code);
         }
         protected function respondWithError(
@@ -50,13 +57,13 @@ final class BaseApiV2Controller extends Model
             int $code = 400,
             array $details = []
         ): ResponseFactory {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'error' => $error,
                 'details' => $details,
                 'api_version' => $this->apiVersion,
                 'timestamp' => now()->toIso8601String(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $this->request->header('X-Correlation-ID'),
             ], $code);
         }
 }

@@ -2,14 +2,20 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ResponseCompressionService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Log\LogManager;
+
+
+final readonly class ResponseCompressionService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const MIN_COMPRESSION_SIZE = 1024; // Компрессуем если > 1KB
         private const COMPRESSION_LEVEL = 6; // 1-9 (6 = хороший баланс)
 
@@ -55,18 +61,20 @@ final class ResponseCompressionService extends Model
                 $response->header('X-Original-Size', $contentSize);
                 $response->header('X-Compression-Ratio', round($savings, 1) . '%');
 
-                Log::channel('performance')->debug('Response compressed', [
+                $this->logger->channel('performance')->debug('Response compressed', [
                     'original_size' => $contentSize,
                     'compressed_size' => $compressedSize,
-                    'savings_percent' => round($savings, 1)
-                ]);
+                    'savings_percent' => round($savings, 1),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return $response;
 
             } catch (\Throwable $e) {
-                Log::channel('performance')->warning('Response compression failed', [
-                    'error' => $e->getMessage()
-                ]);
+                $this->logger->channel('performance')->warning('Response compression failed', [
+                    'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 return $response;
             }
         }

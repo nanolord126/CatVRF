@@ -2,43 +2,39 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SportsNutritionDomainService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class SportsNutritionDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    private string $correlationId;
-
-        public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {
-            $this->correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
-        }
+    public function __construct(private FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Save or update a supplement product with strict transactional checks.
          */
         public function saveProduct(SportsNutritionProductDto $dto, string $cid = null): SportsNutritionProduct
         {
-            $cid = $cid ?? $this->correlationId;
+            $cid = $cid ?? (string) \Illuminate\Support\Str::uuid();
 
-            Log::channel('audit')->info('Supplement product update requested', [
+            $this->logger->info('Supplement product update requested', [
                 'cid' => $cid,
                 'sku' => $dto->sku,
-                'user' => auth()->id() ?? 'system',
+                'user' => $this->guard->id() ?? 'system',
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
-            return DB::transaction(function () use ($dto, $cid) {
+            return $this->db->transaction(function () use ($dto, $cid) {
                 // 1. Mandatory Fraud Check (L8 integration)
-                $this->fraudControl->check($cid, 'sn_product_save');
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'sn_product_save', amount: 0, correlationId: $cid);
 
                 // 2. Expiry validation (no entry for already expired or <30d products)
                 $expiry = Carbon::parse($dto->expiry_date);
                 if ($expiry->isPast() || $expiry->diffInDays(now()) < 30) {
-                     Log::channel('fraud_alert')->warning('Attempt to stock near-expiry supplement.', [
+                     $this->logger->warning('Attempt to stock near-expiry supplement.', [
                         'cid' => $cid,
                         'sku' => $dto->sku,
                         'expiry' => $dto->expiry_date
@@ -71,9 +67,10 @@ final class SportsNutritionDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('Supplement product saved successfully.', [
+                $this->logger->info('Supplement product saved successfully.', [
                     'cid' => $cid,
                     'pid' => $product->id,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 return $product;
@@ -85,9 +82,9 @@ final class SportsNutritionDomainService extends Model
          */
         public function useConsumable(int $consumableId, float $kgValue, string $reason, string $cid = null): void
         {
-            $cid = $cid ?? $this->correlationId;
+            $cid = $cid ?? (string) \Illuminate\Support\Str::uuid();
 
-            DB::transaction(function () use ($consumableId, $kgValue, $reason, $cid) {
+            $this->db->transaction(function () use ($consumableId, $kgValue, $reason, $cid) {
                 $consumable = SportsNutritionConsumable::lockForUpdate()->findOrFail($consumableId);
 
                 if ($consumable->stock_kg < $kgValue) {
@@ -99,7 +96,7 @@ final class SportsNutritionDomainService extends Model
 
                 $consumable->update(['stock_kg' => $newStock, 'correlation_id' => $cid]);
 
-                Log::channel('inventory')->info('Supplement raw material deducted', [
+                $this->logger->info('Supplement raw material deducted', [
                     'cid' => $cid,
                     'item' => $consumableId,
                     'kg' => $kgValue,
@@ -109,7 +106,7 @@ final class SportsNutritionDomainService extends Model
                 ]);
 
                 if ($newStock <= $consumable->min_threshold) {
-                    Log::channel('fraud_alert')->warning('LOW STOCK: Re-order raw ingredient soon.', [
+                    $this->logger->warning('LOW STOCK: Re-order raw ingredient soon.', [
                         'cid' => $cid,
                         'item' => $consumable->name
                     ]);
@@ -122,9 +119,9 @@ final class SportsNutritionDomainService extends Model
          */
         public function createSubscriptionBox(SubscriptionBoxDto $dto, string $cid = null): SportsNutritionSubscriptionBox
         {
-            $cid = $cid ?? $this->correlationId;
+            $cid = $cid ?? (string) \Illuminate\Support\Str::uuid();
 
-            return DB::transaction(function () use ($dto, $cid) {
+            return $this->db->transaction(function () use ($dto, $cid) {
                  return SportsNutritionSubscriptionBox::create([
                     'name' => $dto->name,
                     'description' => $dto->description,

@@ -182,3 +182,16 @@ Route::middleware(['auth', 'tenant'])->prefix('mesh')->group(function () {
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/stream/{stream}', [\App\Http\Controllers\StreamController::class, 'show'])->name('stream.show');
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// USER PERSONAL CABINET (Личный кабинет пользователя)
+// Livewire 3 + Tailwind | Layout: layouts.user-cabinet
+// ══════════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth', 'verified'])->prefix('cabinet')->name('user.')->group(function () {
+    Route::get('/', \App\Livewire\User\Dashboard::class)->name('dashboard');
+    Route::get('/wallet', \App\Livewire\User\Wallet::class)->name('wallet');
+    Route::get('/orders', \App\Livewire\User\Orders::class)->name('orders');
+    Route::get('/ai-constructor', \App\Livewire\User\AIConstructor::class)->name('ai-constructor');
+    Route::get('/addresses', \App\Livewire\User\Addresses::class)->name('addresses');
+    Route::get('/delivery', \App\Livewire\User\DeliveryTrack::class)->name('delivery-track');
+});

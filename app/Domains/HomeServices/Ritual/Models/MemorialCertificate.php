@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MemorialCertificate extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'ritual_certificates';
@@ -45,12 +44,12 @@ final class MemorialCertificate extends Model
         /**
          * Booted method for global scoping and logic hooks.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             // Изоляция данных на уровне базы (Tenant Scoping)
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
 
@@ -66,7 +65,7 @@ final class MemorialCertificate extends Model
                     $model->code = 'RIT-' . strtoupper(Str::random(8));
                 }
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = (int) tenant('id');
+                    $model->tenant_id = (int) tenant()->id;
                 }
             });
         }

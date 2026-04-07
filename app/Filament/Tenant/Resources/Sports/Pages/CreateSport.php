@@ -2,6 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Sports\Pages;
 
+
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Sports\SportsResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\DB;
@@ -10,21 +16,26 @@ use Illuminate\Support\Str;
 
 final class CreateSport extends CreateRecord
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = SportsResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $correlationId = Str::uuid()->toString();
 
-        DB::transaction(function () use (&$data, $correlationId) {
+        $this->db->transaction(function () use (&$data, $correlationId) {
             $data['correlation_id'] = $correlationId;
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            Log::channel('audit')->info('Sports creation form submitted', [
+            $this->logger->info('Sports creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
         });
 
@@ -33,11 +44,11 @@ final class CreateSport extends CreateRecord
 
     protected function afterCreate(): void
     {
-        Log::channel('audit')->info('Sports record created successfully', [
+        $this->logger->info('Sports record created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
-            'user_id' => auth()->id(),
+            'user_id' => $this->guard->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);

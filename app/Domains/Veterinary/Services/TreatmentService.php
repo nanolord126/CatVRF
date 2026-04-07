@@ -2,19 +2,21 @@
 
 namespace App\Domains\Veterinary\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TreatmentService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TreatmentService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
-        }
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+
+    }
 
         private function getCorrelationId(): string
         {
@@ -28,19 +30,19 @@ final class TreatmentService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('TreatmentService: Creating medical record', [
+            $this->logger->info('TreatmentService: Creating medical record', [
                 'pet_id' => $data['pet_id'] ?? 'unknown',
                 'correlation_id' => $correlationId
             ]);
 
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 $record = MedicalRecord::create(array_merge($data, [
                     'correlation_id' => $correlationId
                 ]));
 
-                Log::channel('audit')->info('TreatmentService: Medical record created', [
+                $this->logger->info('TreatmentService: Medical record created', [
                     'id' => $record->id,
                     'correlation_id' => $correlationId
                 ]);
@@ -64,7 +66,7 @@ final class TreatmentService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('TreatmentService: Scheduling follow-up', [
+            $this->logger->info('TreatmentService: Scheduling follow-up', [
                 'pet_id' => $petId,
                 'at' => $at->format('Y-m-d H:i:s'),
                 'correlation_id' => $correlationId

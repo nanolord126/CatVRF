@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoPartResource extends Model
+final class AutoPartResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cog';
@@ -56,31 +53,15 @@ final class AutoPartResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoPart::route('/'),
-                'create' => Pages\\CreateAutoPart::route('/create'),
-                'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPart::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAutoPart::route('/'),
-                'create' => Pages\\CreateAutoPart::route('/create'),
-                'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPart::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoPart::route('/'),
-                'create' => Pages\\CreateAutoPart::route('/create'),
-                'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoPart::route('/{record}'),
+                'index' => Pages\ListAutoPart::route('/'),
+                'create' => Pages\CreateAutoPart::route('/create'),
+                'edit' => Pages\EditAutoPart::route('/{record}/edit'),
+                'view' => Pages\ViewAutoPart::route('/{record}'),
             ];
         }
 }

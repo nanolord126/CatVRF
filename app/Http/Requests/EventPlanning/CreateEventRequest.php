@@ -2,14 +2,10 @@
 
 namespace App\Http\Requests\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class CreateEventRequest extends Model
+final class CreateEventRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Authorize: Проверка прав и Fraud Check.
          */

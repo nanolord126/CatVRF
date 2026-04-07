@@ -2,18 +2,19 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class TimeSeriesHeatmapService extends Model
+
+use Psr\Log\LoggerInterface;
+final readonly class TimeSeriesHeatmapService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    private ClickHouseService $clickHouseService;
-        private string $correlationId;
 
-        public function __construct(ClickHouseService $clickHouseService)
+    private readonly ClickHouseService $clickHouseService;
+        private readonly string $correlationId;
+
+        public function __construct(ClickHouseService $clickHouseService,
+        private readonly \Illuminate\Cache\CacheManager $cache, private readonly LoggerInterface $logger)
         {
             $this->clickHouseService = $clickHouseService;
             $this->correlationId = Str::uuid()->toString();
@@ -41,8 +42,8 @@ final class TimeSeriesHeatmapService extends Model
             $cacheKey = "heatmap:geo:timeseries:{$tenantId}:{$vertical}:{$fromDate}:{$toDate}:{$aggregation}:{$metric}";
 
             // Try cache first
-            if ($cached = Cache::get($cacheKey)) {
-                Log::channel('analytics')->info('[TimeSeriesHeatmap] Cache hit', [
+            if ($cached = cache()->get($cacheKey)) {
+                $this->logger->info('[TimeSeriesHeatmap] Cache hit', [
                     'cache_key' => $cacheKey,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -52,7 +53,7 @@ final class TimeSeriesHeatmapService extends Model
 
             try {
                 $data = match ($aggregation) {
-                    'hourly' => $this->clickHouseService->queryGeoHourly(
+                    'daily' => $this->clickHouseService->queryGeoDaily(
                         $tenantId,
                         $vertical,
                         $fromDate,
@@ -84,14 +85,12 @@ final class TimeSeriesHeatmapService extends Model
 
                 // Cache based on aggregation type
                 $ttl = match ($aggregation) {
-                    'hourly' => 5 * 60, // 5 minutes (data changes frequently)
-                    'weekly' => 24 * 60 * 60, // 24 hours (stable)
                     default => 60 * 60, // 1 hour
                 };
 
-                Cache::put($cacheKey, $result, $ttl);
+                cache()->put($cacheKey, $result, $ttl);
 
-                Log::channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap generated', [
+                $this->logger->info('[TimeSeriesHeatmap] Geo heatmap generated', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                     'aggregation' => $aggregation,
@@ -101,8 +100,8 @@ final class TimeSeriesHeatmapService extends Model
                 ]);
 
                 return $result;
-            } catch (Exception $e) {
-                Log::channel('error')->error('[TimeSeriesHeatmap] Geo heatmap generation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[TimeSeriesHeatmap] Geo heatmap generation failed', [
                     'error' => $e->getMessage(),
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
@@ -128,8 +127,8 @@ final class TimeSeriesHeatmapService extends Model
             $cacheKey = "heatmap:click:timeseries:{$tenantId}:{$vertical}:" . md5($pageUrl) . ":{$fromDate}:{$toDate}:{$aggregation}";
 
             // Try cache first
-            if ($cached = Cache::get($cacheKey)) {
-                Log::channel('analytics')->info('[TimeSeriesHeatmap] Cache hit (click)', [
+            if ($cached = cache()->get($cacheKey)) {
+                $this->logger->info('[TimeSeriesHeatmap] Cache hit (click)', [
                     'cache_key' => substr($cacheKey, 0, 50) . '...',
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -139,7 +138,7 @@ final class TimeSeriesHeatmapService extends Model
 
             try {
                 $data = match ($aggregation) {
-                    'hourly' => $this->clickHouseService->queryClickHourly(
+                    'daily' => $this->clickHouseService->queryGeoDaily(
                         $tenantId,
                         $vertical,
                         $pageUrl,
@@ -166,13 +165,12 @@ final class TimeSeriesHeatmapService extends Model
 
                 // Cache based on aggregation type
                 $ttl = match ($aggregation) {
-                    'hourly' => 5 * 60,
                     default => 60 * 60,
                 };
 
-                Cache::put($cacheKey, $result, $ttl);
+                cache()->put($cacheKey, $result, $ttl);
 
-                Log::channel('audit')->info('[TimeSeriesHeatmap] Click heatmap generated', [
+                $this->logger->info('[TimeSeriesHeatmap] Click heatmap generated', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                     'page_url' => substr($pageUrl, 0, 100),
@@ -182,8 +180,8 @@ final class TimeSeriesHeatmapService extends Model
                 ]);
 
                 return $result;
-            } catch (Exception $e) {
-                Log::channel('error')->error('[TimeSeriesHeatmap] Click heatmap generation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('[TimeSeriesHeatmap] Click heatmap generation failed', [
                     'error' => $e->getMessage(),
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
@@ -209,7 +207,6 @@ final class TimeSeriesHeatmapService extends Model
             // Calculate totals
             $totalMetric = array_sum(array_map(
                 fn($row) => match ($heatmapType) {
-                    'geo' => (int) $row['event_count'],
                     'click' => (int) $row['click_count'],
                 },
                 $data
@@ -230,7 +227,7 @@ final class TimeSeriesHeatmapService extends Model
                     'total_unique_users' => $uniqueUsers,
                     'period_type' => $aggregation,
                     'record_count' => count($data),
-                    'generated_at' => now()->toIso8601String(),
+                    'generated_at' => Carbon::now()->toIso8601String(),
                     'correlation_id' => $this->correlationId,
                 ],
             ];
@@ -242,9 +239,9 @@ final class TimeSeriesHeatmapService extends Model
         public function invalidateCache(int $tenantId, string $vertical = '*'): void
         {
             $pattern = "heatmap:*:{$tenantId}:{$vertical}*";
-            Cache::tags(['heatmap', "tenant:{$tenantId}"])->flush();
+            $this->cache->tags(['heatmap', "tenant:{$tenantId}"])->flush();
 
-            Log::channel('audit')->info('[TimeSeriesHeatmap] Cache invalidated', [
+            $this->logger->info('[TimeSeriesHeatmap] Cache invalidated', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'correlation_id' => $this->correlationId,

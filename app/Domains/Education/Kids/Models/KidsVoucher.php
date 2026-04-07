@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Kids\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class KidsVoucher extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'kids_vouchers';
@@ -72,7 +73,7 @@ final class KidsVoucher extends Model
         public function scopeActive(Builder $query): Builder
         {
             return $query->where('status', 'active')
-                ->where('expires_at', '>', now())
+                ->where('expires_at', '>', Carbon::now())
                 ->where('current_balance', '>', 0);
         }
 

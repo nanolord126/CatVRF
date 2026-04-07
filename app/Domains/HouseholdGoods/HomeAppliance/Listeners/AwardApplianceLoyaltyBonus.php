@@ -1,27 +1,42 @@
 <?php declare(strict_types=1);
 
+/**
+ * AwardApplianceLoyaltyBonus — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/awardapplianceloyaltybonus
+ */
+
+
 namespace App\Domains\HouseholdGoods\HomeAppliance\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AwardApplianceLoyaltyBonus extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final class AwardApplianceLoyaltyBonus
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private ReferralService $referralService
-        ) {}
+
+    public function __construct(private ReferralService $referralService,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Обработка завершенного ремонта (HomeApplianceRepairCompleted event).
          */
         public function handle(ApplianceRepairOrder $order): void
         {
-            Log::channel('audit')->info('Checking HomeAppliance loyalty eligibility', [
+            $this->logger->info('Checking HomeAppliance loyalty eligibility', [
                 'order_uuid' => $order->uuid,
-                'amount' => $order->total_cost_kopecks
+                'amount' => $order->total_cost_kopecks,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             // Порог: Ремонт от 10 000 руб (1 000 000 коп)
@@ -34,10 +49,11 @@ final class AwardApplianceLoyaltyBonus extends Model
                     recipientId: $order->client_id
                 );
 
-                Log::channel('audit')->info('HomeAppliance loyalty bonus awarded', [
+                $this->logger->info('HomeAppliance loyalty bonus awarded', [
                     'recipient_id' => $order->client_id,
-                    'bonus_amount' => 100000
-                ]);
+                    'bonus_amount' => 100000,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
             }
         }
 }

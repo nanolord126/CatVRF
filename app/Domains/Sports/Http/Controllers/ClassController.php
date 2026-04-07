@@ -2,25 +2,23 @@
 
 namespace App\Domains\Sports\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClassController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ClassController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function byStudio(int $studioId): JsonResponse
         {
             try {
                 $classes = ClassSession::where('studio_id', $studioId)->where('is_active', true)->paginate(20);
-                return response()->json(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list classes'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list classes'], 500);
             }
         }
 
@@ -28,22 +26,22 @@ final class ClassController extends Model
         {
             try {
                 $class = ClassSession::with(['studio', 'trainer', 'bookings'])->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $class, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $class, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Class not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Class not found'], 404);
             }
         }
 
         public function store(int $studioId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $studio = Studio::findOrFail($studioId);
                 $this->authorize('update', $studio);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'trainer_id' => 'required|integer|exists:trainers,id',
                     'name' => 'required|string|max:255',
                     'starts_at' => 'required|date',
@@ -53,7 +51,7 @@ final class ClassController extends Model
                 ]);
 
                 $class = ClassSession::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()?->id,
                     'studio_id' => $studioId,
                     'trainer_id' => $validated['trainer_id'],
                     'name' => $validated['name'],
@@ -64,44 +62,44 @@ final class ClassController extends Model
                     'is_active' => true,
                 ]);
 
-                Log::channel('audit')->info('Sports class created', [
+                $this->logger->info('Sports class created', [
                     'correlation_id' => $correlationId,
                     'class_id'       => $class->id,
                     'studio_id'      => $studioId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'name'           => $class->name,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $class], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $class], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to create class'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to create class'], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $class = ClassSession::findOrFail($id);
                 $this->authorize('update', $class);
 
-                $validated = request()->validate(['name' => 'sometimes|string', 'price' => 'sometimes|numeric']);
+                $validated = $request->validate(['name' => 'sometimes|string', 'price' => 'sometimes|numeric']);
                 $before = $class->getAttributes();
                 $class->update($validated);
 
-                Log::channel('audit')->info('Sports class updated', [
+                $this->logger->info('Sports class updated', [
                     'correlation_id' => $correlationId,
                     'class_id'       => $class->id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'before'         => $before,
                     'after'          => $validated,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $class]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $class]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to update class'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to update class'], 500);
             }
         }
 
@@ -112,18 +110,18 @@ final class ClassController extends Model
             try {
                 $class = ClassSession::findOrFail($id);
                 $this->authorize('delete', $class);
-                $this->fraudControlService->check(auth()->id() ?? 0, 'class_delete', 0, request()->ip(), null, $correlationId);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'class_delete', amount: 0, correlationId: $correlationId ?? '');
                 $class->delete();
 
-                Log::channel('audit')->info('Sports class deleted', [
+                $this->logger->info('Sports class deleted', [
                     'correlation_id' => $correlationId,
                     'class_id'       => $class->id,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                 ]);
 
-                return response()->json(['success' => true, 'message' => 'Class deleted']);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Class deleted']);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to delete class'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to delete class'], 500);
             }
         }
 }

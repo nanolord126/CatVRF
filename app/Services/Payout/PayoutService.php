@@ -2,6 +2,8 @@
 
 namespace App\Services\Payout;
 
+
+use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
 use App\Services\FraudControlService;
 use App\Services\Payment\PaymentGatewayService;
@@ -19,9 +21,9 @@ use Throwable;
  *
  * Требования:
  * 1. FraudControlService::check() перед каждой выплатой
- * 2. DB::transaction() для атомарности batch операций
+ * 2. $this->db->transaction() для атомарности batch операций
  * 3. correlation_id для трейсирования через всю систему
- * 4. Log::channel('audit') для всех операций
+ * 4. $this->logger->channel('audit') для всех операций
  * 5. Exception handling с полным backtrace
  * 6. Rate limiting на массовые выплаты
  *
@@ -36,10 +38,12 @@ use Throwable;
 final class PayoutService
 {
     public function __construct(
+        private readonly Request $request,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
         private readonly PaymentGatewayService $paymentGateway,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -70,11 +74,11 @@ final class PayoutService
                 'operation_type' => 'payout_request_create',
                 'amount' => $amountCents,
                 'tenant_id' => $tenantId,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Payout: Request initiated', [
+            $this->logger->channel('audit')->info('Payout: Request initiated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'business_group_id' => $businessGroupId,
@@ -82,7 +86,7 @@ final class PayoutService
             ]);
 
             // 2. CREATE payout request in DB
-            $payoutRequest = DB::transaction(function () use (
+            $payoutRequest = $this->db->transaction(function () use (
                 $tenantId,
                 $businessGroupId,
                 $amountCents,
@@ -101,7 +105,7 @@ final class PayoutService
             });
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Payout: Request created', [
+            $this->logger->channel('audit')->info('Payout: Request created', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequest->id,
                 'amount' => $amountCents,
@@ -109,8 +113,15 @@ final class PayoutService
 
             return $payoutRequest;
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Payout: Request creation failed', [
+            $this->logger->channel('audit')->error('Payout: Request creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -146,11 +157,11 @@ final class PayoutService
                 'operation_type' => 'payout_process',
                 'amount' => $payoutRequest->amount,
                 'tenant_id' => $payoutRequest->tenant_id,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Payout: Processing initiated', [
+            $this->logger->channel('audit')->info('Payout: Processing initiated', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'amount' => $payoutRequest->amount,
@@ -158,7 +169,7 @@ final class PayoutService
             ]);
 
             // 2. PROCESS through payment gateway
-            $paymentTransaction = DB::transaction(function () use (
+            $paymentTransaction = $this->db->transaction(function () use (
                 $payoutRequest,
                 $correlationId,
             ) {
@@ -200,7 +211,7 @@ final class PayoutService
             });
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Payout: Processing succeeded', [
+            $this->logger->channel('audit')->info('Payout: Processing succeeded', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'payment_transaction_id' => $paymentTransaction->id,
@@ -208,8 +219,15 @@ final class PayoutService
 
             return $paymentTransaction;
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Payout: Processing failed', [
+            $this->logger->channel('audit')->error('Payout: Processing failed', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'error' => $e->getMessage(),
@@ -256,11 +274,11 @@ final class PayoutService
                 'operation_type' => 'payout_batch_process',
                 'amount' => $totalAmount,
                 'batch_size' => count($payoutRequestIds),
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Payout: Batch processing initiated', [
+            $this->logger->channel('audit')->info('Payout: Batch processing initiated', [
                 'correlation_id' => $correlationId,
                 'batch_id' => $batchId,
                 'request_count' => count($payoutRequestIds),
@@ -295,7 +313,7 @@ final class PayoutService
                         'correlation_id' => $itemCorrelationId ?? null,
                     ];
 
-                    Log::channel('audit')->warning('Payout: Batch item failed', [
+                    $this->logger->channel('audit')->warning('Payout: Batch item failed', [
                         'correlation_id' => $correlationId,
                         'batch_id' => $batchId,
                         'payout_id' => $payoutRequestId,
@@ -305,7 +323,7 @@ final class PayoutService
             }
 
             // 3. SUCCESS LOG
-            Log::channel('audit')->info('Payout: Batch processing completed', [
+            $this->logger->channel('audit')->info('Payout: Batch processing completed', [
                 'correlation_id' => $correlationId,
                 'batch_id' => $batchId,
                 'successful_count' => count($successful),
@@ -319,8 +337,15 @@ final class PayoutService
                 'correlation_id' => $correlationId,
             ];
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
             // 4. ERROR LOG
-            Log::channel('audit')->error('Payout: Batch processing failed', [
+            $this->logger->channel('audit')->error('Payout: Batch processing failed', [
                 'correlation_id' => $correlationId,
                 'batch_id' => $batchId,
                 'error' => $e->getMessage(),
@@ -358,13 +383,13 @@ final class PayoutService
                 );
             }
 
-            Log::channel('audit')->info('Payout: Cancellation initiated', [
+            $this->logger->channel('audit')->info('Payout: Cancellation initiated', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'reason' => $reason,
             ]);
 
-            DB::transaction(function () use ($payoutRequest, $reason, $correlationId) {
+            $this->db->transaction(function () use ($payoutRequest, $reason, $correlationId) {
                 $payoutRequest->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,
@@ -372,12 +397,19 @@ final class PayoutService
                 ]);
             });
 
-            Log::channel('audit')->info('Payout: Cancellation succeeded', [
+            $this->logger->channel('audit')->info('Payout: Cancellation succeeded', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Payout: Cancellation failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Payout: Cancellation failed', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'error' => $e->getMessage(),

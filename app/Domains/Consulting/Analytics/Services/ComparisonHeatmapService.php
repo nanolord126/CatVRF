@@ -2,20 +2,22 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ComparisonHeatmapService extends Model
+
+use Psr\Log\LoggerInterface;
+final readonly class ComparisonHeatmapService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ClickHouseService $clickHouseService,
-        ) {
-        }
+
+    public function __construct(private readonly ClickHouseService $clickHouseService,
+        private readonly \Illuminate\Cache\CacheManager $cache, private readonly LoggerInterface $logger) {
 
-        private string $correlationId = '';
+    }
+
+        string $correlationId = '';
 
         /**
          * Сравнить два периода по геоданным
@@ -36,14 +38,14 @@ final class ComparisonHeatmapService extends Model
             Carbon $period1To,
             Carbon $period2From,
             Carbon $period2To,
-            string $metric = 'event_count',
-        ): array {
+            string $metric = 'event_count'
+    ): array {
             $cacheKey = $this->buildGeoCacheKey($tenantId, $vertical, $period1From, $period1To, $period2From, $period2To, $metric);
 
             // Проверить кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
-                Log::channel('analytics')->debug('Geo comparison cache hit', [
+                $this->logger->debug('Geo comparison cache hit', [
                     'correlation_id' => $this->correlationId,
                     'cache_key' => $cacheKey,
                     'tenant_id' => $tenantId,
@@ -75,8 +77,8 @@ final class ComparisonHeatmapService extends Model
                     $period1From,
                     $period1To,
                     $period2From,
-                    $period2To,
-                );
+                    $period2To
+    );
 
                 // Форматировать результат
                 $response = [
@@ -104,7 +106,7 @@ final class ComparisonHeatmapService extends Model
                     ],
                     'data' => $comparisonResult['comparison_data'],
                     'metadata' => [
-                        'generated_at' => now()->toIso8601String(),
+                        'generated_at' => Carbon::now()->toIso8601String(),
                         'correlation_id' => $this->correlationId,
                         'total_records' => count($comparisonResult['comparison_data']),
                         'cache_ttl_seconds' => 5 * 60, // 5 минут для дневных данных
@@ -118,9 +120,9 @@ final class ComparisonHeatmapService extends Model
                     default => 86400,  // Месячные: 24 часа
                 };
 
-                Cache::put($cacheKey, $response, $ttl);
+                cache()->put($cacheKey, $response, $ttl);
 
-                Log::channel('analytics')->info('Geo comparison generated', [
+                $this->logger->info('Geo comparison generated', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'metric' => $metric,
@@ -131,8 +133,8 @@ final class ComparisonHeatmapService extends Model
                 ]);
 
                 return $response;
-            } catch (\Exception $e) {
-                Log::channel('error')->error('Geo comparison failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo comparison failed', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'message' => $e->getMessage(),
@@ -167,14 +169,14 @@ final class ComparisonHeatmapService extends Model
             Carbon $period1From,
             Carbon $period1To,
             Carbon $period2From,
-            Carbon $period2To,
-        ): array {
+            Carbon $period2To
+    ): array {
             $cacheKey = $this->buildClickCacheKey($tenantId, $vertical, $pageUrl, $period1From, $period1To, $period2From, $period2To);
 
             // Проверить кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
-                Log::channel('analytics')->debug('Click comparison cache hit', [
+                $this->logger->debug('Click comparison cache hit', [
                     'correlation_id' => $this->correlationId,
                     'cache_key' => $cacheKey,
                 ]);
@@ -204,8 +206,8 @@ final class ComparisonHeatmapService extends Model
                     $period1From,
                     $period1To,
                     $period2From,
-                    $period2To,
-                );
+                    $period2To
+    );
 
                 $response = [
                     'comparison_type' => 'click',
@@ -232,7 +234,7 @@ final class ComparisonHeatmapService extends Model
                     ],
                     'heatmap_comparison' => $comparisonResult['heatmap_comparison'],
                     'metadata' => [
-                        'generated_at' => now()->toIso8601String(),
+                        'generated_at' => Carbon::now()->toIso8601String(),
                         'correlation_id' => $this->correlationId,
                         'total_records' => count($comparisonResult['heatmap_comparison']),
                         'cache_ttl_seconds' => 5 * 60,
@@ -240,9 +242,9 @@ final class ComparisonHeatmapService extends Model
                 ];
 
                 // Кэшировать (5 минут)
-                Cache::put($cacheKey, $response, 5 * 60);
+                cache()->put($cacheKey, $response, 5 * 60);
 
-                Log::channel('analytics')->info('Click comparison generated', [
+                $this->logger->info('Click comparison generated', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'page_url' => $pageUrl,
@@ -250,8 +252,8 @@ final class ComparisonHeatmapService extends Model
                 ]);
 
                 return $response;
-            } catch (\Exception $e) {
-                Log::channel('error')->error('Click comparison failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Click comparison failed', [
                     'correlation_id' => $this->correlationId,
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -276,8 +278,8 @@ final class ComparisonHeatmapService extends Model
             Carbon $period1From,
             Carbon $period1To,
             Carbon $period2From,
-            Carbon $period2To,
-        ): array {
+            Carbon $period2To
+    ): array {
             // Индексировать данные по geo_hash для быстрого поиска
             $period1Map = collect($period1Data)->keyBy('geo_hash')->toArray();
             $period2Map = collect($period2Data)->keyBy('geo_hash')->toArray();
@@ -347,8 +349,8 @@ final class ComparisonHeatmapService extends Model
             Carbon $period1From,
             Carbon $period1To,
             Carbon $period2From,
-            Carbon $period2To,
-        ): array {
+            Carbon $period2To
+    ): array {
             $period1Map = collect($period1Data)->keyBy(fn($item) => "{$item['x']}-{$item['y']}")->toArray();
             $period2Map = collect($period2Data)->keyBy(fn($item) => "{$item['x']}-{$item['y']}")->toArray();
 
@@ -404,9 +406,9 @@ final class ComparisonHeatmapService extends Model
          */
         public function invalidateCache(int $tenantId, string $vertical = '*'): void
         {
-            Cache::tags(['heatmap_comparison', "tenant:{$tenantId}"])->flush();
+            $this->cache->tags(['heatmap_comparison', "tenant:{$tenantId}"])->flush();
 
-            Log::channel('analytics')->info('Comparison cache invalidated', [
+            $this->logger->info('Comparison cache invalidated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -432,8 +434,8 @@ final class ComparisonHeatmapService extends Model
             Carbon $p1To,
             Carbon $p2From,
             Carbon $p2To,
-            string $metric,
-        ): string {
+            string $metric
+    ): string {
             $key = "comparison:geo:tenant:{$tenantId}:vertical:{$vertical}:p1:{$p1From->format('Y-m-d')}:{$p1To->format('Y-m-d')}:p2:{$p2From->format('Y-m-d')}:{$p2To->format('Y-m-d')}:metric:{$metric}:v1";
             return $key;
         }
@@ -448,8 +450,8 @@ final class ComparisonHeatmapService extends Model
             Carbon $p1From,
             Carbon $p1To,
             Carbon $p2From,
-            Carbon $p2To,
-        ): string {
+            Carbon $p2To
+    ): string {
             $urlHash = md5($pageUrl);
             $key = "comparison:click:tenant:{$tenantId}:vertical:{$vertical}:url:{$urlHash}:p1:{$p1From->format('Y-m-d')}:{$p1To->format('Y-m-d')}:p2:{$p2From->format('Y-m-d')}:{$p2To->format('Y-m-d')}:v1";
             return $key;

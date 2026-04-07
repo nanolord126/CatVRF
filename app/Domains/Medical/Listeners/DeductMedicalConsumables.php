@@ -2,16 +2,15 @@
 
 namespace App\Domains\Medical\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductMedicalConsumables extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class DeductMedicalConsumables
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private InventoryManagementService $inventory
+            private InventoryManagementService $inventory, private readonly Request $request, private readonly LoggerInterface $logger
         ) {}
 
         public function handle(MedicalAppointmentCompleted $event): void
@@ -34,17 +33,41 @@ final class DeductMedicalConsumables extends Model
                     );
                 }
 
-                Log::channel('audit')->info('Medical consumables deducted', [
+                $this->logger->info('Medical consumables deducted', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $event->correlation_id,
                     'items_count' => count($service->consumables_json),
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct medical consumables', [
+                $this->logger->error('Failed to deduct medical consumables', [
                     'appointment_id' => $appointment->id,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

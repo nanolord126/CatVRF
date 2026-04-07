@@ -2,26 +2,28 @@
 
 namespace App\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithBroadcasting;
+use Illuminate\Queue\SerializesModels;
+use App\Models\PaymentTransaction;
 
-final class PaymentProcessed extends Model
+/**
+ * Event: Payment processed.
+ * Broadcast: private-tenant.{tenantId}
+ *
+ * @package App\Events
+ */
+final class PaymentProcessed implements ShouldBroadcast
 {
-    use HasFactory;
+    use Dispatchable, InteractsWithBroadcasting, SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    tenantId}
-     *
-     * @package App\Events
-     */
-    final class PaymentProcessed implements ShouldBroadcast
-    {
-        use Dispatchable, InteractsWithBroadcasting, SerializesModels;
-
-        public readonly PaymentTransaction $payment;
-        public readonly string $status;
-        public readonly string $correlationId;
-        public readonly int $tenantId;
+        private PaymentTransaction $payment;
+        private string $status;
+        private string $correlationId;
+        private int $tenantId;
 
         /**
          * @param PaymentTransaction $payment

@@ -9,10 +9,10 @@ use App\Notifications\BaseSmsNotification;
 /**
  * Appointment Confirmed Notification - запись на процедуру подтверждена
  */
-class AppointmentConfirmedNotification extends BaseMailableNotification
+final class AppointmentConfirmedNotification extends BaseMailableNotification
 {
-    protected string $type = 'beauty.appointment.confirmed';
-    protected string $template = 'emails.beauty.appointment_confirmed';
+    private string $type = 'beauty.appointment.confirmed';
+    private string $template = 'emails.beauty.appointment_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -36,10 +36,10 @@ class AppointmentConfirmedNotification extends BaseMailableNotification
 /**
  * Appointment Reminder - напоминание за 24 часа
  */
-class AppointmentReminderNotification extends BaseSmsNotification
+final class AppointmentReminderNotification extends BaseSmsNotification
 {
-    protected string $type = 'beauty.appointment.reminder.24h';
-    protected string $template = 'sms.beauty.reminder_24h';
+    private string $type = 'beauty.appointment.reminder.24h';
+    private string $template = 'sms.beauty.reminder_24h';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -57,9 +57,9 @@ class AppointmentReminderNotification extends BaseSmsNotification
 /**
  * Appointment Final Reminder - напоминание за 2 часа
  */
-class AppointmentFinalReminderNotification extends BaseInAppNotification
+final class AppointmentFinalReminderNotification extends BaseInAppNotification
 {
-    protected string $type = 'beauty.appointment.reminder.2h';
+    private string $type = 'beauty.appointment.reminder.2h';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -76,10 +76,10 @@ class AppointmentFinalReminderNotification extends BaseInAppNotification
 /**
  * Appointment Canceled by Salon - салон отменил запись
  */
-class AppointmentCanceledBySalonNotification extends BaseMailableNotification
+final class AppointmentCanceledBySalonNotification extends BaseMailableNotification
 {
-    protected string $type = 'beauty.appointment.canceled_by_salon';
-    protected string $template = 'emails.beauty.appointment_canceled';
+    private string $type = 'beauty.appointment.canceled_by_salon';
+    private string $template = 'emails.beauty.appointment_canceled';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -101,9 +101,9 @@ class AppointmentCanceledBySalonNotification extends BaseMailableNotification
 /**
  * Review Request - попросить оценку после услуги
  */
-class ReviewRequestNotification extends BaseInAppNotification
+final class ReviewRequestNotification extends BaseInAppNotification
 {
-    protected string $type = 'beauty.review_request';
+    private string $type = 'beauty.review_request';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -121,10 +121,10 @@ class ReviewRequestNotification extends BaseInAppNotification
 /**
  * Promotional Offer from Salon - спецпредложение от салона
  */
-class PromoOfferNotification extends BaseMailableNotification
+final class PromoOfferNotification extends BaseMailableNotification
 {
-    protected string $type = 'beauty.promo_offer';
-    protected string $template = 'emails.beauty.promo_offer';
+    private string $type = 'beauty.promo_offer';
+    private string $template = 'emails.beauty.promo_offer';
 
     public function __construct(int $userId, int $tenantId, array $promoData)
     {

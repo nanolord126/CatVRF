@@ -2,220 +2,169 @@
 
 namespace App\Domains\MeatShops\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class MeatShopService extends Model
+final readonly class MeatShopService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly WalletService $wallet,
-            private readonly PaymentService $payment,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-        /**
-         * Создание заказа мяса (коробка свежего мяса).
-         */
-        public function createOrder(int $meatShopId, array $items, string $correlationId = ""): MeatOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создание мясного магазина/лавки на платформе.
+     */
+    public function createShop(
+        int $tenantId,
+        string $shopName,
+        string $address,
+        string $licenseNumber,
+        array $specializations,
+        string $correlationId,
+    ): MeatShop {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'meat_shop_create',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-            // Rate Limiting - защита от ботов на дефицитное мясо
-            if (RateLimiter::tooManyAttempts("meat:order:".auth()->id(), 10)) {
-                throw new \RuntimeException("Too many orders. Please wait.", 429);
+        return $this->db->transaction(function () use ($tenantId, $shopName, $address, $licenseNumber, $specializations, $correlationId): MeatShop {
+            $shop = MeatShop::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'owner_id' => $this->guard->id(),
+                'name' => $shopName,
+                'address' => $address,
+                'license_number' => $licenseNumber,
+                'specializations' => $specializations,
+                'is_active' => true,
+                'rating' => 5.0,
+                'correlation_id' => $correlationId,
+                'tags' => ['type' => 'meat_shop', 'verified' => false],
+            ]);
+
+            $this->logger->info('Meat shop created', [
+                'shop_id' => $shop->id,
+                'shop_uuid' => $shop->uuid,
+                'tenant_id' => $tenantId,
+                'license' => $licenseNumber,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $shop;
+        });
+    }
+
+    /**
+     * Обновление ассортимента мясного магазина (добавление нового продукта).
+     */
+    public function addProduct(
+        int $shopId,
+        string $productName,
+        string $animalType,
+        string $cutType,
+        int $pricePerGram,
+        int $stockGrams,
+        string $correlationId,
+    ): MeatProduct {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'meat_product_add',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($shopId, $productName, $animalType, $cutType, $pricePerGram, $stockGrams, $correlationId): MeatProduct {
+            $shop = MeatShop::findOrFail($shopId);
+
+            $product = MeatProduct::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $shop->tenant_id,
+                'shop_id' => $shop->id,
+                'name' => $productName,
+                'animal_type' => $animalType,
+                'cut_type' => $cutType,
+                'price_per_gram' => $pricePerGram,
+                'stock_grams' => $stockGrams,
+                'is_available' => $stockGrams > 0,
+                'correlation_id' => $correlationId,
+                'tags' => ['animal' => $animalType, 'cut' => $cutType],
+            ]);
+
+            $this->logger->info('Meat product added to shop', [
+                'product_id' => $product->id,
+                'shop_id' => $shopId,
+                'animal_type' => $animalType,
+                'stock_grams' => $stockGrams,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $product;
+        });
+    }
+
+    /**
+     * Завершение заказа и выплата мясному магазину (86% после комиссии).
+     */
+    public function completeOrderPayout(int $orderId, string $correlationId): void
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'meat_shop_payout',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        $this->db->transaction(function () use ($orderId, $correlationId): void {
+            $order = MeatOrder::with('shop')->lockForUpdate()->findOrFail($orderId);
+
+            if ($order->status !== 'delivered') {
+                throw new \RuntimeException("Order {$orderId} must be delivered before payout.");
             }
-            RateLimiter::hit("meat:order:".auth()->id(), 3600);
 
-            return DB::transaction(function () use ($meatShopId, $items, $correlationId) {
-                $shop = MeatShop::findOrFail($meatShopId);
+            $totalAmount = $order->total_price_kopecks;
+            $platformFee = (int) ($totalAmount * 0.14);
+            $payoutAmount = $totalAmount - $platformFee;
 
-                // Fraud Check
-                $fraud = $this->fraud->check([
-                    'user_id' => auth()->id() ?? 0,
-                    'operation_type' => 'meat_order_create',
-                    'correlation_id' => $correlationId,
-                    'amount' => collect($items)->sum('price'),
-                ]);
+            $this->wallet->credit(
+                userId: $order->shop->owner_id,
+                amount: $payoutAmount,
+                type: 'meat_shop_payout',
+                reason: "Payout for meat order #{$order->id}",
+                correlationId: $correlationId,
+            );
 
-                if ($fraud['decision'] === 'block') {
-                    Log::channel('audit')->error('Meat order security block', [
-                        'user_id' => auth()->id(),
-                        'score' => $fraud['score'],
-                        'correlation_id' => $correlationId,
-                    ]);
-                    throw new \RuntimeException("Blocked by security system", 403);
-                }
+            $order->update([
+                'status' => 'paid_out',
+                'payout_amount' => $payoutAmount,
+                'platform_fee' => $platformFee,
+                'correlation_id' => $correlationId,
+            ]);
 
-                $totalPrice = 0;
+            $this->logger->info('Meat shop payout completed', [
+                'order_id' => $order->id,
+                'payout_amount' => $payoutAmount,
+                'platform_fee' => $platformFee,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 
-                // Резервация мяса в Inventory
-                foreach ($items as $item) {
-                    $totalPrice += ($item['price'] * $item['quantity']);
-
-                    $this->inventory->reserveStock(
-                        itemId: $item['product_id'],
-                        quantity: $item['quantity'],
-                        sourceType: 'meat_order',
-                        sourceId: 0
-                    );
-                }
-
-                // Создание заказа
-                $order = MeatOrder::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $shop->tenant_id,
-                    'meat_shop_id' => $meatShopId,
-                    'user_id' => auth()->id(),
-                    'status' => 'pending_payment',
-                    'total_price_kopecks' => $totalPrice,
-                    'items_json' => $items,
-                    'delivery_address' => auth()->user()->address ?? '',
-                    'correlation_id' => $correlationId,
-                    'tags' => ['cold_chain:yes', 'fresh_meat:true'],
-                ]);
-
-                Log::channel('audit')->info('Meat order created', [
-                    'order_id' => $order->id,
-                    'user_id' => auth()->id(),
-                    'total' => $totalPrice,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $order;
-            });
-        }
-
-        /**
-         * Создание подписки на мясной бокс.
-         */
-        public function createSubscription(int $meatShopId, array $data, string $correlationId = ""): MeatBoxSubscription
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-
-            return DB::transaction(function () use ($meatShopId, $data, $correlationId) {
-                $shop = MeatShop::findOrFail($meatShopId);
-
-                // Fraud Check - проверка частоты подписок одного пользователя
-                $fraud = $this->fraud->check([
-                    'user_id' => auth()->id(),
-                    'operation_type' => 'meat_subscription_create',
-                    'correlation_id' => $correlationId,
-                    'amount' => $data['price_kopecks'],
-                ]);
-
-                if ($fraud['decision'] === 'block') {
-                    throw new \RuntimeException("Subscription blocked by fraud check", 403);
-                }
-
-                $subscription = MeatBoxSubscription::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $shop->tenant_id,
-                    'meat_shop_id' => $meatShopId,
-                    'user_id' => auth()->id(),
-                    'name' => $data['name'],
-                    'price_kopecks' => $data['price_kopecks'],
-                    'frequency' => $data['frequency'] ?? 'weekly', // weekly, bi-weekly, monthly
-                    'meat_types' => $data['meat_types'] ?? ['beef', 'pork'],
-                    'total_weight_grams' => $data['total_weight_grams'],
-                    'delivery_day' => $data['delivery_day'] ?? 'monday',
-                    'is_active' => true,
-                    'started_at' => now(),
-                    'correlation_id' => $correlationId,
-                    'tags' => ['subscription:active', 'auto_renewal:true'],
-                ]);
-
-                Log::channel('audit')->info('Meat subscription created', [
-                    'subscription_id' => $subscription->id,
-                    'user_id' => auth()->id(),
-                    'frequency' => $data['frequency'],
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $subscription;
-            });
-        }
-
-        /**
-         * Завершение заказа и выплата мясо-лавке.
-         */
-        public function completeOrder(int $orderId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = MeatOrder::with('meatShop')->findOrFail($orderId);
-
-            DB::transaction(function () use ($order, $correlationId) {
-                if ($order->status !== 'paid') {
-                    throw new \RuntimeException("Order must be paid before completing");
-                }
-
-                $order->update([
-                    'status' => 'completed',
-                    'completed_at' => now(),
-                ]);
-
-                // Списание мяса из Inventory
-                $this->inventory->deductStock(
-                    itemId: 0,
-                    quantity: 1,
-                    reason: "Meat order completed: {$order->id}",
-                    sourceType: 'meat_order',
-                    sourceId: $order->id
-                );
-
-                // Расчет выплаты (14% комиссия платформы, 12% если мигрантcя)
-                $total = $order->total_price_kopecks;
-                $platformFee = (int) ($total * 0.14);
-                $payout = $total - $platformFee;
-
-                // Выплата мясо-лавке
-                $this->wallet->credit(
-                    userId: $order->meatShop->owner_id,
-                    amount: $payout,
-                    type: 'meat_order_payout',
-                    reason: "Meat order #{$order->id} delivered",
-                    correlationId: $correlationId
-                );
-
-                Log::channel('audit')->info('Meat order completed and payout processed', [
-                    'order_id' => $order->id,
-                    'payout_kopecks' => $payout,
-                    'commission' => $platformFee,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-        }
-
-        /**
-         * Получение заказа.
-         */
-        public function getOrder(int $orderId): MeatOrder
-        {
-            return MeatOrder::findOrFail($orderId);
-        }
-
-        /**
-         * Список заказов пользователя.
-         */
-        public function getUserOrders(int $userId, int $limit = 20): \Illuminate\Support\Collection
-        {
-            return MeatOrder::where('user_id', $userId)
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-        }
-
-        /**
-         * Список заказов лавки.
-         */
-        public function getShopOrders(int $shopId, int $limit = 50): \Illuminate\Support\Collection
-        {
-            return MeatOrder::where('meat_shop_id', $shopId)
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-        }
+    /**
+     * Получение списка активных магазинов для тенанта.
+     */
+    public function getActiveShops(int $tenantId): \Illuminate\Support\Collection
+    {
+        return MeatShop::where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->orderByDesc('rating')
+            ->get();
+    }
 }

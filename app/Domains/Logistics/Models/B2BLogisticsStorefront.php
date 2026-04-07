@@ -1,15 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Logistics\Models;
 
+use HasFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use SoftDeletes;
 
 final class B2BLogisticsStorefront extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'b2b_logistics_storefronts';
@@ -38,17 +42,13 @@ final class B2BLogisticsStorefront extends Model
             'wholesale_discount' => 'decimal:2',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
-            static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check() && auth()->user()->tenant_id) {
-                    $query->where('tenant_id', auth()->user()->tenant_id);
-                }
-            });
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', (function_exists('tenant') && tenant()) ? tenant()->id : null));
         }
 
         public function b2bOrders(): HasMany
         {
             return $this->hasMany(B2BLogisticsOrder::class, 'b2b_logistics_storefront_id');
         }
-}
+    }

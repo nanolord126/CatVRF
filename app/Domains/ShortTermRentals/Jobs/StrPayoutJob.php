@@ -2,33 +2,36 @@
 
 namespace App\Domains\ShortTermRentals\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StrPayoutJob extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class StrPayoutJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-        public function __construct(
-            public readonly int $bookingId,
-            public readonly ?string $correlationId = null
-        ) {}
+        public function __construct(private readonly int $bookingId,
+            private ?string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function handle(WalletService $walletService): void
         {
             $correlationId = $this->correlationId ?? (string) Str::uuid();
 
-            DB::transaction(function () use ($walletService, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($walletService, $correlationId) {
                 $booking = StrBooking::lockForUpdate()->findOrFail($this->bookingId);
 
                 if (!$booking->isReadyForPayout()) {
-                    Log::channel('audit')->warning('ShortTermRental: Attempted payout for not ready booking', [
+                    $this->logger->warning('ShortTermRental: Attempted payout for not ready booking', [
                         'booking_id' => $booking->id,
                         'status' => $booking->status,
                         'payout_at' => $booking->payout_at?->toIso8601String(),
+                        'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
                     return;
                 }
@@ -41,23 +44,7 @@ final class StrPayoutJob extends Model
                 $walletService->credit([
                     'tenant_id' => $booking->tenant_id,
                     'business_group_id' => $booking->business_group_id,
-                    'amount' => $payoutAmount,
-                    'type' => 'payout',
-                    'reason' => "Выплата за бронирование {$booking->uuid}",
-                    'correlation_id' => $correlationId,
-                ]);
-
-                $booking->update([
-                    'payout_at' => now(), // Фиксируем факт выплаты
-                    'metadata' => array_merge($booking->metadata ?? [], [
-                        'payout_amount' => $payoutAmount,
-                        'commission_amount' => $commission,
-                        'payout_processed_at' => now()->toIso8601String(),
-                    ]),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                Log::channel('audit')->info('ShortTermRental: Payout successful', [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'booking_id' => $booking->id,
                     'payout_amount' => $payoutAmount,
                     'commission' => $commission,

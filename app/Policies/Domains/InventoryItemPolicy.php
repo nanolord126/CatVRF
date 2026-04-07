@@ -19,7 +19,7 @@ final class InventoryItemPolicy
             return true;
         }
 
-        return null;
+        throw new \DomainException('Operation returned no result');
     }
 
     /**

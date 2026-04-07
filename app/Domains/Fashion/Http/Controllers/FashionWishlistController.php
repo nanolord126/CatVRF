@@ -2,53 +2,55 @@
 
 namespace App\Domains\Fashion\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FashionWishlistController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class FashionWishlistController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
         {
             try {
-                $wishlist = FashionWishlist::where('user_id', auth()->id())
+                $wishlist = FashionWishlist::where('user_id', $request->user()?->id)
                     ->with('product')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $wishlist, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $wishlist, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
-        public function a: JsonResponse
+        public function a(): JsonResponse
         {
             try {
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($id, $correlationId) {
+                $this->db->transaction(function () use ($id, $correlationId) {
                     FashionWishlist::create([
                         'uuid' => Str::uuid(),
-                        'tenant_id' => tenant('id'),
-                        'user_id' => auth()->id(),
+                        'tenant_id' => tenant()->id,
+                        'user_id' => $request->user()?->id,
                         'product_id' => $id,
-                        'color' => request('color'),
-                        'size' => request('size'),
+                        'color' => $request->input('color'),
+                        'size' => $request->input('size'),
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Product added to wishlist', [
+                    $this->logger->info('Product added to wishlist', [
                         'product_id' => $id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 
@@ -56,22 +58,22 @@ final class FashionWishlistController extends Model
         {
             try {
                 $wishlist = FashionWishlist::where('product_id', $id)
-                    ->where('user_id', auth()->id())
+                    ->where('user_id', $request->user()?->id)
                     ->firstOrFail();
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($wishlist, $correlationId) {
+                $this->db->transaction(function () use ($wishlist, $correlationId) {
                     $wishlist->delete();
-                    Log::channel('audit')->info('Product removed from wishlist', [
+                    $this->logger->info('Product removed from wishlist', [
                         'product_id' => $wishlist->product_id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

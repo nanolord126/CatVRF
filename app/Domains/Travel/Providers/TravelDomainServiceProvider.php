@@ -1,15 +1,28 @@
 <?php declare(strict_types=1);
 
+/**
+ * TravelDomainServiceProvider — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/traveldomainserviceprovider
+ */
+
+
 namespace App\Domains\Travel\Providers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\ServiceProvider;
 
-final class TravelDomainServiceProvider extends Model
+final class TravelDomainServiceProvider extends ServiceProvider
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Регистрация всех зависимостей вертикали.
          */

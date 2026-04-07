@@ -2,21 +2,25 @@
 
 namespace App\Services\Legal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\FraudControlService;
+use App\Services\Legal\PricingService;
+use App\Models\Lawyer;
+use App\Models\LegalService;
 
-final class AILegalAdvisorConstructor extends Model
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+
+final readonly class AILegalAdvisorConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Constructor injection for required dependencies.
          */
         public function __construct(
-            private readonly FraudControlService $fraudControl,
+            private readonly FraudControlService $fraud,
             private readonly PricingService $pricing,
-        ) {}
+            private readonly LogManager $logger,
+    ) {}
 
         /**
          * Recommend lawyers and services based on user case details.
@@ -30,7 +34,7 @@ final class AILegalAdvisorConstructor extends Model
         ): array {
             $correlationId = $correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Advisor Constructor initiated', [
+            $this->logger->channel('audit')->info('AI Advisor Constructor initiated', [
                 'case_type' => $caseType,
                 'budget' => $budgetInCents,
                 'urgent' => $isUrgent,
@@ -88,7 +92,7 @@ final class AILegalAdvisorConstructor extends Model
                 'disclaimer' => 'AI рекомендации носят информационный характер и соответствуют ФЗ-152.',
             ];
 
-            Log::channel('audit')->info('AI Advisor Constructor completed successfully', [
+            $this->logger->channel('audit')->info('AI Advisor Constructor completed successfully', [
                 'matches_found' => count($recommendations),
                 'correlation_id' => $correlationId,
             ]);

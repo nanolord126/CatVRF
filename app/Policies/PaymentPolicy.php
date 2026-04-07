@@ -2,14 +2,18 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Psr\Log\LoggerInterface;
 final class PaymentPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -20,7 +24,7 @@ final class PaymentPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($payment->tenant_id) && $user->tenant_id !== $payment->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $payment->tenant_id,
@@ -31,7 +35,7 @@ final class PaymentPolicy extends Model
             $allowed = $user->tenant_id === $payment->tenant_id || $user->hasRole('admin');
 
             if (!$allowed) {
-                Log::warning('Unauthorized payment view attempt', [
+                $this->logger->warning('Unauthorized payment view attempt', [
                     'user_id' => $user->id,
                     'tenant_id' => $user->tenant_id,
                     'payment_id' => $payment->id,
@@ -51,7 +55,7 @@ final class PaymentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -61,7 +65,7 @@ final class PaymentPolicy extends Model
             $allowed = $user->email_verified_at !== null || $user->hasRole('admin');
 
             if (!$allowed) {
-                Log::info('Unverified user payment creation attempt', [
+                $this->logger->info('Unverified user payment creation attempt', [
                     'user_id' => $user->id,
                     'email' => $user->email,
                 ]);
@@ -83,7 +87,7 @@ final class PaymentPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized capture attempt', [
+                $this->logger->warning('Unauthorized capture attempt', [
                     'user_id' => $user->id,
                     'payment_id' => $payment->id,
                     'payment_status' => $payment->status,
@@ -107,7 +111,7 @@ final class PaymentPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized void attempt', [
+                $this->logger->warning('Unauthorized void attempt', [
                     'user_id' => $user->id,
                     'payment_id' => $payment->id,
                 ]);
@@ -126,12 +130,12 @@ final class PaymentPolicy extends Model
                 $payment->tenant_id === $user->tenant_id &&
                 $payment->status === 'captured' &&
                 $payment->captured_at !== null &&
-                now()->diffInDays($payment->captured_at) <= (int) config('payments.refund.max_refund_days') &&
+                now()->diffInDays($payment->captured_at) <= (int) $this->config->get('payments.refund.max_refund_days') &&
                 $user->hasRole(['business', 'admin'])
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized refund attempt', [
+                $this->logger->warning('Unauthorized refund attempt', [
                     'user_id' => $user->id,
                     'payment_id' => $payment->id,
                     'payment_status' => $payment->status,
@@ -160,7 +164,7 @@ final class PaymentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -174,7 +178,7 @@ final class PaymentPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized payment update attempt', [
+                $this->logger->warning('Unauthorized payment update attempt', [
                     'user_id' => $user->id,
                     'payment_id' => $payment->id,
                 ]);
@@ -192,7 +196,7 @@ final class PaymentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -202,7 +206,7 @@ final class PaymentPolicy extends Model
             $allowed = $user->hasRole('admin') && $payment->tenant_id === $user->tenant_id;
 
             if (!$allowed) {
-                Log::warning('Unauthorized payment deletion attempt', [
+                $this->logger->warning('Unauthorized payment deletion attempt', [
                     'user_id' => $user->id,
                     'payment_id' => $payment->id,
                 ]);
@@ -220,7 +224,7 @@ final class PaymentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -239,7 +243,7 @@ final class PaymentPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

@@ -7,9 +7,9 @@ use Livewire\Component;
 
 final class Cart extends Component
 {
-    public array $items = [];
-    public int $totalPrice = 0;
-    public int $itemCount = 0;
+    private array $items = [];
+    private int $totalPrice = 0;
+    private int $itemCount = 0;
 
     public function mount(): void
     {

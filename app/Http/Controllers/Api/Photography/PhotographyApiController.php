@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers\Api\Photography;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PhotographyApiController extends Model
+final class PhotographyApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIPhotoSessionConstructor $aiConstructor,
-            private readonly BookingService $bookingService
-        ) {}
+            private readonly BookingService $bookingService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * AI Подбор фотосессии
          * POST /api/v1/photography/ai-match
@@ -27,8 +30,8 @@ final class PhotographyApiController extends Model
                     'budget_max' => 'nullable|integer',
                     'vertical' => 'nullable|string',
                 ]);
-                Log::channel('audit')->info('AI Photography Match Request', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('AI Photography Match Request', [
+                    'user_id' => $this->guard->id(),
                     'correlation_id' => $correlationId,
                     'preferences' => $validated['preferences']
                 ]);
@@ -37,17 +40,17 @@ final class PhotographyApiController extends Model
                     $validated['budget_max'] ?? 5000000,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'data' => $result,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Match Error', [
+                $this->logger->channel('audit')->error('AI Match Error', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при работе AI подбора.',
                     'correlation_id' => $correlationId
@@ -69,20 +72,20 @@ final class PhotographyApiController extends Model
                     'studio_id' => 'nullable|exists:photography_studios,id',
                 ]);
                 $booking = $this->bookingService->createBooking(
-                    auth()->id() ?? 0, // Mock auth for now
+                    $this->guard->id() ?? 0, // Mock auth for now
                     $validated['session_id'],
                     $validated['starts_at'],
                     $validated['photographer_id'] ?? null,
                     $validated['studio_id'] ?? null,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -99,7 +102,7 @@ final class PhotographyApiController extends Model
                 ->orderBy('rating', 'desc')
                 ->limit(10)
                 ->get();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $studios,
                 'correlation_id' => $correlationId

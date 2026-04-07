@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\ConstructionMaterials;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ConstructionMaterialResource extends Model
+final class ConstructionMaterialResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ConstructionMaterial::class;
         protected static ?string $slug = 'construction-materials';
         protected static ?string $navigationIcon = 'heroicon-o-cube-transparent';

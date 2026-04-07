@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Luxury;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class LuxuryBookingController extends Model
+final class LuxuryBookingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly ConciergeService $conciergeService
-        ) {
+            private readonly ConciergeService $conciergeService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Luxury вертикали
              // VIP требует авторизации
              // 20 запросов/мин для премиум операций
@@ -45,13 +48,12 @@ final class LuxuryBookingController extends Model
                 $client = LuxuryClient::where('uuid', $validated['client_uuid'])->firstOrFail();
                 // 3. Определение объекта бронирования
                 $bookable = match ($validated['bookable_type']) {
-                    'product' => LuxuryProduct::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
                     'service' => LuxuryService::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
                     default => abort(422, 'Invalid bookable type'),
                 };
                 // 4. Выполнение бронирования в доменном сервисе
                 $booking = $concierge->createBooking($client, $bookable, $validated);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'success',
                     'data' => [
                         'booking_uuid' => $booking->uuid,
@@ -61,12 +63,12 @@ final class LuxuryBookingController extends Model
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Luxury Booking Failed', [
+                $this->logger->channel('audit')->error('Luxury Booking Failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'status' => 'error',
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -81,11 +83,11 @@ final class LuxuryBookingController extends Model
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
             $bookings = VIPBooking::with(['client', 'bookable'])
                 ->whereHas('client', function ($q) {
-                    $q->where('user_id', auth()->id());
+                    $q->where('user_id', $this->guard->id());
                 })
                 ->latest()
                 ->paginate(15);
-            return response()->json([
+            return $this->response->json([
                 'status' => 'success',
                 'data' => $bookings,
                 'correlation_id' => $correlationId,

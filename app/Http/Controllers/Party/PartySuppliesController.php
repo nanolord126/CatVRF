@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PartySuppliesController extends Model
+final class PartySuppliesController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private PartySuppliesService $service,
-            private AIPartyConstructor $aiConstructor
-        ) {
+            private AIPartyConstructor $aiConstructor,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Party/Events вертикали
             $this->middleware('auth:sanctum')->except(['index', 'show']); // Публичный доступ на чтение
              // 100 запросов/мин для Party
@@ -32,7 +33,7 @@ final class PartySuppliesController extends Model
         {
             $filters = $request->only(['category_id', 'theme_id', 'is_b2b']);
             $catalog = $this->service->getCatalog($filters);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'catalog' => $catalog,
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -44,7 +45,7 @@ final class PartySuppliesController extends Model
         public function show(string $uuid): JsonResponse
         {
             $product = PartyProduct::where('uuid', $uuid)->with(['store', 'theme', 'category'])->firstOrFail();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'product' => $product,
             ]);
@@ -55,7 +56,7 @@ final class PartySuppliesController extends Model
         public function themes(): JsonResponse
         {
             $themes = $this->service->getActiveThemes();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'themes' => $themes,
             ]);
@@ -71,7 +72,7 @@ final class PartySuppliesController extends Model
                 'theme_id' => 'exists:party_themes,id',
             ]);
             $plan = $this->aiConstructor->buildDecorPlan($request->all());
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'plan' => $plan,
             ]);
@@ -91,17 +92,24 @@ final class PartySuppliesController extends Model
             ]);
             try {
                 $order = $this->service->createOrder($request->all());
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'order_uuid' => $order->uuid,
                     'prepayment_required' => $order->prepayment_cents,
                 ]);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Order creation failed via API', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Order creation failed via API', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Failed to create order. Check stock availability.',
                 ], 422);

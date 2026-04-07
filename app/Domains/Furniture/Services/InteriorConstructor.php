@@ -2,35 +2,35 @@
 
 namespace App\Domains\Furniture\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class InteriorConstructor extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class InteriorConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private ImageAnalysisService $imageAnalysis,
+
+    public function __construct(private ImageAnalysisService $imageAnalysis,
             private RecommendationService $recommendation,
             private InventoryManagementService $inventory,
             private FraudControlService $fraud,
-            private string $correlationId
-        ) {}
+            private string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать проект интерьера на основе фото помещения
          */
         public function construct(int $userId, \Illuminate\Http\UploadedFile $photo, array $params = []): AIConstructionResult
         {
-            Log::channel('audit')->info('InteriorConstructor: start construction', [
+            $this->logger->info('InteriorConstructor: start construction', [
                 'user_id' => $userId,
                 'correlation_id' => $this->correlationId,
             ]);
 
-            return DB::transaction(function () use ($userId, $photo, $params) {
+            return $this->db->transaction(function () use ($userId, $photo, $params) {
                 // 1. Fraud Check
-                $this->fraud->check('interior_ai_constructor', ['user_id' => $userId]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'interior_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Vision-мерчандайзинг (анализ пустого или жилого пространства с фото)
                 $spaceAnalysis = $this->imageAnalysis->analyzeSpace($photo);
@@ -70,7 +70,7 @@ final class InteriorConstructor extends Model
                 // 6. Сохранение в БД
                 $this->saveToDatabase($userId, $result);
 
-                Log::channel('audit')->info('InteriorConstructor: construction finished', [
+                $this->logger->info('InteriorConstructor: construction finished', [
                     'user_id' => $userId,
                     'correlation_id' => $this->correlationId,
                     'suggestions_count' => count($suggestions),
@@ -100,7 +100,7 @@ final class InteriorConstructor extends Model
 
         private function saveToDatabase(int $userId, AIConstructionResult $result): void
         {
-            DB::table('ai_constructions')->insert([
+            $this->db->table('ai_constructions')->insert([
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId,
                 'tenant_id' => tenant()->id ?? 0,
@@ -108,8 +108,8 @@ final class InteriorConstructor extends Model
                 'design_data' => json_encode($result->payload),
                 'suggestions' => json_encode($result->suggestions),
                 'correlation_id' => $result->correlation_id,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
             ]);
         }
 }

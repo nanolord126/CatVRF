@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class Jewelry3DModelResource extends Model
+final class Jewelry3DModelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Jewelry3DModel::class;
 
         protected static ?string $slug = 'jewelry-3d-models';
@@ -99,22 +96,15 @@ final class Jewelry3DModelResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListJewelry3DModel::route('/'),
-                'create' => Pages\\CreateJewelry3DModel::route('/create'),
-                'edit' => Pages\\EditJewelry3DModel::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelry3DModel::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListJewelry3DModel::route('/'),
-                'create' => Pages\\CreateJewelry3DModel::route('/create'),
-                'edit' => Pages\\EditJewelry3DModel::route('/{record}/edit'),
-                'view' => Pages\\ViewJewelry3DModel::route('/{record}'),
+                'index' => Pages\ListJewelry3DModel::route('/'),
+                'create' => Pages\CreateJewelry3DModel::route('/create'),
+                'edit' => Pages\EditJewelry3DModel::route('/{record}/edit'),
+                'view' => Pages\ViewJewelry3DModel::route('/{record}'),
             ];
         }
 }

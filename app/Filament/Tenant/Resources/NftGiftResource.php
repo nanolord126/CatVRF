@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class NftGiftResource extends Model
+final class NftGiftResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = NftGift::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-star';
@@ -71,7 +68,6 @@ final class NftGiftResource extends Model
                                     'danger' => 'failed',
                                 ])
                                 ->formatStateUsing(fn (string $state) => match($state) {
-                                    'pending' => 'На ожидании',
                                     'minting' => 'Минтится',
                                     'minted' => 'Отчеканено',
                                     'failed' => 'Ошибка',
@@ -149,22 +145,15 @@ final class NftGiftResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListNftGift::route('/'),
-                'create' => Pages\\CreateNftGift::route('/create'),
-                'edit' => Pages\\EditNftGift::route('/{record}/edit'),
-                'view' => Pages\\ViewNftGift::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListNftGift::route('/'),
-                'create' => Pages\\CreateNftGift::route('/create'),
-                'edit' => Pages\\EditNftGift::route('/{record}/edit'),
-                'view' => Pages\\ViewNftGift::route('/{record}'),
+                'index' => Pages\ListNftGift::route('/'),
+                'create' => Pages\CreateNftGift::route('/create'),
+                'edit' => Pages\EditNftGift::route('/{record}/edit'),
+                'view' => Pages\ViewNftGift::route('/{record}'),
             ];
         }
 }

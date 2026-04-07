@@ -2,19 +2,34 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AnalyticsStatsWidget extends Model
+
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * Class AnalyticsStatsWidget
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Widgets
+ */
+final class AnalyticsStatsWidget extends StatsOverviewWidget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected function getStats(): array
         {
-            $tenantId = auth()->user()->tenant_id;
+            $tenantId = $this->guard->user()->tenant_id;
 
-            $stats = Cache::remember(
+            $stats = $this->cache->remember(
                 "stats_overview:{$tenantId}",
                 1800,
                 function () {

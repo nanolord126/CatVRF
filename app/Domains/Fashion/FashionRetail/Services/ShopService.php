@@ -2,18 +2,20 @@
 
 namespace App\Domains\Fashion\FashionRetail\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ShopService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ShopService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function getActive(): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailShop::where('is_active', true)
                 ->orderBy('rating', 'desc')
@@ -24,7 +26,7 @@ final class ShopService extends Model
         public function getByOwner(int $ownerId): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailShop::where('owner_id', $ownerId)
                 ->with('products', 'orders')
@@ -34,7 +36,7 @@ final class ShopService extends Model
         public function search(string $query): Collection
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             return FashionRetailShop::where('name', 'like', "%{$query}%")
                 ->orWhere('description', 'like', "%{$query}%")
@@ -45,9 +47,11 @@ final class ShopService extends Model
         public function verifyShop(int $shopId, string $correlationId): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-            DB::transaction(function () use ($shopId, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            $this->db->transaction(function () use ($shopId, $correlationId) {
                 $shop = FashionRetailShop::lockForUpdate()->findOrFail($shopId);
 
                 $shop->update([
@@ -55,7 +59,7 @@ final class ShopService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('FashionRetail shop verified', [
+                $this->logger->info('FashionRetail shop verified', [
                     'shop_id' => $shopId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -65,9 +69,9 @@ final class ShopService extends Model
         public function deactivateShop(int $shopId, string $correlationId): void
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-            DB::transaction(function () use ($shopId, $correlationId) {
+            $this->db->transaction(function () use ($shopId, $correlationId) {
                 $shop = FashionRetailShop::lockForUpdate()->findOrFail($shopId);
 
                 $shop->update([
@@ -75,7 +79,7 @@ final class ShopService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('FashionRetail shop deactivated', [
+                $this->logger->info('FashionRetail shop deactivated', [
                     'shop_id' => $shopId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -85,7 +89,7 @@ final class ShopService extends Model
         public function getStats(int $shopId): array
         {
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+            $this->logger->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
             $shop = FashionRetailShop::with('products', 'orders')->findOrFail($shopId);
 

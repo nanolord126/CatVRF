@@ -2,15 +2,18 @@
 
 namespace App\Domains\HomeServices\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class RefundJobCommissionListener extends Model
+
+use Psr\Log\LoggerInterface;
+final class RefundJobCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(ServiceJobCompleted $event): void
         {
@@ -21,33 +24,56 @@ final class RefundJobCommissionListener extends Model
                     return;
                 }
 
-                \DB::transaction(function () use ($job, $event) {
+                $this->db->transaction(function () use ($job, $event) {
                     $wallet = \App\Models\Wallet::where('tenant_id', $job->tenant_id)->lockForUpdate()->firstOrFail();
                     $commissionAmount = (int)($job->commission_amount * 100);
 
                     $wallet->increment('balance', $commissionAmount);
 
-                    \DB::table('balance_transactions')->insert([
+                    $this->db->table('balance_transactions')->insert([
                         'wallet_id' => $wallet->id,
                         'type' => 'refund',
                         'amount' => $commissionAmount,
                         'description' => "Service job commission refund #{$job->id}",
                         'correlation_id' => $event->correlationId,
-                        'created_at' => now(),
+                        'created_at' => Carbon::now(),
                     ]);
                 });
 
-                \Log::channel('audit')->info('Job commission refunded', [
+                $this->logger->info('Job commission refunded', [
                     'job_id' => $job->id,
                     'commission_amount' => $job->commission_amount,
                     'correlation_id' => $event->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to refund job commission', [
+                $this->logger->error('Failed to refund job commission', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
                 ]);
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

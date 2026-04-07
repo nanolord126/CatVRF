@@ -2,14 +2,16 @@
 
 namespace App\Services\Security;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RateLimiterService extends Model
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+
+final readonly class RateLimiterService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const SLIDING_WINDOW_TTL = 60;      // 1 минута для sliding window
         private const BURST_LIMIT_THRESHOLD = 3;    // Количество отказов перед exponential backoff
         private const BURST_TEMP_BAN_MINUTES = 5;   // Временный бан на 5 минут
@@ -161,7 +163,8 @@ final class RateLimiterService extends Model
          */
         public function isBurstBanned(int $tenantId, int $userId): bool
         {
-            return Redis::exists("burst_ban:{$tenantId}:{$userId}") === 1;
+            return Redis::exists("burst_ban:{$tenantId}:{$userId}") === 1
+                || Redis::exists("rate_limit:payment_init:{$tenantId}:{$userId}:burst_ban") === 1;
         }
 
         /**
@@ -179,7 +182,7 @@ final class RateLimiterService extends Model
         ): array {
             $key = "rate_limit:{$operation}:{$tenantIdOrUserId}";
 
-            $attempts = Redis::llen($key);
+            $attempts = Redis::zcard($key);
             $remaining = max(0, $limit - $attempts);
 
             $resetAt = Redis::ttl($key);
@@ -218,7 +221,7 @@ final class RateLimiterService extends Model
         ): bool {
             // Проверить burst ban
             if (Redis::exists("{$key}:burst_ban") === 1) {
-                Log::channel('fraud_alert')->warning('Rate limit burst ban active', [
+                $this->logger->channel('fraud_alert')->warning('Rate limit burst ban active', [
                     'key' => $key,
                     'operation' => $operation,
                     'correlation_id' => $correlationId,
@@ -228,19 +231,18 @@ final class RateLimiterService extends Model
 
             $now = now()->timestamp;
             $windowStart = $now - $windowSeconds;
+            $member = (string) $now . ':' . (string) random_int(1000, 9999);
 
-            // Добавить текущий запрос
-            Redis::lpush($key, $now);
+            Redis::zadd($key, [$member => $now]);
 
             // Установить TTL на ключ
             Redis::expire($key, $windowSeconds + 60);
 
             // Удалить старые записи
             Redis::zremrangebyscore($key, 0, $windowStart);
-            Redis::lrem($key, 0, 0);  // Remove zero values
 
             // Получить текущее количество попыток в окне
-            $attempts = Redis::llen($key);
+            $attempts = Redis::zcard($key);
 
             if ($attempts > $limit) {
                 // Лимит превышен
@@ -280,7 +282,7 @@ final class RateLimiterService extends Model
                     now()->toDateTimeString()
                 );
 
-                Log::channel('fraud_alert')->warning('Rate limit burst protection activated', [
+                $this->logger->channel('fraud_alert')->warning('Rate limit burst protection activated', [
                     'key' => $key,
                     'operation' => $operation,
                     'rejection_count' => $rejectionCount,
@@ -291,7 +293,7 @@ final class RateLimiterService extends Model
                 return;
             }
 
-            Log::channel('security')->warning('Rate limit exceeded', [
+            $this->logger->channel('security')->warning('Rate limit exceeded', [
                 'key' => $key,
                 'operation' => $operation,
                 'rejection_count' => $rejectionCount,
@@ -315,5 +317,21 @@ final class RateLimiterService extends Model
             }
 
             return Redis::del(...$keys);
+        }
+
+        /**
+         * Базовая эвристика подозрительной активности.
+         * Возвращает true, если пользователь превышает мягкий лимит burst-событий.
+         */
+        public function isSuspicious(int $userId, string $operationType): bool
+        {
+            $key = "rate_limit:suspicious:{$operationType}:{$userId}";
+            $now = now()->timestamp;
+
+            Redis::zadd($key, [(string) $now . ':' . (string) random_int(1000, 9999) => $now]);
+            Redis::zremrangebyscore($key, 0, $now - self::SLIDING_WINDOW_TTL);
+            Redis::expire($key, self::SLIDING_WINDOW_TTL + 10);
+
+            return Redis::zcard($key) > 30;
         }
 }

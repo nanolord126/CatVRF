@@ -1,73 +1,137 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * HotelPayoutJob — CatVRF 2026 Component.
+ *
+ * Handles asynchronous payout processing for completed hotel bookings.
+ * Debits the platform wallet and credits the hotel tenant wallet
+ * after a booking is marked as completed.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+ *
+ * @see https://catvrf.ru/docs/hotelpayoutjob
+ */
 
 namespace App\Domains\Hotels\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\HotelManagement\Models\HotelBooking;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class HotelPayoutJob extends Model
+final class HotelPayoutJob implements ShouldQueue
 {
-    use HasFactory;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    /**
+     * Number of times the job may be attempted.
+     */
+    public int $tries = 3;
 
-        public function __construct(
-            public readonly int $bookingId,
-            public readonly string $correlationId
-        ) {}
+    /**
+     * Number of seconds to wait before retrying.
+     */
+    public int $backoff = 60;
 
-        public function handle(WalletService $wallet): void
-        {
-            Log::channel('audit')->info('Hotel Payout Job Started', [
+    public function __construct(
+        private readonly int $bookingId,
+        private readonly string $correlationId,
+    ) {}
+
+    /**
+     * Execute the job — process payout for a completed hotel booking.
+     *
+     * Validates the booking status, runs fraud check on the payout,
+     * then credits the tenant wallet with the payout amount.
+     */
+    public function handle(
+        WalletService $wallet,
+        FraudControlService $fraud,
+        LoggerInterface $logger,
+    ): void {
+        $correlationId = $this->correlationId ?: (string) Str::uuid();
+
+        $booking = HotelBooking::findOrFail($this->bookingId);
+
+        if ($booking->status !== 'completed') {
+            $logger->warning('HotelPayoutJob skipped: booking not completed', [
                 'booking_id' => $this->bookingId,
-                'correlation_id' => $this->correlationId,
+                'status' => $booking->status,
+                'correlation_id' => $correlationId,
             ]);
 
-            $booking = Booking::findOrFail($this->bookingId);
-
-            // ПРОВЕРКИ
-            if ($booking->payment_status !== 'paid' || $booking->status === 'cancelled') {
-                Log::error('Cannot payout for unpaid or cancelled booking', [
-                    'booking_id' => $this->bookingId,
-                    'correlation_id' => $this->correlationId,
-                ]);
-                return;
-            }
-
-            DB::transaction(function () use ($booking, $wallet) {
-                // КОМИССИЯ
-                $commission = (int) ($booking->total_price * 0.14); // 14% стандарт
-                $payoutAmount = $booking->total_price - $commission;
-
-                // CREDIT WALLET (Hotel / Business Group)
-                $wallet->credit(
-                    walletId: $booking->business_group_id, // Упрощенно: ID кошелька = ID бизнес-группы
-                    amount: $payoutAmount,
-                    type: 'payout',
-                    correlationId: $this->correlationId,
-                    metadata: [
-                        'source' => 'hotel_booking',
-                        'booking_uuid' => $booking->uuid,
-                        'commission' => $commission,
-                    ]
-                );
-
-                $booking->update([
-                    'status' => 'completed',
-                    'payout_at' => now(),
-                ]);
-
-                Log::channel('audit')->info('Hotel Payout Successful', [
-                    'booking_id' => $this->bookingId,
-                    'payout_amount' => $payoutAmount,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
+            return;
         }
 
-        public function tags(): array
-        {
-            return ['hotel', 'payout', 'booking:' . $this->bookingId];
+        if ($booking->payment_status !== 'completed') {
+            $logger->warning('HotelPayoutJob skipped: payment not completed', [
+                'booking_id' => $this->bookingId,
+                'payment_status' => $booking->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return;
         }
+
+        $fraudResult = $fraud->check(
+            userId: 0,
+            operationType: 'hotel_payout',
+            amount: $booking->payout_kopecks,
+            correlationId: $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            $logger->error('HotelPayoutJob blocked by fraud control', [
+                'booking_id' => $this->bookingId,
+                'amount' => $booking->payout_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return;
+        }
+
+        $wallet->credit(
+            (int) $booking->tenant_id,
+            $booking->payout_kopecks,
+            'hotel_payout',
+            $correlationId,
+        );
+
+        $logger->info('HotelPayoutJob completed successfully', [
+            'booking_id' => $this->bookingId,
+            'payout_kopecks' => $booking->payout_kopecks,
+            'tenant_id' => $booking->tenant_id,
+            'correlation_id' => $correlationId,
+        ]);
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        report(new \RuntimeException(
+            sprintf(
+                'HotelPayoutJob failed [booking_id=%d, correlation_id=%s]: %s',
+                $this->bookingId,
+                $this->correlationId,
+                $exception->getMessage(),
+            ),
+            previous: $exception,
+        ));
+    }
 }

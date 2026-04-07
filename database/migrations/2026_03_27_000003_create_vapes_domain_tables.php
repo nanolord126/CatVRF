@@ -136,3 +136,5 @@ return new class extends Migration
         Schema::dropIfExists('vapes_brands');
     }
 };
+
+

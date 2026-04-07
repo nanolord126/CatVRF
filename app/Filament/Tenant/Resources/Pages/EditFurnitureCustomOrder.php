@@ -2,30 +2,62 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditFurnitureCustomOrder extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\FurnitureCustomOrderResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+/**
+ * Class EditFurnitureCustomOrder
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditFurnitureCustomOrder extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = FurnitureCustomOrderResource::class;
 
-    final class EditFurnitureCustomOrder extends EditRecord
+    public function getTitle(): string
     {
-        protected static string $resource = FurnitureCustomOrderResource::class;
+        return 'Редактирование индивидуального заказа';
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit FurnitureCustomOrder';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            ViewAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Удалить заказ?')
+                ->modalDescription('Заказ будет удалён без возможности восстановления.')
+                ->modalSubmitActionLabel('Удалить'),
+        ];
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = $data['correlation_id'] ?? (string) Str::uuid();
+
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('Furniture custom order updated', [
+            'order_id' => $this->record->id ?? null,
+            'tenant_id' => $this->record->tenant_id ?? null,
+            'correlation_id' => $this->record->correlation_id ?? null,
+        ]);
+    }
 }

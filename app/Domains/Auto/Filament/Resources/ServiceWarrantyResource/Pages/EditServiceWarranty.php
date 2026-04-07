@@ -2,14 +2,16 @@
 
 namespace App\Domains\Auto\Filament\Resources\ServiceWarrantyResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditServiceWarranty extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditServiceWarranty extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = ServiceWarrantyResource::class;
 
         protected function getHeaderActions(): array
@@ -17,7 +19,7 @@ final class EditServiceWarranty extends Model
             return [
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('ServiceWarranty deleted', [
+                        $this->logger->info('ServiceWarranty deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'warranty_id' => $this->record->id,
                         ]);
@@ -28,10 +30,10 @@ final class EditServiceWarranty extends Model
                     ->visible(fn () => $this->record->claim_status === 'pending')
                     ->requiresConfirmation()
                     ->action(function () {
-                        DB::transaction(function () {
+                        $this->db->transaction(function () {
                             $this->record->update(['claim_status' => 'approved']);
 
-                            Log::channel('audit')->info('ServiceWarrantyClaimApproved', [
+                            $this->logger->info('ServiceWarrantyClaimApproved', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'warranty_id' => $this->record->id,
                             ]);
@@ -58,10 +60,10 @@ final class EditServiceWarranty extends Model
                             ->required(),
                     ])
                     ->action(function (array $data) {
-                        DB::transaction(function () use ($data) {
+                        $this->db->transaction(function () use ($data) {
                             $this->record->update(['claim_status' => 'rejected']);
 
-                            Log::channel('audit')->info('ServiceWarrantyClaimRejected', [
+                            $this->logger->info('ServiceWarrantyClaimRejected', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'warranty_id' => $this->record->id,
                                 'reason' => $data['rejection_reason'],
@@ -86,7 +88,7 @@ final class EditServiceWarranty extends Model
         {
             $wasChanged = $this->record->wasChanged('claim_status');
 
-            Log::channel('audit')->info('ServiceWarranty updated', [
+            $this->logger->info('ServiceWarranty updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'warranty_id' => $this->record->id,
                 'claim_status' => $this->record->claim_status,

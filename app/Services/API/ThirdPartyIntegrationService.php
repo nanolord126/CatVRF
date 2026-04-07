@@ -2,14 +2,19 @@
 
 namespace App\Services\API;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ThirdPartyIntegrationService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class ThirdPartyIntegrationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Поддерживаемые интеграции
          */
@@ -56,7 +61,7 @@ final class ThirdPartyIntegrationService extends Model
                 'sync_count' => 0,
             ];
 
-            Log::channel('integrations')->info('Service integrated', [
+            $this->logger->channel('integrations')->info('Service integrated', [
                 'service' => $service,
                 'integration_id' => $integration['id'],
             ]);
@@ -93,9 +98,10 @@ final class ThirdPartyIntegrationService extends Model
         {
             $startTime = microtime(true);
 
-            Log::channel('integrations')->info('Data sync started', [
+            $this->logger->channel('integrations')->info('Data sync started', [
                 'integration_id' => $integrationId,
                 'data_type' => $dataType,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             // Симуляция синхронизации
@@ -156,14 +162,13 @@ final class ThirdPartyIntegrationService extends Model
         {
             try {
                 $response = match ($service) {
-                    'stripe' => self::testStripeConnection($credentials),
                     'slack' => self::testSlackConnection($credentials),
                     'sendgrid' => self::testSendGridConnection($credentials),
                     's3' => self::testS3Connection($credentials),
                     default => ['status' => 'unknown'],
                 };
 
-                Log::channel('integrations')->info('Connection test', [
+                $this->logger->channel('integrations')->info('Connection test', [
                     'service' => $service,
                     'status' => $response['status'],
                 ]);
@@ -264,8 +269,9 @@ final class ThirdPartyIntegrationService extends Model
          */
         public static function disconnect(string $integrationId): void
         {
-            Log::channel('integrations')->info('Integration disconnected', [
+            $this->logger->channel('integrations')->info('Integration disconnected', [
                 'integration_id' => $integrationId,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 

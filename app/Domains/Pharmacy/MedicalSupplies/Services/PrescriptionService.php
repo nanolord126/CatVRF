@@ -2,31 +2,22 @@
 
 namespace App\Domains\Pharmacy\MedicalSupplies\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PrescriptionService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PrescriptionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function validatePrescription(string $prescriptionCode, int $medicineId, string $correlationId): bool
         {
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
-                    $prescription = DB::table('prescriptions')
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
+                    $prescription = $this->db->table('prescriptions')
                         ->where('code', $prescriptionCode)
                         ->where('medicine_id', $medicineId)
                         ->where('is_used', false)
@@ -34,15 +25,15 @@ final class PrescriptionService extends Model
                         ->first();
 
                     if (!$prescription) {
-                        throw new \Exception('Prescription not found or already used');
+                        throw new \RuntimeException('Prescription not found or already used');
                     }
 
                     // Марк как использованный
-                    DB::table('prescriptions')
+                    $this->db->table('prescriptions')
                         ->where('id', $prescription->id)
                         ->update(['is_used' => true, 'used_at' => now()]);
 
-                    Log::channel('audit')->info('Prescription validated', [
+                    $this->logger->info('Prescription validated', [
                         'prescription_id' => $prescription->id,
                         'medicine_id' => $medicineId,
                         'correlation_id' => $correlationId,
@@ -50,8 +41,8 @@ final class PrescriptionService extends Model
 
                     return true;
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Prescription validation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Prescription validation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
@@ -59,4 +50,27 @@ final class PrescriptionService extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

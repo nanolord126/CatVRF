@@ -2,17 +2,15 @@
 
 namespace App\Domains\ShortTermRentals\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StrAvailabilityService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class StrAvailabilityService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const CACHE_PREFIX = 'str_availability:';
 
-        public function __construct() {}
+        public function __construct(
+        private \Illuminate\Contracts\Cache\Repository $cache, private readonly LoggerInterface $logger) {}
 
         /**
          * Проверка доступности апартамента на период
@@ -22,7 +20,7 @@ final class StrAvailabilityService extends Model
             $tenantId = tenant()->id ?? 0;
             $cacheKey = self::CACHE_PREFIX . "{$tenantId}:{$apartmentId}:" . $from->format('Y-m-d') . ':' . $to->format('Y-m-d');
 
-            return Cache::remember($cacheKey, 300, function () use ($apartmentId, $from, $to) {
+            return $this->cache->remember($cacheKey, 300, function () use ($apartmentId, $from, $to) {
                 // 1. Проверяем пересечения с существующими бронированиями
                 $hasBookings = \App\Domains\ShortTermRentals\Models\StrBooking::where('apartment_id', $apartmentId)
                     ->whereIn('status', ['confirmed', 'active', 'completed'])
@@ -107,7 +105,7 @@ final class StrAvailabilityService extends Model
 
             $this->invalidateCache($apartmentId);
 
-            Log::channel('audit')->info('Dates blocked by system', [
+            $this->logger->info('Dates blocked by system', [
                 'apartment_id' => $apartmentId,
                 'from' => $from->toIso8601String(),
                 'to' => $to->toIso8601String(),

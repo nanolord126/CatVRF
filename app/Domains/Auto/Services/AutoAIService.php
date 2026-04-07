@@ -2,18 +2,19 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoAIService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class AutoAIService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIConstructorService $aiCore,
-            private readonly PricingService $pricing,
-        ) {}
+            private readonly PricingService $pricing, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard
+    ) {}
 
         /**
          * Оценка стоимости ремонта по фото (AI Vision).
@@ -21,7 +22,7 @@ final class AutoAIService extends Model
          */
         public function estimateRepairFromPhoto(\Illuminate\Http\UploadedFile $photo, Vehicle $vehicle, string $correlationId): array
         {
-            Log::channel('audit')->info('AI Repair Vision Started', [
+            $this->logger->info('AI Repair Vision Started', [
                 'vehicle_uuid' => $vehicle->uuid,
                 'correlation_id' => $correlationId,
             ]);
@@ -31,7 +32,7 @@ final class AutoAIService extends Model
                       "Верни JSON со списком работ и примерной стоимостью материалов в копейках.";
 
             // Вызов ядра AI (OpenAI Vision)
-            $aiResult = $this->aiCore->analyzePhotoAndRecommend($photo, 'Auto', (int) auth()->id());
+            $aiResult = $this->aiCore->analyzePhotoAndRecommend($photo, 'Auto', (int) $this->guard->id());
 
             // Формирование сметы на базе ответа AI
             $estimate = [
@@ -45,9 +46,10 @@ final class AutoAIService extends Model
             // Дополнительный расчет через PricingService
             $estimate['estimated_total_kopecks'] = $this->pricing->estimateRepairCost($estimate['recommended_tasks'], $correlationId);
 
-            Log::channel('audit')->info('AI Repair Vision Finished', [
+            $this->logger->info('AI Repair Vision Finished', [
                 'order_uuid' => $vehicle->uuid,
                 'estimated_total' => $estimate['estimated_total_kopecks'],
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return $estimate;
@@ -61,7 +63,7 @@ final class AutoAIService extends Model
             $user = \App\Models\User::findOrFail($userId);
             $taste = $user->taste_profile ?? [];
 
-            Log::channel('audit')->info('AI Vehicle Recommendation Started', [
+            $this->logger->info('AI Vehicle Recommendation Started', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -76,7 +78,6 @@ final class AutoAIService extends Model
             if (!empty($taste['price_range'])) {
                 // Условная логика ценовых диапазонов для авто
                 $range = match($taste['price_range']) {
-                    'luxury' => [500000000, 5000000000], // 5M - 50M руб
                     'premium' => [200000000, 500000000],
                     default => [0, 200000000],
                 };

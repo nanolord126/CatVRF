@@ -2,18 +2,21 @@
 
 namespace App\Domains\Pet\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductAppointmentCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductAppointmentCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(AppointmentBooked $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $clinic = $event->appointment->clinic;
                     $wallet = $clinic->owner->wallet;
 
@@ -38,7 +41,7 @@ final class DeductAppointmentCommissionListener extends Model
                         ],
                     ]);
 
-                    Log::channel('audit')->info('Pet appointment commission deducted', [
+                    $this->logger->info('Pet appointment commission deducted', [
                         'appointment_id' => $event->appointment->id,
                         'clinic_id' => $clinic->id,
                         'amount' => $commissionAmount / 100,
@@ -47,7 +50,7 @@ final class DeductAppointmentCommissionListener extends Model
                     ]);
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to deduct appointment commission', [
+                $this->logger->error('Failed to deduct appointment commission', [
                     'appointment_id' => $event->appointment->id,
                     'correlation_id' => $event->correlationId,
                     'error' => $e->getMessage(),

@@ -2,130 +2,202 @@
 
 namespace App\Domains\FarmDirect\FreshProduce\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\FarmDirect\FreshProduce\Models\FreshProduceOrder;
+use App\Domains\FarmDirect\FreshProduce\Models\FreshProduceItem;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\Inventory\InventoryManagementService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FreshProduceService extends Model
+final readonly class FreshProduceService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.10;
+    private const RATE_LIMIT_KEY = 'fresh:order:';
+    private const RATE_LIMIT_MAX = 20;
+    private const RATE_LIMIT_DECAY = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly InventoryManagementService $inventory,
-            private readonly WalletService $wallet,
-            private readonly DemandForecastService $forecast,
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private InventoryManagementService $inventory,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
 
-        /**
-         * Создание подписки на еженедельный бокс овощей/фруктов.
-         */
-        public function subscribeToBox(int $supplierId, string $boxType, string $correlationId = ""): ProduceBox
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
+    /**
+     * Создать заказ на свежие продукты.
+     */
+    public function createOrder(int $farmId, array $items, string $deliveryAddress, string $correlationId = ''): FreshProduceOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
 
-            return DB::transaction(function () use ($supplierId, $boxType, $correlationId) {
-                $supplier = FarmSupplier::findOrFail($supplierId);
+        return $this->db->transaction(function () use ($farmId, $items, $deliveryAddress, $correlationId, $userId): FreshProduceOrder {
+            $total = 0;
 
-                // 1. Fraud Check - проверка на мультиаккаунтинг для получения скидок
-                $this->fraud->check([
-                    "user_id" => auth()->id(),
-                    "operation_type" => "fresh_subscription",
-                    "correlation_id" => $correlationId
-                ]);
+            foreach ($items as $item) {
+                $product = FreshProduceItem::where('id', $item['product_id'])
+                    ->where('farm_id', $farmId)
+                    ->firstOrFail();
 
-                // 2. Прогноз спроса для планирования закупки у фермера
-                $this->forecast->forecastBulk(
-                    itemIds: [$supplierId],
-                    dateFrom: now(),
-                    dateTo: now()->addMonth()
-                );
-
-                $box = ProduceBox::create([
-                    "uuid" => (string) Str::uuid(),
-                    "tenant_id" => $supplier->tenant_id,
-                    "supplier_id" => $supplierId,
-                    "user_id" => auth()->id(),
-                    "type" => $boxType,
-                    "status" => "active",
-                    "next_delivery_at" => now()->addWeek()->startOfDay(),
-                    "correlation_id" => $correlationId,
-                    "tags" => ["fresh", "organic", "subscription"]
-                ]);
-
-                Log::channel("audit")->info("Fresh: subscription created", ["box_id" => $box->id, "supplier" => $supplierId]);
-
-                return $box;
-            });
-        }
-
-        /**
-         * Формирование и отправка заказа (свежая продукция).
-         */
-        public function processDailyDelivery(int $boxId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $box = ProduceBox::with("supplier")->findOrFail($boxId);
-
-            DB::transaction(function () use ($box, $correlationId) {
-                // 3. Проверка остатков (Inventory)
-                $stock = $this->inventory->getCurrentStock($box->supplier_id);
-                if ($stock <= 0) {
-                    Log::channel("audit")->error("Fresh: out of stock", ["supplier" => $box->supplier_id]);
-                    throw new \RuntimeException("Supplier out of stock for daily delivery.");
+                if ($product->stock_kg < $item['weight_kg']) {
+                    throw new \RuntimeException("Not enough stock for item: {$product->id}", 400);
                 }
 
-                // 4. Списание остатков
-                $this->inventory->deductStock(
-                    itemId: $box->supplier_id,
-                    quantity: 1,
-                    reason: "Subscription delivery for Box #{$box->id}",
-                    sourceType: "produce_box",
-                    sourceId: $box->id
-                );
-
-                // 5. Создание транзакционного заказа
-                ProduceOrder::create([
-                    "box_id" => $box->id,
-                    "status" => "delivered",
-                    "delivered_at" => now(),
-                    "correlation_id" => $correlationId
-                ]);
-
-                // 6. Выплата фермеру (14% комиссия платформы)
-                $totalAmount = 250000; // Пример: 2500 руб в копейках
-                $fee = (int) ($totalAmount * 0.14);
-                $payout = $totalAmount - $fee;
-
-                $this->wallet->credit(
-                    userId: $box->supplier->owner_id,
-                    amount: $payout,
-                    type: "farm_payout",
-                    reason: "Delivery confirmed for Box #{$box->id}",
-                    correlationId: $correlationId
-                );
-
-                Log::channel("audit")->info("Fresh: delivery processed", ["box_id" => $box->id, "payout" => $payout]);
-            });
-        }
-
-        /**
-         * Контроль срока годности (Expiration Check).
-         */
-        public function checkExpiryAlerts(int $tenantId): void
-        {
-            $expiredItems = FreshProduct::where("tenant_id", $tenantId)
-                ->where("expiry_date", "<", now()->addDays(2))
-                ->get();
-
-            foreach ($expiredItems as $item) {
-                Log::channel("audit")->warning("Fresh: item expiring soon", [
-                    "item_id" => $item->id,
-                    "expiry" => $item->expiry_date
-                ]);
-
-                // Автоматическое снижение цены или уведомление
-                $item->update(["tags" => array_merge($item->tags ?? [], ["status:expiring_soon"])]);
+                $total += (int) ($product->price_per_kg_kopecks * $item['weight_kg']);
             }
-        }
+
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'fresh_produce_order',
+                amount: $total,
+                correlationId: $correlationId,
+            );
+
+            $payoutKopecks = $total - (int) ($total * self::COMMISSION_RATE);
+
+            $order = FreshProduceOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'farm_id' => $farmId,
+                'client_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'items_json' => $items,
+                'delivery_address' => $deliveryAddress,
+                'tags' => ['fresh_produce' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'fresh_produce_order_created',
+                subjectType: FreshProduceOrder::class,
+                subjectId: $order->id,
+                old: [],
+                new: $order->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Fresh produce order created', [
+                'order_id' => $order->id,
+                'farm_id' => $farmId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Завершить заказ и выплатить фермеру.
+     */
+    public function completeOrder(int $orderId, string $correlationId = ''): FreshProduceOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): FreshProduceOrder {
+            $order = FreshProduceOrder::findOrFail($orderId);
+
+            if ($order->payment_status !== 'completed') {
+                throw new \RuntimeException('Order payment not completed', 400);
+            }
+
+            $order->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: $order->tenant_id,
+                amount: $order->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['order_id' => $order->id, 'farm_id' => $order->farm_id],
+            );
+
+            $this->audit->log(
+                action: 'fresh_produce_order_completed',
+                subjectType: FreshProduceOrder::class,
+                subjectId: $order->id,
+                old: ['status' => 'pending_payment'],
+                new: ['status' => 'completed'],
+                correlationId: $correlationId,
+            );
+
+            return $order;
+        });
+    }
+
+    /**
+     * Отменить заказ и вернуть оплату.
+     */
+    public function cancelOrder(int $orderId, string $correlationId = ''): FreshProduceOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($orderId, $correlationId): FreshProduceOrder {
+            $order = FreshProduceOrder::findOrFail($orderId);
+
+            if ($order->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed order', 400);
+            }
+
+            $previousStatus = $order->payment_status;
+
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: $order->tenant_id,
+                    amount: $order->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['order_id' => $order->id],
+                );
+            }
+
+            $this->audit->log(
+                action: 'fresh_produce_order_cancelled',
+                subjectType: FreshProduceOrder::class,
+                subjectId: $order->id,
+                old: ['status' => $previousStatus],
+                new: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
+
+            return $order;
+        });
+    }
+
+    /**
+     * Получить заказ по идентификатору.
+     */
+    public function getOrder(int $orderId): FreshProduceOrder
+    {
+        return FreshProduceOrder::findOrFail($orderId);
+    }
+
+    /**
+     * Получить список заказов клиента.
+     */
+    public function getUserOrders(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return FreshProduceOrder::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 }

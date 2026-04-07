@@ -7,12 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Course extends Model
 {
-    use HasFactory;
+    protected $table = 'education_courses';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use HasUuids, SoftDeletes;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'instructor_id',
             'title',
@@ -41,7 +44,7 @@ final class Course extends Model
 
         public function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant('id') ?? 0));
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant()->id ?? 0));
         }
 
         public function lessons(): HasMany

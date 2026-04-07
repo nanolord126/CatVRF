@@ -26,6 +26,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -48,7 +49,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Tinkoff: Payment initialization started', [
+        $this->logger->channel('audit')->info('Tinkoff: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -67,16 +68,16 @@ final class TinkoffGateway implements PaymentGatewayInterface
         $response = $this->http->post('https://securepay.tinkoff.ru/v2/Init', $payload);
 
         if (!$response->successful()) {
-            Log::channel('audit')->error('Tinkoff: Payment init failed', [
+            $this->logger->channel('audit')->error('Tinkoff: Payment init failed', [
                 'correlation_id' => $correlationId,
                 'status' => $response->status(),
                 'response' => $response->body(),
             ]);
 
-            throw new \Exception("Tinkoff init failed: {$response->status()}");
+            throw new \RuntimeException("Tinkoff init failed: {$response->status()}");
         }
 
-        Log::channel('audit')->info('Tinkoff: Payment init succeeded', [
+        $this->logger->channel('audit')->info('Tinkoff: Payment init succeeded', [
             'correlation_id' => $correlationId,
             'payment_id' => $response->json()['PaymentId'] ?? null,
         ]);
@@ -106,7 +107,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Tinkoff: Payment capture started', [
+        $this->logger->channel('audit')->info('Tinkoff: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -123,19 +124,19 @@ final class TinkoffGateway implements PaymentGatewayInterface
             $response = $this->http->post('https://securepay.tinkoff.ru/v2/Confirm', $payload);
 
             if (!$response->successful()) {
-                throw new \Exception("HTTP {$response->status()}: {$response->body()}");
+                throw new \RuntimeException("HTTP {$response->status()}: {$response->body()}");
             }
 
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                Log::channel('audit')->info('Tinkoff: Payment capture succeeded', [
+                $this->logger->channel('audit')->info('Tinkoff: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'response_id' => $response->json()['TerminalKey'] ?? null,
                 ]);
             } else {
-                Log::channel('audit')->warning('Tinkoff: Payment capture returned false', [
+                $this->logger->channel('audit')->warning('Tinkoff: Payment capture returned false', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'response' => $response->json(),
@@ -144,7 +145,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tinkoff: Payment capture exception', [
+            $this->logger->channel('audit')->error('Tinkoff: Payment capture exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -178,7 +179,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Tinkoff: Payment refund initiated', [
+        $this->logger->channel('audit')->info('Tinkoff: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -196,13 +197,13 @@ final class TinkoffGateway implements PaymentGatewayInterface
             $response = $this->http->post('https://securepay.tinkoff.ru/v2/Refund', $payload);
 
             if (!$response->successful()) {
-                throw new \Exception("HTTP {$response->status()}: {$response->body()}");
+                throw new \RuntimeException("HTTP {$response->status()}: {$response->body()}");
             }
 
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                Log::channel('audit')->info('Tinkoff: Payment refund succeeded', [
+                $this->logger->channel('audit')->info('Tinkoff: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -211,7 +212,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tinkoff: Payment refund exception', [
+            $this->logger->channel('audit')->error('Tinkoff: Payment refund exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'refund_amount' => $amount,
@@ -261,7 +262,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Tinkoff: Payout initiated', [
+        $this->logger->channel('audit')->info('Tinkoff: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -291,7 +292,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
     {
         $correlationId = $payload['correlation_id'] ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Tinkoff: Webhook received', [
+        $this->logger->channel('audit')->info('Tinkoff: Webhook received', [
             'correlation_id' => $correlationId,
             'order_id' => $payload['OrderId'] ?? null,
             'payment_id' => $payload['PaymentId'] ?? null,
@@ -328,7 +329,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
     {
         $correlationId ??= $transaction->correlation_id ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Tinkoff: Fiscalization started', [
+        $this->logger->channel('audit')->info('Tinkoff: Fiscalization started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -359,7 +360,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                Log::channel('audit')->info('Tinkoff: Fiscalization succeeded', [
+                $this->logger->channel('audit')->info('Tinkoff: Fiscalization succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);
@@ -367,7 +368,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tinkoff: Fiscalization failed', [
+            $this->logger->channel('audit')->error('Tinkoff: Fiscalization failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),

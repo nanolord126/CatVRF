@@ -117,8 +117,8 @@ return new class extends Migration
                 $table->foreignId('driver_id')->index();
                 $table->foreignId('passenger_id')->index();
                 
-                $table->point('pickup_point');
-                $table->point('dropoff_point');
+                $table->geometry('pickup_point');
+                $table->geometry('dropoff_point');
                 $table->string('pickup_address');
                 $table->string('dropoff_address');
                 
@@ -168,3 +168,5 @@ return new class extends Migration
         Schema::dropIfExists('auto_vehicles');
     }
 };
+
+

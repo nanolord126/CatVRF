@@ -2,14 +2,11 @@
 
 namespace App\Domains\Pet\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetReviewResource extends Model
+final class PetReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetReview::class;
 
         protected static ?string $slug = 'pet-reviews';
@@ -53,7 +50,7 @@ final class PetReviewResource extends Model
                         ->searchable(),
                     TextColumn::make('rating')
                         ->numeric(),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->colors([
                             'pending' => 'gray',
                             'approved' => 'success',

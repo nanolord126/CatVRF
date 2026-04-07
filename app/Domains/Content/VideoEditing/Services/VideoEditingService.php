@@ -4,25 +4,26 @@ namespace App\Domains\Content\VideoEditing\Services;
 
 use App\Domains\Content\VideoEditing\Models\VideoEditor;
 use App\Domains\Content\VideoEditing\Models\VideoProject;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class VideoEditingService extends Model
+final readonly class VideoEditingService
 {
-    use HasFactory;
-
     public function __construct(
-        private readonly FraudControlService $fraud,
-        private readonly WalletService $wallet,
-    ) {
-    }
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
     public function createProject(
         int $editorId,
@@ -32,34 +33,34 @@ final class VideoEditingService extends Model
         string $correlationId = '',
     ): VideoProject {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
-        $rateLimiterKey = 'video:proj:' . (auth()->id() ?? 0);
+        $rateLimiterKey = 'video:proj:' . ($this->guard->id() ?? 0);
 
-        if (RateLimiter::tooManyAttempts($rateLimiterKey, 10)) {
-            throw new \RuntimeException('Too many', 429);
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 10)) {
+            throw new \RuntimeException('Too many requests', 429);
         }
 
-        RateLimiter::hit($rateLimiterKey, 3600);
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
 
-        return DB::transaction(function () use ($editorId, $projectType, $editingHours, $dueDate, $correlationId): VideoProject {
+        return $this->db->transaction(function () use ($editorId, $projectType, $editingHours, $dueDate, $correlationId): VideoProject {
             $editor = VideoEditor::findOrFail($editorId);
             $total = (int) ($editor->price_kopecks_per_hour * $editingHours);
 
-            $fraud = $this->fraud->check([
-                'user_id' => auth()->id() ?? 0,
-                'operation_type' => 'video_editing',
-                'correlation_id' => $correlationId,
-                'amount' => $total,
-            ]);
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'video_editing',
+                amount: $total,
+                correlationId: $correlationId,
+            );
 
-            if ($fraud['decision'] === 'block') {
-                throw new \RuntimeException('Security', 403);
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
             }
 
             $project = VideoProject::create([
-                'uuid' => Str::uuid(),
+                'uuid' => (string) Str::uuid(),
                 'tenant_id' => tenant()->id,
                 'editor_id' => $editorId,
-                'client_id' => auth()->id() ?? 0,
+                'client_id' => $this->guard->id() ?? 0,
                 'correlation_id' => $correlationId,
                 'status' => 'pending_payment',
                 'total_kopecks' => $total,
@@ -71,7 +72,7 @@ final class VideoEditingService extends Model
                 'tags' => ['video' => true],
             ]);
 
-            Log::channel('audit')->info('Video project created', [
+            $this->logger->info('Video project created', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -84,11 +85,11 @@ final class VideoEditingService extends Model
     {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        return DB::transaction(function () use ($projectId, $correlationId): VideoProject {
+        return $this->db->transaction(function () use ($projectId, $correlationId): VideoProject {
             $project = VideoProject::findOrFail($projectId);
 
             if ($project->payment_status !== 'completed') {
-                throw new \RuntimeException('Not paid', 400);
+                throw new \RuntimeException('Project not paid yet', 400);
             }
 
             $project->update([
@@ -97,16 +98,17 @@ final class VideoEditingService extends Model
             ]);
 
             $this->wallet->credit(
-                tenant()->id,
-                $project->payout_kopecks,
-                'video_payout',
-                [
-                    'correlation_id' => $correlationId,
+                walletId: tenant()->id,
+                amount: $project->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: [
                     'project_id' => $project->id,
+                    'correlation_id' => $correlationId,
                 ],
             );
 
-            Log::channel('audit')->info('Video project completed', [
+            $this->logger->info('Video project completed', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -119,11 +121,11 @@ final class VideoEditingService extends Model
     {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        return DB::transaction(function () use ($projectId, $correlationId): VideoProject {
+        return $this->db->transaction(function () use ($projectId, $correlationId): VideoProject {
             $project = VideoProject::findOrFail($projectId);
 
             if ($project->status === 'completed') {
-                throw new \RuntimeException('Cannot cancel', 400);
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
             }
 
             $project->update([
@@ -134,17 +136,18 @@ final class VideoEditingService extends Model
 
             if ($project->payment_status === 'completed') {
                 $this->wallet->credit(
-                    tenant()->id,
-                    $project->total_kopecks,
-                    'video_refund',
-                    [
-                        'correlation_id' => $correlationId,
+                    walletId: tenant()->id,
+                    amount: $project->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: [
                         'project_id' => $project->id,
+                        'correlation_id' => $correlationId,
                     ],
                 );
             }
 
-            Log::channel('audit')->info('Video project cancelled', [
+            $this->logger->info('Video project cancelled', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);

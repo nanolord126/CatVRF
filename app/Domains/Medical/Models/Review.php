@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Review extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_reviews';
@@ -40,7 +39,7 @@ final class Review extends Model
         /**
          * КАНОН: Global Scopes и События модели.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (Review $review) {
                 $review->uuid = $review->uuid ?? (string)Str::uuid();

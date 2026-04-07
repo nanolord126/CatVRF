@@ -2,14 +2,20 @@
 
 namespace App\Services\Deployment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GlobalCDNOptimizationService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class GlobalCDNOptimizationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Предварительная загрузка ресурсов на CDN
          *
@@ -32,10 +38,11 @@ final class GlobalCDNOptimizationService extends Model
                 }
             }
 
-            Log::channel('deployment')->info('Assets preloaded', [
+            $this->logger->channel('deployment')->info('Assets preloaded', [
                 'assets_count' => count($assets),
                 'regions' => $regions,
                 'preloaded_count' => count($preloaded),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $preloaded;

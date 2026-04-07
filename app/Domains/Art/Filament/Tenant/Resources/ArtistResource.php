@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
 
+
+use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artist;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,12 +16,13 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ArtistResource extends Resource
 {
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+
     protected static ?string $model = Artist::class;
 
     public static function form(Form $form): Form
@@ -114,7 +117,7 @@ final class ArtistResource extends Resource
                         ->dehydrated(false),
                     Forms\Components\Placeholder::make('canon_hint')
                         ->label('Канон 2026')
-                        ->content('Correlation_id + audit-log + FraudControlService::check()'),
+                        ->content('Все мутации обязательны: fraud-check, $this->db->transaction, correlation_id, audit log'),
                 ])->columns(2),
         ]);
     }
@@ -157,14 +160,14 @@ final class ArtistResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (Artist $record): void {
                         $correlationId = (string) Str::uuid();
-                        DB::transaction(static function () use ($record, $correlationId): void {
+                        $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
                                 'is_active' => !$record->is_active,
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        Log::channel('audit')->info('Artist toggled activity from Filament', [
+                        $this->logger->info('Artist toggled activity from Filament', [
                             'artist_id' => $record->id,
                             'new_state' => $record->is_active,
                             'correlation_id' => $record->correlation_id ?: $correlationId,

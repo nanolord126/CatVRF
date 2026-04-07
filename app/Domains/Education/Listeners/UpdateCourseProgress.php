@@ -2,14 +2,16 @@
 
 namespace App\Domains\Education\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class UpdateCourseProgress extends Model
+
+use Psr\Log\LoggerInterface;
+final class UpdateCourseProgress
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Обработка завершения урока
          */
@@ -53,13 +55,13 @@ final class UpdateCourseProgress extends Model
                     'completed_lesson_ids' => $completedLessons,
                     'last_lesson_id' => $event->lesson->id,
                     'percent' => $newProgressPercent,
-                    'updated_at' => now()->toIso8601String(),
+                    'updated_at' => Carbon::now()->toIso8601String(),
                 ],
                 'correlation_id' => $correlationId,
             ]);
 
             // 4. Логирование прогресса
-            Log::channel('audit')->info('Student course progress updated', [
+            $this->logger->info('Student course progress updated', [
                 'enrollment_id' => $enrollment->id,
                 'user_id' => $userId,
                 'progress_percent' => $newProgressPercent,
@@ -69,7 +71,7 @@ final class UpdateCourseProgress extends Model
             // 5. Выдача сертификата, если 100%
             if ($newProgressPercent >= 100) {
                 // Dispatch CertificateJob (logic implementation)
-                Log::channel('audit')->info('Course 100% Completed - Certificate eligible', [
+                $this->logger->info('Course 100% Completed - Certificate eligible', [
                     'enrollment_id' => $enrollment->id,
                     'correlation_id' => $correlationId,
                 ]);

@@ -2,35 +2,35 @@
 
 namespace App\Domains\Fashion\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class OutfitConstructor extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class OutfitConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private ImageAnalysisService $imageAnalysis,
+
+    public function __construct(private ImageAnalysisService $imageAnalysis,
             private RecommendationService $recommendation,
             private InventoryManagementService $inventory,
             private FraudControlService $fraud,
-            private string $correlationId
-        ) {}
+            private string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать личную капсулу (Lookbook) на основе фото и параметров фигуры (Body-score)
          */
         public function construct(int $userId, \Illuminate\Http\UploadedFile $photo, array $params = []): AIConstructionResult
         {
-            Log::channel('audit')->info('OutfitConstructor: starting fashion капсулы', [
+            $this->logger->info('OutfitConstructor: starting fashion капсулы', [
                 'user_id' => $userId,
                 'correlation_id' => $this->correlationId,
             ]);
 
-            return DB::transaction(function () use ($userId, $photo, $params) {
+            return $this->db->transaction(function () use ($userId, $photo, $params) {
                 // 1. Fraud Check (лимит генераций)
-                $this->fraud->check('fashion_ai_outfit', ['user_id' => $userId]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'fashion_ai_outfit', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Body-score: Анализ параметров фигуры (рост, тип, цветотип) через Vision AI
                 $bodyAnalysis = $this->imageAnalysis->analyzeBody($photo);
@@ -72,7 +72,7 @@ final class OutfitConstructor extends Model
                 // 6. Сохранение истории генерации
                 $this->saveToDatabase($userId, $result);
 
-                Log::channel('audit')->info('OutfitConstructor: finished creation', [
+                $this->logger->info('OutfitConstructor: finished creation', [
                     'user_id' => $userId,
                     'correlation_id' => $this->correlationId,
                     'items_count' => count($suggestions),
@@ -106,7 +106,7 @@ final class OutfitConstructor extends Model
 
         private function saveToDatabase(int $userId, AIConstructionResult $result): void
         {
-            DB::table('ai_constructions')->insert([
+            $this->db->table('ai_constructions')->insert([
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId,
                 'tenant_id' => tenant()->id ?? 0,
@@ -114,8 +114,8 @@ final class OutfitConstructor extends Model
                 'design_data' => json_encode($result->payload),
                 'suggestions' => json_encode($result->suggestions),
                 'correlation_id' => $result->correlation_id,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
             ]);
         }
 }

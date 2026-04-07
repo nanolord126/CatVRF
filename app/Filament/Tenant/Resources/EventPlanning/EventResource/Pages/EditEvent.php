@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditEvent extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditEvent extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = EventResource::class;
 
         /**
@@ -30,9 +35,9 @@ final class EditEvent extends Model
                     ->action(function () {
                         $this->record->update(['status' => 'cancelled']);
 
-                        Log::channel('audit')->warning('Filament: Event cancelled manual', [
+                        $this->logger->warning('Filament: Event cancelled manual', [
                             'event_uuid' => $this->record->uuid,
-                            'user_id' => auth()->id()
+                            'user_id' => $this->guard->id()
                         ]);
 
                         Notification::make()
@@ -49,9 +54,9 @@ final class EditEvent extends Model
                     ->action(function () {
                         $this->record->update(['status' => 'confirmed']);
 
-                        Log::channel('audit')->info('Filament: Event confirmed manual', [
+                        $this->logger->info('Filament: Event confirmed manual', [
                             'event_uuid' => $this->record->uuid,
-                            'user_id' => auth()->id()
+                            'user_id' => $this->guard->id()
                         ]);
 
                         Notification::make()
@@ -68,10 +73,10 @@ final class EditEvent extends Model
          */
         protected function mutateFormDataBeforeSave(array $data): array
         {
-            Log::channel('audit')->info('Filament: Plan modified', [
+            $this->logger->info('Filament: Plan modified', [
                 'event_uuid' => $this->record->uuid,
                 'tenant_id' => tenant()->id,
-                'modified_by' => auth()->id(),
+                'modified_by' => $this->guard->id(),
             ]);
 
             return $data;

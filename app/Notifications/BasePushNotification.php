@@ -12,67 +12,67 @@ abstract class BasePushNotification extends BaseNotification
     /**
      * Заголовок push-уведомления
      */
-    protected string $title = 'Notification';
+    private string $title = 'Notification';
 
     /**
      * Тело push-уведомления
      */
-    protected string $body = '';
+    private string $body = '';
 
     /**
      * Иконка (URL или имя ресурса)
      */
-    protected ?string $icon = null;
+    private ?string $icon = null;
 
     /**
      * Картинка (большое изображение в push)
      */
-    protected ?string $image = null;
+    private ?string $image = null;
 
     /**
      * Звук уведомления
      */
-    protected ?string $sound = 'default';
+    private ?string $sound = 'default';
 
     /**
      * Цвет (для Android)
      */
-    protected ?string $color = null;
+    private ?string $color = null;
 
     /**
      * Deep link (экран приложения, который открыть)
      */
-    protected ?string $deepLink = null;
+    private ?string $deepLink = null;
 
     /**
      * Количество на бейдже (iOS)
      */
-    protected ?int $badge = null;
+    private ?int $badge = null;
 
     /**
      * Категория (для действий)
      */
-    protected ?string $category = null;
+    private ?string $category = null;
 
     /**
      * Данные payload (дополнительные данные для приложения)
      */
-    protected array $payload = [];
+    private array $payload = [];
 
     /**
      * TTL для push (сек)
      */
-    protected int $ttl = 86400; // 1 день
+    private int $ttl = 86400; // 1 день
 
     /**
      * Приоритет (high, normal)
      */
-    protected string $priority = 'high';
+    private string $priority = 'high';
 
     /**
      * Требует ли аутентификации
      */
-    protected bool $requiresAuth = false;
+    private bool $requiresAuth = false;
 
     /**
      * Конструктор

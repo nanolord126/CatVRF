@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\PharmacyResource;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PharmacyResource extends Model
+final class PharmacyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Pharmacy::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document';

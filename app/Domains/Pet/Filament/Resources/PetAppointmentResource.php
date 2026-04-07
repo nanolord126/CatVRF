@@ -2,14 +2,11 @@
 
 namespace App\Domains\Pet\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetAppointmentResource extends Model
+final class PetAppointmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PetAppointment::class;
 
         protected static ?string $slug = 'pet-appointments';
@@ -68,7 +65,7 @@ final class PetAppointmentResource extends Model
                         ->searchable(),
                     TextColumn::make('scheduled_at')
                         ->dateTime(),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->colors([
                             'pending' => 'gray',
                             'confirmed' => 'info',

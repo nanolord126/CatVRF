@@ -2,14 +2,17 @@
 
 namespace App\Domains\Education\Models;
 
+
+use Illuminate\Config\Repository as ConfigRepository;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class VideoCall extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     protected $table = 'video_calls';
 
         protected $fillable = [
@@ -46,7 +49,7 @@ final class VideoCall extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
+                if (function_exists('tenant') && tenant()) {
                     $builder->where('tenant_id', tenant()->id);
                 }
             });
@@ -80,6 +83,6 @@ final class VideoCall extends Model
          */
         public function getWebRtcUrlAttribute(): string
         {
-            return config('services.webrtc.base_url') . '/join/' . $this->room_id;
+            return $this->config->get('services.webrtc.base_url') . '/join/' . $this->room_id;
         }
 }

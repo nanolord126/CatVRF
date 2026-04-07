@@ -2,20 +2,21 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClinicService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ClinicService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание записи на приём.
@@ -25,27 +26,21 @@ final class ClinicService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting — защита от накруток записи
-            if (RateLimiter::tooManyAttempts("medical:booking:{$userId}", 3)) {
+            if ($this->rateLimiter->tooManyAttempts("medical:booking:{$userId}", 3)) {
                 throw new \RuntimeException("Слишком много записей в медцентр. Попробуйте позже.", 429);
             }
-            RateLimiter::hit("medical:booking:{$userId}", 3600);
+            $this->rateLimiter->hit("medical:booking:{$userId}", 3600);
 
-            return DB::transaction(function () use ($userId, $doctorId, $serviceId, $dateTime, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $doctorId, $serviceId, $dateTime, $correlationId) {
                 $doctor = Doctor::findOrFail($doctorId);
                 $service = MedicalService::where("doctor_id", $doctorId)->findOrFail($serviceId);
                 $clinic = Clinic::findOrFail($doctor->clinic_id);
 
                 // 2. Fraud Check (защита от записи на фиктивные услуги)
-                $fraud = $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "medical_booking",
-                    "amount" => $service->price_kopecks,
-                    "correlation_id" => $correlationId,
-                    "meta" => ["doctor_category" => $doctor->specialization, "service_id" => $serviceId]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->error("Medical: Security block", ["user_id" => $userId, "score" => $fraud["score"], "doctor_id" => $doctorId]);
+                    $this->logger->error("Medical: Security block", ["user_id" => $userId, "score" => $fraud["score"], "doctor_id" => $doctorId]);
                     throw new \RuntimeException("Запись отклонена службой безопасности.", 403);
                 }
 
@@ -77,7 +72,7 @@ final class ClinicService extends Model
                     }
                 }
 
-                Log::channel("audit")->info("Medical: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
+                $this->logger->info("Medical: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
 
                 return $appointment;
             });
@@ -91,7 +86,7 @@ final class ClinicService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $appointment = MedicalAppointment::findOrFail($appointmentId);
 
-            DB::transaction(function () use ($appointment, $results, $prescription, $correlationId) {
+            $this->db->transaction(function () use ($appointment, $results, $prescription, $correlationId) {
                 $appointment->update(["status" => "completed", "doctor_notes" => $results["notes"]]);
 
                 // Списание расходников из инвентаря
@@ -118,7 +113,7 @@ final class ClinicService extends Model
                     "correlation_id" => $correlationId
                 ]);
 
-                Log::channel("audit")->info("Medical: appointment finished", ["appointment_id" => $appointment->id]);
+                $this->logger->info("Medical: appointment finished", ["appointment_id" => $appointment->id]);
             });
         }
 }

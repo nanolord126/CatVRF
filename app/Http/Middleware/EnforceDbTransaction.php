@@ -1,15 +1,41 @@
 <?php declare(strict_types=1);
 
+/**
+ * EnforceDbTransaction — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ * @see https://catvrf.ru/docs/enforcedbtransaction
+ */
+
+
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\DatabaseManager;
 
-final class EnforceDbTransaction extends Model
+final class EnforceDbTransaction
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle an incoming request.
          * Enforces DB transactions for all mutating HTTP requests (POST, PUT, PATCH, DELETE).
@@ -25,8 +51,24 @@ final class EnforceDbTransaction extends Model
             }
 
             // For cross-database or multiple connection scenarios, this wraps the default connection
-            return DB::transaction(function () use ($request, $next) {
+            return $this->db->transaction(function () use ($request, $next) {
                 return $next($request);
             });
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

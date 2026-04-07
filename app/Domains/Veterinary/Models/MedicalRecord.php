@@ -4,12 +4,13 @@ namespace App\Domains\Veterinary\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class MedicalRecord extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'veterinary_medical_records';
 
         protected $fillable = [
@@ -50,7 +51,7 @@ final class MedicalRecord extends Model
                 // Simplified: logic to restrict view based on auth user
             });
 
-            static::creating(function (Model $model) {
+            static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
                 if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
                     $model->tenant_id = $model->tenant_id ?? tenant()->id;

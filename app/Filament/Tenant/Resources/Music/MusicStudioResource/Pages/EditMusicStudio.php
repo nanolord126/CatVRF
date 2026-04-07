@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\Music\MusicStudioResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditMusicStudio extends Model
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditMusicStudio extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = MusicStudioResource::class;
 
         protected function getHeaderActions(): array
@@ -35,14 +43,14 @@ final class EditMusicStudio extends Model
          */
         protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($record, $data) {
+            return $this->db->transaction(function () use ($record, $data) {
                 $record->update($data);
 
-                Log::channel('audit')->info('Music studio updated via UI', [
+                $this->logger->info('Music studio updated via UI', [
                     'studio_id' => $record->id,
                     'tenant_id' => $record->tenant_id,
                     'correlation_id' => $record->correlation_id,
-                    'updated_by' => auth()->id(),
+                    'updated_by' => $this->guard->id(),
                 ]);
 
                 return $record;

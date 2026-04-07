@@ -9,11 +9,18 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+
 
 final class ReleaseHoldJob implements ShouldQueue
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300;
@@ -22,7 +29,7 @@ final class ReleaseHoldJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('ReleaseHoldJob started');
+            $this->logger->channel('audit')->info('ReleaseHoldJob started');
 
             // Найти все AUTHORIZED платежи с холдом, которые зависают > 24 часов
             $expiryTime = now()->subHours(24);
@@ -35,7 +42,7 @@ final class ReleaseHoldJob implements ShouldQueue
                 ->limit(100)
                 ->get();
 
-            Log::channel('audit')->info('Found expired holds', [
+            $this->logger->channel('audit')->info('Found expired holds', [
                 'count' => $expiredPayments->count(),
                 'expiry_time' => $expiryTime->toIso8601String(),
             ]);
@@ -45,7 +52,14 @@ final class ReleaseHoldJob implements ShouldQueue
             }
 
         } catch (Exception $e) {
-            Log::channel('audit')->error('ReleaseHoldJob failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('ReleaseHoldJob failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -60,7 +74,7 @@ final class ReleaseHoldJob implements ShouldQueue
     private function releasePaymentHold(PaymentTransaction $payment): void
     {
         try {
-            DB::transaction(function () use ($payment) {
+            $this->db->transaction(function () use ($payment) {
                 // Обновить платёж на CANCELLED (холд не был захвачен)
                 $payment->update([
                     'status' => PaymentTransaction::STATUS_CANCELLED,
@@ -71,7 +85,7 @@ final class ReleaseHoldJob implements ShouldQueue
                 if ($payment->wallet) {
                     $payment->wallet->decrement('hold_amount', $payment->hold_amount ?? $payment->amount);
 
-                    Log::channel('audit')->info('Hold released', [
+                    $this->logger->channel('audit')->info('Hold released', [
                         'payment_id' => $payment->id,
                         'wallet_id' => $payment->wallet->id,
                         'hold_amount' => $payment->hold_amount ?? $payment->amount,
@@ -81,7 +95,14 @@ final class ReleaseHoldJob implements ShouldQueue
             });
 
         } catch (Exception $e) {
-            Log::channel('audit')->error('Failed to release hold', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Failed to release hold', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $payment->correlation_id,

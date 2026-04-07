@@ -2,14 +2,19 @@
 
 namespace App\Services\API;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class APIVersioningService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class APIVersioningService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Поддерживаемые версии API
          */
@@ -214,10 +219,11 @@ final class APIVersioningService extends Model
          */
         public static function sendDeprecationNotice(string $version, int $tenantId): void
         {
-            Log::channel('api')->warning('Deprecation notice sent', [
+            $this->logger->channel('api')->warning('Deprecation notice sent', [
                 'version' => $version,
                 'tenant_id' => $tenantId,
                 'sunset_date' => self::VERSIONS[$version]['sunset_date'] ?? null,
+                'correlation_id' => $this->request?->header('X-Correlation-ID') ?? '',
             ]);
         }
 
@@ -261,7 +267,6 @@ final class APIVersioningService extends Model
 
             foreach ($versions as $version) {
                 $status_icon = match ($version['status']) {
-                    'deprecated' => '❌',
                     'supported' => '✅',
                     'beta' => '⚠️ ',
                     default => '❓',

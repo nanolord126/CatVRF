@@ -2,21 +2,36 @@
 
 namespace App\Services\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultingMatcherService extends Model
+use Illuminate\Http\Request;
+use App\Models\Consulting\Consultant;
+use App\Models\Consulting\ConsultingFirm;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ConsultingMatcherService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @param string $correlationId Unified audit trace.
          */
         public function __construct(
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -25,8 +40,8 @@ final class ConsultingMatcherService extends Model
          */
         public function matchConsultant(array $requirements, int $tenantId): Collection
         {
-            Log::channel('audit')->info('Consulting Matcher Initiated', [
-                'correlation_id' => $this->correlationId,
+            $this->logger->channel('audit')->info('Consulting Matcher Initiated', [
+                'correlation_id' => $this->correlationId(),
                 'tenant_id' => $tenantId,
                 'requirements' => $requirements,
             ]);
@@ -72,13 +87,13 @@ final class ConsultingMatcherService extends Model
          */
         public function createProjectProposal(int $clientId, int $consultantId, array $projectData): array
         {
-            FraudControlService::check();
+            $this->fraud->check((int) $this->guard->id(), 'consulting_create_proposal', $this->request->ip());
 
-            return DB::transaction(function() use ($clientId, $consultantId, $projectData) {
+            return $this->db->transaction(function() use ($clientId, $consultantId, $projectData) {
                 $consultant = Consultant::findOrFail($consultantId);
 
-                Log::channel('audit')->info('Creating Consulting Proposal', [
-                    'correlation_id' => $this->correlationId,
+                $this->logger->channel('audit')->info('Creating Consulting Proposal', [
+                    'correlation_id' => $this->correlationId(),
                     'client_id' => $clientId,
                     'consultant_id' => $consultantId,
                 ]);
@@ -90,7 +105,7 @@ final class ConsultingMatcherService extends Model
                     'suggested_timeline' => '3-6 months',
                     'matching_score' => 95.5,
                     'status' => 'draft',
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ];
             });
         }

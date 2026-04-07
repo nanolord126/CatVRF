@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ * TherapyMatcherService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/therapymatcherservice
+ */
+
+
 namespace App\Domains\Medical\Psychology\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class TherapyMatcherService extends Model
+final readonly class TherapyMatcherService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Подбор психолога на основе предпочтений пользователя.
          */

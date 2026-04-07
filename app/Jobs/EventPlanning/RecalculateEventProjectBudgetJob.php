@@ -2,14 +2,16 @@
 
 namespace App\Jobs\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class RecalculateEventProjectBudgetJob extends Model
+final class RecalculateEventProjectBudgetJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -20,8 +22,10 @@ final class RecalculateEventProjectBudgetJob extends Model
          */
         public function __construct(
             private readonly int $projectId,
-            private readonly string $correlationId
-        ) {}
+            private readonly string $correlationId,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Execute the job.
@@ -29,14 +33,14 @@ final class RecalculateEventProjectBudgetJob extends Model
         public function handle(PricingService $pricingService): void
         {
             // 1. Audit Start (Canon 2026: Mandatory audit trace)
-            Log::channel('audit')->info('[Job] Starting budget recalculation', [
+            $this->logger->channel('audit')->info('[Job] Starting budget recalculation', [
                 'correlation_id' => $this->correlationId,
                 'project_id' => $this->projectId,
             ]);
 
             try {
                 // 2. Transaction Scope (Canon 2026: Mutating records)
-                DB::transaction(function () use ($pricingService) {
+                $this->db->transaction(function () use ($pricingService) {
                     // Lock for update to prevent race conditions during recalculation
                     $project = EventProject::where('id', $this->projectId)->lockForUpdate()->firstOrFail();
 
@@ -58,7 +62,7 @@ final class RecalculateEventProjectBudgetJob extends Model
                     $project->save();
 
                     // 5. Success Audit Log
-                    Log::channel('audit')->info('[Job] Budget recalculated successfully', [
+                    $this->logger->channel('audit')->info('[Job] Budget recalculated successfully', [
                         'correlation_id' => $this->correlationId,
                         'project_id' => $this->projectId,
                         'old_budget' => $oldBudget,
@@ -68,8 +72,15 @@ final class RecalculateEventProjectBudgetJob extends Model
                 });
 
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 6. Error Audit Log (Canon 2026: Full stack trace)
-                Log::channel('audit')->error('[Job] Budget recalculation failed', [
+                $this->logger->channel('audit')->error('[Job] Budget recalculation failed', [
                     'correlation_id' => $this->correlationId,
                     'project_id' => $this->projectId,
                     'error' => $e->getMessage(),

@@ -2,16 +2,12 @@
 
 namespace App\Livewire\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class CustomMetricSelectorComponent extends Model
+final class CustomMetricSelectorComponent extends Component
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $selectedMetric = 'event_intensity';
-        public bool $isEnabled = false;
+    private string $selectedMetric = 'event_intensity';
+        private bool $isEnabled = false;
 
         protected $listeners = ['enable-custom-metric'];
 

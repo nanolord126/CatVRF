@@ -1,15 +1,31 @@
 <?php declare(strict_types=1);
 
+/**
+ * VapeOrderRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/vapeorderrequest
+ */
+
+
 namespace App\Domains\SportsNutrition\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeOrderRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class VapeOrderRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с DP зависимостью (FraudControlService).
          */
@@ -18,7 +34,7 @@ final class VapeOrderRequest extends Model
             // 1. Предварительный Fraud Check перед обработкой запроса
             return $fraud->check([
                 'operation' => 'vape_order_validate',
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'ip' => $this->ip(),
                 'correlation_id' => $this->header('X-Correlation-ID') ?? (string) Str::uuid(),
             ]);
@@ -31,7 +47,6 @@ final class VapeOrderRequest extends Model
         {
             return [
                 'amount_kopecks' => ['required', 'integer', 'min:1000'], // мин заказ 10 руб (тестовый)
-                'items' => ['required', 'array', 'min:1'],
                 'items.*.product_id' => ['required', 'integer'],
                 'items.*.type' => ['required', 'string', 'in:device,liquid'],
                 'items.*.qty' => ['required', 'integer', 'min:1'],

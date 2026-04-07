@@ -2,6 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Medical\Pages;
 
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\MedicalResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,6 +16,10 @@ use Illuminate\Support\Str;
 
 final class ListMedical extends ListRecords
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static string $resource = MedicalResource::class;
 
     protected function getHeaderActions(): array
@@ -26,10 +34,10 @@ final class ListMedical extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = auth()->id();
+        $userId = $this->guard->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Medical ListRecords accessed', [
+        $this->logger->info('Medical ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -53,8 +61,8 @@ final class ListMedical extends ListRecords
 
     public function render()
     {
-        Log::channel('audit')->info('ListMedical page rendered', [
-            'user_id' => auth()->id(),
+        $this->logger->info('ListMedical page rendered', [
+            'user_id' => $this->guard->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

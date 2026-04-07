@@ -3,23 +3,28 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Services;
 
+
+
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
 use App\Services\FraudControlService;
 use App\Services\RecommendationService;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Str;
 
-final class AIArtConstructor
+final readonly class AIArtConstructor
 {
-    public function __construct(
-        private readonly FraudControlService $fraudControl,
+    public function __construct(private readonly FraudControlService $fraud,
         private readonly CacheRepository $cache,
         private readonly RecommendationService $recommendation,
-    ) {
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {
     }
 
     public function analyzePhotoAndRecommend(UploadedFile $photo, array $context): array
@@ -30,14 +35,7 @@ final class AIArtConstructor
         $userId = (int) ($context['user_id'] ?? 0);
         $estimatedAmount = (int) ($context['estimated_budget_cents'] ?? 0);
 
-        $this->fraudControl->check(
-            $userId,
-            'ai_art_constructor',
-            $estimatedAmount,
-            $context['ip'] ?? null,
-            $context['device_fingerprint'] ?? null,
-            $correlationId,
-        );
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_art_constructor', amount: 0, correlationId: $correlationId ?? '');
         $this->enforceRateLimit($tenantId, $audience, $correlationId);
 
         $cacheKey = "ai:art:{$tenantId}:{$audience}:" . sha1_file($photo->getRealPath());
@@ -61,7 +59,7 @@ final class AIArtConstructor
                 ],
             ];
 
-            Log::channel('audit')->info('AI Art Constructor generated suggestions', [
+            $this->logger->info('AI Art Constructor generated suggestions', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'audience' => $audience,
@@ -114,11 +112,10 @@ final class AIArtConstructor
     private function enforceRateLimit(int $tenantId, string $audience, string $correlationId): void
     {
         $key = "ai-art:{$audience}:{$tenantId}";
-        $allowed = RateLimiter::attempt($key, 5, static function (): void {
-        }, 120);
+        $allowed = $this->rateLimiter->attempt($key, 5, static function (): bool { return true; }, 120);
 
         if (!$allowed) {
-            Log::channel('fraud_alert')->warning('AI Art constructor rate limit exceeded', [
+            $this->logger->warning('AI Art constructor rate limit exceeded', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -133,12 +130,11 @@ final class AIArtConstructor
             return (int) tenant()->id;
         }
 
-        $request = app()->bound('request') ? app('request') : null;
-        if ($request && $request->user() && isset($request->user()->tenant_id)) {
-            return (int) $request->user()->tenant_id;
+        if ($this->request->user() && isset($this->request->user()->tenant_id)) {
+            return (int) $this->request->user()->tenant_id;
         }
 
-        return (int) config('app.tenant_id', 0);
+        return (int) $this->config->get('app.tenant_id', 0);
     }
 
     private function fetchRecommendations(int $userId, int $tenantId, string $audience, string $correlationId): array
@@ -156,7 +152,7 @@ final class AIArtConstructor
 
             return $collection->take(5)->toArray();
         } catch (\Throwable $e) {
-            Log::channel('audit')->warning('AI Art constructor recommendation fallback', [
+            $this->logger->warning('AI Art constructor recommendation fallback', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
@@ -168,18 +164,19 @@ final class AIArtConstructor
 
     private function persistPayload(array $payload): void
     {
-        if (!Schema::hasTable('ai_art_constructor_logs')) {
+        if (!$this->schema->hasTable('ai_art_constructor_logs')) {
             return;
         }
 
-        DB::transaction(static function () use ($payload): void {
-            DB::table('ai_art_constructor_logs')->insert([
+        $db = $this->db;
+        $db->transaction(static function () use ($db, $payload): void {
+            $db->table('ai_art_constructor_logs')->insert([
                 'fingerprint' => $payload['fingerprint'],
                 'tenant_id' => $payload['tenant_id'],
                 'audience' => $payload['audience'],
                 'recommendations' => json_encode($payload['recommendations'], JSON_THROW_ON_ERROR),
                 'correlation_id' => $payload['correlation_id'],
-                'created_at' => now(),
+                'created_at' => Carbon::now(),
             ]);
         });
     }

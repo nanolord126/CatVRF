@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PromoController extends Model
+final class PromoController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly PromoCampaignService $promoCampaignService,
-            private readonly FraudControlService $fraudControlService,
+            private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiterService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Promo Campaigns
             $this->middleware('auth:sanctum')->except(['validate']); // Валидация коду без авторизации
              // 50 попыток/мин для применения промо
@@ -40,17 +41,17 @@ final class PromoController extends Model
                     correlationId: $correlationId,
                 );
                 if (!$rateLimitPassed) {
-                    Log::channel('fraud_alert')->warning('Promo apply rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('Promo apply rate limit exceeded', [
                         'correlation_id' => $correlationId,
                         'user_id' => $request->user()?->id,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'error' => 'Слишком много попыток. Попробуйте позже.',
                         'correlation_id' => $correlationId,
                     ], 429);
                 }
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $request->user()?->id ?? 0,
                     operationType: 'promo_apply',
                     amount: (int) $request->input('amount', 0),
@@ -59,12 +60,12 @@ final class PromoController extends Model
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    Log::channel('fraud_alert')->warning('Promo apply blocked by fraud control', [
+                    $this->logger->channel('fraud_alert')->warning('Promo apply blocked by fraud control', [
                         'correlation_id' => $correlationId,
                         'user_id' => $request->user()?->id,
                         'score' => $fraudResult['score'],
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'error' => 'Операция заблокирована системой безопасности.',
                         'correlation_id' => $correlationId,
@@ -75,7 +76,7 @@ final class PromoController extends Model
                     'amount'    => 'required|integer|min:1',
                     'tenant_id' => 'required|integer',
                 ]);
-                Log::channel('audit')->info('Promo apply attempt', [
+                $this->logger->channel('audit')->info('Promo apply attempt', [
                     'correlation_id' => $correlationId,
                     'user_id'    => $request->user()?->id,
                     'tenant_id'  => $request->input('tenant_id'),
@@ -88,37 +89,37 @@ final class PromoController extends Model
                     userId: $request->user()?->id ?? 0,
                     amount: (int) $request->input('amount'),
                 );
-                Log::channel('audit')->info('Promo apply result', [
+                $this->logger->channel('audit')->info('Promo apply result', [
                     'correlation_id' => $correlationId,
                     'success'        => $result['success'] ?? false,
                     'discount'       => $result['discount'] ?? 0,
                 ]);
                 if (!($result['success'] ?? false)) {
-                    return response()->json([
+                    return $this->response->json([
                         'success'        => false,
                         'error'          => $result['error'] ?? 'Промо-код недействителен.',
                         'correlation_id' => $correlationId,
                     ], 422);
                 }
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'discount'       => $result['discount'],
                     'final_amount'   => $result['final_amount'] ?? ((int) $request->input('amount') - $result['discount']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json([
+                return $this->response->json([
                     'success'        => false,
                     'errors'         => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Promo apply failed', [
+                $this->logger->channel('audit')->error('Promo apply failed', [
                     'correlation_id' => $correlationId,
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success'        => false,
                     'error'          => 'Внутренняя ошибка. Попробуйте позже.',
                     'correlation_id' => $correlationId,
@@ -142,18 +143,18 @@ final class PromoController extends Model
                     $query->whereJsonContains('applicable_verticals', $request->input('vertical'));
                 }
                 $campaigns = $query->get(['id', 'code', 'name', 'type', 'end_at']);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $campaigns,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Promo index failed', [
+                $this->logger->channel('audit')->error('Promo index failed', [
                     'correlation_id' => $correlationId,
                     'error'          => $e->getMessage(),
                     'trace'          => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success'        => false,
                     'error'          => 'Внутренняя ошибка.',
                     'correlation_id' => $correlationId,

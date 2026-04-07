@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Enrollment extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     protected $table = 'enrollments';
 
         protected $fillable = [
@@ -44,7 +45,7 @@ final class Enrollment extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
+                if (function_exists('tenant') && tenant()) {
                     $builder->where('tenant_id', tenant()->id);
                 }
             });

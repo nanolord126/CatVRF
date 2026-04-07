@@ -2,23 +2,21 @@
 
 namespace App\Domains\Travel\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelBookingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TravelBookingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly BookingService $bookingService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly BookingService $bookingService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'booking_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'booking_store', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $request->validate([
@@ -28,30 +26,30 @@ final class TravelBookingController extends Model
                 ]);
 
                 $validated = $request->all();
-                $booking = DB::transaction(function () use ($validated, $correlationId) {
+                $booking = $this->db->transaction(function () use ($validated, $correlationId) {
                     $tour = \App\Domains\Travel\Models\TravelTour::findOrFail(($validated['tour_id'] ?? null));
 
                     return $this->bookingService->createBooking(
                         $tour,
-                        auth()->user(),
+                        $request->user(),
                         ($validated['participants_count'] ?? null),
                         ($validated['participants_data'] ?? []),
                         $correlationId,
                     );
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Booking creation failed', [
+                $this->logger->error('Booking creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create booking',
                     'correlation_id' => $correlationId,
@@ -66,13 +64,13 @@ final class TravelBookingController extends Model
 
                 $this->authorize('view', $booking);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Booking not found',
                     'correlation_id' => Str::uuid(),
@@ -83,7 +81,7 @@ final class TravelBookingController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'booking_update', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'booking_update', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
@@ -91,7 +89,7 @@ final class TravelBookingController extends Model
                 $this->authorize('update', $booking);
 
                 $validated = $request->all();
-                $booking = DB::transaction(function () use ($validated, $booking, $correlationId) {
+                $booking = $this->db->transaction(function () use ($validated, $booking, $correlationId) {
                     $booking->update([
                         'participants_count' => ($validated['participants_count'] ?? $booking->participants_count),
                         'participants_data' => ($validated['participants_data'] ?? $booking->participants_data),
@@ -101,18 +99,18 @@ final class TravelBookingController extends Model
                     return $booking;
                 });
 
-                Log::channel('audit')->info('Booking updated', [
+                $this->logger->info('Booking updated', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update booking',
                     'correlation_id' => $correlationId,
@@ -123,28 +121,28 @@ final class TravelBookingController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'booking_destroy', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'booking_destroy', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
 
                 $this->authorize('delete', $booking);
 
-                DB::transaction(function () use ($booking, $correlationId) {
+                $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->delete();
                 });
 
-                Log::channel('audit')->info('Booking deleted', [
+                $this->logger->info('Booking deleted', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete booking',
                     'correlation_id' => $correlationId,
@@ -155,17 +153,17 @@ final class TravelBookingController extends Model
         public function userBookings(): JsonResponse
         {
             try {
-                $bookings = TravelBooking::where('user_id', auth()->id())
+                $bookings = TravelBooking::where('user_id', $request->user()?->id)
                     ->where('tenant_id', tenant()->id)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $bookings->items(),
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get bookings',
                     'correlation_id' => Str::uuid(),
@@ -184,13 +182,13 @@ final class TravelBookingController extends Model
 
                 $booking = $this->bookingService->completeBooking($booking, $correlationId);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to complete booking',
                     'correlation_id' => $correlationId,
@@ -213,13 +211,13 @@ final class TravelBookingController extends Model
                     $correlationId,
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $booking,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to cancel booking',
                     'correlation_id' => $correlationId,

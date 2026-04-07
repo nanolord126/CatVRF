@@ -2,20 +2,32 @@
 
 namespace App\Jobs\CacheWarmers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class WarmMasterAvailabilityJob extends Model
+/**
+ * Class WarmMasterAvailabilityJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs\CacheWarmers
+ */
+final class WarmMasterAvailabilityJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
-        private int $tries = 3;
-        private int $timeout = 30;
+        protected int $tries = 3;
+        protected int $timeout = 30;
 
-        public function __construct(private readonly int $masterId) {}
+        public function __construct(private readonly int $masterId,
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
         public function handle(): void
         {
@@ -25,16 +37,16 @@ final class WarmMasterAvailabilityJob extends Model
 
                 $availability = $this->getAvailableSlots();
 
-                Cache::store('redis')
+                $this->cache->store('redis')
                     ->tags([$cacheTag])
                     ->put($cacheKey, $availability, now()->addHours(2));
 
-                Log::channel('audit')->info('Master availability cached', [
+                $this->logger->channel('audit')->info('Master availability cached', [
                     'master_id' => $this->masterId,
                     'slots_count' => count($availability['slots'] ?? []),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to warm master availability cache', [
+                $this->logger->channel('audit')->error('Failed to warm master availability cache', [
                     'master_id' => $this->masterId,
                     'error' => $e->getMessage(),
                 ]);

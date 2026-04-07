@@ -2,43 +2,62 @@
 
 namespace App\Services\Stationery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StationerySubscriptionService extends Model
+
+
+
+use Illuminate\Http\Request;
+use Illuminate\Auth\AuthManager;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use App\Models\Stationery\StationerySubscription;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class StationerySubscriptionService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraud,
-            private WalletService $wallet,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private readonly AuthManager $authManager,
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Subscribes a user or office to a stationery box tier.
          */
         public function subscribe(int $userId, string $tier, array $preferences): StationerySubscription
         {
-            Log::channel('audit')->info('Attempting to create stationery subscription', [
+            $correlationId = $this->correlationId();
+            $this->logger->channel('audit')->info('Attempting to create stationery subscription', [
                 'user_id' => $userId,
                 'tier' => $tier,
-                'correlation_id' => $this->correlationId,
-            ]);
-
-            $this->fraud->check([
-                'operation' => 'stationery_subscription',
-                'user_id' => $userId,
-                'tier' => $tier,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
             ]);
 
             $monthlyPrice = $this->resolveTierPrice($tier);
+            $actorId = (int) ($this->authManager->id() ?? $userId);
 
-            return DB::transaction(function () use ($userId, $tier, $preferences, $monthlyPrice) {
+            $this->fraud->check(
+                userId: $actorId,
+                operationType: 'stationery_subscription',
+                amount: $monthlyPrice,
+                ipAddress: $this->request->ip(),
+                deviceFingerprint: $this->request->header('X-Device-Id'),
+                correlationId: $correlationId,
+            );
+
+            return $this->db->transaction(function () use ($userId, $tier, $preferences, $monthlyPrice, $correlationId) {
                 $subscription = StationerySubscription::create([
                     'user_id' => $userId,
                     'tier' => $tier,
@@ -46,16 +65,14 @@ final class StationerySubscriptionService extends Model
                     'preferences' => $preferences,
                     'is_active' => true,
                     'next_delivery_at' => now()->addMonth(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 // Initial month billing
-                $this->wallet->debit($userId, $monthlyPrice, 'Stationery Subscription: ' . $tier, $this->correlationId);
-
-                Log::channel('audit')->info('Stationery subscription active', [
+                $this->wallet->debit($userId, $monthlyPrice, \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $correlationId, null, null, [
                     'subscription_id' => $subscription->id,
                     'monthly_price' => $monthlyPrice,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return $subscription;
@@ -67,17 +84,17 @@ final class StationerySubscriptionService extends Model
          */
         public function cancelSubscription(int $subscriptionId): bool
         {
-            return DB::transaction(function () use ($subscriptionId) {
+            return $this->db->transaction(function () use ($subscriptionId) {
                 $subscription = StationerySubscription::findOrFail($subscriptionId);
 
                 $subscription->update([
                     'is_active' => false,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
-                Log::channel('audit')->info('Stationery subscription cancelled', [
+                $this->logger->channel('audit')->info('Stationery subscription cancelled', [
                     'subscription_id' => $subscriptionId,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return true;

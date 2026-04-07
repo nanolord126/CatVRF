@@ -9,9 +9,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 final class MLRecalculateJob implements ShouldQueue
 {
@@ -19,7 +21,10 @@ final class MLRecalculateJob implements ShouldQueue
 
     private string $correlationId;
 
-    public function __construct()
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
     {
         $this->correlationId = Str::uuid()->toString();
         $this->onQueue('ml-training');
@@ -38,14 +43,14 @@ final class MLRecalculateJob implements ShouldQueue
     public function handle(FraudMLService $fraudMLService): void
     {
         try {
-            DB::transaction(function () use ($fraudMLService) {
+            $this->db->transaction(function () use ($fraudMLService) {
                 $trainingData = $fraudMLService->gatherTrainingData(
                     dateFrom: Carbon::now()->subDays(30),
                     dateTo: Carbon::now()
                 );
 
                 if ($trainingData->isEmpty()) {
-                    Log::channel('audit')->warning('Insufficient data for ML model training', [
+                    $this->logger->channel('audit')->warning('Insufficient data for ML model training', [
                         'correlation_id' => $this->correlationId,
                         'date_range' => '30 days',
                     ]);
@@ -57,7 +62,7 @@ final class MLRecalculateJob implements ShouldQueue
 
                 $metrics = $fraudMLService->evaluateModel($modelVersion);
 
-                DB::table('fraud_model_versions')->insert([
+                $this->db->table('fraud_model_versions')->insert([
                     'version' => $modelVersion,
                     'trained_at' => Carbon::now(),
                     'accuracy' => $metrics['accuracy'],
@@ -76,7 +81,7 @@ final class MLRecalculateJob implements ShouldQueue
                 if ($metrics['auc_roc'] > ($currentMetrics['auc_roc'] + 0.02)) {
                     $fraudMLService->switchToModel($modelVersion);
 
-                    Log::channel('audit')->info('ML model switched to new version', [
+                    $this->logger->channel('audit')->info('ML model switched to new version', [
                         'correlation_id' => $this->correlationId,
                         'old_version' => $currentVersion,
                         'new_version' => $modelVersion,
@@ -84,7 +89,7 @@ final class MLRecalculateJob implements ShouldQueue
                         'new_auc' => $metrics['auc_roc'],
                     ]);
                 } else {
-                    Log::channel('audit')->info('ML model training completed - performance not improved', [
+                    $this->logger->channel('audit')->info('ML model training completed - performance not improved', [
                         'correlation_id' => $this->correlationId,
                         'new_version' => $modelVersion,
                         'auc_roc' => $metrics['auc_roc'],
@@ -92,7 +97,14 @@ final class MLRecalculateJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('ML recalculation job failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('ML recalculation job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

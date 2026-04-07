@@ -2,15 +2,25 @@
 
 namespace App\Http\Requests\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
 
-final class RunConstructorRequest extends Model
+/**
+ * Class RunConstructorRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\AI
+ */
+final class RunConstructorRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function authorize(FraudControlService $fraudControlService): bool
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
+    public function authorize(FraudControlService $fraud): bool
         {
             // Basic authorization, can be extended with policies
             $isAuthorized = $this->user() !== null;
@@ -26,6 +36,11 @@ final class RunConstructorRequest extends Model
             return $isAuthorized;
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [

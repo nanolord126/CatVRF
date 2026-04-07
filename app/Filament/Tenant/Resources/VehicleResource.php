@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class VehicleResource extends Model
+final class VehicleResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Vehicle::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-truck';
@@ -75,22 +72,15 @@ final class VehicleResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListVehicle::route('/'),
-                'create' => Pages\\CreateVehicle::route('/create'),
-                'edit' => Pages\\EditVehicle::route('/{record}/edit'),
-                'view' => Pages\\ViewVehicle::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListVehicle::route('/'),
-                'create' => Pages\\CreateVehicle::route('/create'),
-                'edit' => Pages\\EditVehicle::route('/{record}/edit'),
-                'view' => Pages\\ViewVehicle::route('/{record}'),
+                'index' => Pages\ListVehicle::route('/'),
+                'create' => Pages\CreateVehicle::route('/create'),
+                'edit' => Pages\EditVehicle::route('/{record}/edit'),
+                'view' => Pages\ViewVehicle::route('/{record}'),
             ];
         }
 }

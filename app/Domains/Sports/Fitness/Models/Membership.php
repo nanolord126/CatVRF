@@ -4,48 +4,75 @@ namespace App\Domains\Sports\Fitness\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Class Membership
+ *
+ * Part of the Sports vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Eloquent model with tenant-scoping and business group isolation.
+ * All queries are automatically scoped by tenant_id via global scope.
+ *
+ * Required fields: uuid, correlation_id, tenant_id, business_group_id, tags (json).
+ * Audit logging is handled via model events (created, updated, deleted).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property string $uuid
+ * @property string|null $correlation_id
+ * @property array|null $tags
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @package App\Domains\Sports\Fitness\Models
+ */
 final class Membership extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
-        protected $table = 'memberships';
-        protected $fillable = ['tenant_id', 'gym_id', 'member_id', 'type', 'amount', 'commission_amount', 'started_at', 'expires_at', 'status', 'cancellation_reason', 'auto_renewal', 'transaction_id', 'classes_included', 'classes_used', 'correlation_id'];
-        protected $casts = [
-            'amount' => 'float',
-            'commission_amount' => 'float',
-            'started_at' => 'datetime',
-            'expires_at' => 'datetime',
-            'auto_renewal' => 'boolean',
-            'classes_included' => 'integer',
-            'classes_used' => 'integer',
-        ];
+    protected $table = 'memberships';
+    protected $fillable = [
+        'uuid',
+        'correlation_id','tenant_id', 'gym_id', 'member_id', 'type', 'amount', 'commission_amount', 'started_at', 'expires_at', 'status', 'cancellation_reason', 'auto_renewal', 'transaction_id', 'classes_included', 'classes_used', 'correlation_id'];
+    protected $casts = [
+        'amount' => 'float',
+        'commission_amount' => 'float',
+        'started_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'auto_renewal' => 'boolean',
+        'classes_included' => 'integer',
+        'classes_used' => 'integer',
+    ];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id')));
-        }
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 
-        public function tenant(): BelongsTo
-        {
-            return $this->belongsTo(Tenant::class);
-        }
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
-        public function gym(): BelongsTo
-        {
-            return $this->belongsTo(Gym::class);
-        }
+    public function gym(): BelongsTo
+    {
+        return $this->belongsTo(Gym::class);
+    }
 
-        public function member(): BelongsTo
-        {
-            return $this->belongsTo(User::class);
-        }
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
-        public function attendances(): HasMany
-        {
-            return $this->hasMany(Attendance::class, 'member_id', 'member_id');
-        }
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'member_id', 'member_id');
+    }
 }

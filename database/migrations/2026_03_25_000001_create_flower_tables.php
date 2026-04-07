@@ -23,7 +23,7 @@ return new class extends Migration
                 $table->foreignId('business_group_id')->nullable()->index();
                 $table->string('name')->comment('Название магазина');
                 $table->string('address')->nullable();
-                $table->point('geo_point')->nullable();
+                $table->geometry('geo_point')->nullable();
                 $table->jsonb('schedule_json')->nullable();
                 $table->decimal('rating', 3, 2)->default(0);
                 $table->integer('review_count')->default(0);
@@ -148,3 +148,5 @@ return new class extends Migration
         Schema::dropIfExists('flower_shops');
     }
 };
+
+

@@ -1,20 +1,53 @@
 <?php declare(strict_types=1);
 
+/**
+ * TicketSaleRefunded — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/ticketsalerefunded
+ */
+
+
 namespace App\Domains\Tickets\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class TicketSaleRefunded extends Model
+final class TicketSaleRefunded
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
         public function __construct(
             public TicketSale $ticketSale,
-            public string $reason = '',
-            public string $correlationId = '',
-        ) {}
+            private string $reason = '',
+            private string $correlationId = '') {}
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

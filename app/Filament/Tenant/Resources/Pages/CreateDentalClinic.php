@@ -2,18 +2,61 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateDentalClinic extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\DentalClinicResource;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class CreateDentalClinic
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class CreateDentalClinic extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentalClinicResource::class;
 
-        public function getTitle(): string
-        {
-            return 'Create DentalClinic';
-        }
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id']      = tenant()->id ?? null;
+        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
+        $data['uuid']           = (string) \Illuminate\Support\Str::uuid();
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->logger->info('DentalClinic created', [
+            'clinic_id'      => $this->record->id,
+            'name'           => $this->record->name,
+            'license_number' => $this->record->license_number,
+            'tenant_id'      => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+        ]);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

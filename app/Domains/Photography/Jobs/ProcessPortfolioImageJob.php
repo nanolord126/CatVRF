@@ -2,24 +2,21 @@
 
 namespace App\Domains\Photography\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProcessPortfolioImageJob extends Model
+use Psr\Log\LoggerInterface;
+final class ProcessPortfolioImageJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
             private readonly PortfolioItem $item,
-            private readonly string $correlationId
+            private readonly string $correlationId, private readonly LoggerInterface $logger
         ) {}
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Processing portfolio image', [
+            $this->logger->info('Processing portfolio image', [
                 'item_id' => $this->item->id,
                 'correlation_id' => $this->correlationId
             ]);
@@ -38,16 +35,39 @@ final class ProcessPortfolioImageJob extends Model
                     'status' => 'active'
                 ]);
 
-                Log::channel('audit')->info('Portfolio image processed successfully', [
+                $this->logger->info('Portfolio image processed successfully', [
                     'item_id' => $this->item->id,
                     'correlation_id' => $this->correlationId
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Failed to process image', [
+                $this->logger->error('Failed to process image', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId
                 ]);
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

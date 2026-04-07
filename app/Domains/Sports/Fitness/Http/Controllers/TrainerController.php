@@ -2,14 +2,16 @@
 
 namespace App\Domains\Sports\Fitness\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TrainerController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TrainerController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
         {
             try {
@@ -18,9 +20,9 @@ final class TrainerController extends Model
                     ->with(['gym', 'fitnessClasses'])
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $trainers, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainers, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
             }
         }
 
@@ -29,21 +31,21 @@ final class TrainerController extends Model
             try {
                 $trainer = Trainer::with(['gym', 'fitnessClasses', 'schedules'])->findOrFail($id);
 
-                return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 404);
             }
         }
 
         public function myClasses(): JsonResponse
         {
             try {
-                $trainer = auth()->user()->trainer;
+                $trainer = $request->user()->trainer;
                 $classes = $trainer->fitnessClasses()->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
@@ -51,45 +53,45 @@ final class TrainerController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                request()->validate([
+                $request->validate([
                     'gym_id' => 'required|exists:gyms,id',
                     'full_name' => 'required|string',
                     'experience_years' => 'required|integer',
                     'hourly_rate' => 'required|numeric',
                 ]);
 
-                $trainer = DB::transaction(function () use ($correlationId) {
+                $trainer = $this->db->transaction(function () use ($correlationId) {
                     return Trainer::create([
-                        'tenant_id' => tenant('id'),
-                        'gym_id' => request('gym_id'),
-                        'user_id' => auth()->id(),
-                        'full_name' => request('full_name'),
-                        'bio' => request('bio'),
-                        'specializations' => request('specializations', []),
-                        'experience_years' => request('experience_years'),
-                        'hourly_rate' => request('hourly_rate'),
+                        'tenant_id' => tenant()?->id,
+                        'gym_id' => $request->input('gym_id'),
+                        'user_id' => $request->user()?->id,
+                        'full_name' => $request->input('full_name'),
+                        'bio' => $request->input('bio'),
+                        'specializations' => $request->input('specializations', []),
+                        'experience_years' => $request->input('experience_years'),
+                        'hourly_rate' => $request->input('hourly_rate'),
                         'is_active' => true,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                Log::channel('audit')->info('Trainer registered', ['trainer_id' => $trainer->id, 'user_id' => auth()->id(), 'correlation_id' => $correlationId]);
+                $this->logger->info('Trainer registered', ['trainer_id' => $trainer->id, 'user_id' => $request->user()?->id, 'correlation_id' => $correlationId]);
 
-                return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to register trainer', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                $this->logger->error('Failed to register trainer', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
         public function myProfile(): JsonResponse
         {
             try {
-                $trainer = Trainer::where('user_id', auth()->id())->first();
+                $trainer = Trainer::where('user_id', $request->user()?->id)->first();
 
-                return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 404);
             }
         }
 
@@ -97,26 +99,26 @@ final class TrainerController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
-                $trainer->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
+                $trainer = Trainer::where('user_id', $request->user()?->id)->firstOrFail();
+                $trainer->update(array_merge($request->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
 
-                Log::channel('audit')->info('Trainer profile updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
+                $this->logger->info('Trainer profile updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
 
-                return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
         public function getSchedule(): JsonResponse
         {
             try {
-                $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
+                $trainer = Trainer::where('user_id', $request->user()?->id)->firstOrFail();
                 $schedule = $trainer->schedules;
 
-                return response()->json(['success' => true, 'data' => $schedule, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $schedule, 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 404);
             }
         }
 
@@ -124,14 +126,14 @@ final class TrainerController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
+                $trainer = Trainer::where('user_id', $request->user()?->id)->firstOrFail();
 
-                DB::transaction(function () use ($trainer, $correlationId) {
+                $this->db->transaction(function () use ($trainer, $correlationId) {
                     $trainer->schedules()->delete();
 
-                    foreach (request('schedule', []) as $slot) {
+                    foreach ($request->input('schedule', []) as $slot) {
                         TrainerSchedule::create([
-                            'tenant_id' => tenant('id'),
+                            'tenant_id' => tenant()?->id,
                             'trainer_id' => $trainer->id,
                             'day_of_week' => $slot['day_of_week'],
                             'start_time' => $slot['start_time'],
@@ -142,22 +144,22 @@ final class TrainerController extends Model
                     }
                 });
 
-                Log::channel('audit')->info('Trainer schedule updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
+                $this->logger->info('Trainer schedule updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
 
-                return response()->json(['success' => true, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'correlation_id' => $correlationId]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
             }
         }
 
         public function myEarnings(): JsonResponse
         {
             try {
-                $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
+                $trainer = Trainer::where('user_id', $request->user()?->id)->firstOrFail();
 
-                return response()->json(['success' => true, 'data' => [], 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => [], 'correlation_id' => Str::uuid()]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage()], 404);
             }
         }
 }

@@ -2,14 +2,16 @@
 
 namespace App\Domains\Photography\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotographyB2BService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PhotographyB2BService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Массовое бронирование для бизнеса (Корпоративные съемки)
          */
@@ -22,9 +24,11 @@ final class PhotographyB2BService extends Model
             $correlationId ??= (string) \Illuminate\Support\Str::uuid();
             $results = [];
 
-            return DB::transaction(function () use ($tenantId, $sessionId, $timeSlots, $correlationId, &$results) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                Log::channel('audit')->info('B2B Corporate Batch Session Booking Triggered', [
+            return $this->db->transaction(function () use ($tenantId, $sessionId, $timeSlots, $correlationId, &$results) {
+
+                $this->logger->info('B2B Corporate Batch Session Booking Triggered', [
                     'tenant_id' => $tenantId,
                     'slots_count' => count($timeSlots),
                     'correlation_id' => $correlationId
@@ -46,7 +50,7 @@ final class PhotographyB2BService extends Model
                     $results[] = $booking->uuid;
                 }
 
-                Log::channel('audit')->info('B2B Corporate Batch Complete', [
+                $this->logger->info('B2B Corporate Batch Complete', [
                     'count' => count($results),
                     'correlation_id' => $correlationId
                 ]);

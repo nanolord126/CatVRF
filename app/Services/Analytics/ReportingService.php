@@ -2,14 +2,19 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReportingService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class ReportingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL_SCHEDULES = 86400;  // 24 hours
         private const CACHE_TTL_REPORTS = 3600;    // 1 hour
 
@@ -37,9 +42,9 @@ final class ReportingService extends Model
             ];
 
             $cacheKey = "reporting:schedule:{$tenantId}:{$reportType}:{$frequency}";
-            Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+            $this->cache->put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-            Log::channel('audit')->info('Report schedule created', [
+            $this->logger->channel('audit')->info('Report schedule created', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'report_type' => $reportType,
@@ -62,7 +67,7 @@ final class ReportingService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
             $cacheKey = "reporting:report:{$tenantId}:{$reportType}:{$dateRange}";
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -77,9 +82,9 @@ final class ReportingService extends Model
                 'sections' => $this->generateReportSections($tenantId, $reportType),
             ];
 
-            Cache::put($cacheKey, $report, self::CACHE_TTL_REPORTS);
+            $this->cache->put($cacheKey, $report, self::CACHE_TTL_REPORTS);
 
-            Log::channel('audit')->info('Report generated', [
+            $this->logger->channel('audit')->info('Report generated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'report_type' => $reportType,
@@ -96,7 +101,7 @@ final class ReportingService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "reporting:schedules:{$tenantId}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -118,7 +123,7 @@ final class ReportingService extends Model
                 ],
             ];
 
-            Cache::put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
+            $this->cache->put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
 
             return $schedules;
         }
@@ -145,9 +150,9 @@ final class ReportingService extends Model
             ];
 
             $cacheKey = "reporting:schedule:{$reportId}";
-            Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+            $this->cache->put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-            Log::channel('audit')->info('Report schedule updated', [
+            $this->logger->channel('audit')->info('Report schedule updated', [
                 'correlation_id' => $correlationId,
                 'report_id' => $reportId,
                 'tenant_id' => $tenantId,
@@ -162,9 +167,9 @@ final class ReportingService extends Model
         public function deleteReportSchedule(string $reportId, int $tenantId, array $context = []): bool {
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-            Cache::forget("reporting:schedule:{$reportId}");
+            $this->cache->forget("reporting:schedule:{$reportId}");
 
-            Log::channel('audit')->info('Report schedule deleted', [
+            $this->logger->channel('audit')->info('Report schedule deleted', [
                 'correlation_id' => $correlationId,
                 'report_id' => $reportId,
                 'tenant_id' => $tenantId,
@@ -192,7 +197,7 @@ final class ReportingService extends Model
                 'correlation_id' => $correlationId,
             ];
 
-            Log::channel('audit')->info('Report queued for sending', [
+            $this->logger->channel('audit')->info('Report queued for sending', [
                 'correlation_id' => $correlationId,
                 'report_id' => $reportId,
                 'tenant_id' => $tenantId,
@@ -206,7 +211,6 @@ final class ReportingService extends Model
 
         private function calculateNextSendTime(string $frequency): string {
             return match ($frequency) {
-                'daily' => now()->addDay()->format('Y-m-d H:i:s'),
                 'weekly' => now()->addWeek()->format('Y-m-d H:i:s'),
                 'monthly' => now()->addMonth()->format('Y-m-d H:i:s'),
                 default => now()->addDay()->format('Y-m-d H:i:s'),

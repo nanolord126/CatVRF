@@ -2,14 +2,9 @@
 
 namespace App\Domains\HomeServices\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class B2BHomeServicePolicy extends Model
+final class B2BHomeServicePolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function viewAny(User $user): Response
         {
             return $this->response->allow();

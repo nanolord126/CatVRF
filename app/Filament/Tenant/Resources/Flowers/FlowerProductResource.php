@@ -2,25 +2,17 @@
 
 namespace App\Filament\Tenant\Resources\Flowers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class FlowerProductResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Select, RichEditor, FileUpload, Toggle, Hidden, Grid};
-    use Filament\Forms\Form;
-    use Filament\Resources\Resource;
-    use Filament\Tables;
-    use Filament\Tables\Columns\{TextColumn, BadgeColumn, BooleanColumn, ImageColumn};
-    use Filament\Tables\Filters\{SelectFilter, TernaryFilter, TrashedFilter};
-    use Filament\Tables\Actions\{ActionGroup, ViewAction, EditAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
-    use Illuminate\Support\Str;
-    use Illuminate\Support\Facades\Log;
-    use Illuminate\Database\Eloquent\Builder;
-    use App\Domains\Flowers\Models\FlowerProduct;
+use App\Domains\Flowers\Models\FlowerProduct;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Forms\Components\{FileUpload, Hidden, RichEditor, Section, Select, TagsInput, TextInput, Toggle};
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Columns\{IconColumn, ImageColumn, TextColumn};
+use Filament\Tables\Filters\{SelectFilter, TernaryFilter, TrashedFilter};
+use Filament\Tables\Actions\{ActionGroup, BulkAction, BulkActionGroup, DeleteAction, DeleteBulkAction, EditAction, RestoreAction, ViewAction};
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
     final class FlowerProductResource extends Resource
     {
@@ -94,7 +86,7 @@ final class FlowerProductResource extends Model
 
                 Section::make('Служебная')
                     ->schema([
-                        Hidden::make('tenant_id')->default(fn () => tenant('id')),
+                        Hidden::make('tenant_id')->default(fn () => filament()->getTenant()?->id),
                         Hidden::make('correlation_id')->default(fn () => Str::uuid()),
                         Hidden::make('business_group_id')->default(fn () => filament()->getTenant()?->active_business_group_id),
                     ]),
@@ -107,17 +99,17 @@ final class FlowerProductResource extends Model
                 ImageColumn::make('main_photo')->label('Фото')->height(50),
                 TextColumn::make('name')->searchable()->sortable()->limit(30),
                 TextColumn::make('sku'),
-                BadgeColumn::make('flower_type')->label('Тип')->color('info'),
+                TextColumn::make('flower_type')->label('Тип')->badge()->color('info'),
                 TextColumn::make('price')->label('Цена')->money('RUB', divideBy: 100)->sortable(),
                 TextColumn::make('current_stock')->badge()->color('success'),
                 TextColumn::make('rating')->badge()->color(fn ($state) => $state >= 4 ? 'success' : 'warning'),
                 TextColumn::make('vase_life_days')->label('Жизнь (дн)'),
                 TextColumn::make('stem_length_cm')->label('Длина (см)'),
-                BooleanColumn::make('eco_friendly')->label('♻️'),
-                BooleanColumn::make('same_day_delivery')->label('🚚'),
-                BooleanColumn::make('is_seasonal')->label('Сезонный'),
-                BooleanColumn::make('is_featured')->label('⭐'),
-                BooleanColumn::make('is_active')->toggleable()->sortable(),
+                IconColumn::make('eco_friendly')->label('♻️')->boolean(),
+                IconColumn::make('same_day_delivery')->label('🚚')->boolean(),
+                IconColumn::make('is_seasonal')->label('Сезонный')->boolean(),
+                IconColumn::make('is_featured')->label('⭐')->boolean(),
+                IconColumn::make('is_active')->boolean()->toggleable()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('flower_type')->label('Тип')->options(['roses' => 'Розы', 'tulips' => 'Тюльпаны', 'sunflowers' => 'Подсолнухи'])->multiple(),
@@ -140,8 +132,8 @@ final class FlowerProductResource extends Model
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()?->id);
         }
 }

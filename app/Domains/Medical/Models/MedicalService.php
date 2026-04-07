@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalService extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_services';
@@ -48,7 +47,7 @@ final class MedicalService extends Model
         /**
          * КАНОН: Global Scopes и События модели.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 $query->where('tenant_id', tenant()->id ?? 0);

@@ -230,3 +230,5 @@ return new class extends Migration
         Schema::dropIfExists('wedding_planners');
     }
 };
+
+

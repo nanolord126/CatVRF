@@ -2,14 +2,16 @@
 
 namespace App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditVehicleRental extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditVehicleRental extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = VehicleRentalResource::class;
 
         protected function getHeaderActions(): array
@@ -17,7 +19,7 @@ final class EditVehicleRental extends Model
             return [
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('VehicleRental deleted', [
+                        $this->logger->info('VehicleRental deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'rental_id' => $this->record->id,
                         ]);
@@ -33,13 +35,13 @@ final class EditVehicleRental extends Model
                             ->required(),
                     ])
                     ->action(function (array $data) {
-                        DB::transaction(function () use ($data) {
+                        $this->db->transaction(function () use ($data) {
                             $this->record->update([
                                 'status' => 'completed',
                                 'final_mileage' => $data['final_mileage'],
                             ]);
 
-                            Log::channel('audit')->info('VehicleRentalCompleted', [
+                            $this->logger->info('VehicleRentalCompleted', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'rental_id' => $this->record->id,
                                 'final_mileage' => $data['final_mileage'],
@@ -62,7 +64,7 @@ final class EditVehicleRental extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('VehicleRental updated', [
+            $this->logger->info('VehicleRental updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'rental_id' => $this->record->id,
                 'status' => $this->record->status,

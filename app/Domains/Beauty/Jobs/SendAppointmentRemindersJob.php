@@ -1,53 +1,79 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SendAppointmentRemindersJob extends Model
+use Carbon\Carbon;
+use App\Domains\Beauty\Models\Appointment;
+use App\Notifications\AppointmentReminderNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+
+/**
+ * SendAppointmentRemindersJob — отправляет напоминания клиентам
+ * за 24 часа и за 2 часа до записи.
+ *
+ * Запускается каждые 30 минут через Scheduler.
+ */
+final class SendAppointmentRemindersJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(
-            private readonly string $correlationId,
-        ) {}
+    public int $tries   = 3;
+    public int $timeout = 120;
 
-        public function handle(): void
-        {
-            $appointments = Appointment::query()
-                ->where('status', 'confirmed')
-                ->whereBetween('datetime_start', [now(), now()->addHours(24)])
-                ->with(['client', 'master', 'service', 'salon'])
-                ->get();
+    private string $correlationId;
 
-            foreach ($appointments as $appointment) {
-                $client = $appointment->client;
+    public function __construct(string $correlationId = '')
+    {
+        $this->correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+    }
 
-                if ($client && $client->phone) {
-                    // Real SMS notification via configured SMS service
-                    \Illuminate\Support\Facades\$this->notification->route('sms', $client->phone)
-                        ->notify(new \App\Notifications\AppointmentReminderNotification($appointment));
-                }
+    public function handle(LoggerInterface $logger): void
+    {
+        $appointments = Appointment::query()
+            ->where('status', 'confirmed')
+            ->whereBetween('datetime_start', [Carbon::now(), Carbon::now()->addHours(24)])
+            ->with(['client', 'master', 'service', 'salon'])
+            ->get();
 
-                if ($client && $client->email) {
-                    // Real email notification
-                    \Illuminate\Support\Facades\Mail::to($client->email)
-                        ->send(new \App\Mail\AppointmentReminderMail($appointment));
-                }
+        foreach ($appointments as $appointment) {
+            $client = $appointment->client;
 
-                Log::channel('audit')->info('Reminder sent', [
-                    'appointment_id' => $appointment->id,
-                    'client_id' => $client?->id,
-                    'methods' => ['sms' => (bool)$client?->phone, 'email' => (bool)$client?->email],
-                    'correlation_id' => $this->correlationId,
-                ]);
+            if ($client === null) {
+                continue;
             }
+
+            $client->notify(new AppointmentReminderNotification($appointment));
+
+            $logger->info('Appointment reminder sent.', [
+                'appointment_id' => $appointment->id,
+                'client_id'      => $client->id,
+                'has_email'      => $client->email !== null,
+                'has_phone'      => $client->phone !== null,
+                'correlation_id' => $this->correlationId,
+            ]);
         }
+
+        $logger->info('SendAppointmentRemindersJob completed.', [
+            'sent_count'     => $appointments->count(),
+            'correlation_id' => $this->correlationId,
+        ]);
+    }
+
+    /** @return array<int, string> */
+    public function tags(): array
+    {
+        return ['beauty', 'job:appointment-reminders'];
+    }
 }

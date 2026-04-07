@@ -2,36 +2,37 @@
 
 namespace App\Domains\Food\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class DeliveryOrderController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class DeliveryOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
             try {
                 $deliveries = DeliveryOrder::query()
-                    ->whereHas('order', fn ($q) => $q->where('client_id', auth()->id()))
+                    ->whereHas('order', fn ($q) => $q->where('client_id', $request->user()?->id))
                     ->with('order')
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $deliveries,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('DeliveryOrder index failed', [
+                $this->logger->error('DeliveryOrder index failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
@@ -39,7 +40,7 @@ final class DeliveryOrderController extends Model
         {
             $this->authorize('view', $delivery);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $delivery->load('order'),
             ]);
@@ -49,22 +50,22 @@ final class DeliveryOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(
-                userId: auth()->id() ?? 0,
+            $fraudResult = $this->fraud->check(
+                userId: $request->user()?->id ?? 0,
                 operationType: 'delivery_start',
                 amount: 0,
-                ipAddress: request()->ip(),
+                ipAddress: $request->ip(),
                 deviceFingerprint: null,
                 correlationId: $correlationId,
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Delivery start blocked by fraud control', [
+                $this->logger->warning('Delivery start blocked by fraud control', [
                     'correlation_id' => $correlationId,
                     'delivery_id' => $delivery->id,
                     'score' => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -76,33 +77,33 @@ final class DeliveryOrderController extends Model
 
                 $delivery->update([
                     'status' => 'on_way',
-                    'picked_up_at' => now(),
+                    'picked_up_at' => Carbon::now(),
                 ]);
 
-                Log::channel('audit')->info('Delivery started', [
+                $this->logger->info('Delivery started', [
                     'correlation_id' => $correlationId,
                     'delivery_id' => $delivery->id,
                     'tenant_id' => $delivery->tenant_id ?? null,
                     'before' => $before,
                     'after' => 'on_way',
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                 ]);
 
                 event(new \App\Domains\Food\Events\DeliveryStarted($delivery, $correlationId));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Доставка начата',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Delivery start failed', [
+                $this->logger->error('Delivery start failed', [
                     'correlation_id' => $correlationId,
                     'delivery_id' => $delivery->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json(['success' => false, 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -110,7 +111,7 @@ final class DeliveryOrderController extends Model
         {
             $this->authorize('track', $delivery);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'status' => $delivery->status,
                 'location' => $delivery->delivery_point,

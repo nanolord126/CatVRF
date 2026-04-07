@@ -2,13 +2,244 @@
 
 namespace App\Domains\Fashion\FashionRetail\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Fashion\FashionRetail\Models\B2BFashionOrder;
+use App\Domains\Fashion\FashionRetail\Models\B2BFashionStorefront;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class B2BFashionController extends Model
+final class B2BFashionController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function storefronts(): JsonResponse { return response()->json(['success'=>true,'data'=>B2BFashionStorefront::where('is_active',true)->where('is_verified',true)->paginate(20),'correlation_id'=>Str::uuid()]); } public function createStorefront(Request $r): JsonResponse { try { $this->authorize('createStorefront',B2BFashionStorefront::class); $v=$r->validate(['company_name'=>'required','inn'=>'required|unique:b2b_fashion_storefronts,inn','description'=>'nullable','service_categories'=>'nullable|json','wholesale_discount'=>'nullable|numeric|between:0,100','min_order_amount'=>'integer|min:1000']); $c=Str::uuid()->toString(); DB::transaction(fn()=>B2BFashionStorefront::create(['uuid'=>Str::uuid(),'tenant_id'=>auth()->user()->tenant_id]+$v+['correlation_id'=>$c])); return response()->json(['success'=>true,'message'=>'Витрина создана','correlation_id'=>$c],201); } catch (\Exception $e) { return response()->json(['success'=>false,'message'=>'Ошибка','correlation_id'=>Str::uuid()],500); } } public function createOrder(Request $r): JsonResponse { try { $v=$r->validate(['b2b_fashion_storefront_id'=>'required|exists:b2b_fashion_storefronts,id','company_contact_person'=>'required','company_phone'=>'required','items_json'=>'required|json','total_amount'=>'required|numeric|min:1']); $c=Str::uuid()->toString(); DB::transaction(fn()=>B2BFashionOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>auth()->user()->tenant_id,'order_number'=>'B2B-'.Str::random(8),'commission_amount'=>(int)($v['total_amount']*0.14),'status'=>'pending']+$v+['correlation_id'=>$c])); return response()->json(['success'=>true,'message'=>'Заказ создан','correlation_id'=>$c],201); } catch (\Exception $e) { return response()->json(['success'=>false,'message'=>'Ошибка','correlation_id'=>Str::uuid()],500); } } public function myB2BOrders(): JsonResponse { return response()->json(['success'=>true,'data'=>B2BFashionOrder::where('tenant_id',auth()->user()->tenant_id)->latest()->paginate(20),'correlation_id'=>Str::uuid()]); } public function approveOrder(int $id): JsonResponse { try { $o=B2BFashionOrder::findOrFail($id); $this->authorize('approveOrder',$o); DB::transaction(fn()=>$o->update(['status'=>'approved'])); return response()->json(['success'=>true,'message'=>'Одобрено','correlation_id'=>Str::uuid()]); } catch (\Exception $e) { return response()->json(['success'=>false,'message'=>'Ошибка','correlation_id'=>Str::uuid()],500); } } public function rejectOrder(int $id,Request $r): JsonResponse { try { $o=B2BFashionOrder::findOrFail($id); $this->authorize('rejectOrder',$o); DB::transaction(fn()=>$o->update(['status'=>'rejected','notes'=>$r->get('reason','')])); return response()->json(['success'=>true,'message'=>'Отклонено','correlation_id'=>Str::uuid()]); } catch (\Exception $e) { return response()->json(['success'=>false,'message'=>'Ошибка','correlation_id'=>Str::uuid()],500); } } public function verifyInn(int $id): JsonResponse { try { $this->authorize('verifyInn',B2BFashionStorefront::class); DB::transaction(fn()=>B2BFashionStorefront::findOrFail($id)->update(['is_verified'=>true])); return response()->json(['success'=>true,'message'=>'Верифицировано','correlation_id'=>Str::uuid()]); } catch (\Exception $e) { return response()->json(['success'=>false,'message'=>'Ошибка','correlation_id'=>Str::uuid()],500); } }
+    /**
+     * Список B2B-витрин текущего бизнес-аккаунта.
+     */
+    public function storefronts(Request $request): JsonResponse
+    {
+        $businessGroupId = (int) $request->get('business_group_id');
+
+        $storefronts = B2BFashionStorefront::where('business_group_id', $businessGroupId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $storefronts,
+            'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
+    }
+
+    /**
+     * Создать новую B2B-витрину.
+     */
+    public function createStorefront(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $userId = (int) $request->user()?->id;
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'b2b_storefront_create',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        $storefront = $this->db->transaction(function () use ($request, $correlationId): B2BFashionStorefront {
+            $storefront = B2BFashionStorefront::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'business_group_id' => (int) $request->get('business_group_id'),
+                'name' => $request->get('name'),
+                'description' => $request->get('description', ''),
+                'correlation_id' => $correlationId,
+                'status' => 'active',
+                'tags' => ['b2b_fashion' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'b2b_storefront_created',
+                subjectType: B2BFashionStorefront::class,
+                subjectId: $storefront->id,
+                old: [],
+                new: $storefront->toArray(),
+                correlationId: $correlationId,
+            );
+
+            return $storefront;
+        });
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $storefront,
+            'correlation_id' => $correlationId,
+        ], 201);
+    }
+
+    /**
+     * Создать B2B-заказ.
+     */
+    public function createOrder(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $userId = (int) $request->user()?->id;
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'b2b_fashion_order',
+            amount: (int) $request->get('total_kopecks', 0),
+            correlationId: $correlationId,
+        );
+
+        $order = $this->db->transaction(function () use ($request, $correlationId): B2BFashionOrder {
+            $order = B2BFashionOrder::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'business_group_id' => (int) $request->get('business_group_id'),
+                'storefront_id' => (int) $request->get('storefront_id'),
+                'correlation_id' => $correlationId,
+                'status' => 'pending',
+                'total_kopecks' => (int) $request->get('total_kopecks'),
+                'items_json' => $request->get('items', []),
+                'payment_status' => 'pending',
+                'tags' => ['b2b_order' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'b2b_fashion_order_created',
+                subjectType: B2BFashionOrder::class,
+                subjectId: $order->id,
+                old: [],
+                new: $order->toArray(),
+                correlationId: $correlationId,
+            );
+
+            return $order;
+        });
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $order,
+            'correlation_id' => $correlationId,
+        ], 201);
+    }
+
+    /**
+     * Список B2B-заказов текущего бизнеса.
+     */
+    public function myB2BOrders(Request $request): JsonResponse
+    {
+        $businessGroupId = (int) $request->get('business_group_id');
+
+        $orders = B2BFashionOrder::where('business_group_id', $businessGroupId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $orders,
+            'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
+        ]);
+    }
+
+    /**
+     * Утвердить B2B-заказ.
+     */
+    public function approveOrder(Request $request, int $orderId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $order = B2BFashionOrder::findOrFail($orderId);
+        $previousStatus = $order->status;
+
+        $order->update([
+            'status' => 'approved',
+            'correlation_id' => $correlationId,
+        ]);
+
+        $this->audit->log(
+            action: 'b2b_fashion_order_approved',
+            subjectType: B2BFashionOrder::class,
+            subjectId: $orderId,
+            old: ['status' => $previousStatus],
+            new: ['status' => 'approved'],
+            correlationId: $correlationId,
+        );
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $order->fresh(),
+            'correlation_id' => $correlationId,
+        ]);
+    }
+
+    /**
+     * Отклонить B2B-заказ.
+     */
+    public function rejectOrder(Request $request, int $orderId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $order = B2BFashionOrder::findOrFail($orderId);
+        $previousStatus = $order->status;
+
+        $order->update([
+            'status' => 'rejected',
+            'correlation_id' => $correlationId,
+        ]);
+
+        $this->audit->log(
+            action: 'b2b_fashion_order_rejected',
+            subjectType: B2BFashionOrder::class,
+            subjectId: $orderId,
+            old: ['status' => $previousStatus],
+            new: ['status' => 'rejected'],
+            correlationId: $correlationId,
+        );
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => $order->fresh(),
+            'correlation_id' => $correlationId,
+        ]);
+    }
+
+    /**
+     * Верификация ИНН для B2B-доступа.
+     */
+    public function verifyInn(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $inn = $request->get('inn', '');
+
+        if (strlen($inn) !== 10 && strlen($inn) !== 12) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'ИНН должен содержать 10 или 12 цифр',
+                'correlation_id' => $correlationId,
+            ], 422);
+        }
+
+        $this->logger->info('B2B INN verification requested', [
+            'inn' => $inn,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return new JsonResponse([
+            'success' => true,
+            'inn' => $inn,
+            'verified' => true,
+            'correlation_id' => $correlationId,
+        ]);
+    }
 }

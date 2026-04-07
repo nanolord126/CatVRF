@@ -5,12 +5,13 @@ namespace Modules\Common\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\HasEcosystemFeatures;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+
 final class UserDeviceFingerprint extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasEcosystemFeatures;
+    use HasFactory, HasEcosystemFeatures;
     
         protected $guarded = [];
     

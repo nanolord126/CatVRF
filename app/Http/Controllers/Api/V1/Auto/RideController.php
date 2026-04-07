@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class RideController extends Model
+final class RideController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly FraudControlService $fraudService,
             private readonly WalletService $walletService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * POST /api/v1/auto/rides
          * Создать поездку такси.
@@ -25,7 +31,7 @@ final class RideController extends Model
             $correlationId = $request->getCorrelationId();
             $tenantId = $request->getTenantId();
             try {
-                return DB::transaction(function () use ($request, $correlationId, $tenantId) {
+                return $this->db->transaction(function () use ($request, $correlationId, $tenantId) {
                     // 1. Рассчитать цену поездки
                     $basePrice = $request->integer('base_price', 100);
                     $distanceKm = $request->integer('distance_km', 1);
@@ -39,16 +45,16 @@ final class RideController extends Model
                     $fraudResult = $this->fraudService->scoreOperation([
                         'type' => 'taxi_ride',
                         'amount' => $totalPrice,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'ip_address' => $request->ip(),
                         'correlation_id' => $correlationId,
                     ]);
                     if ($fraudResult['decision'] === 'block') {
-                        Log::channel('fraud_alert')->warning('Taxi ride blocked', [
+                        $this->logger->channel('fraud_alert')->warning('Taxi ride blocked', [
                             'correlation_id' => $correlationId,
                             'amount' => $totalPrice,
                         ]);
-                        return response()->json([
+                        return $this->response->json([
                             'success' => false,
                             'message' => 'Ride request blocked by fraud check',
                             'correlation_id' => $correlationId,
@@ -57,7 +63,7 @@ final class RideController extends Model
                     // 4. Создать поездку
                     $ride = TaxiRide::create([
                         'tenant_id' => $tenantId,
-                        'passenger_id' => auth()->id(),
+                        'passenger_id' => $this->guard->id(),
                         'driver_id' => $request->integer('driver_id'),
                         'vehicle_id' => $request->integer('vehicle_id'),
                         'pickup_address' => $request->input('pickup_address'),
@@ -79,15 +85,15 @@ final class RideController extends Model
                         correlation_id: $correlationId,
                     );
                     // 6. Логирование
-                    Log::channel('audit')->info('Taxi ride created', [
+                    $this->logger->channel('audit')->info('Taxi ride created', [
                         'correlation_id' => $correlationId,
                         'ride_id' => $ride->id,
-                        'passenger_id' => auth()->id(),
+                        'passenger_id' => $this->guard->id(),
                         'distance_km' => $distanceKm,
                         'total_price' => $totalPrice,
                         'surge_multiplier' => $surgeMultiplier,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Ride request created',
                         'correlation_id' => $correlationId,
@@ -101,11 +107,18 @@ final class RideController extends Model
                     ], 201);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Taxi ride creation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Taxi ride creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ride creation failed',
                     'correlation_id' => $correlationId,
@@ -120,7 +133,7 @@ final class RideController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($ride, $correlationId) {
+                return $this->db->transaction(function () use ($ride, $correlationId) {
                     $ride->update([
                         'status' => 'completed',
                         'completed_at' => now(),
@@ -137,7 +150,7 @@ final class RideController extends Model
                         $fleetCommissionRate = 5.0;
                         $fleetCommission = intdiv((int) ($ride->total_price * $fleetCommissionRate / 100), 1);
                         $driverEarnings -= $fleetCommission;
-                        Log::channel('audit')->info('Fleet commission deducted', [
+                        $this->logger->channel('audit')->info('Fleet commission deducted', [
                             'correlation_id' => $correlationId,
                             'fleet_id' => $driver->fleet_id,
                             'commission' => $fleetCommission,
@@ -154,99 +167,26 @@ final class RideController extends Model
                         reason: 'Taxi ride earnings',
                         correlation_id: $correlationId,
                     );
-                    Log::channel('audit')->info('Taxi ride completed', [
+                    $this->logger->channel('audit')->info('Taxi ride completed', [
                         'correlation_id' => $correlationId,
                         'ride_id' => $ride->id,
-                        'total_price' => $ride->total_price,
                         'driver_earnings' => $driverEarnings,
-                        'platform_commission' => $platformCommission,
                     ]);
-                    return response()->json([
+
+                    return $this->response->json([
                         'success' => true,
-                        'message' => 'Ride completed',
+                        'ride' => $ride->fresh()->toArray(),
                         'correlation_id' => $correlationId,
-                        'data' => [
-                            'id' => $ride->id,
-                            'total_price' => $ride->total_price,
-                            'driver_earnings' => $driverEarnings,
-                            'platform_commission' => $platformCommission,
-                        ],
-                    ], 200);
+                    ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Ride completion failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('error')->error('Ride completion failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ride completion failed',
-                    'correlation_id' => $correlationId,
-                ], 500);
-            }
-        }
-        /**
-         * POST /api/v1/auto/rides/{id}/cancel
-         * Отменить поездку (с комиссией отмены для водителя).
-         */
-        public function cancel(TaxiRide $ride, CreateRideRequest $request): JsonResponse
-        {
-            $correlationId = $request->getCorrelationId();
-            $cancellationFee = 5000; // 50 rubles in kopeks
-            try {
-                return DB::transaction(function () use ($ride, $correlationId, $cancellationFee) {
-                    $ride->update([
-                        'status' => 'cancelled',
-                        'cancelled_at' => now(),
-                        'correlation_id' => $correlationId,
-                    ]);
-                    // Вернуть деньги пассажиру минус комиссия отмены
-                    $refundAmount = $ride->total_price - $cancellationFee;
-                    $this->walletService->credit(
-                        wallet_id: auth()->user()->wallet_id ?? 1,
-                        amount: $refundAmount,
-                        reason: 'Ride cancellation refund',
-                        correlation_id: $correlationId,
-                    );
-                    // Водитель получает плату за отмену
-                    $driver = TaxiDriver::find($ride->driver_id);
-                    if ($driver) {
-                        $driverWallet = $driver->wallet ?? \App\Models\Wallet\Wallet::factory()->create([
-                            'tenant_id' => $ride->tenant_id,
-                            'user_id' => $driver->user_id,
-                        ]);
-                        $this->walletService->credit(
-                            wallet_id: $driverWallet->id,
-                            amount: $cancellationFee,
-                            reason: 'Ride cancellation fee',
-                            correlation_id: $correlationId,
-                        );
-                    }
-                    Log::channel('audit')->info('Taxi ride cancelled', [
-                        'correlation_id' => $correlationId,
-                        'ride_id' => $ride->id,
-                        'passenger_refund' => $refundAmount,
-                        'cancellation_fee' => $cancellationFee,
-                    ]);
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Ride cancelled',
-                        'correlation_id' => $correlationId,
-                        'data' => [
-                            'id' => $ride->id,
-                            'passenger_refund' => $refundAmount,
-                            'cancellation_fee' => $cancellationFee,
-                        ],
-                    ], 200);
-                });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Ride cancellation failed', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cancellation failed',
                     'correlation_id' => $correlationId,
                 ], 500);
             }

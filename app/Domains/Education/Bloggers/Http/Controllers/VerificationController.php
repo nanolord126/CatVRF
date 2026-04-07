@@ -2,23 +2,25 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VerificationController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class VerificationController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * GET /api/verification/status
          * Check verification status of current blogger
          */
         public function status(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'status' => $profile->verification_status,
                 'verified_at' => $profile->verified_at,
                 'rejection_reason' => $profile->rejection_reason,
@@ -38,16 +40,16 @@ final class VerificationController extends Model
                 'documents.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
             if ($profile->verification_status === 'verified') {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => 'Уже верифицирован',
                 ], 422);
             }
 
             if ($profile->verification_status === 'pending') {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => 'Документы уже на рассмотрении',
                 ], 422);
             }
@@ -58,7 +60,7 @@ final class VerificationController extends Model
                 $documentPaths[] = $path;
             }
 
-            DB::transaction(function () use ($profile, $documentPaths) {
+            $this->db->transaction(function () use ($profile, $documentPaths) {
                 $profile->update([
                     'verification_status' => 'pending',
                     'verification_documents' => array_merge(
@@ -67,14 +69,14 @@ final class VerificationController extends Model
                     ),
                 ]);
 
-                Log::channel('audit')->info('Blogger submitted verification documents', [
+                $this->logger->info('Blogger submitted verification documents', [
                     'blogger_id' => $profile->id,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                     'document_count' => count($documentPaths),
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Документы отправлены на рассмотрение',
                 'status' => 'pending',
             ]);
@@ -86,7 +88,7 @@ final class VerificationController extends Model
          */
         public function requirements(): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'requirements' => [
                     [
                         'title' => 'Основные документы',
@@ -130,15 +132,15 @@ final class VerificationController extends Model
                 'documents.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
             if ($profile->verification_status !== 'rejected') {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => 'Можно обжаловать только отклоненную верификацию',
                 ], 422);
             }
 
-            DB::transaction(function () use ($profile, $validated) {
+            $this->db->transaction(function () use ($profile, $validated) {
                 $documentPaths = [];
                 if ($request->hasFile('documents')) {
                     foreach ($request->file('documents') as $document) {
@@ -155,14 +157,14 @@ final class VerificationController extends Model
                     ),
                 ]);
 
-                Log::channel('audit')->info('Blogger appealed rejection', [
+                $this->logger->info('Blogger appealed rejection', [
                     'blogger_id' => $profile->id,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                     'message' => $validated['message'],
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Обжалование отправлено на рассмотрение',
                 'status' => 'pending',
             ]);

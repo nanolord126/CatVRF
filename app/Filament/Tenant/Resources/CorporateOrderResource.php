@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CorporateOrderResource extends Model
+final class CorporateOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CorporateOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office';
@@ -108,31 +105,15 @@ final class CorporateOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCorporateOrder::route('/'),
-                'create' => Pages\\CreateCorporateOrder::route('/create'),
-                'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewCorporateOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListCorporateOrder::route('/'),
-                'create' => Pages\\CreateCorporateOrder::route('/create'),
-                'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewCorporateOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCorporateOrder::route('/'),
-                'create' => Pages\\CreateCorporateOrder::route('/create'),
-                'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewCorporateOrder::route('/{record}'),
+                'index' => Pages\ListCorporateOrder::route('/'),
+                'create' => Pages\CreateCorporateOrder::route('/create'),
+                'edit' => Pages\EditCorporateOrder::route('/{record}/edit'),
+                'view' => Pages\ViewCorporateOrder::route('/{record}'),
             ];
         }
 }

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class CorporateContract extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     protected $table = 'corporate_contracts';
 
         protected $fillable = [
@@ -42,9 +43,9 @@ final class CorporateContract extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (auth()->check()) {
+                if (function_exists('tenant') && tenant()) {
                     // ТЕНЕНТ может быть либо плательщиком (B2B клиент), либо провайдером
-                    $tid = auth()->user()->tenant_id;
+                    $tid = tenant()->id;
                     $builder->where(function($q) use ($tid) {
                         $q->where('tenant_id', $tid)
                           ->orWhere('provider_tenant_id', $tid);

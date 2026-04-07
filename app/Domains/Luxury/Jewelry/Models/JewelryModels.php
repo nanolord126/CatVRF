@@ -8,9 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 final class JewelryDomainTrait extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static function booted(): void
+
+    protected static function booted_disabled(): void
         {
             static::creating(function (Model $model) {
                 if (empty($model->uuid)) {

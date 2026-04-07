@@ -2,34 +2,24 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProductService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ProductService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createProduct(PetClinic $clinic, array $data, string $correlationId = null): PetProduct
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($clinic, $data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($clinic, $data, $correlationId) {
                     $product = PetProduct::create([
                         ...$data,
                         'tenant_id' => tenant()->id,
@@ -38,7 +28,7 @@ final class ProductService extends Model
                         'uuid' => Str::uuid(),
                     ]);
 
-                    Log::channel('audit')->info('Pet product created', [
+                    $this->logger->info('Pet product created', [
                         'product_id' => $product->id,
                         'clinic_id' => $clinic->id,
                         'name' => $product->name,
@@ -48,7 +38,7 @@ final class ProductService extends Model
                     return $product;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to create pet product', [
+                $this->logger->error('Failed to create pet product', [
                     'clinic_id' => $clinic->id,
                     'data' => $data,
                     'correlation_id' => $correlationId,
@@ -62,25 +52,17 @@ final class ProductService extends Model
         public function updateProduct(PetProduct $product, array $data, string $correlationId = null): PetProduct
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($product, $data, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($product, $data, $correlationId) {
                     $product->update([
                         ...$data,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Pet product updated', [
+                    $this->logger->info('Pet product updated', [
                         'product_id' => $product->id,
                         'clinic_id' => $product->clinic_id,
                         'correlation_id' => $correlationId,
@@ -89,7 +71,7 @@ final class ProductService extends Model
                     return $product;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to update pet product', [
+                $this->logger->error('Failed to update pet product', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
@@ -102,19 +84,11 @@ final class ProductService extends Model
         public function updateStock(PetProduct $product, int $quantity, string $correlationId = null): PetProduct
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($product, $quantity, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($product, $quantity, $correlationId) {
                     $newStock = $product->current_stock + $quantity;
                     if ($newStock < 0) {
                         throw new \RuntimeException('Insufficient stock');
@@ -125,7 +99,7 @@ final class ProductService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Pet product stock updated', [
+                    $this->logger->info('Pet product stock updated', [
                         'product_id' => $product->id,
                         'previous_stock' => $product->current_stock - $quantity,
                         'new_stock' => $newStock,
@@ -136,7 +110,7 @@ final class ProductService extends Model
                     return $product;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to update product stock', [
+                $this->logger->error('Failed to update product stock', [
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                     'correlation_id' => $correlationId,

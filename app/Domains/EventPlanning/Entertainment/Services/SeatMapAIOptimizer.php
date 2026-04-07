@@ -2,18 +2,19 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class SeatMapAIOptimizer extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class SeatMapAIOptimizer
 {
-    use HasFactory;
+
+    public function __construct(private string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private string $correlationId = ''
-        ) {
-        }
+    }
 
         private function getCorrelationId(): string
         {
@@ -28,14 +29,17 @@ final class SeatMapAIOptimizer extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('recommend')->info('Starting SeatMap AI optimization', [
+            $this->logger->info('Starting SeatMap AI optimization', [
                 'venue_uuid' => $venue->uuid,
                 'rows' => $rows,
                 'cols' => $cols,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($venue, $rows, $cols, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+
+            return $this->db->transaction(function () use ($venue, $rows, $cols, $correlationId) {
 
                 // 1. Алгоритм расстановки: VIP-места в центре зала
                 $seats = [];
@@ -67,12 +71,12 @@ final class SeatMapAIOptimizer extends Model
                 $seatMap->uuid = (string) Str::uuid();
                 $seatMap->tenant_id = $venue->tenant_id;
                 $seatMap->venue_id = $venue->id;
-                $seatMap->name = "AI Layout " . now()->format('Y-m-d H:i');
+                $seatMap->name = "AI Layout " . Carbon::now()->format('Y-m-d H:i');
                 $seatMap->layout = $seats;
                 $seatMap->correlation_id = $correlationId;
                 $seatMap->save();
 
-                Log::channel('recommend')->info('AI SeatMap generated successfully', [
+                $this->logger->info('AI SeatMap generated successfully', [
                     'seatmap_id' => $seatMap->id,
                     'total_seats' => count($seats),
                     'confidence_score' => 0.98,
@@ -101,7 +105,7 @@ final class SeatMapAIOptimizer extends Model
                 }
             }
 
-            Log::channel('recommend')->info('Occupancy heatmap generated', [
+            $this->logger->info('Occupancy heatmap generated', [
                 'event_uuid' => $event->uuid,
                 'correlation_id' => $correlationId,
             ]);
@@ -125,7 +129,7 @@ final class SeatMapAIOptimizer extends Model
             if ($capacity > 0 && ($left / $capacity) < 0.2) {
                 $multiplier = 1.15;
 
-                Log::channel('recommend')->info('Surge pricing activated for event', [
+                $this->logger->info('Surge pricing activated for event', [
                     'event_uuid' => $event->uuid,
                     'multiplier' => $multiplier,
                     'correlation_id' => $correlationId,

@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Account;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class ComplianceController extends Model
+final class ComplianceController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Show the integrations list.
          */
@@ -27,31 +31,31 @@ final class ComplianceController extends Model
             $token = $request->input('api_token');
             $inn = $request->input('inn');
             if (!$token || !$inn) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'ИНН и API токен обязательны для тестирования.',
                     'correlation_id' => $correlationId
                 ], 422);
             }
             try {
-                Log::channel('audit')->info('Testing compliance integration', [
+                $this->logger->channel('audit')->info('Testing compliance integration', [
                     'type' => $type,
                     'inn' => $inn,
                     'correlation_id' => $correlationId
                 ]);
                 $result = $this->performApiTest($type, $inn, $token);
-                return response()->json([
+                return $this->response->json([
                     'success' => $result['success'],
                     'message' => $result['message'] ?? ($result['success'] ? 'Подключение успешно проверено.' : 'Не удалось подключиться.'),
                     'correlation_id' => $correlationId
                 ]);
             } catch (Throwable $e) {
-                Log::error('Compliance test failed', [
+                $this->logger->error('Compliance test failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Произошла ошибка при тестировании подключения: ' . $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -72,7 +76,7 @@ final class ComplianceController extends Model
                 'inn.required' => 'ИНН обязателен.',
                 'api_token.required' => 'API Токен обязателен.',
             ]);
-            return DB::transaction(function () use ($request, $type, $correlationId) {
+            return $this->db->transaction(function () use ($request, $type, $correlationId) {
                 try {
                     $integration = ComplianceIntegration::updateOrCreate(
                         [
@@ -90,23 +94,23 @@ final class ComplianceController extends Model
                     // Use the mutator
                     $integration->setApiTokenAttribute($request->input('api_token'));
                     $integration->save();
-                    Log::channel('audit')->info('Compliance integration connected', [
+                    $this->logger->channel('audit')->info('Compliance integration connected', [
                         'id' => $integration->id,
                         'type' => $type,
                         'correlation_id' => $correlationId
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Интеграция успешно подключена.',
                         'correlation_id' => $correlationId
                     ]);
                 } catch (Throwable $e) {
-                    Log::channel('audit')->error('Failed to connect compliance integration', [
+                    $this->logger->channel('audit')->error('Failed to connect compliance integration', [
                         'type' => $type,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => false,
                         'message' => 'Ошибка при сохранении интеграции.',
                         'correlation_id' => $correlationId
@@ -122,17 +126,17 @@ final class ComplianceController extends Model
             $correlationId = (string) Str::uuid();
             try {
                 ComplianceIntegration::where('type', $type)->delete();
-                Log::channel('audit')->info('Compliance integration disconnected', [
+                $this->logger->channel('audit')->info('Compliance integration disconnected', [
                     'type' => $type,
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Интеграция успешно отключена.',
                     'correlation_id' => $correlationId
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при удалении интеграции.',
                     'correlation_id' => $correlationId

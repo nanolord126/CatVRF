@@ -2,17 +2,15 @@
 
 namespace App\Domains\Furniture\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FurnitureDomainService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class FurnitureDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Create or update a furniture product with stock management and validation.
@@ -22,12 +20,12 @@ final class FurnitureDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Saving Furniture Product', [
+            $this->logger->info('LAYER-3: Saving Furniture Product', [
                 'sku' => $dto->sku,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 $product = FurnitureProduct::updateOrCreate(
                     ['sku' => $dto->sku],
                     [
@@ -49,7 +47,7 @@ final class FurnitureDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('LAYER-3: Product Saved Successfully', [
+                $this->logger->info('LAYER-3: Product Saved Successfully', [
                     'id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -66,19 +64,15 @@ final class FurnitureDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Initiating Custom Interior Order', [
+            $this->logger->info('LAYER-3: Initiating Custom Interior Order', [
                 'user_id' => $dto->userId,
                 'correlation_id' => $correlationId,
             ]);
 
             // 1. Mandatory Fraud Check
-            $this->fraudControl->check('furniture_order_create', [
-                'user_id' => $dto->userId,
-                'amount' => $dto->totalAmount,
-                'correlation_id' => $correlationId
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'amount', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 // 2. Lock involved products to prevent over-sale
                 $productIds = $dto->aiSpecification['product_ids'] ?? [];
                 if (!empty($productIds)) {
@@ -88,7 +82,7 @@ final class FurnitureDomainService extends Model
 
                     foreach ($products as $product) {
                         if ($product->stock_quantity <= 0) {
-                            throw new Exception("Product #{$product->sku} is out of stock.");
+                            throw new \DomainException("Product #{$product->sku} is out of stock.");
                         }
                         $product->decrement('stock_quantity');
                         $product->increment('hold_stock');
@@ -107,7 +101,7 @@ final class FurnitureDomainService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('LAYER-3: Custom Order Created', [
+                $this->logger->info('LAYER-3: Custom Order Created', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);

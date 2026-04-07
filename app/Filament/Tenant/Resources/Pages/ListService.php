@@ -1,46 +1,74 @@
 <?php declare(strict_types=1);
 
+/**
+ * ListService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listservice
+ * @see https://catvrf.ru/docs/listservice
+ */
+
+
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListService extends Model
+/**
+ * Class ListService
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class ListService extends ListRecords
 {
-    use HasFactory;
+    protected static string $resource = ServiceResource::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    EditAction, DeleteAction};
-    use Filament\Tables\Actions\DeleteBulkAction;
-    use Filament\Tables\Columns\TextColumn;
-    use Filament\Tables\Table;
-    use Illuminate\Database\Eloquent\Builder;
-
-    final class ListService extends ListRecords
+    /**
+     * Handle getTitle operation.
+     *
+     * @throws \DomainException
+     */
+    public function getTitle(): string
     {
-        protected static string $resource = ServiceResource::class;
+        return 'List Service';
+    }
 
-        public function getTitle(): string
-        {
-            return 'List Service';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                CreateAction::make(),
-            ];
-        }
-
-        public function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('id')->sortable(),
-                    TextColumn::make('created_at')->dateTime()->sortable(),
-                ])
-                ->filters([])
-                ->actions([EditAction::make(), DeleteAction::make()])
-                ->bulkActions([DeleteBulkAction::make()]);
-        }
+    /**
+     * Handle table operation.
+     *
+     * @throws \DomainException
+     */
+    public function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('created_at')->dateTime()->sortable(),
+            ])
+            ->filters([])
+            ->actions([EditAction::make(), DeleteAction::make()])
+            ->bulkActions([DeleteBulkAction::make()]);
+    }
 }

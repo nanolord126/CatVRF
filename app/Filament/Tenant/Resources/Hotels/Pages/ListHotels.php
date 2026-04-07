@@ -2,13 +2,33 @@
 
 namespace App\Filament\Tenant\Resources\Hotels\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Hotels\HotelsResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListHotels extends Model
+/**
+ * ListHotels — альтернативная страница списка отелей.
+ *
+ * Используется ресурсом HotelsResource для маршрута /.
+ * Tenant-scoped через Resource::getEloquentQuery().
+ *
+ * @package App\Filament\Tenant\Resources\Hotels\Pages
+ */
+final class ListHotels extends ListRecords
 {
-    use HasFactory;
+    protected static string $resource = HotelsResource::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    protected static string $resource = HotelResource::class;
+    /**
+     * Действия в заголовке страницы списка.
+     *
+     * @return array<\Filament\Actions\Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новая запись')
+                ->icon('heroicon-m-plus'),
+        ];
+    }
 }

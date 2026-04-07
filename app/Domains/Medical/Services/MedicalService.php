@@ -2,19 +2,17 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MedicalService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private \App\Services\FraudControlService $fraudControl,
-            private \App\Services\WalletService $wallet,
-            private \App\Domains\Medical\Services\AIMedicalTriageService $aiTriage
-        ) {}
+    public function __construct(private \App\Services\FraudControlService $fraud,
+        private \App\Services\WalletService $wallet,
+        private \App\Services\AuditService $audit,
+        private \App\Domains\Medical\Services\AIMedicalTriageService $aiTriage,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создание записи на прием (Appointment)
@@ -23,13 +21,9 @@ final class MedicalService extends Model
         {
             $correlationId = $data['correlation_id'] ?? (string)Str::uuid();
 
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 1. Fraud Check
-                $this->fraudControl->check([
-                    'user_id' => $data['client_id'],
-                    'operation' => 'medical_booking',
-                    'amount' => $data['total_amount_kopecks'] ?? 0,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'medical_booking', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Атомарное создание записи
                 $appointment = MedicalAppointment::create([
@@ -48,7 +42,7 @@ final class MedicalService extends Model
                 ]);
 
                 // 3. Audit Log
-                Log::channel('audit')->info('Medical appointment created', [
+                $this->logger->info('Medical appointment created', [
                     'appointment_uuid' => $appointment->uuid,
                     'correlation_id' => $correlationId,
                     'client_id' => $data['client_id'],
@@ -63,7 +57,7 @@ final class MedicalService extends Model
          */
         public function completeAppointment(int $appointmentId, array $recordData): MedicalRecord
         {
-            return DB::transaction(function () use ($appointmentId, $recordData) {
+            return $this->db->transaction(function () use ($appointmentId, $recordData) {
                 $appointment = MedicalAppointment::findOrFail($appointmentId);
 
                 // 1. Создание EHR (Medical Record)
@@ -86,7 +80,7 @@ final class MedicalService extends Model
                 // 3. Автоматическое списание расходников (КАНОН)
                 event(new \App\Domains\Medical\Events\MedicalAppointmentCompleted($appointment, $record));
 
-                Log::channel('audit')->info('Medical record finalized', [
+                $this->logger->info('Medical record finalized', [
                     'record_uuid' => $record->uuid,
                     'appointment_id' => $appointmentId,
                     'correlation_id' => $appointment->correlation_id,

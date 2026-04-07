@@ -1,15 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * B2BBeautyStorefrontResource — Filament Resource для B2B витрин Beauty.
+ *
+ * @package CatVRF\Beauty
+ * @version 2026.1
+ */
 
 namespace App\Domains\Beauty\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\B2BBeautyStorefront;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class B2BBeautyStorefrontResource extends Model
+final class B2BBeautyStorefrontResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BBeautyStorefront::class;
 
     	protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -42,4 +57,13 @@ final class B2BBeautyStorefrontResource extends Model
     			->filters([Tables\Filters\SelectFilter::make('is_verified')])
     			->actions([Tables\Actions\ViewAction::make(), Tables\Actions\EditAction::make()]);
     	}
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListRecords::route('/'),
+            'create' => CreateRecord::route('/create'),
+            'edit' => EditRecord::route('/{record}/edit'),
+        ];
+    }
 }

@@ -2,22 +2,23 @@
 
 namespace App\Domains\Sports\Fitness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AttendanceService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AttendanceService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function recordCheckIn(int $classScheduleId, int $memberId, string $correlationId): Attendance
         {
-
 
             try {
                 $schedule = ClassSchedule::findOrFail($classScheduleId);
 
-                $attendance = DB::transaction(function () use ($schedule, $memberId, $correlationId) {
+                $attendance = $this->db->transaction(function () use ($schedule, $memberId, $correlationId) {
                     $attendance = Attendance::create([
                         'tenant_id' => $schedule->tenant_id,
                         'class_schedule_id' => $schedule->id,
@@ -31,7 +32,7 @@ final class AttendanceService extends Model
 
                     AttendanceRecorded::dispatch($attendance, $correlationId);
 
-                    Log::channel('audit')->info('Member checked in', [
+                    $this->logger->info('Member checked in', [
                         'attendance_id' => $attendance->id,
                         'class_schedule_id' => $classScheduleId,
                         'member_id' => $memberId,
@@ -43,7 +44,7 @@ final class AttendanceService extends Model
 
                 return $attendance;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to record check-in', [
+                $this->logger->error('Failed to record check-in', [
                     'class_schedule_id' => $classScheduleId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -55,9 +56,9 @@ final class AttendanceService extends Model
         public function recordCheckOut(Attendance $attendance, string $correlationId): void
         {
 
-
             try {
-                DB::transaction(function () use ($attendance, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($attendance, $correlationId) {
                     $checkedOutAt = now();
                     $durationMinutes = $checkedOutAt->diffInMinutes($attendance->checked_in_at);
 
@@ -68,14 +69,14 @@ final class AttendanceService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Member checked out', [
+                    $this->logger->info('Member checked out', [
                         'attendance_id' => $attendance->id,
                         'duration_minutes' => $durationMinutes,
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to record check-out', [
+                $this->logger->error('Failed to record check-out', [
                     'attendance_id' => $attendance->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

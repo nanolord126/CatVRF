@@ -2,21 +2,37 @@
 
 namespace App\Services\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultingProjectService extends Model
+use Illuminate\Http\Request;
+use App\Models\Consulting\ConsultingContract;
+use App\Models\Consulting\ConsultingProject;
+use App\Models\Consulting\ConsultingSession;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ConsultingProjectService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @param string $correlationId Unified audit trace.
          */
         public function __construct(
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -24,17 +40,17 @@ final class ConsultingProjectService extends Model
          */
         public function initializeProjectFromContract(int $contractId): ConsultingProject
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'consulting_init_project', $this->request->ip());
 
-            return DB::transaction(function() use ($contractId) {
+            return $this->db->transaction(function() use ($contractId) {
                 $contract = ConsultingContract::findOrFail($contractId);
 
                 if (!$contract->isSigned()) {
-                    throw new \Exception("Contract must be signed before starting project.");
+                    throw new \LogicException('Contract must be signed before starting project.');
                 }
 
-                Log::channel('audit')->info('Initializing Project from Contract', [
-                    'correlation_id' => $this->correlationId,
+                $this->logger->channel('audit')->info('Initializing Project from Contract', [
+                    'correlation_id' => $this->correlationId(),
                     'contract_id' => $contractId,
                 ]);
 
@@ -48,7 +64,7 @@ final class ConsultingProjectService extends Model
                    'start_date' => now(),
                    'budget' => $contract->total_amount,
                    'spent_budget' => 0,
-                   'correlation_id' => $this->correlationId,
+                   'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $project;
@@ -60,15 +76,15 @@ final class ConsultingProjectService extends Model
          */
         public function fulfillSession(int $sessionId, int $durationMinutes, string $notes): void
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'consulting_fulfill_session', $this->request->ip());
 
-            DB::transaction(function() use ($sessionId, $durationMinutes, $notes) {
+            $this->db->transaction(function() use ($sessionId, $durationMinutes, $notes) {
                 $session = ConsultingSession::findOrFail($sessionId);
 
-                Log::channel('audit')->info('Fulfilling Consulting Session', [
+                $this->logger->channel('audit')->info('Fulfilling Consulting Session', [
                     'session_id' => $sessionId,
                     'duration' => $durationMinutes,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $session->logSessionEnd($durationMinutes);
@@ -96,15 +112,15 @@ final class ConsultingProjectService extends Model
          */
         public function terminateContract(int $contractId, string $reason): void
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'consulting_terminate_contract', $this->request->ip());
 
-            DB::transaction(function() use ($contractId, $reason) {
+            $this->db->transaction(function() use ($contractId, $reason) {
                 $contract = ConsultingContract::findOrFail($contractId);
 
-                Log::channel('audit')->warning('Terminating Consulting Contract', [
+                $this->logger->channel('audit')->warning('Terminating Consulting Contract', [
                     'contract_id' => $contractId,
                     'reason' => $reason,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $contract->update([

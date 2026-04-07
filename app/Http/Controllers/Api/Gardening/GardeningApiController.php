@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers\Api\Gardening;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class GardeningApiController extends Model
+final class GardeningApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const RATE_LIMIT_SEC = 60; // Max 60 req/min for AI
         public function __construct(
             private readonly AIPlantGardenConstructor $aiConstructor,
-            private readonly FraudControlService $fraudControl
-        ) {}
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Get Catalog with Bio-Climate Filtering.
          * Accessible by both B2C (standard) and B2B (wholesale) clients.
@@ -23,10 +28,10 @@ final class GardeningApiController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
             try {
-                Log::channel('audit')->info('Catalog requested', [
+                $this->logger->channel('audit')->info('Catalog requested', [
                     'cid' => $correlationId,
                     'ip' => $request->ip(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                 ]);
                 $query = GardenProduct::query()
                     ->with(['plant', 'category', 'store'])
@@ -65,18 +70,18 @@ final class GardeningApiController extends Model
                         'store' => $product->store?->name,
                     ];
                 });
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $products,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Catalog Fetch Failed', [
+                $this->logger->channel('audit')->error('Catalog Fetch Failed', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Unable to fetch gardening catalog.',
                     'cid' => $correlationId
@@ -92,7 +97,7 @@ final class GardeningApiController extends Model
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
             // 1. Security & Fraud Check (Lute Mode)
             $this->fraudControl::check([
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'action' => 'ai_consultation',
                 'ip' => $request->ip(),
                 'cid' => $correlationId
@@ -104,29 +109,29 @@ final class GardeningApiController extends Model
             ]);
             try {
                 $dto = new GardenAIRequestDto(
-                    userId: (int) auth()->id(),
+                    userId: (int) $this->guard->id(),
                     hardinessZone: (int) $request->get('hardiness_zone'),
                     plotDescription: (string) $request->get('plot_description'),
                     preferences: (array) $request->get('interests', []),
                     correlationId: $correlationId
                 );
                 $result = $this->aiConstructor->generatePlan($dto);
-                Log::channel('audit')->info('AI Consultation Success', [
+                $this->logger->channel('audit')->info('AI Consultation Success', [
                     'cid' => $correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'zone' => $dto->hardinessZone
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'ai_plan' => $result,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Consultation FAILED', [
+                $this->logger->channel('audit')->error('AI Consultation FAILED', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'AI Gardening Engine is temporarily busy.',
                     'cid' => $correlationId
@@ -145,23 +150,23 @@ final class GardeningApiController extends Model
                 'comment' => 'required|string|max:500',
             ]);
             try {
-                \Illuminate\Support\Facades\DB::transaction(function() use ($request, $correlationId) {
+                $this->db->transaction(function() use ($request, $correlationId) {
                     \App\Domains\Gardening\Models\GardenReview::create([
                         'product_id' => $request->get('product_id'),
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'rating' => $request->get('rating'),
                         'comment' => $request->get('comment'),
                         'correlation_id' => $correlationId,
                         'tenant_id' => filament()->getTenant()->id,
                     ]);
                 });
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'message' => 'Review submitted for bio-botanical audit.',
                     'cid' => $correlationId
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['error' => 'Review creation failed.'], 500);
+                return $this->response->json(['error' => 'Review creation failed.'], 500);
             }
         }
 }

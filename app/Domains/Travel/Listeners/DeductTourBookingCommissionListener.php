@@ -2,24 +2,21 @@
 
 namespace App\Domains\Travel\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductTourBookingCommissionListener extends Model
+use Psr\Log\LoggerInterface;
+final class DeductTourBookingCommissionListener
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
-        public function __construct(
-            public string $queue = 'travel',
-        ) {}
+        public function __construct(public string $queue = 'travel',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function handle(TourBooked $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->db->transaction(function () use ($event) {
                     $wallet = $event->booking->agency->owner->wallet;
 
                     if ($wallet === null) {
@@ -43,7 +40,7 @@ final class DeductTourBookingCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Travel commission deducted', [
+                    $this->logger->info('Travel commission deducted', [
                         'booking_id' => $event->booking->id,
                         'booking_number' => $event->booking->booking_number,
                         'agency_id' => $event->booking->agency_id,
@@ -54,7 +51,7 @@ final class DeductTourBookingCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Travel commission deduction failed', [
+                $this->logger->error('Travel commission deduction failed', [
                     'booking_id' => $event->booking->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

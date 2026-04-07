@@ -1,22 +1,36 @@
 <?php declare(strict_types=1);
 
+/**
+ * SendChannelArchivedNotification — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/sendchannelarchivednotification
+ */
+
+
 namespace App\Domains\Education\Channels\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class SendChannelArchivedNotification extends Model
+
+use Psr\Log\LoggerInterface;
+final class SendChannelArchivedNotification
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         public string $queue = 'notifications';
 
         public function __construct(
-            private readonly NotificationService $notificationService,
-        ) {}
+            private readonly NotificationService $notificationService, private readonly LoggerInterface $logger) {}
 
         public function handle(ChannelArchived $event): void
         {
@@ -31,13 +45,13 @@ final class SendChannelArchivedNotification extends Model
                         'channel_id'     => $channel->id,
                         'channel_slug'   => $channel->slug,
                         'reason'         => $event->reason,
-                        'archived_at'    => now()->toIso8601String(),
+                        'archived_at'    => Carbon::now()->toIso8601String(),
                         'correlation_id' => $event->correlationId,
                     ],
                     tenantId: $channel->tenant_id,
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to send channel archived notification', [
+                $this->logger->error('Failed to send channel archived notification', [
                     'correlation_id' => $event->correlationId,
                     'channel_id'     => $channel->id,
                     'error'          => $e->getMessage(),
@@ -45,4 +59,15 @@ final class SendChannelArchivedNotification extends Model
                 ]);
             }
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

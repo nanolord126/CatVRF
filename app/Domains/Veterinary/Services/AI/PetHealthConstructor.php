@@ -2,22 +2,61 @@
 
 namespace App\Domains\Veterinary\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetHealthConstructor extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use App\Services\FraudControlService;
+use App\Services\RecommendationService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+
+final readonly class PetHealthConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param RecommendationService $recommendation
          * @param string $correlationId
          */
+        private readonly string $correlationId;
+
         public function __construct(
-            private RecommendationService $recommendation,
-            private string $correlationId = ''
-        ) {
+            private readonly RecommendationService $recommendation,
+            private readonly FraudControlService $fraud,
+            private readonly \Illuminate\Contracts\Cache\Repository $cache,
+string $correlationId = '', private readonly LoggerInterface $logger, private readonly Guard $guard
+        ) {}
+
+        /**
+         * Каноничный вход для всех вертикалей.
+         *
+         * @param array{pet_id:int,photo?:UploadedFile,symptoms?:string,context?:array} $payload
+         */
+        public function analyzeAndRecommend(array $payload, int $userId): array
+        {
+            $petId = (int) ($payload['pet_id'] ?? 0);
+            if ($petId <= 0) {
+                throw new \InvalidArgumentException('Поле pet_id обязательно');
+            }
+
+            $correlationId = (string) Str::uuid();
+            $this->correlationId = $correlationId;
+
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'veterinary_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
+
+            $photo = $payload['photo'] ?? null;
+            $symptoms = isset($payload['symptoms']) ? (string) $payload['symptoms'] : null;
+            $context = (array) ($payload['context'] ?? []);
+
+            $cacheKey = 'user_ai_designs:veterinary:' . $userId . ':' . md5((string) $petId . $symptoms . json_encode($context));
+
+            return $this->cache->remember($cacheKey, now()->addHour(), function () use ($petId, $photo, $symptoms, $context): array {
+                $result = $this->analyzeAndSuggest($petId, $photo instanceof UploadedFile ? $photo : null, $symptoms, $context);
+                $result['correlation_id'] = $this->correlationId;
+
+                return $result;
+            });
         }
 
         private function getCorrelationId(): string
@@ -37,7 +76,7 @@ final class PetHealthConstructor extends Model
             $correlationId = $this->getCorrelationId();
             $pet = Pet::findOrFail($petId);
 
-            Log::channel('audit')->info('PetHealthConstructor: Starting analysis', [
+            $this->logger->info('PetHealthConstructor: Starting analysis', [
                 'pet_id' => $petId,
                 'pet_uuid' => $pet->uuid,
                 'correlation_id' => $correlationId
@@ -89,7 +128,7 @@ final class PetHealthConstructor extends Model
                 'correlation_id' => $correlationId
             ];
 
-            Log::channel('audit')->info('PetHealthConstructor: Analysis complete', [
+            $this->logger->info('PetHealthConstructor: Analysis complete', [
                 'pet_id' => $petId,
                 'emergency' => $roadmap['emergency_needed'],
                 'correlation_id' => $correlationId

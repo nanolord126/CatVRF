@@ -2,19 +2,36 @@
 
 namespace App\Http\Requests\Referral;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RegisterReferralRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class RegisterReferralRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Referral
+ */
+final class RegisterReferralRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [
@@ -27,6 +44,11 @@ final class RegisterReferralRequest extends Model
             ];
         }
 
+        /**
+         * Handle messages operation.
+         *
+         * @throws \DomainException
+         */
         public function messages(): array
         {
             return [

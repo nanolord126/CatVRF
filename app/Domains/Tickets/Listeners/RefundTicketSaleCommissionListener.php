@@ -2,25 +2,29 @@
 
 namespace App\Domains\Tickets\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RefundTicketSaleCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class RefundTicketSaleCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(TicketSaleRefunded $event): void
         {
             try {
-                Log::channel('audit')->info('Refunding ticket sale commission', [
+                $this->logger->info('Refunding ticket sale commission', [
                     'ticket_sale_id' => $event->ticketSale->id,
                     'commission_amount' => $event->ticketSale->commission_amount,
                     'reason' => $event->reason,
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($event) {
                     $wallet = \App\Models\Wallet::where('tenant_id', $event->ticketSale->tenant_id)
                         ->where('type', 'organizer')
                         ->lockForUpdate()
@@ -29,14 +33,14 @@ final class RefundTicketSaleCommissionListener extends Model
                     $wallet->balance += $event->ticketSale->commission_amount;
                     $wallet->save();
 
-                    Log::channel('audit')->info('Ticket sale commission refunded', [
+                    $this->logger->info('Ticket sale commission refunded', [
                         'wallet_id' => $wallet->id,
                         'new_balance' => $wallet->balance,
                         'correlation_id' => $event->correlationId,
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to refund ticket sale commission', [
+                $this->logger->error('Failed to refund ticket sale commission', [
                     'error' => $e->getMessage(),
                     'ticket_sale_id' => $event->ticketSale->id,
                     'correlation_id' => $event->correlationId,
@@ -44,4 +48,27 @@ final class RefundTicketSaleCommissionListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

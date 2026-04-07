@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class B2BDealResource extends Model
+final class B2BDealResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BDeal::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-briefcase';
@@ -86,32 +83,20 @@ final class B2BDealResource extends Model
                                                 ->body($e->getMessage())
                                                 ->danger()
                                                 ->send();
+                                        }
+                                    }),
+                            ]),
+                        ]),
+                ]);
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListB2BDeal::route('/'),
-                'create' => Pages\\CreateB2BDeal::route('/create'),
-                'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
-                'view' => Pages\\ViewB2BDeal::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListB2BDeal::route('/'),
-                'create' => Pages\\CreateB2BDeal::route('/create'),
-                'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
-                'view' => Pages\\ViewB2BDeal::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListB2BDeal::route('/'),
-                'create' => Pages\\CreateB2BDeal::route('/create'),
-                'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
-                'view' => Pages\\ViewB2BDeal::route('/{record}'),
+                'index' => Pages\ListB2BDeal::route('/'),
+                'create' => Pages\CreateB2BDeal::route('/create'),
+                'edit' => Pages\EditB2BDeal::route('/{record}/edit'),
+                'view' => Pages\ViewB2BDeal::route('/{record}'),
             ];
         }
 }

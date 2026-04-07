@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class VIPBookingResource extends Model
+final class VIPBookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = VIPBooking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -85,22 +82,15 @@ final class VIPBookingResource extends Model
                         ->columnSpanFull(),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListVIPBooking::route('/'),
-                'create' => Pages\\CreateVIPBooking::route('/create'),
-                'edit' => Pages\\EditVIPBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewVIPBooking::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListVIPBooking::route('/'),
-                'create' => Pages\\CreateVIPBooking::route('/create'),
-                'edit' => Pages\\EditVIPBooking::route('/{record}/edit'),
-                'view' => Pages\\ViewVIPBooking::route('/{record}'),
+                'index' => Pages\ListVIPBooking::route('/'),
+                'create' => Pages\CreateVIPBooking::route('/create'),
+                'edit' => Pages\EditVIPBooking::route('/{record}/edit'),
+                'view' => Pages\ViewVIPBooking::route('/{record}'),
             ];
         }
 }

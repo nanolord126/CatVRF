@@ -156,3 +156,5 @@ return new class extends Migration
         Schema::dropIfExists('rental_companies');
     }
 };
+
+

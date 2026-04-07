@@ -2,31 +2,24 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AppointmentService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createAppointment(array $data, string $correlationId = null): PetAppointment
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                return DB::transaction(function () use ($data, $correlationId) {
-                    $this->fraudControl->check([
-                        'type' => 'pet_appointment',
-                        'amount' => $data['price'] ?? 0,
-                        'tenant_id' => tenant()->id,
-                    ]);
+                return $this->db->transaction(function () use ($data, $correlationId) {
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'pet_appointment', amount: 0, correlationId: $correlationId ?? '');
 
                     $appointment = PetAppointment::create([
                         ...$data,
@@ -39,7 +32,7 @@ final class AppointmentService extends Model
 
                     AppointmentBooked::dispatch($appointment, $correlationId);
 
-                    Log::channel('audit')->info('Pet appointment created', [
+                    $this->logger->info('Pet appointment created', [
                         'appointment_id' => $appointment->id,
                         'clinic_id' => $appointment->clinic_id,
                         'vet_id' => $appointment->vet_id,
@@ -52,7 +45,7 @@ final class AppointmentService extends Model
                     return $appointment;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to create pet appointment', [
+                $this->logger->error('Failed to create pet appointment', [
                     'data' => $data,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
@@ -65,11 +58,10 @@ final class AppointmentService extends Model
         public function completeAppointment(PetAppointment $appointment, string $correlationId = null): PetAppointment
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                return DB::transaction(function () use ($appointment, $correlationId) {
+                return $this->db->transaction(function () use ($appointment, $correlationId) {
                     $appointment->update([
                         'status' => 'completed',
                         'completed_at' => now(),
@@ -77,7 +69,7 @@ final class AppointmentService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Pet appointment completed', [
+                    $this->logger->info('Pet appointment completed', [
                         'appointment_id' => $appointment->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -85,7 +77,7 @@ final class AppointmentService extends Model
                     return $appointment;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to complete pet appointment', [
+                $this->logger->error('Failed to complete pet appointment', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
@@ -98,11 +90,10 @@ final class AppointmentService extends Model
         public function cancelAppointment(PetAppointment $appointment, string $correlationId = null): PetAppointment
         {
 
-
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                return DB::transaction(function () use ($appointment, $correlationId) {
+                return $this->db->transaction(function () use ($appointment, $correlationId) {
                     if ($appointment->status === 'completed' || $appointment->status === 'cancelled') {
                         throw new \RuntimeException('Cannot cancel completed or already cancelled appointment');
                     }
@@ -135,7 +126,7 @@ final class AppointmentService extends Model
                         ]);
                     }
 
-                    Log::channel('audit')->info('Pet appointment cancelled', [
+                    $this->logger->info('Pet appointment cancelled', [
                         'appointment_id' => $appointment->id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -143,7 +134,7 @@ final class AppointmentService extends Model
                     return $appointment;
                 });
             } catch (\Throwable $e) {
-                Log::error('Failed to cancel pet appointment', [
+                $this->logger->error('Failed to cancel pet appointment', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),

@@ -2,13 +2,18 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+
+
 
 final readonly class GeoService
 {
     public function __construct(
         private RateLimiterService $rateLimiterService,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
     ) {}
 
     public function getDistance(array $from, array $to, string $correlationId = ''): float
@@ -16,8 +21,8 @@ final readonly class GeoService
         // from и to: ['lat' => ..., 'lon' => ...]
         $cacheKey = "distance:{$from['lat']}:{$from['lon']}:{$to['lat']}:{$to['lon']}";
 
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+        if ($this->cache->has($cacheKey)) {
+            return $this->cache->get($cacheKey);
         }
 
         // Используем формулу Haversine для простого расчета
@@ -28,14 +33,14 @@ final readonly class GeoService
             $to['lon'],
         );
 
-        Cache::put($cacheKey, $distance, 86400); // 1 день
+        $this->cache->put($cacheKey, $distance, 86400); // 1 день
 
         return $distance;
     }
 
     public function getNearbyItems(array $geoPoint, int $radiusKm, string $entityType = 'products'): array
     {
-        $query = DB::table($entityType)
+        $query = $this->db->table($entityType)
             ->selectRaw('*, ST_Distance(geo_point, ?) / 1000 as distance_km', [$geoPoint])
             ->havingRaw('distance_km <= ?', [$radiusKm])
             ->orderBy('distance_km');

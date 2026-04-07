@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
 
+
+use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artwork;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,12 +16,13 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ArtworkResource extends Resource
 {
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+
     protected static ?string $model = Artwork::class;
 
     public static function form(Form $form): Form
@@ -73,7 +76,7 @@ final class ArtworkResource extends Resource
                     Forms\Components\KeyValue::make('meta.aux')->label('Доп. мета')->keyLabel('Поле')->valueLabel('Значение')->columnSpanFull(),
                     Forms\Components\TextInput::make('uuid')->label('UUID')->disabled()->dehydrated(false),
                     Forms\Components\TextInput::make('correlation_id')->label('Correlation ID')->disabled()->dehydrated(false),
-                    Forms\Components\Placeholder::make('audit_hint')->label('Канон 2026')->content('FraudControlService::check() + audit-log + correlation_id обязательны'),
+                    Forms\Components\Placeholder::make('canon_hint')->label('Канон 2026')->content('fraud-check + audit-log + correlation_id обязательны'),
                 ])->columns(2),
         ]);
     }
@@ -124,14 +127,14 @@ final class ArtworkResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (Artwork $record): void {
                         $correlationId = (string) Str::uuid();
-                        DB::transaction(static function () use ($record, $correlationId): void {
+                        $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
                                 'is_visible' => !$record->is_visible,
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        Log::channel('audit')->info('Artwork visibility toggled from Filament', [
+                        $this->logger->info('Artwork visibility toggled from Filament', [
                             'artwork_id' => $record->id,
                             'new_state' => $record->is_visible,
                             'correlation_id' => $record->correlation_id ?: $correlationId,

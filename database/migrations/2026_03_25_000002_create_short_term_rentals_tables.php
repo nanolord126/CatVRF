@@ -165,3 +165,5 @@ return new class extends Migration
         Schema::dropIfExists('str_properties');
     }
 };
+
+

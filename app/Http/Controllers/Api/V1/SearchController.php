@@ -7,9 +7,11 @@ use App\Services\Search\SearchService;
 use App\Services\Security\RateLimiterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 /**
  * @OA\Tag(
@@ -23,6 +25,8 @@ final class SearchController extends BaseApiV1Controller
         private readonly SearchService $searchService,
         private readonly ElasticsearchService $elasticsearchService,
         private readonly RateLimiterService $rateLimiterService,
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
     ) {}
     /**
      * Global search across all verticals
@@ -153,13 +157,13 @@ final class SearchController extends BaseApiV1Controller
                 correlationId: $correlationId,
             );
             if (!$rateLimitPassed) {
-                Log::channel('fraud_alert')->warning('Search rate limit exceeded', [
+                $this->logger->channel('fraud_alert')->warning('Search rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'query' => $validated['q'],
                     'is_heavy' => $isHeavySearch,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Лимит поисков превышен. Попробуйте позже.',
                     'correlation_id' => $correlationId,
@@ -180,7 +184,7 @@ final class SearchController extends BaseApiV1Controller
                 page: $validated['page'] ?? 1,
                 perPage: $validated['per_page'] ?? 20,
             );
-            Log::channel('audit')->info('Search executed', [
+            $this->logger->channel('audit')->info('Search executed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -188,7 +192,7 @@ final class SearchController extends BaseApiV1Controller
                 'results_count' => $results['total'],
                 'vertical' => $validated['vertical'],
             ]);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $results,
                 'correlation_id' => $correlationId,
@@ -200,7 +204,7 @@ final class SearchController extends BaseApiV1Controller
                 errors: $e->errors(),
             );
         } catch (\Throwable $e) {
-            Log::channel('error')->error('Search error', [
+            $this->logger->channel('error')->error('Search error', [
                 'correlation_id' => $correlationId,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -268,13 +272,13 @@ final class SearchController extends BaseApiV1Controller
                 limit: $validated['limit'] ?? 5,
                 tenantId: (int) tenant('id'),
             );
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $suggestions,
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Throwable $e) {
-            Log::channel('error')->error('Search suggestions error', [
+            $this->logger->channel('error')->error('Search suggestions error', [
                 'correlation_id' => $correlationId,
                 'exception' => $e->getMessage(),
             ]);

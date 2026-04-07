@@ -2,6 +2,8 @@
 
 namespace App\Services\Payment;
 
+
+use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
 use App\Services\Fraud\FraudControlService;
 use App\Services\Payment\Gateways\SberGateway;
@@ -10,12 +12,13 @@ use App\Services\Payment\Gateways\TochkaGateway;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Auth\Guard;
 
 /**
  * PaymentGatewayService
  *
  * Обрабатывает инициацию, захват и возврат платежей через различные платёжные системы
- * (Tinkoff, Tochka, Sberbank). Все операции атомарны (DB::transaction), отслеживаются
+ * (Tinkoff, Tochka, Sberbank). Все операции атомарны ($this->db->transaction), отслеживаются
  * по correlation_id и защищены от мошенничества (FraudControlService::check).
  *
  * @final
@@ -23,12 +26,15 @@ use Illuminate\Support\Str;
 final class PaymentGatewayService
 {
     public function __construct(
+        private readonly Request $request,
         private readonly TinkoffGateway $tinkoff,
         private readonly TochkaGateway $tochka,
         private readonly SberGateway $sber,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -48,15 +54,15 @@ final class PaymentGatewayService
             'operation_type' => 'payment_init',
             'amount' => $data['amount'],
             'provider' => $data['provider'] ?? 'tinkoff',
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
+            'ip_address' => $this->request->ip(),
+            'user_agent' => $this->request->userAgent(),
             'correlation_id' => $correlationId,
         ]);
 
         try {
-            return DB::transaction(function () use ($data, $tenantId, $correlationId) {
+            return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                Log::channel('audit')->info('Payment initialization started', [
+                $this->logger->channel('audit')->info('Payment initialization started', [
                     'correlation_id' => $correlationId,
                     'amount' => $data['amount'],
                     'provider' => $data['provider'] ?? 'tinkoff',
@@ -74,10 +80,10 @@ final class PaymentGatewayService
                     'currency' => $data['currency'] ?? 'RUB',
                     'status' => 'pending',
                     'correlation_id' => $correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                 ]);
 
-                Log::channel('audit')->info('Payment transaction created', [
+                $this->logger->channel('audit')->info('Payment transaction created', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'idempotency_key' => $idempotencyKey,
@@ -86,7 +92,7 @@ final class PaymentGatewayService
                 return $transaction;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Payment initialization failed', [
+            $this->logger->channel('audit')->error('Payment initialization failed', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
                 'error' => $e->getMessage(),
@@ -113,14 +119,14 @@ final class PaymentGatewayService
             'operation_type' => 'payment_capture',
             'amount' => $transaction->amount,
             'user_id' => $transaction->user_id,
-            'ip_address' => request()->ip(),
+            'ip_address' => $this->request->ip(),
             'correlation_id' => $correlationId,
         ]);
 
         try {
-            return DB::transaction(function () use ($transaction, $correlationId) {
+            return $this->db->transaction(function () use ($transaction, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                Log::channel('audit')->info('Payment capture started', [
+                $this->logger->channel('audit')->info('Payment capture started', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'amount' => $transaction->amount,
@@ -130,7 +136,6 @@ final class PaymentGatewayService
 
                 // 3. ВЫПОЛНИТЬ ЗАХВАТ ЧЕРЕЗ ШЛЮЗ
                 $result = match ($transaction->provider) {
-                    'tinkoff' => $this->tinkoff->capture($transaction, $correlationId),
                     'tochka' => $this->tochka->capture($transaction, $correlationId),
                     'sber' => $this->sber->capture($transaction, $correlationId),
                     default => throw new \InvalidArgumentException("Unknown payment provider: {$transaction->provider}"),
@@ -144,7 +149,7 @@ final class PaymentGatewayService
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Payment captured successfully', [
+                    $this->logger->channel('audit')->info('Payment captured successfully', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $transaction->id,
                         'gateway' => $transaction->provider,
@@ -154,7 +159,7 @@ final class PaymentGatewayService
                 return $result;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Payment capture failed', [
+            $this->logger->channel('audit')->error('Payment capture failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -182,14 +187,14 @@ final class PaymentGatewayService
             'operation_type' => 'payment_refund',
             'amount' => $amount,
             'user_id' => $transaction->user_id,
-            'ip_address' => request()->ip(),
+            'ip_address' => $this->request->ip(),
             'correlation_id' => $correlationId,
         ]);
 
         try {
-            return DB::transaction(function () use ($transaction, $amount, $correlationId) {
+            return $this->db->transaction(function () use ($transaction, $amount, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                Log::channel('audit')->info('Payment refund initiated', [
+                $this->logger->channel('audit')->info('Payment refund initiated', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refund_amount' => $amount,
@@ -200,7 +205,6 @@ final class PaymentGatewayService
 
                 // 3. ВЫПОЛНИТЬ ВОЗВРАТ ЧЕРЕЗ ШЛЮЗ
                 $result = match ($transaction->provider) {
-                    'tinkoff' => $this->tinkoff->refund($transaction, $amount, $correlationId),
                     'tochka' => $this->tochka->refund($transaction, $amount, $correlationId),
                     'sber' => $this->sber->refund($transaction, $amount, $correlationId),
                     default => throw new \InvalidArgumentException("Unknown payment provider: {$transaction->provider}"),
@@ -215,7 +219,7 @@ final class PaymentGatewayService
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Payment refunded successfully', [
+                    $this->logger->channel('audit')->info('Payment refunded successfully', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $transaction->id,
                         'refunded_amount' => $amount,
@@ -226,7 +230,7 @@ final class PaymentGatewayService
                 return $result;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Payment refund failed', [
+            $this->logger->channel('audit')->error('Payment refund failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'refund_amount' => $amount,

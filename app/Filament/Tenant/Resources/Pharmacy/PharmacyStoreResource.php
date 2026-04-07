@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Pharmacy;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PharmacyStoreResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor, Components\FileUpload};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -20,6 +15,10 @@ final class PharmacyStoreResource extends Model
 
     final class PharmacyStoreResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = PharmacyStore::class;
         protected static ?string $navigationIcon = 'heroicon-m-cube';
         protected static ?string $navigationGroup = 'Pharmacy';
@@ -294,9 +293,9 @@ final class PharmacyStoreResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Pharmacy verified', [
+                            $this->logger->info('Pharmacy verified', [
                                 'pharmacy_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -309,9 +308,9 @@ final class PharmacyStoreResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Pharmacy featured', [
+                            $this->logger->info('Pharmacy featured', [
                                 'pharmacy_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -329,9 +328,9 @@ final class PharmacyStoreResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Pharmacy bulk activated', [
+                                $this->logger->info('Pharmacy bulk activated', [
                                     'pharmacy_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -346,9 +345,9 @@ final class PharmacyStoreResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Pharmacy bulk verified', [
+                                $this->logger->info('Pharmacy bulk verified', [
                                     'pharmacy_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

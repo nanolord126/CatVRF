@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 final class HeatmapSnapshot extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'heatmap_snapshots';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'heatmap_type',
             'vertical',
@@ -30,6 +31,22 @@ final class HeatmapSnapshot extends Model
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         public function tenant(): BelongsTo
         {

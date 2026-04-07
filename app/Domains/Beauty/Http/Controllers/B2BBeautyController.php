@@ -1,15 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BBeautyController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BBeautyController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private \Illuminate\Database\DatabaseManager $db, private LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
+
     public function storefronts(): JsonResponse
     	{
     		try {
@@ -17,14 +22,14 @@ final class B2BBeautyController extends Model
     				->where('is_verified', true)
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $storefronts,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Beauty B2B: Storefronts list failed', ['error' => $e->getMessage()]);
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Beauty B2B: Storefronts list failed', ['error' => $e->getMessage()]);
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
@@ -43,10 +48,10 @@ final class B2BBeautyController extends Model
 
     			$correlationId = Str::uuid()->toString();
 
-    			DB::transaction(function () use ($validated, $correlationId) {
+    			$this->db->transaction(function () use ($validated, $correlationId) {
     				$storefront = B2BBeautyStorefront::create([
     					'uuid' => Str::uuid(),
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'company_name' => $validated['company_name'],
     					'inn' => $validated['inn'],
     					'description' => $validated['description'],
@@ -55,17 +60,17 @@ final class B2BBeautyController extends Model
     					'correlation_id' => $correlationId,
     				]);
 
-    				Log::channel('audit')->info('Beauty B2B: Storefront created', [
+    				$this->logger->info('Beauty B2B: Storefront created', [
     					'storefront_id' => $storefront->id,
     					'inn' => $validated['inn'],
     					'correlation_id' => $correlationId,
     				]);
     			});
 
-    			return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Beauty B2B: Storefront creation failed', ['error' => $e->getMessage()]);
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Beauty B2B: Storefront creation failed', ['error' => $e->getMessage()]);
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
@@ -82,10 +87,10 @@ final class B2BBeautyController extends Model
 
     			$correlationId = Str::uuid()->toString();
 
-    			DB::transaction(function () use ($validated, $correlationId) {
+    			$this->db->transaction(function () use ($validated, $correlationId, $request) {
     				$order = B2BBeautyOrder::create([
     					'uuid' => Str::uuid(),
-    					'tenant_id' => auth()->user()->tenant_id,
+    					'tenant_id' => $request->user()->tenant_id,
     					'b2b_beauty_storefront_id' => $validated['b2b_beauty_storefront_id'],
     					'order_number' => 'B2B-' . Str::random(8),
     					'company_contact_person' => $validated['company_contact_person'],
@@ -97,29 +102,29 @@ final class B2BBeautyController extends Model
     					'correlation_id' => $correlationId,
     				]);
 
-    				Log::channel('audit')->info('Beauty B2B: Order created', [
+    				$this->logger->info('Beauty B2B: Order created', [
     					'order_id' => $order->id,
     					'amount' => $validated['total_amount'],
     					'correlation_id' => $correlationId,
     				]);
     			});
 
-    			return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
-    		} catch (\Exception $e) {
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
-    	public function myB2BOrders(): JsonResponse
+    	public function myB2BOrders(\Illuminate\Http\Request $request): JsonResponse
     	{
     		try {
-    			$orders = B2BBeautyOrder::where('tenant_id', auth()->user()->tenant_id)
+    			$orders = B2BBeautyOrder::where('tenant_id', $request->user()->tenant_id)
     				->latest()
     				->paginate(20);
 
-    			return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
-    		} catch (\Exception $e) {
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
@@ -129,14 +134,14 @@ final class B2BBeautyController extends Model
     			$order = B2BBeautyOrder::findOrFail($id);
     			$this->authorize('approveOrder', $order);
 
-    			DB::transaction(function () use ($order) {
+    			$this->db->transaction(function () use ($order) {
     				$order->update(['status' => 'approved']);
-    				Log::channel('audit')->info('Beauty B2B: Order approved', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
+    				$this->logger->info('Beauty B2B: Order approved', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
     			});
 
-    			return response()->json(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => Str::uuid()]);
-    		} catch (\Exception $e) {
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => Str::uuid()]);
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
@@ -148,14 +153,14 @@ final class B2BBeautyController extends Model
 
     			$reason = $request->get('reason', 'Причина не указана');
 
-    			DB::transaction(function () use ($order, $reason) {
+    			$this->db->transaction(function () use ($order, $reason) {
     				$order->update(['status' => 'rejected', 'notes' => $reason]);
-    				Log::channel('audit')->info('Beauty B2B: Order rejected', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
+    				$this->logger->info('Beauty B2B: Order rejected', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
     			});
 
-    			return response()->json(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => Str::uuid()]);
-    		} catch (\Exception $e) {
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => Str::uuid()]);
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 
@@ -164,15 +169,15 @@ final class B2BBeautyController extends Model
     		try {
     			$this->authorize('verifyInn', B2BBeautyStorefront::class);
 
-    			DB::transaction(function () use ($id) {
+    			$this->db->transaction(function () use ($id) {
     				$storefront = B2BBeautyStorefront::findOrFail($id);
     				$storefront->update(['is_verified' => true]);
-    				Log::channel('audit')->info('Beauty B2B: INN verified', ['storefront_id' => $id, 'inn' => $storefront->inn]);
+    				$this->logger->info('Beauty B2B: INN verified', ['storefront_id' => $id, 'inn' => $storefront->inn]);
     			});
 
-    			return response()->json(['success' => true, 'message' => 'ИНН верифицирован', 'correlation_id' => Str::uuid()]);
-    		} catch (\Exception $e) {
-    			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
+    			return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'ИНН верифицирован', 'correlation_id' => Str::uuid()]);
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
     		}
     	}
 }

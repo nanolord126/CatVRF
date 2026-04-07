@@ -2,40 +2,31 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TransportationService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TransportationService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function bookTransportation(
             TravelTransportation $transportation,
             int $seatsRequired = 1,
-            string $correlationId = null,
-        ): TravelTransportation {
-
+            string $correlationId = null
+    ): TravelTransportation {
 
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use (
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use (
                     $transportation,
                     $seatsRequired,
-                    $correlationId,
-                ) {
+                    $correlationId
+    ) {
                     $transportation->lockForUpdate();
 
                     if ($transportation->available_count < $seatsRequired) {
@@ -44,7 +35,7 @@ final class TransportationService extends Model
 
                     $transportation->decrement('available_count', $seatsRequired);
 
-                    Log::channel('audit')->info('Transportation booked', [
+                    $this->logger->info('Transportation booked', [
                         'transportation_id' => $transportation->id,
                         'type' => $transportation->type,
                         'seats_booked' => $seatsRequired,
@@ -59,7 +50,7 @@ final class TransportationService extends Model
                     return $transportation->refresh();
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Transportation booking failed', [
+                $this->logger->error('Transportation booking failed', [
                     'transportation_id' => $transportation->id,
                     'seats_required' => $seatsRequired,
                     'error' => $e->getMessage(),
@@ -74,26 +65,18 @@ final class TransportationService extends Model
         public function releaseTransportation(
             TravelTransportation $transportation,
             int $seatsToRelease = 1,
-            string $correlationId = null,
-        ): TravelTransportation {
-
+            string $correlationId = null
+    ): TravelTransportation {
 
             $correlationId ??= $transportation->correlation_id ?? Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use (
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use (
                     $transportation,
                     $seatsToRelease,
-                    $correlationId,
-                ) {
+                    $correlationId
+    ) {
                     $transportation->lockForUpdate();
 
                     $newAvailable = $transportation->available_count + $seatsToRelease;
@@ -104,7 +87,7 @@ final class TransportationService extends Model
 
                     $transportation->increment('available_count', $seatsToRelease);
 
-                    Log::channel('audit')->info('Transportation spaces released', [
+                    $this->logger->info('Transportation spaces released', [
                         'transportation_id' => $transportation->id,
                         'type' => $transportation->type,
                         'spaces_released' => $seatsToRelease,
@@ -116,7 +99,7 @@ final class TransportationService extends Model
                     return $transportation->refresh();
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Transportation space release failed', [
+                $this->logger->error('Transportation space release failed', [
                     'transportation_id' => $transportation->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

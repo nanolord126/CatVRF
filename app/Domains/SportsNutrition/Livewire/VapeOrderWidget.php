@@ -2,18 +2,23 @@
 
 namespace App\Domains\SportsNutrition\Livewire;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeOrderWidget extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Livewire\Component;
+use App\Services\FraudControlService;
+
+final class VapeOrderWidget extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public int $amountKopecks = 250000; // 2500 руб (POD-система + 2 жижи)
-        public bool $isAgeVerified = false;
-        public string $correlationId;
-        public array $items = [];
+
+    private int $amountKopecks = 250000; // 2500 руб (POD-система + 2 жижи)
+        private bool $isAgeVerified = false;
+        private string $correlationId;
+        private array $items = [];
 
         /**
          * Монтирование компонента.
@@ -21,7 +26,7 @@ final class VapeOrderWidget extends Model
         public function mount(VapeAgeVerificationService $ageVerifier): void
         {
             $this->correlationId = (string) Str::uuid();
-            $this->isAgeVerified = $ageVerifier->hasAValidVerification(auth()->id());
+            $this->isAgeVerified = $ageVerifier->hasAValidVerification($this->guard->id());
 
             // Имитируем корзину (2026: 1 продавец = 1 корзина)
             $this->items[] = [
@@ -46,16 +51,17 @@ final class VapeOrderWidget extends Model
          */
         public function submitOrder(VapeOrderService $orderService): void
         {
-            Log::channel('audit')->info('Vape order widget: submit', [
-                'user_id' => auth()->id(),
+            $this->logger->info('Vape order widget: submit', [
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $this->correlationId,
             ]);
 
             try {
-                DB::transaction(function () use ($orderService) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($orderService) {
 
                     $orderService->createOrder(
-                        userId: auth()->id(),
+                        userId: $this->guard->id(),
                         params: [
                             'amount_kopecks' => $this->amountKopecks,
                             'items' => $this->items,
@@ -71,7 +77,7 @@ final class VapeOrderWidget extends Model
 
             } catch (\Throwable $e) {
 
-                Log::channel('audit')->error('Vape order widget submit failed', [
+                $this->logger->error('Vape order widget submit failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);

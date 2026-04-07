@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\RealEstate;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class RealEstateResource extends Model
+final class RealEstateResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Property::class;
         protected static ?string $navigationIcon = 'heroicon-o-home';
         protected static ?string $navigationGroup = 'Вертикали';

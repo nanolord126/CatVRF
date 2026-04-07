@@ -4,13 +4,13 @@ namespace Modules\Hotels\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Hotel extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
     
         protected $table = 'hotels';
     
@@ -57,9 +57,9 @@ final class Hotel extends Model
         /**
          * Статусы отеля.
          */
-        public const string STATUS_ACTIVE = 'active';
-        public const string STATUS_INACTIVE = 'inactive';
-        public const string STATUS_MAINTENANCE = 'maintenance';
+        public const STATUS_ACTIVE = 'active';
+        public const STATUS_INACTIVE = 'inactive';
+        public const STATUS_MAINTENANCE = 'maintenance';
     
         /**
          * Global scope для tenant scoping.

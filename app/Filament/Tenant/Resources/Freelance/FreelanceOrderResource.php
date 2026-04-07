@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Freelance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FreelanceOrderResource extends Model
+final class FreelanceOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FreelanceOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-document-currency-rupee';
@@ -138,7 +135,6 @@ final class FreelanceOrderResource extends Model
                         ->label('Статус')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'pending' => 'gray',
                             'escrow_hold' => 'info',
                             'in_progress' => 'warning',
                             'completed' => 'success',

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CollectibleStoreResource extends Model
+final class CollectibleStoreResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CollectibleStore::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
@@ -108,31 +105,15 @@ final class CollectibleStoreResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCollectibleStore::route('/'),
-                'create' => Pages\\CreateCollectibleStore::route('/create'),
-                'edit' => Pages\\EditCollectibleStore::route('/{record}/edit'),
-                'view' => Pages\\ViewCollectibleStore::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListCollectibleStore::route('/'),
-                'create' => Pages\\CreateCollectibleStore::route('/create'),
-                'edit' => Pages\\EditCollectibleStore::route('/{record}/edit'),
-                'view' => Pages\\ViewCollectibleStore::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCollectibleStore::route('/'),
-                'create' => Pages\\CreateCollectibleStore::route('/create'),
-                'edit' => Pages\\EditCollectibleStore::route('/{record}/edit'),
-                'view' => Pages\\ViewCollectibleStore::route('/{record}'),
+                'index' => Pages\ListCollectibleStore::route('/'),
+                'create' => Pages\CreateCollectibleStore::route('/create'),
+                'edit' => Pages\EditCollectibleStore::route('/{record}/edit'),
+                'view' => Pages\ViewCollectibleStore::route('/{record}'),
             ];
         }
 }

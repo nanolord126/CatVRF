@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ConfectioneryResource extends Model
+final class ConfectioneryResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ConfectioneryItem::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cake';
@@ -52,31 +49,15 @@ final class ConfectioneryResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListConfectionery::route('/'),
-                'create' => Pages\\CreateConfectionery::route('/create'),
-                'edit' => Pages\\EditConfectionery::route('/{record}/edit'),
-                'view' => Pages\\ViewConfectionery::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListConfectionery::route('/'),
-                'create' => Pages\\CreateConfectionery::route('/create'),
-                'edit' => Pages\\EditConfectionery::route('/{record}/edit'),
-                'view' => Pages\\ViewConfectionery::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListConfectionery::route('/'),
-                'create' => Pages\\CreateConfectionery::route('/create'),
-                'edit' => Pages\\EditConfectionery::route('/{record}/edit'),
-                'view' => Pages\\ViewConfectionery::route('/{record}'),
+                'index' => Pages\ListConfectionery::route('/'),
+                'create' => Pages\CreateConfectionery::route('/create'),
+                'edit' => Pages\EditConfectionery::route('/{record}/edit'),
+                'view' => Pages\ViewConfectionery::route('/{record}'),
             ];
         }
 }

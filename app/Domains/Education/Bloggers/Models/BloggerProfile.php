@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class BloggerProfile extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'blogger_profiles';
@@ -65,7 +64,7 @@ final class BloggerProfile extends Model
                     static::addGlobalScope('businessGroup', function ($query) {
                         $query->where(function ($q) {
                             $q->whereNull('business_group_id')
-                                ->orWhere('business_group_id', filament()->getTenant()->active_business_group?->id);
+                                ->orWhere('business_group_id', tenant()->active_business_group?->id);
                         });
                     });
                 }

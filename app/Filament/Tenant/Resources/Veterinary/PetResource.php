@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Veterinary;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class PetResource extends Model
+final class PetResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Pet::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -201,7 +198,6 @@ final class PetResource extends Model
                     TextColumn::make('type')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'cat' => 'primary',
                             'dog' => 'success',
                             'exotic' => 'warning',
                             default => 'gray',

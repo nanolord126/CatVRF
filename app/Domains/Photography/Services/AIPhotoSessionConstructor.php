@@ -2,14 +2,14 @@
 
 namespace App\Domains\Photography\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIPhotoSessionConstructor extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIPhotoSessionConstructor
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструирование идеальной сессии
          */
@@ -17,7 +17,7 @@ final class AIPhotoSessionConstructor extends Model
         {
             $correlationId ??= (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Photography Constructor started', [
+            $this->logger->info('AI Photography Constructor started', [
                 'preferences' => $preferences,
                 'correlation_id' => $correlationId
             ]);
@@ -54,7 +54,7 @@ final class AIPhotoSessionConstructor extends Model
                 'correlation_id' => $correlationId
             ];
 
-            Log::channel('audit')->info('AI Photography Constructor finished', [
+            $this->logger->info('AI Photography Constructor finished', [
                 'result' => $result,
                 'correlation_id' => $correlationId
             ]);

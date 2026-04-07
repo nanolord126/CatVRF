@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class LiveSearchService extends Model
+final readonly class LiveSearchService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const SEARCH_CACHE_TTL = 300; // 5 minutes
         private const MAX_RESULTS = 50;
 
@@ -26,7 +28,7 @@ final class LiveSearchService extends Model
 
             try {
                 $cacheKey = "search:docs:{$tenantId}:" . md5($query . json_encode($filters));
-                $cached = Cache::get($cacheKey);
+                $cached = $this->cache->get($cacheKey);
 
                 if ($cached !== null) {
                     return collect($cached);
@@ -39,9 +41,9 @@ final class LiveSearchService extends Model
                     $results = $results->take(self::MAX_RESULTS);
                 }
 
-                Cache::put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
+                $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
 
-                Log::channel('audit')->debug('Document search performed', [
+                $this->logger->channel('audit')->debug('Document search performed', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'query' => $query,
@@ -50,7 +52,7 @@ final class LiveSearchService extends Model
 
                 return $results;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Document search failed', [
+                $this->logger->channel('audit')->error('Document search failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
@@ -71,7 +73,7 @@ final class LiveSearchService extends Model
 
             try {
                 $cacheKey = "search:users:{$tenantId}:" . md5($query);
-                $cached = Cache::get($cacheKey);
+                $cached = $this->cache->get($cacheKey);
 
                 if ($cached !== null) {
                     return collect($cached);
@@ -84,11 +86,11 @@ final class LiveSearchService extends Model
                     $results = $results->take(self::MAX_RESULTS);
                 }
 
-                Cache::put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
+                $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
 
                 return $results;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('User search failed', [
+                $this->logger->channel('audit')->error('User search failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
@@ -126,7 +128,7 @@ final class LiveSearchService extends Model
         {
             $cacheKey = "search:popular:{$tenantId}";
 
-            return Cache::get($cacheKey, []);
+            return $this->cache->get($cacheKey, []);
         }
 
         /**
@@ -143,7 +145,7 @@ final class LiveSearchService extends Model
             }
 
             $cacheKey = "search:history:{$tenantId}:{$userId}";
-            $history = Cache::get($cacheKey, []);
+            $history = $this->cache->get($cacheKey, []);
 
             $history[] = [
                 'query' => $query,
@@ -156,7 +158,7 @@ final class LiveSearchService extends Model
                 $history = array_slice($history, -50);
             }
 
-            Cache::put($cacheKey, $history, 2592000); // 30 дней
+            $this->cache->put($cacheKey, $history, 2592000); // 30 дней
         }
 
         /**
@@ -166,7 +168,7 @@ final class LiveSearchService extends Model
         {
             $cacheKey = "search:history:{$tenantId}:{$userId}";
 
-            return Cache::get($cacheKey, []);
+            return $this->cache->get($cacheKey, []);
         }
 
         /**
@@ -175,7 +177,7 @@ final class LiveSearchService extends Model
         public function clearSearchHistory(int $userId, int $tenantId): bool
         {
             $cacheKey = "search:history:{$tenantId}:{$userId}";
-            Cache::forget($cacheKey);
+            $this->cache->forget($cacheKey);
 
             return true;
         }

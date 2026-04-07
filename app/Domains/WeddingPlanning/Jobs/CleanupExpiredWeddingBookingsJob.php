@@ -2,26 +2,23 @@
 
 namespace App\Domains\WeddingPlanning\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CleanupExpiredWeddingBookingsJob extends Model
+use Psr\Log\LoggerInterface;
+final class CleanupExpiredWeddingBookingsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
 
-        public function __construct(?string $correlationId = null)
+        public function __construct(?string $correlationId = null, private readonly LoggerInterface $logger)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
 
         public function handle(): void
         {
-            Log::channel('audit')->info('Cleaning up expired wedding bookings [Job Start]', [
+            $this->logger->info('Cleaning up expired wedding bookings [Job Start]', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -47,17 +44,17 @@ final class CleanupExpiredWeddingBookingsJob extends Model
                             'correlation_id' => $this->correlationId,
                         ]);
 
-                    Log::channel('audit')->info("Expired wedding bookings cleaned up", [
+                    $this->logger->info("Expired wedding bookings cleaned up", [
                         'count' => $expiredBookingsCount,
                         'correlation_id' => $this->correlationId,
                     ]);
                 } else {
-                    Log::channel('audit')->info("No expired wedding bookings found", [
+                    $this->logger->info("No expired wedding bookings found", [
                         'correlation_id' => $this->correlationId,
                     ]);
                 }
             } catch (\Throwable $e) {
-                Log::channel('audit')->error("CleanupExpiredWeddingBookingsJob Error", [
+                $this->logger->error("CleanupExpiredWeddingBookingsJob Error", [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $this->correlationId,

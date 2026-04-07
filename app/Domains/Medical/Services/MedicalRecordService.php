@@ -2,14 +2,16 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalRecordService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MedicalRecordService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Создание новой записи (диагноз, рецепт, анализы).
          */
@@ -18,7 +20,9 @@ final class MedicalRecordService extends Model
             $correlationId = $correlationId ?? (string)Str::uuid();
             $appointment = Appointment::findOrFail($data['appointment_id']);
 
-            return DB::transaction(function () use ($data, $appointment, $correlationId) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+            return $this->db->transaction(function () use ($data, $appointment, $correlationId) {
 
                 $record = MedicalRecord::create([
                     'uuid' => (string)Str::uuid(),
@@ -35,14 +39,14 @@ final class MedicalRecordService extends Model
                     'correlation_id' => $correlationId,
                     'metadata' => array_merge($data['metadata'] ?? [], [
                         'source' => 'doctor_interface',
-                        'auth_user_id' => auth()->id()
+                        'auth_user_id' => $this->auth->id()
                     ])
                 ]);
 
                 // Логируем доступ к созданной записи сразу (автор тоже логируется)
-                $record->logAccess((int)auth()->id(), 'create');
+                $record->logAccess((int)$this->auth->id(), 'create');
 
-                Log::channel('audit')->info('Medical record created', [
+                $this->logger->info('Medical record created', [
                     'record_id' => $record->id,
                     'record_type' => $record->record_type,
                     'appointment_id' => $appointment->id,
@@ -64,7 +68,7 @@ final class MedicalRecordService extends Model
             // КРИТИЧНО: Лог обращения к медкарте
             $record->logAccess($userId, 'view');
 
-            Log::channel('audit')->info('Medical record accessed (view)', [
+            $this->logger->info('Medical record accessed (view)', [
                 'record_id' => $record->id,
                 'user_id' => $userId,
                 'correlation_id' => $record->correlation_id
@@ -102,13 +106,13 @@ final class MedicalRecordService extends Model
         {
             $record = MedicalRecord::findOrFail($recordId);
 
-            DB::transaction(function () use ($record, $isConfidential) {
+            $this->db->transaction(function () use ($record, $isConfidential) {
                 $record->update([
                     'is_confidential' => $isConfidential,
                     'correlation_id' => $record->correlation_id ?? (string)Str::uuid()
                 ]);
 
-                $record->logAccess((int)auth()->id(), 'confidentiality_update');
+                $record->logAccess((int)$this->auth->id(), 'confidentiality_update');
             });
         }
 }

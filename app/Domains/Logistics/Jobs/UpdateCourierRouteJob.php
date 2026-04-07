@@ -2,14 +2,11 @@
 
 namespace App\Domains\Logistics\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UpdateCourierRouteJob extends Model
+use Psr\Log\LoggerInterface;
+final class UpdateCourierRouteJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -17,12 +14,12 @@ final class UpdateCourierRouteJob extends Model
 
         public function __construct(
             private Courier $courier,
-            private string $correlationId
+            private string $correlationId, private readonly LoggerInterface $logger
         ) {}
 
         public function handle(RouteOptimizationService $optimizationService): void
         {
-            Log::channel('audit')->info('Updating courier route async', [
+            $this->logger->info('Updating courier route async', [
                 'courier_id' => $this->courier->id,
                 'correlation_id' => $this->correlationId
             ]);
@@ -42,7 +39,7 @@ final class UpdateCourierRouteJob extends Model
                 $optimizationService->optimizeCourierRoute($this->courier, $orderIds);
 
             } catch (\Throwable $e) {
-                Log::error('Route update job failed', [
+                $this->logger->error('Route update job failed', [
                     'courier_id' => $this->courier->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId
@@ -56,4 +53,27 @@ final class UpdateCourierRouteJob extends Model
         {
             return ['logistics', 'route_update', 'courier:' . $this->courier->id];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

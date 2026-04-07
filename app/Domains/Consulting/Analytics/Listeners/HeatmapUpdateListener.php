@@ -2,14 +2,16 @@
 
 namespace App\Domains\Consulting\Analytics\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HeatmapUpdateListener extends Model
+
+use Psr\Log\LoggerInterface;
+final class HeatmapUpdateListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Cache\CacheManager $cache, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         /**
@@ -20,7 +22,7 @@ final class HeatmapUpdateListener extends Model
         /**
          * @var int Delay between retries in seconds
          */
-        public int $retryAfter = 10;
+        protected int $retryAfter = 10;
 
         /**
          * @var string|null Job queue name
@@ -38,7 +40,7 @@ final class HeatmapUpdateListener extends Model
          * @param HeatmapUpdateEvent $event The heatmap update event
          * @return void
          *
-         * @throws \Exception If critical cache operation fails after retries
+         * @throws \RuntimeException If critical cache operation fails after retries
          */
         public function handle(HeatmapUpdateEvent $event): void
         {
@@ -55,8 +57,8 @@ final class HeatmapUpdateListener extends Model
                 // 4. Store update metadata for analytics
                 $this->recordUpdateMetrics($event);
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('HeatmapUpdateListener failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('HeatmapUpdateListener failed', [
                     'event' => $event->getTraceString(),
                     'tenant_id' => $event->tenantId,
                     'heatmap_type' => $event->heatmapType,
@@ -92,10 +94,10 @@ final class HeatmapUpdateListener extends Model
                 // Invalidate geo-heatmap cache for this vertical
                 if ($vertical) {
                     $cacheKey = "heatmap:geo:tenant:{$tenantId}:vertical:{$vertical}";
-                    Cache::forget($cacheKey);
+                    cache()->forget($cacheKey);
                     $cacheKeysInvalidated++;
 
-                    Log::channel('audit')->debug('Invalidated geo-heatmap cache', [
+                    $this->logger->debug('Invalidated geo-heatmap cache', [
                         'cache_key' => $cacheKey,
                         'correlation_id' => $event->correlationId,
                     ]);
@@ -104,11 +106,11 @@ final class HeatmapUpdateListener extends Model
                     $verticals = ['beauty', 'food', 'auto', 'hotels', 'realestate'];
                     foreach ($verticals as $v) {
                         $cacheKey = "heatmap:geo:tenant:{$tenantId}:vertical:{$v}";
-                        Cache::forget($cacheKey);
+                        cache()->forget($cacheKey);
                         $cacheKeysInvalidated++;
                     }
 
-                    Log::channel('audit')->debug('Invalidated all geo-heatmap cache entries', [
+                    $this->logger->debug('Invalidated all geo-heatmap cache entries', [
                         'tenant_id' => $tenantId,
                         'count' => $cacheKeysInvalidated,
                         'correlation_id' => $event->correlationId,
@@ -121,10 +123,10 @@ final class HeatmapUpdateListener extends Model
                 $pattern = "heatmap:click:tenant:{$tenantId}:*";
 
                 // Using Laravel cache tags if available
-                Cache::tags(['heatmap', "tenant:{$tenantId}", 'click'])
+                $this->cache->tags(['heatmap', "tenant:{$tenantId}", 'click'])
                     ->flush();
 
-                Log::channel('audit')->debug('Invalidated click-heatmap cache', [
+                $this->logger->debug('Invalidated click-heatmap cache', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -132,7 +134,7 @@ final class HeatmapUpdateListener extends Model
 
             // Invalidate generic heatmap cache
             $genericKey = "heatmap:all:tenant:{$tenantId}";
-            Cache::forget($genericKey);
+            cache()->forget($genericKey);
             $cacheKeysInvalidated++;
         }
 
@@ -147,13 +149,13 @@ final class HeatmapUpdateListener extends Model
          */
         private function updateLastModifiedTime(HeatmapUpdateEvent $event): void
         {
-            $timestamp = \now()->timestamp;
+            $timestamp = \Carbon::now()->timestamp;
             $cacheKey = "heatmap:last_modified:tenant:{$event->tenantId}:type:{$event->heatmapType}";
 
             // Store with 24-hour TTL
-            Cache::put($cacheKey, $timestamp, 86400);
+            cache()->put($cacheKey, $timestamp, 86400);
 
-            Log::channel('audit')->debug('Updated heatmap last-modified timestamp', [
+            $this->logger->debug('Updated heatmap last-modified timestamp', [
                 'cache_key' => $cacheKey,
                 'timestamp' => $timestamp,
                 'correlation_id' => $event->correlationId,
@@ -172,7 +174,7 @@ final class HeatmapUpdateListener extends Model
                 ? count($event->data['points'])
                 : count($event->data['clicks'] ?? []);
 
-            Log::channel('audit')->info('Heatmap updated', [
+            $this->logger->info('Heatmap updated', [
                 'event_type' => 'heatmap.update',
                 'heatmap_type' => $event->heatmapType,
                 'tenant_id' => $event->tenantId,
@@ -181,7 +183,7 @@ final class HeatmapUpdateListener extends Model
                 'data_points' => $dataPoints,
                 'data_stats' => $event->data['stats'] ?? null,
                 'correlation_id' => $event->correlationId,
-                'timestamp' => \now()->toIso8601String(),
+                'timestamp' => \Carbon::now()->toIso8601String(),
             ]);
         }
 
@@ -199,24 +201,24 @@ final class HeatmapUpdateListener extends Model
             try {
                 // Increment update counter
                 $counterKey = "heatmap:update_count:tenant:{$event->tenantId}:type:{$event->heatmapType}";
-                Cache::increment($counterKey);
-                Cache::expire($counterKey, 3600); // 1-hour expiry
+                $this->cache->increment($counterKey);
+                $this->cache->put($counterKey, 3600); // 1-hour expiry
 
                 // Track updates per minute for rate limiting detection
                 $minuteKey = "heatmap:updates:minute:tenant:{$event->tenantId}:"
-                    . \now()->format('Y-m-d H:i');
-                Cache::increment($minuteKey);
-                Cache::expire($minuteKey, 60);
+                    . \Carbon::now()->format('Y-m-d H:i');
+                $this->cache->increment($minuteKey);
+                $this->cache->put($minuteKey, 60);
 
-                Log::channel('audit')->debug('Heatmap update metrics recorded', [
+                $this->logger->debug('Heatmap update metrics recorded', [
                     'tenant_id' => $event->tenantId,
                     'heatmap_type' => $event->heatmapType,
                     'correlation_id' => $event->correlationId,
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Don't fail the listener if metrics recording fails
-                Log::channel('audit')->warning('Failed to record heatmap update metrics', [
+                $this->logger->warning('Failed to record heatmap update metrics', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -234,7 +236,7 @@ final class HeatmapUpdateListener extends Model
          */
         public function failed(HeatmapUpdateEvent $event, \Exception $exception): void
         {
-            Log::channel('audit')->critical('HeatmapUpdateListener permanently failed', [
+            $this->logger->critical('HeatmapUpdateListener permanently failed', [
                 'event_type' => 'heatmap.update',
                 'tenant_id' => $event->tenantId,
                 'heatmap_type' => $event->heatmapType,

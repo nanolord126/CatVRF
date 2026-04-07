@@ -1,15 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\BeautyResource;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * ListBeauties — Filament Page (Layer 9).
+ *
+ * Tenant-scoped salon listing with audit logging.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\Pages
+ */
 final class ListBeauties extends ListRecords
 {
     protected static string $resource = BeautyResource::class;
@@ -25,13 +35,13 @@ final class ListBeauties extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        $tenantId = filament()->getTenant()->id;
-        $userId = auth()->id();
+        $tenantId      = filament()->getTenant()?->id;
+        $userId        = filament()->auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Beauty ListRecords accessed', [
-            'tenant_id' => $tenantId,
-            'user_id' => $userId,
+        app(LoggerInterface::class)->info('Beauty ListRecords accessed', [
+            'tenant_id'      => $tenantId,
+            'user_id'        => $userId,
             'correlation_id' => $correlationId,
         ]);
 
@@ -51,11 +61,11 @@ final class ListBeauties extends ListRecords
         ];
     }
 
-    public function render()
+    public function render(): \Illuminate\Contracts\View\View
     {
-        Log::channel('audit')->info('ListBeauties page rendered', [
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
+        app(LoggerInterface::class)->info('ListBeauties page rendered', [
+            'user_id'   => filament()->auth()->id(),
+            'tenant_id' => filament()->getTenant()?->id,
         ]);
 
         return parent::render();

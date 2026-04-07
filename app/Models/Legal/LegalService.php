@@ -4,10 +4,12 @@ namespace App\Models\Legal;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 final class LegalService extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
 
         protected $table = 'legal_services';
@@ -79,7 +81,6 @@ final class LegalService extends Model
         public function getServiceTypeRussianLabel(): string
         {
             return match ($this->type) {
-                'document_draft' => 'Подготовка документа',
                 'representation' => 'Представительство',
                 'consultation' => 'Консультация',
                 'notary' => 'Нотариальные услуги',

@@ -2,14 +2,18 @@
 
 namespace App\Domains\Taxi\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class DeliveryOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'delivery_orders';
@@ -48,7 +52,7 @@ final class DeliveryOrder extends Model
             static::creating(function (DeliveryOrder $order) {
                 $order->uuid = $order->uuid ?? (string) Str::uuid();
                 $order->tenant_id = $order->tenant_id ?? (tenant()->id ?? 1);
-                $order->correlation_id = $order->correlation_id ?? request()->header('X-Correlation-ID');
+                $order->correlation_id = $order->correlation_id ?? $this->request->header('X-Correlation-ID');
             });
 
             static::addGlobalScope('tenant', function ($query) {

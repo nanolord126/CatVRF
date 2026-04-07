@@ -2,42 +2,61 @@
 
 namespace App\Domains\Auto\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Auto\Models\AutoServiceOrder;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
-final class AutoServiceOrderCompleted extends Model
+/**
+ * Class AutoServiceOrderCompleted
+ *
+ * Part of the Auto vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Domains\Auto\Events
+ */
+final class AutoServiceOrderCompleted implements ShouldBroadcast
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-        public function __construct(
-            public readonly AutoServiceOrder $order,
-            public readonly string $correlationId
-        ) {
-        }
+    public function __construct(
+        public readonly AutoServiceOrder $order,
+        public readonly string $correlationId
+    ) {
 
-        public function broadcastOn(): array
-        {
-            return [
-                new \Illuminate\Broadcasting\Channel('auto.service-orders.' . $this->order->tenant_id),
-            ];
-        }
+    }
 
-        public function broadcastAs(): string
-        {
-            return 'AutoServiceOrderCompleted';
-        }
+    public function broadcastOn(): array
+    {
+        return [
+            new Channel('auto.service-orders.' . $this->order->tenant_id),
+        ];
+    }
 
-        public function broadcastWith(): array
-        {
-            return [
-                'order_id' => $this->order->id,
-                'service_type' => $this->order->service_type,
-                'total_price' => $this->order->total_price,
-                'completed_at' => $this->order->completed_at?->toIso8601String(),
-                'correlation_id' => $this->correlationId,
-            ];
-        }
+    public function broadcastAs(): string
+    {
+        return 'AutoServiceOrderCompleted';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'order_id' => $this->order->id,
+            'service_type' => $this->order->service_type,
+            'total_price' => $this->order->total_price,
+            'completed_at' => $this->order->completed_at?->toIso8601String(),
+            'correlation_id' => $this->correlationId,
+        ];
+    }
 }

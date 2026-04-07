@@ -1,15 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * HandleMusicBookingCreated — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/handlemusicbookingcreated
+ */
+
+
 namespace App\Domains\MusicAndInstruments\Music\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HandleMusicBookingCreated extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class HandleMusicBookingCreated
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle the event.
          */
@@ -17,7 +35,7 @@ final class HandleMusicBookingCreated extends Model
         {
             $booking = $event->booking;
 
-            Log::channel('audit')->info('Processing music booking created event', [
+            $this->logger->info('Processing music booking created event', [
                 'booking_id' => $booking->id,
                 'bookable_type' => $booking->bookable_type,
                 'correlation_id' => $event->correlationId,
@@ -30,9 +48,10 @@ final class HandleMusicBookingCreated extends Model
                     $event->correlationId
                 )->delay($booking->ends_at);
 
-                Log::channel('audit')->info('Scheduled rental expiration job', [
+                $this->logger->info('Scheduled rental expiration job', [
                     'booking_id' => $booking->id,
                     'target_time' => $booking->ends_at->toIso8601String(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
 

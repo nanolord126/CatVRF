@@ -2,21 +2,17 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiAiOptimizer extends Model
+use Psr\Log\LoggerInterface;
+final readonly class TaxiAiOptimizer
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с инъекцией (по канону).
          */
         public function __construct(
             private readonly SurgeService $surgeService,
-            private readonly \App\Services\AI\AIQuotaService $aiQuotaService,
-        ) {}
+            private readonly \App\Services\AI\AIQuotaService $aiQuotaService, private readonly LoggerInterface $logger) {}
 
         /**
          * Предиктивный Surge: Анализ спроса и автоматическая активация зон.
@@ -26,7 +22,7 @@ final class TaxiAiOptimizer extends Model
         {
             // 1. Проверка AI Квоты (по канону AI/ML)
             if (!$this->aiQuotaService->hasQuota($tenantId, 'taxi_surge_optimize')) {
-                Log::channel('audit')->warning('AI Surge optimization skipped: No Quota', ['tenant_id' => $tenantId]);
+                $this->logger->warning('AI Surge optimization skipped: No Quota', ['tenant_id' => $tenantId]);
                 return;
             }
 
@@ -53,7 +49,7 @@ final class TaxiAiOptimizer extends Model
                     }
                 }
 
-                Log::channel('audit')->info('AI Optimized Surge Zones: Demand High', [
+                $this->logger->info('AI Optimized Surge Zones: Demand High', [
                     'tenant_id' => $tenantId,
                     'pending_rides' => $pendingRidesCount,
                     'active_drivers' => $activeDriversCount,

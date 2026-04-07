@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalRecordData extends Model
+final readonly class MedicalRecordData
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param string $uuid ID медицинской записи
          * @param int $tenantId Клиника
@@ -35,10 +32,10 @@ final class MedicalRecordData extends Model
             public string $examination,
             public string $treatment,
             public string $correlationId,
-            public array $files = [],
-            public array $history = [],
-        ) {
-        }
+            private array $files = [],
+            private array $history = [],
+            private int $createdByUserId = 0,
+        ) {}
 
         /**
          * Создание DTO из данных запроса
@@ -86,7 +83,7 @@ final class MedicalRecordData extends Model
                 'files' => json_encode($this->files),
                 'access_log_json' => json_encode([
                     [
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->createdByUserId,
                         'action' => 'created',
                         'timestamp' => now()->toIso8601String(),
                         'correlation_id' => $this->correlationId,

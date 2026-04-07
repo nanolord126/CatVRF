@@ -2,15 +2,18 @@
 
 namespace App\Domains\Sports\Fitness\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductMembershipCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductMembershipCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(MembershipCreated $event): void
         {
@@ -18,7 +21,9 @@ final class DeductMembershipCommissionListener extends Model
                 $gym = $event->membership->gym;
                 $commissionAmount = (int) ($event->membership->commission_amount * 100);
 
-                DB::transaction(function () use ($gym, $commissionAmount, $event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($gym, $commissionAmount, $event) {
                     $wallet = Wallet::where('tenant_id', $gym->tenant_id)->lockForUpdate()->first();
                     if ($wallet) {
                         $wallet->decrement('balance', $commissionAmount);
@@ -33,7 +38,7 @@ final class DeductMembershipCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Membership commission deducted', [
+                    $this->logger->info('Membership commission deducted', [
                         'membership_id' => $event->membership->id,
                         'gym_id' => $gym->id,
                         'commission_amount' => $event->membership->commission_amount,
@@ -41,7 +46,7 @@ final class DeductMembershipCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct membership commission', [
+                $this->logger->error('Failed to deduct membership commission', [
                     'membership_id' => $event->membership->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -49,4 +54,27 @@ final class DeductMembershipCommissionListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

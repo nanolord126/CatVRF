@@ -2,14 +2,16 @@
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PhotoStudioController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PhotoStudioController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
     	{
     		try {
@@ -17,16 +19,17 @@ final class PhotoStudioController extends Model
     				->with('photographers', 'packages', 'reviews')
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $studios,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Photography: Studios list failed', [
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Photography: Studios list failed', [
     				'error' => $e->getMessage(),
+           'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
     			]);
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка при загрузке студий',
     				'correlation_id' => Str::uuid(),
@@ -40,17 +43,18 @@ final class PhotoStudioController extends Model
     			$studio = PhotoStudio::with('photographers', 'packages', 'reviews')
     				->findOrFail($id);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $studio,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			Log::channel('audit')->error('Photography: Studio show failed', [
+    		} catch (\Throwable $e) {
+    			$this->logger->error('Photography: Studio show failed', [
     				'studio_id' => $id,
     				'error' => $e->getMessage(),
+           'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
     			]);
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Студия не найдена',
     				'correlation_id' => Str::uuid(),
@@ -65,13 +69,13 @@ final class PhotoStudioController extends Model
     				->where('is_active', true)
     				->get();
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $packages,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -86,13 +90,13 @@ final class PhotoStudioController extends Model
     				->where('is_available', true)
     				->get();
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $photographers,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -107,13 +111,13 @@ final class PhotoStudioController extends Model
     				->latest()
     				->paginate(10);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $reviews,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -124,21 +128,21 @@ final class PhotoStudioController extends Model
     	public function search(): JsonResponse
     	{
     		try {
-    			$query = request()->get('q');
-    			$type = request()->get('type');
+    			$query = $request->get('q');
+    			$type = $request->get('type');
 
     			$studios = PhotoStudio::where('is_active', true)
     				->when($query, fn($q) => $q->where('name', 'like', "%{$query}%"))
     				->when($type, fn($q) => $q->whereJsonContains('studio_types', $type))
     				->paginate(20);
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $studios,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка поиска',
     				'correlation_id' => Str::uuid(),
@@ -158,13 +162,13 @@ final class PhotoStudioController extends Model
     				'total_sessions' => \App\Domains\Photography\Models\PhotoSession->count(),
     			];
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $stats,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Доступ запрещен',
     				'correlation_id' => Str::uuid(),
@@ -179,13 +183,13 @@ final class PhotoStudioController extends Model
     				->limit(10)
     				->get();
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'data' => $studios,
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка',
     				'correlation_id' => Str::uuid(),
@@ -198,23 +202,23 @@ final class PhotoStudioController extends Model
     		try {
     			$this->authorize('verify', PhotoStudio::class);
 
-    			DB::transaction(function () use ($id) {
+    			$this->db->transaction(function () use ($id) {
     				$studio = PhotoStudio::findOrFail($id);
     				$studio->update(['is_verified' => true]);
 
-    				Log::channel('audit')->info('Photography: Studio verified', [
+    				$this->logger->info('Photography: Studio verified', [
     					'studio_id' => $id,
     					'correlation_id' => Str::uuid(),
     				]);
     			});
 
-    			return response()->json([
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => true,
     				'message' => 'Студия верифицирована',
     				'correlation_id' => Str::uuid(),
     			]);
-    		} catch (\Exception $e) {
-    			return response()->json([
+    		} catch (\Throwable $e) {
+    			return new \Illuminate\Http\JsonResponse([
     				'success' => false,
     				'message' => 'Ошибка верификации',
     				'correlation_id' => Str::uuid(),

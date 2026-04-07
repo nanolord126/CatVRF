@@ -2,18 +2,17 @@
 
 namespace App\Domains\WeddingPlanning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VendorManagementService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class VendorManagementService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
 
@@ -22,12 +21,12 @@ final class VendorManagementService extends Model
          */
         public function registerVendor(array $data): WeddingVendor
         {
-            Log::channel('audit')->info('VendorMgmt: Registering vendor', [
+            $this->logger->info('VendorMgmt: Registering vendor', [
                 'vendor_name' => $data['name'],
                 'correlation_id' => $this->correlationId
             ]);
 
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $vendor = WeddingVendor::create([
                     'name' => $data['name'],
                     'category' => $data['category'],
@@ -50,13 +49,13 @@ final class VendorManagementService extends Model
          */
         public function addReview(WeddingVendor $vendor, int $userId, int $rating, string $comment): WeddingReview
         {
-            Log::channel('audit')->info('VendorMgmt: Adding review', [
+            $this->logger->info('VendorMgmt: Adding review', [
                 'vendor_uuid' => $vendor->uuid,
                 'rating' => $rating,
                 'correlation_id' => $this->correlationId
             ]);
 
-            return DB::transaction(function () use ($vendor, $userId, $rating, $comment) {
+            return $this->db->transaction(function () use ($vendor, $userId, $rating, $comment) {
                 $review = WeddingReview::create([
                     'user_id' => $userId,
                     'reviewable_type' => get_class($vendor),
@@ -86,7 +85,7 @@ final class VendorManagementService extends Model
          */
         public function verifyVendor(WeddingVendor $vendor, bool $isVerified = true): bool
         {
-            Log::channel('audit')->info('VendorMgmt: Verifying vendor', [
+            $this->logger->info('VendorMgmt: Verifying vendor', [
                 'vendor_uuid' => $vendor->uuid,
                 'is_verified' => $isVerified,
                 'correlation_id' => $this->correlationId

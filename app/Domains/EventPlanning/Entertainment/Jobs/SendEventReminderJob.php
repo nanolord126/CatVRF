@@ -2,20 +2,18 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class SendEventReminderJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class SendEventReminderJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            public ?int $scheduleId = null,
-            public ?string $correlationId = null,
-        ) {
+            private ?int $scheduleId = null,
+            private readonly ?string $correlationId = null, private readonly LoggerInterface $logger) {
             $this->onQueue('notifications');
 
         }
@@ -29,7 +27,7 @@ final class SendEventReminderJob extends Model
                     return;
                 }
 
-                $hoursUntilEvent = now()->diffInHours($schedule->start_time);
+                $hoursUntilEvent = Carbon::now()->diffInHours($schedule->start_time);
 
                 if ($hoursUntilEvent <= 2 && $hoursUntilEvent >= 0) {
                     $bookings = $schedule->bookings()
@@ -37,7 +35,7 @@ final class SendEventReminderJob extends Model
                         ->get();
 
                     foreach ($bookings as $booking) {
-                        Log::channel('audit')->info('Event reminder sent', [
+                        $this->logger->info('Event reminder sent', [
                             'schedule_id' => $this->scheduleId,
                             'booking_id' => $booking->id,
                             'customer_id' => $booking->customer_id,
@@ -46,7 +44,7 @@ final class SendEventReminderJob extends Model
                     }
                 }
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to send event reminders', [
+                $this->logger->error('Failed to send event reminders', [
                     'schedule_id' => $this->scheduleId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
@@ -57,6 +55,29 @@ final class SendEventReminderJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(4);
+            return Carbon::now()->addHours(4);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

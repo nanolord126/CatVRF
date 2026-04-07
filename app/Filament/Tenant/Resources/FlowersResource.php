@@ -2,14 +2,17 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\B2BFlowerStorefront;
+use Filament\Forms;
+use Filament\Forms\Components\{DatePicker, FileUpload, RichEditor, Section, Select, TagsInput, Textarea, TextInput, Toggle};
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class FlowersResource extends Model
+final class FlowersResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = B2BFlowerStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +111,15 @@ final class FlowersResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFlowers::route('/'),
-                'create' => Pages\\CreateFlowers::route('/create'),
-                'edit' => Pages\\EditFlowers::route('/{record}/edit'),
-                'view' => Pages\\ViewFlowers::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFlowers::route('/'),
-                'create' => Pages\\CreateFlowers::route('/create'),
-                'edit' => Pages\\EditFlowers::route('/{record}/edit'),
-                'view' => Pages\\ViewFlowers::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFlowers::route('/'),
-                'create' => Pages\\CreateFlowers::route('/create'),
-                'edit' => Pages\\EditFlowers::route('/{record}/edit'),
-                'view' => Pages\\ViewFlowers::route('/{record}'),
+                'index' => Pages\ListFlowers::route('/'),
+                'create' => Pages\CreateFlowers::route('/create'),
+                'edit' => Pages\EditFlowers::route('/{record}/edit'),
+                'view' => Pages\ViewFlowers::route('/{record}'),
             ];
         }
 }

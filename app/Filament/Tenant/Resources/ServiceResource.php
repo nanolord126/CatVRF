@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class ServiceResource extends Model
+final class ServiceResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Service::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-scissors';
@@ -50,22 +45,15 @@ final class ServiceResource extends Model
                     ->default(true),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListService::route('/'),
-                'create' => Pages\\CreateService::route('/create'),
-                'edit' => Pages\\EditService::route('/{record}/edit'),
-                'view' => Pages\\ViewService::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListService::route('/'),
-                'create' => Pages\\CreateService::route('/create'),
-                'edit' => Pages\\EditService::route('/{record}/edit'),
-                'view' => Pages\\ViewService::route('/{record}'),
+                'index' => Pages\ListService::route('/'),
+                'create' => Pages\CreateService::route('/create'),
+                'edit' => Pages\EditService::route('/{record}/edit'),
+                'view' => Pages\ViewService::route('/{record}'),
             ];
         }
 }

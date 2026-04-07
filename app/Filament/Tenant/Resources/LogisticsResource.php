@@ -2,14 +2,25 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Logistics\Models\B2BLogisticsOrder;
+use App\Filament\Tenant\Resources\Logistics\Pages;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class LogisticsResource extends Model
+final class LogisticsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = B2BLogisticsOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -107,23 +118,33 @@ final class LogisticsResource extends Model
                                 ->columnSpan('full'),
                         ]),
                 ]);
+        }
+
+        public static function table(Table $table): Table
+        {
+            return $table
+                ->columns([
+                    Tables\Columns\TextColumn::make('id')
+                        ->label('ID')
+                        ->sortable(),
+                    Tables\Columns\TextColumn::make('status')
+                        ->label('Статус')
+                        ->badge(),
+                    Tables\Columns\TextColumn::make('created_at')
+                        ->label('Создан')
+                        ->dateTime('d.m.Y H:i')
+                        ->sortable(),
+                ])
+                ->defaultSort('created_at', 'desc');
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListLogistics::route('/'),
-                'create' => Pages\\CreateLogistics::route('/create'),
-                'edit' => Pages\\EditLogistics::route('/{record}/edit'),
-                'view' => Pages\\ViewLogistics::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListLogistics::route('/'),
-                'create' => Pages\\CreateLogistics::route('/create'),
-                'edit' => Pages\\EditLogistics::route('/{record}/edit'),
-                'view' => Pages\\ViewLogistics::route('/{record}'),
+                'index' => Pages\ListLogistics::route('/'),
+                'create' => Pages\CreateLogistics::route('/create'),
+                'edit' => Pages\EditLogistics::route('/{record}/edit'),
+                'view' => Pages\ViewLogistics::route('/{record}'),
             ];
         }
 }

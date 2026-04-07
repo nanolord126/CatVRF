@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MeatOrderResource extends Model
+final class MeatOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MeatOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-ellipsis-horizontal';
@@ -108,22 +105,15 @@ final class MeatOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMeatOrder::route('/'),
-                'create' => Pages\\CreateMeatOrder::route('/create'),
-                'edit' => Pages\\EditMeatOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewMeatOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMeatOrder::route('/'),
-                'create' => Pages\\CreateMeatOrder::route('/create'),
-                'edit' => Pages\\EditMeatOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewMeatOrder::route('/{record}'),
+                'index' => Pages\ListMeatOrder::route('/'),
+                'create' => Pages\CreateMeatOrder::route('/create'),
+                'edit' => Pages\EditMeatOrder::route('/{record}/edit'),
+                'view' => Pages\ViewMeatOrder::route('/{record}'),
             ];
         }
 }

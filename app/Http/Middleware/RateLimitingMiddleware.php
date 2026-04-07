@@ -2,22 +2,24 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class RateLimitingMiddleware extends Model
+final class RateLimitingMiddleware
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly TenantAwareRateLimiter $rateLimiter,
-        ) {
-        }
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    )
+    {
+        // Implementation required by canon
+    }
 
         public function handle(Request $request, Closure $next, ?string $limit = null): mixed
         {
-            $tenantId = auth()->user()?->tenant_id ?? filament()->getTenant()?->id ?? 1;
+            $tenantId = $this->guard->user()?->tenant_id ?? filament()->getTenant()?->id ?? 1;
             $correlationId = $request->attributes->get('correlation_id') ?? $request->header('X-Correlation-ID');
             $key = $request->path();
 
@@ -32,15 +34,15 @@ final class RateLimitingMiddleware extends Model
             $actualLimit = $limits[$limit ?? 'default'] ?? ($limit ? (int)$limit : 100);
 
             if (!$this->rateLimiter->check($tenantId, $key, $actualLimit)) {
-                Log::channel('audit')->warning('Rate limit exceeded', [
+                $this->logger->channel('audit')->warning('Rate limit exceeded', [
                     'tenant_id' => $tenantId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                     'endpoint' => $key,
                     'limit' => $actualLimit,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Rate limit exceeded',
                     'retry_after' => 60,
                     'correlation_id' => $correlationId,

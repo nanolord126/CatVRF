@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ServiceWarrantyResource extends Model
+final class ServiceWarrantyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ServiceWarranty::class;
 
         protected static ?string $navigationLabel = 'Гарантия на ремонт';
@@ -117,7 +114,6 @@ final class ServiceWarrantyResource extends Model
                         ->label('Претензия')
                         ->badge()
                         ->color(fn (string $state): string => match ($state) {
-                            'none' => 'gray',
                             'pending' => 'warning',
                             'approved' => 'success',
                             'rejected' => 'danger',

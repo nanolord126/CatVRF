@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Review extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'entertainment_reviews';
 
         protected $fillable = [
@@ -34,47 +33,6 @@ final class Review extends Model
             'id',
             'tenant_id',
         ];
-
-        /**
-         * КАНОН: Инициализация модели, авто-генерация UUID и Global Scope
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (Model $model) {
-                if (empty($model->uuid)) {
-                    $model->uuid = (string) Str::uuid();
-                }
-                if (empty($model->correlation_id)) {
-                    $model->correlation_id = (string) Str::uuid();
-                }
-            });
-
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        /* --- Отношения (Relations) --- */
-
-        /**
-         * Заведение (Venue)
-         */
-        public function venue(): BelongsTo
-        {
-            return $this->belongsTo(Venue::class, 'venue_id');
-        }
-
-        /**
-         * Автор отзыва (User)
-         */
-        public function author(): BelongsTo
-        {
-            return $this->belongsTo(\App\Models\User::class, 'user_id');
-        }
-
-        /* --- Методы Канона --- */
 
         /**
          * Получить оценку (Rating)

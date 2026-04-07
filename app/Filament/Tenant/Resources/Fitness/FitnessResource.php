@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Fitness;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FitnessResource extends Model
+final class FitnessResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Gym::class;
         protected static ?string $navigationIcon = 'heroicon-o-heart';
         protected static ?string $navigationGroup = 'Вертикали';

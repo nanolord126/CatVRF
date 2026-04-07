@@ -2,14 +2,20 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LoadTestingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Log\LogManager;
+
+
+final readonly class LoadTestingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Симулирует нагрузку на эндпоинт
          *
@@ -33,10 +39,11 @@ final class LoadTestingService extends Model
             // Добавляем токен авторизации по умолчанию
             $headers['Authorization'] = $headers['Authorization'] ?? 'Bearer token';
 
-            Log::channel('performance')->info('Load test started', [
+            $this->logger->channel('performance')->info('Load test started', [
                 'url' => $url,
                 'requests' => $requestsCount,
-                'concurrency' => $concurrency
+                'concurrency' => $concurrency,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             // Отправляем запросы параллельно
@@ -53,9 +60,10 @@ final class LoadTestingService extends Model
                         },
                         function ($error) use (&$failed) {
                             $failed++;
-                            Log::channel('performance')->warning('Load test request failed', [
-                                'error' => $error->getMessage()
-                            ]);
+                            $this->logger->channel('performance')->warning('Load test request failed', [
+                                'error' => $error->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                         }
                     );
 
@@ -97,7 +105,7 @@ final class LoadTestingService extends Model
                 'max_response_time_ms' => round($maxTime, 2),
             ];
 
-            Log::channel('performance')->info('Load test completed', $results);
+            $this->logger->channel('performance')->info('Load test completed', $results);
 
             return $results;
         }
@@ -121,9 +129,10 @@ final class LoadTestingService extends Model
                     $requestCount++;
                     $dataTransferred += strlen($response->body());
                 } catch (\Throwable $e) {
-                    Log::channel('performance')->warning('Throughput test error', [
-                        'error' => $e->getMessage()
-                    ]);
+                    $this->logger->channel('performance')->warning('Throughput test error', [
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 }
             }
 
@@ -156,9 +165,10 @@ final class LoadTestingService extends Model
                     \Illuminate\Support\Facades\Http::get($url);
                     $latencies[] = (microtime(true) - $start) * 1000; // мс
                 } catch (\Throwable $e) {
-                    Log::channel('performance')->warning('Latency test error', [
-                        'error' => $e->getMessage()
-                    ]);
+                    $this->logger->channel('performance')->warning('Latency test error', [
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                 }
             }
 

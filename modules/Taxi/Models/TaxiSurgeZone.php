@@ -2,14 +2,14 @@
 
 namespace Modules\Taxi\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class TaxiSurgeZone extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
     
         protected $table = 'taxi_surge_zones';
@@ -128,19 +128,16 @@ final class TaxiSurgeZone extends Model
         {
             return (int) ($basePrice * $this->getEffectiveMultiplier());
         }
-    }
-    
+
         /**
          * Поиск зон с повышенным спросом для конкретных координат.
          */
         public static function getMultiplierAt(float $lat, float $lon): float
         {
-            // В реальном приложении здесь используется ST_Contains в PostGIS или MySQL.
-            // Для MVP проверяем наличие пересечения через JSON (или просто берем максимальный по городу).
             $zone = self::active()
                 ->orderByDesc('multiplier')
                 ->first();
-    
+
             return (float) ($zone?->multiplier ?? 1.0);
         }
 }

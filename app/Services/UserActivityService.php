@@ -2,14 +2,25 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UserActivityService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class UserActivityService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    private const ACTIVITY_TTL_SECONDS = 3600;
+    private const STATUS_TTL_SECONDS = 86400;
+
     /**
          * Record user activity
          * @param int $userId
@@ -25,27 +36,35 @@ final class UserActivityService extends Model
             array $metadata = []
         ): bool {
             try {
+                $correlationId = Str::uuid()->toString();
                 $key = "activity:user.{$userId}:tenant.{$tenantId}";
+                $indexKey = "activity:index:tenant.{$tenantId}";
 
-                cache()->put($key, [
+                $this->cache->put($key, [
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'activity' => $activity,
                     'metadata' => $metadata,
                     'timestamp' => now()->toIso8601String(),
-                    'ip' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
-                ], 3600); // Keep for 1 hour
+                    'ip' => $this->request->ip(),
+                    'user_agent' => $this->request->userAgent(),
+                    'correlation_id' => $correlationId,
+                ], self::ACTIVITY_TTL_SECONDS);
 
-                Log::channel('audit')->info('User activity recorded', [
+                $indexedUsers = $this->cache->get($indexKey, []);
+                $indexedUsers[] = $userId;
+                $this->cache->put($indexKey, array_values(array_unique($indexedUsers)), self::ACTIVITY_TTL_SECONDS);
+
+                $this->logger->channel('audit')->info('User activity recorded', [
                     'user_id' => $userId,
                     'activity' => $activity,
                     'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to record activity', [
+                $this->logger->channel('audit')->error('Failed to record activity', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -60,11 +79,23 @@ final class UserActivityService extends Model
          */
         public function getActiveUsers(int $tenantId): array
         {
-            $pattern = "activity:user.*:tenant.{$tenantId}";
             $activeUsers = [];
+            $indexKey = "activity:index:tenant.{$tenantId}";
+            $indexedUsers = $this->cache->get($indexKey, []);
 
-            // In production: use Redis SCAN
-            // For now: iterate through known user cache keys
+            foreach ($indexedUsers as $userId) {
+                $key = "activity:user.{$userId}:tenant.{$tenantId}";
+                $activity = $this->cache->get($key);
+
+                if (is_array($activity)) {
+                    $activeUsers[] = $activity;
+                }
+            }
+
+            usort($activeUsers, static fn (array $a, array $b): int => strcmp(
+                (string) ($b['timestamp'] ?? ''),
+                (string) ($a['timestamp'] ?? ''),
+            ));
 
             return $activeUsers;
         }
@@ -78,7 +109,9 @@ final class UserActivityService extends Model
         public function getLastActivity(int $userId, int $tenantId): ?array
         {
             $key = "activity:user.{$userId}:tenant.{$tenantId}";
-            return cache()->get($key);
+            $value = $this->cache->get($key);
+
+            return is_array($value) ? $value : null;
         }
 
         /**
@@ -91,21 +124,24 @@ final class UserActivityService extends Model
         public function updateUserStatus(int $userId, string $status, int $tenantId): bool
         {
             try {
+                $correlationId = Str::uuid()->toString();
                 $key = "user:status:{$tenantId}:{$userId}";
-                cache()->put($key, [
+                $this->cache->put($key, [
                     'status' => $status,
                     'updated_at' => now()->toIso8601String(),
-                ], 86400); // Keep for 24 hours
+                    'correlation_id' => $correlationId,
+                ], self::STATUS_TTL_SECONDS);
 
-                Log::channel('audit')->info('User status updated', [
+                $this->logger->channel('audit')->info('User status updated', [
                     'user_id' => $userId,
                     'status' => $status,
                     'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update user status', [
+                $this->logger->channel('audit')->error('Failed to update user status', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -122,7 +158,7 @@ final class UserActivityService extends Model
         public function getUserStatus(int $userId, int $tenantId): string
         {
             $key = "user:status:{$tenantId}:{$userId}";
-            $data = cache()->get($key);
+            $data = $this->cache->get($key);
             return $data['status'] ?? 'offline';
         }
 
@@ -139,15 +175,16 @@ final class UserActivityService extends Model
             try {
                 $key = "pageview:user.{$userId}:tenant.{$tenantId}";
 
-                cache()->put($key, [
+                $this->cache->put($key, [
                     'page' => $page,
                     'params' => $params,
                     'viewed_at' => now()->toIso8601String(),
-                ], 3600);
+                    'correlation_id' => Str::uuid()->toString(),
+                ], self::ACTIVITY_TTL_SECONDS);
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to track page view', [
+                $this->logger->channel('audit')->error('Failed to track page view', [
                     'error' => $e->getMessage(),
                 ]);
 
@@ -164,6 +201,8 @@ final class UserActivityService extends Model
         public function getCurrentPage(int $userId, int $tenantId): ?array
         {
             $key = "pageview:user.{$userId}:tenant.{$tenantId}";
-            return cache()->get($key);
+            $value = $this->cache->get($key);
+
+            return is_array($value) ? $value : null;
         }
 }

@@ -2,14 +2,16 @@
 
 namespace App\Domains\Taxi\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Taxi\Filament\Resources\TaxiDriverResource\Pages;
+use App\Domains\Taxi\Models\TaxiDriver;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-final class TaxiDriverResource extends Model
+final class TaxiDriverResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = TaxiDriver::class;
 
         protected static ?string $navigationLabel = 'Водители такси';
@@ -71,7 +73,7 @@ final class TaxiDriverResource extends Model
 
                     Tables\Columns\TextColumn::make('rating')
                         ->label('Рейтинг')
-                        ->numeric(decimals: 1)
+                        ->numeric()
                         ->sortable(),
 
                     Tables\Columns\TextColumn::make('completed_rides')

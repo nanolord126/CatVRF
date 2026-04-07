@@ -2,22 +2,32 @@
 
 namespace App\Livewire\RealEstate;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class PropertyFilter extends Model
+/**
+ * Class PropertyFilter
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\RealEstate
+ */
+final class PropertyFilter extends Component
 {
-    use HasFactory;
+    private string $propertyType = '';
+        private int $priceMin = 0;
+        private int $priceMax = 100000000;
+        private int $areaMin = 0;
+        private int $areaMax = 500;
+        private string $district = '';
+        private array $filteredProperties = [];
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public string $propertyType = '';
-        public int $priceMin = 0;
-        public int $priceMax = 100000000;
-        public int $areaMin = 0;
-        public int $areaMax = 500;
-        public string $district = '';
-        public array $filteredProperties = [];
-
+        /**
+         * Handle applyFilters operation.
+         *
+         * @throws \DomainException
+         */
         public function applyFilters(): void
         {
             // In real app, query database with filters
@@ -28,6 +38,11 @@ final class PropertyFilter extends Model
             $this->dispatch('filters-applied');
         }
 
+        /**
+         * Handle resetFilters operation.
+         *
+         * @throws \DomainException
+         */
         public function resetFilters(): void
         {
             $this->propertyType = '';

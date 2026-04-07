@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Payment Gateway Service
@@ -22,6 +24,11 @@ use Illuminate\Support\Str;
  */
 final class PaymentGatewayService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     private const GATEWAYS = ['tinkoff', 'tochka', 'sber'];
 
     /**
@@ -34,7 +41,7 @@ final class PaymentGatewayService
      */
     public function initPayment(array $paymentData, string $correlationId): array
     {
-        $this->fraudControl->check([
+        $this->fraud->check([
             'operation' => payment_init,
             'user_id' => $paymentData['user_id'],
             'amount' => $paymentData['amount'],
@@ -43,12 +50,12 @@ final class PaymentGatewayService
 
 
         // Check idempotency
-        $existingPayment = DB::table('payment_idempotency_records')
+        $existingPayment = $this->db->table('payment_idempotency_records')
             ->where('idempotency_key', $paymentData['idempotency_key'] ?? null)
             ->first();
 
         if ($existingPayment) {
-            Log::channel('audit')->info('Idempotent payment request', [
+            $this->logger->channel('audit')->info('Idempotent payment request', [
                 'correlation_id' => $correlationId,
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'existing_payment_id' => $existingPayment->payment_id,
@@ -61,9 +68,9 @@ final class PaymentGatewayService
             ];
         }
 
-        return DB::transaction(function () use ($paymentData, $correlationId): array {
+        return $this->db->transaction(function () use ($paymentData, $correlationId): array {
             // Create payment record
-            $payment = DB::table('payment_transactions')->insertGetId([
+            $payment = $this->db->table('payment_transactions')->insertGetId([
                 'tenant_id' => $paymentData['tenant_id'],
                 'user_id' => $paymentData['user_id'] ?? null,
                 'operation_type' => $paymentData['operation_type'],
@@ -80,7 +87,7 @@ final class PaymentGatewayService
             ]);
 
             // Store idempotency record
-            DB::table('payment_idempotency_records')->insert([
+            $this->db->table('payment_idempotency_records')->insert([
                 'operation' => 'payment_init',
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'merchant_id' => $paymentData['tenant_id'],
@@ -99,14 +106,14 @@ final class PaymentGatewayService
             );
 
             // Update payment with gateway transaction ID
-            DB::table('payment_transactions')
+            $this->db->table('payment_transactions')
                 ->where('id', $payment)
                 ->update([
                     'provider_payment_id' => $gatewayResponse['transaction_id'] ?? null,
                     'status' => 'authorized',
                 ]);
 
-            Log::channel('audit')->info('Payment initialized', [
+            $this->logger->channel('audit')->info('Payment initialized', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment,
                 'amount' => $paymentData['amount'],
@@ -135,16 +142,16 @@ final class PaymentGatewayService
      */
     public function capturePayment(int $paymentId, ?int $amount, string $correlationId): array
     {
-        return DB::transaction(function () use ($paymentId, $amount, $correlationId): array {
-            $payment = DB::table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
+        return $this->db->transaction(function () use ($paymentId, $amount, $correlationId): array {
+            $payment = $this->db->table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
 
             if ($payment->status !== 'authorized') {
-                throw new \Exception('Payment must be in authorized state');
+                throw new \LogicException('Payment must be in authorized state');
             }
 
             $captureAmount = $amount ?? $payment->amount;
             if ($captureAmount > $payment->amount) {
-                throw new \Exception('Cannot capture more than authorized');
+                throw new \LogicException('Cannot capture more than authorized');
             }
 
             // Call gateway to capture
@@ -159,7 +166,7 @@ final class PaymentGatewayService
             );
 
             // Update payment status
-            DB::table('payment_transactions')
+            $this->db->table('payment_transactions')
                 ->where('id', $paymentId)
                 ->update([
                     'status' => 'captured',
@@ -168,7 +175,7 @@ final class PaymentGatewayService
                     'updated_at' => now(),
                 ]);
 
-            Log::channel('audit')->info('Payment captured', [
+            $this->logger->channel('audit')->info('Payment captured', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'amount' => $captureAmount,
@@ -196,18 +203,18 @@ final class PaymentGatewayService
      */
     public function refundPayment(int $paymentId, ?int $amount, string $reason, string $correlationId): array
     {
-        return DB::transaction(function () use ($paymentId, $amount, $reason, $correlationId): array {
-            $payment = DB::table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
+        return $this->db->transaction(function () use ($paymentId, $amount, $reason, $correlationId): array {
+            $payment = $this->db->table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
 
             if (!in_array($payment->status, ['captured', 'authorized'])) {
-                throw new \Exception('Payment must be captured or authorized to refund');
+                throw new \LogicException('Payment must be captured or authorized to refund');
             }
 
             $refundAmount = $amount ?? ($payment->captured_amount ?? $payment->amount);
             $alreadyRefunded = $payment->refunded_amount ?? 0;
 
             if ($alreadyRefunded + $refundAmount > $payment->amount) {
-                throw new \Exception('Cannot refund more than original amount');
+                throw new \LogicException('Cannot refund more than original amount');
             }
 
             // Call gateway to refund
@@ -223,7 +230,7 @@ final class PaymentGatewayService
             );
 
             // Update payment status
-            DB::table('payment_transactions')
+            $this->db->table('payment_transactions')
                 ->where('id', $paymentId)
                 ->update([
                     'status' => 'refunded',
@@ -232,7 +239,7 @@ final class PaymentGatewayService
                     'updated_at' => now(),
                 ]);
 
-            Log::channel('audit')->info('Payment refunded', [
+            $this->logger->channel('audit')->info('Payment refunded', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'refund_amount' => $refundAmount,
@@ -263,7 +270,7 @@ final class PaymentGatewayService
         try {
             // For now, return stub response
 
-            Log::channel('audit')->info('Gateway call', [
+            $this->logger->channel('audit')->info('Gateway call', [
                 'correlation_id' => $correlationId,
                 'gateway' => $gateway,
                 'action' => $action,
@@ -276,7 +283,14 @@ final class PaymentGatewayService
                 'gateway_response_code' => '00',
             ];
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Gateway call failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Gateway call failed', [
                 'correlation_id' => $correlationId,
                 'gateway' => $gateway,
                 'action' => $action,

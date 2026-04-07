@@ -223,3 +223,5 @@ return new class extends Migration
         Schema::dropIfExists('medical_clinics');
     }
 };
+
+

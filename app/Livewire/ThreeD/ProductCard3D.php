@@ -6,14 +6,14 @@ use Livewire\Component;
 
 final class ProductCard3D extends Component
 {
-    public int $productId;
-    public string $vertical;
-    public array $product = [];
-    public array $model3D = [];
-    public string $selectedColor = '#000000';
-    public float $rotationX = 0;
-    public float $rotationY = 0;
-    public float $zoom = 1.0;
+    private int $productId;
+    private string $vertical;
+    private array $product = [];
+    private array $model3D = [];
+    private string $selectedColor = '#000000';
+    private float $rotationX = 0;
+    private float $rotationY = 0;
+    private float $zoom = 1.0;
 
     public function mount(int $productId, string $vertical): void
     {
@@ -35,7 +35,6 @@ final class ProductCard3D extends Component
     public function rotate(string $direction): void
     {
         match ($direction) {
-            'left' => $this->rotationY -= 15,
             'right' => $this->rotationY += 15,
             'up' => $this->rotationX += 15,
             'down' => $this->rotationX -= 15,

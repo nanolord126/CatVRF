@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class BooksApiController extends Model
+final class BooksApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly BooksDomainService $domainService,
-            private readonly AIBookConstructor $aiConstructor
-        ) {}
+            private readonly AIBookConstructor $aiConstructor,
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Search books by genre and availability.
          * Accessible to B2C/B2B (Price switching happens in frontend or here).
@@ -31,12 +34,12 @@ final class BooksApiController extends Model
                     $query->whereHas('genre', fn ($q) => $q->where('slug', $genreSlug));
                 }
                 $books = $query->latest()->limit($limit)->get();
-                Log::channel('audit')->info('Books API search triggered', [
+                $this->logger->channel('audit')->info('Books API search triggered', [
                     'cid' => $correlationId,
                     'genre' => $genreSlug,
                     'count' => $books->count()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $books->map(fn (Book $b) => [
@@ -53,11 +56,11 @@ final class BooksApiController extends Model
                     ])
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Books API Search Failure', [
+                $this->logger->channel('audit')->error('Books API Search Failure', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'Catalog temporarily unavailable.',
                     'cid' => $correlationId
@@ -85,24 +88,24 @@ final class BooksApiController extends Model
                     readingLevel: (int) ($validated['reading_speed'] ?? 5)
                 );
                 $plan = $this->aiConstructor->generateReadingPlan($dto);
-                Log::channel('audit')->info('AI Book Consultant invoked', [
+                $this->logger->channel('audit')->info('AI Book Consultant invoked', [
                     'cid' => $correlationId,
                     'user_id' => $user->id,
                     'mood' => $validated['mood']
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'reading_roadmap' => $plan,
                     'message' => 'Your personalized AI reading plan is ready.'
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Consultant Failure', [
+                $this->logger->channel('audit')->error('AI Consultant Failure', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => 'AI Advisor is currently busy.',
                     'cid' => $correlationId
@@ -124,7 +127,7 @@ final class BooksApiController extends Model
                     'items.*.quantity' => 'required|integer|min:10', // Bulk minimum
                     'store_id' => 'required|integer'
                 ]);
-                DB::beginTransaction();
+                $this->db->beginTransaction();
                 // Transform request items to DTO expected format
                 $bookIds = collect($validated['items'])->pluck('book_id')->toArray();
                 $quantities = collect($validated['items'])->pluck('quantity')->toArray();
@@ -135,20 +138,20 @@ final class BooksApiController extends Model
                     quantities: $quantities,
                     correlationId: $correlationId
                 );
-                DB::commit();
-                return response()->json([
+                $this->db->commit();
+                return $this->response->json([
                     'success' => true,
                     'order_uuid' => $order->uuid,
                     'correlation_id' => $correlationId,
                     'message' => 'Corporate order submitted for volume verification.'
                 ]);
             } catch (\Throwable $e) {
-                DB::rollBack();
-                Log::channel('audit')->error('B2B Corporate Order Refused', [
+                $this->db->rollBack();
+                $this->logger->channel('audit')->error('B2B Corporate Order Refused', [
                     'cid' => $correlationId,
                     'error' => $e->getMessage()
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'error' => $e->getMessage() ?: 'Failed to process corporate order.',
                     'cid' => $correlationId

@@ -2,14 +2,13 @@
 
 namespace App\Domains\HouseholdGoods\HomeAppliance\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HomeApplianceSystemTest extends Model
+use Tests\TestCase;
+
+final class HomeApplianceSystemTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         /**
@@ -62,7 +61,7 @@ final class HomeApplianceSystemTest extends Model
 
             // Проверка гарантии (180 дней для B2C)
             $this->assertNotNull($order->warranty_expires_at);
-            $this->assertTrue($order->warranty_expires_at->isAfter(now()->addDays(170)));
+            $this->assertTrue($order->warranty_expires_at->isAfter(Carbon::now()->addDays(170)));
 
             // Проверка аудита
             $this->assertEquals($correlationId, $order->correlation_id);
@@ -85,6 +84,6 @@ final class HomeApplianceSystemTest extends Model
             $service->completeRepair($order);
 
             // B2B Гарантия 90 дней
-            $this->assertTrue($order->warranty_expires_at->diffInDays(now()) <= 90);
+            $this->assertTrue($order->warranty_expires_at->diffInDays(Carbon::now()) <= 90);
         }
 }

@@ -2,14 +2,16 @@
 
 namespace App\Domains\Medical\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalRecordPolicy extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final class MedicalRecordPolicy
 {
-    use HasFactory;
+    public function __construct(private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -83,10 +85,10 @@ final class MedicalRecordPolicy extends Model
 
             // Ограничение по времени (правка диагноза — ответственное действие)
             if ($record->created_at->diffInHours(now()) > 24 && !$user->hasRole('admin')) {
-                Log::channel('fraud_alert')->warning('Attempt to edit medical record after 24h', [
+                $this->logger->warning('Attempt to edit medical record after 24h', [
                     'user_id' => $user->id,
                     'record_id' => $record->id,
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->request->header('X-Correlation-ID'),
                 ]);
                 return false;
             }
@@ -117,7 +119,7 @@ final class MedicalRecordPolicy extends Model
          */
         private function logAccess(User $user, MedicalRecord $record, string $action): void
         {
-            $correlationId = request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+            $correlationId = $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
 
             // 1. Запись в БД (в массив доступа)
             $logs = $record->access_log_json ?? [];
@@ -125,18 +127,18 @@ final class MedicalRecordPolicy extends Model
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'action' => $action,
-                'ip' => request()->ip(),
+                'ip' => $this->request->ip(),
                 'timestamp' => now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
             // Используем DB direct для скорости и обхода лишних ивентов
-            \Illuminate\Support\Facades\DB::table('medical_records')
+            $this->db->table('medical_records')
                 ->where('id', $record->id)
                 ->update(['access_log_json' => json_encode($logs)]);
 
             // 2. Запись в Audit Log (физический файл/ClickHouse)
-            Log::channel('audit')->info("Medical Record Access Layer", [
+            $this->logger->info("Medical Record Access Layer", [
                 'action' => $action,
                 'user_id' => $user->id,
                 'record_uuid' => $record->uuid,

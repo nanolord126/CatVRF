@@ -1,20 +1,55 @@
 <?php declare(strict_types=1);
 
+/**
+ * CheckOutBookingRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/checkoutbookingrequest
+ * @see https://catvrf.ru/docs/checkoutbookingrequest
+ * @see https://catvrf.ru/docs/checkoutbookingrequest
+ */
+
+
 namespace App\Http\Requests\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CheckOutBookingRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class CheckOutBookingRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Hotels
+ */
+final class CheckOutBookingRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [
@@ -23,6 +58,11 @@ final class CheckOutBookingRequest extends Model
             ];
         }
 
+        /**
+         * Handle messages operation.
+         *
+         * @throws \DomainException
+         */
         public function messages(): array
         {
             return [

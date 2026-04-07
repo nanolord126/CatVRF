@@ -5,11 +5,10 @@ namespace App\Domains\Furniture\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class for extends Model
+final class FurnitureItem extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Boot the model to handle automatic UUID and tenant scoping.
          */

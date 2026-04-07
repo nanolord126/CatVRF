@@ -1,15 +1,26 @@
 <?php declare(strict_types=1);
 
+/**
+ * KidsToyCreateDto — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/kidstoycreatedto
+ */
+
+
 namespace App\Domains\Education\Kids\DTOs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class KidsToyCreateDto extends Model
+final readonly class KidsToyCreateDto
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @param array<string, bool> $educational_goals
          * @param array<string> $safety_certificates
@@ -23,8 +34,7 @@ final class KidsToyCreateDto extends Model
             public array $educational_goals,
             public array $safety_certificates,
             public string $brand_name,
-            public ?string $correlation_id = null,
-        ) {}
+            private ?string $correlation_id = null) {}
 
         /**
          * Create from request.

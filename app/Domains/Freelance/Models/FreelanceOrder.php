@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceOrder extends Model
-{
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+{
     use HasFactory;
 
         protected $table = 'freelance_orders';

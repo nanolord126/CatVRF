@@ -2,14 +2,10 @@
 
 namespace App\Services\Automation;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\LogManager;
 
-final class FraudDetectionService extends Model
+final readonly class FraudDetectionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const HIGH_AMOUNT_THRESHOLD = 100_000; // 1 000 руб
         private const RISK_BLOCK_THRESHOLD  = 0.8;
 

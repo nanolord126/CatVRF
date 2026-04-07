@@ -2,14 +2,9 @@
 
 namespace App\Policies\Domains;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
 final class BeautyAppointmentPolicy extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
         /**
@@ -21,7 +16,7 @@ final class BeautyAppointmentPolicy extends Model
                 return true;
             }
 
-            return null;
+            throw new \DomainException('Operation returned no result');
         }
 
         /**

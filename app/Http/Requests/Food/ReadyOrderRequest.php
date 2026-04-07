@@ -1,20 +1,57 @@
 <?php declare(strict_types=1);
 
+/**
+ * ReadyOrderRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/readyorderrequest
+ * @see https://catvrf.ru/docs/readyorderrequest
+ * @see https://catvrf.ru/docs/readyorderrequest
+ * @see https://catvrf.ru/docs/readyorderrequest
+ * @see https://catvrf.ru/docs/readyorderrequest
+ */
+
+
 namespace App\Http\Requests\Food;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReadyOrderRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class ReadyOrderRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Food
+ */
+final class ReadyOrderRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle authorize operation.
+     *
+     * @throws \DomainException
+     */
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
+        /**
+         * Handle rules operation.
+         *
+         * @throws \DomainException
+         */
         public function rules(): array
         {
             return [
@@ -22,6 +59,11 @@ final class ReadyOrderRequest extends Model
             ];
         }
 
+        /**
+         * Handle messages operation.
+         *
+         * @throws \DomainException
+         */
         public function messages(): array
         {
             return [

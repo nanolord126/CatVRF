@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 final class PostStatDaily extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'post_stats_daily';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'post_id',
             'tenant_id',
             'stat_date',
@@ -35,6 +36,22 @@ final class PostStatDaily extends Model
             'geo_breakdown'       => 'json',
             'device_breakdown'    => 'json',
         ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         public function post(): BelongsTo
         {

@@ -2,14 +2,16 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HeatmapExportService extends Model
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Http\Request;
+final readonly class HeatmapExportService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * @var string Default storage disk for exports
          */
@@ -40,7 +42,7 @@ final class HeatmapExportService extends Model
          *
          * @param string|null $disk Storage disk override (optional)
          */
-        public function __construct(?string $disk = null)
+        public function __construct(private readonly FilesystemManager $storage, ?string $disk = null, private readonly Request $request, private readonly LoggerInterface $logger)
         {
             if ($disk) {
                 $this->disk = $disk;
@@ -80,7 +82,7 @@ final class HeatmapExportService extends Model
                 $filename = $this->generateFilename('geo-heatmap', 'png', $tenantId);
                 $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-                Log::channel('audit')->info('Starting geo-heatmap PNG export', [
+                $this->logger->info('Starting geo-heatmap PNG export', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'metadata' => $metadata,
@@ -99,19 +101,19 @@ final class HeatmapExportService extends Model
                 }
 
                 // Store file
-                Storage::disk($this->disk)->put(
+                $this->storage->disk($this->disk)->put(
                     $storagePath,
                     $pngContent,
                     ['visibility' => 'private'] // Private visibility for security
                 );
 
                 // Generate signed URL (expires in 24 hours)
-                $url = Storage::disk($this->disk)->temporaryUrl(
+                $url = $this->storage->disk($this->disk)->temporaryUrl(
                     $storagePath,
-                    \now()->addSeconds($this->fileTtl)
+                    \Carbon::now()->addSeconds($this->fileTtl)
                 );
 
-                Log::channel('audit')->info('Geo-heatmap PNG export completed', [
+                $this->logger->info('Geo-heatmap PNG export completed', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'file_size' => $fileSize,
@@ -124,13 +126,13 @@ final class HeatmapExportService extends Model
                     'filename' => $filename,
                     'size' => $fileSize,
                     'format' => 'png',
-                    'generated_at' => \now()->toIso8601String(),
-                    'expires_at' => \now()->addSeconds($this->fileTtl)->toIso8601String(),
+                    'generated_at' => \Carbon::now()->toIso8601String(),
+                    'expires_at' => \Carbon::now()->addSeconds($this->fileTtl)->toIso8601String(),
                     'correlation_id' => $correlationId,
                 ];
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Geo-heatmap PNG export failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo-heatmap PNG export failed', [
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
                     'error_trace' => $e->getTraceAsString(),
@@ -178,7 +180,7 @@ final class HeatmapExportService extends Model
                 $filename = $this->generateFilename('geo-heatmap-report', 'pdf', $tenantId);
                 $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-                Log::channel('audit')->info('Starting geo-heatmap PDF export', [
+                $this->logger->info('Starting geo-heatmap PDF export', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'metadata_keys' => array_keys($metadata),
@@ -197,19 +199,19 @@ final class HeatmapExportService extends Model
                 }
 
                 // Store file
-                Storage::disk($this->disk)->put(
+                $this->storage->disk($this->disk)->put(
                     $storagePath,
                     $pdfContent,
                     ['visibility' => 'private']
                 );
 
                 // Generate signed URL
-                $url = Storage::disk($this->disk)->temporaryUrl(
+                $url = $this->storage->disk($this->disk)->temporaryUrl(
                     $storagePath,
-                    \now()->addSeconds($this->fileTtl)
+                    \Carbon::now()->addSeconds($this->fileTtl)
                 );
 
-                Log::channel('audit')->info('Geo-heatmap PDF export completed', [
+                $this->logger->info('Geo-heatmap PDF export completed', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'file_size' => $fileSize,
@@ -222,13 +224,13 @@ final class HeatmapExportService extends Model
                     'filename' => $filename,
                     'size' => $fileSize,
                     'format' => 'pdf',
-                    'generated_at' => \now()->toIso8601String(),
-                    'expires_at' => \now()->addSeconds($this->fileTtl)->toIso8601String(),
+                    'generated_at' => \Carbon::now()->toIso8601String(),
+                    'expires_at' => \Carbon::now()->addSeconds($this->fileTtl)->toIso8601String(),
                     'correlation_id' => $correlationId,
                 ];
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Geo-heatmap PDF export failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Geo-heatmap PDF export failed', [
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
                     'error_trace' => $e->getTraceAsString(),
@@ -274,7 +276,7 @@ final class HeatmapExportService extends Model
                 $filename = $this->generateFilename('click-heatmap', 'png', $tenantId);
                 $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-                Log::channel('audit')->info('Starting click-heatmap PNG export', [
+                $this->logger->info('Starting click-heatmap PNG export', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'correlation_id' => $correlationId,
@@ -289,19 +291,19 @@ final class HeatmapExportService extends Model
                 }
 
                 // Store file
-                Storage::disk($this->disk)->put(
+                $this->storage->disk($this->disk)->put(
                     $storagePath,
                     $pngData,
                     ['visibility' => 'private']
                 );
 
                 // Generate signed URL
-                $url = Storage::disk($this->disk)->temporaryUrl(
+                $url = $this->storage->disk($this->disk)->temporaryUrl(
                     $storagePath,
-                    \now()->addSeconds($this->fileTtl)
+                    \Carbon::now()->addSeconds($this->fileTtl)
                 );
 
-                Log::channel('audit')->info('Click-heatmap PNG export completed', [
+                $this->logger->info('Click-heatmap PNG export completed', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'file_size' => $fileSize,
@@ -313,13 +315,13 @@ final class HeatmapExportService extends Model
                     'filename' => $filename,
                     'size' => $fileSize,
                     'format' => 'png',
-                    'generated_at' => \now()->toIso8601String(),
-                    'expires_at' => \now()->addSeconds($this->fileTtl)->toIso8601String(),
+                    'generated_at' => \Carbon::now()->toIso8601String(),
+                    'expires_at' => \Carbon::now()->addSeconds($this->fileTtl)->toIso8601String(),
                     'correlation_id' => $correlationId,
                 ];
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Click-heatmap PNG export failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Click-heatmap PNG export failed', [
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -368,7 +370,7 @@ final class HeatmapExportService extends Model
                 $filename = $this->generateFilename('click-heatmap-report', 'pdf', $tenantId);
                 $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-                Log::channel('audit')->info('Starting click-heatmap PDF export', [
+                $this->logger->info('Starting click-heatmap PDF export', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'correlation_id' => $correlationId,
@@ -386,19 +388,19 @@ final class HeatmapExportService extends Model
                 }
 
                 // Store file
-                Storage::disk($this->disk)->put(
+                $this->storage->disk($this->disk)->put(
                     $storagePath,
                     $pdfContent,
                     ['visibility' => 'private']
                 );
 
                 // Generate signed URL
-                $url = Storage::disk($this->disk)->temporaryUrl(
+                $url = $this->storage->disk($this->disk)->temporaryUrl(
                     $storagePath,
-                    \now()->addSeconds($this->fileTtl)
+                    \Carbon::now()->addSeconds($this->fileTtl)
                 );
 
-                Log::channel('audit')->info('Click-heatmap PDF export completed', [
+                $this->logger->info('Click-heatmap PDF export completed', [
                     'tenant_id' => $tenantId,
                     'filename' => $filename,
                     'file_size' => $fileSize,
@@ -410,13 +412,13 @@ final class HeatmapExportService extends Model
                     'filename' => $filename,
                     'size' => $fileSize,
                     'format' => 'pdf',
-                    'generated_at' => \now()->toIso8601String(),
-                    'expires_at' => \now()->addSeconds($this->fileTtl)->toIso8601String(),
+                    'generated_at' => \Carbon::now()->toIso8601String(),
+                    'expires_at' => \Carbon::now()->addSeconds($this->fileTtl)->toIso8601String(),
                     'correlation_id' => $correlationId,
                 ];
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Click-heatmap PDF export failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Click-heatmap PDF export failed', [
                     'tenant_id' => $tenantId,
                     'error_message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -450,9 +452,10 @@ final class HeatmapExportService extends Model
             // $png = Browsershot::html($html)->png();
             //
             // For now, return placeholder
-            Log::channel('audit')->debug('Converting HTML to PNG', [
+            $this->logger->debug('Converting HTML to PNG', [
                 'html_length' => \strlen($html),
                 'options' => $options,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
             throw new \RuntimeException(
                 'HTML to PNG conversion not yet implemented. Install Browsershot: composer require spatie/browsershot'
@@ -482,9 +485,10 @@ final class HeatmapExportService extends Model
             // $pdfContent = $dompdf->output();
             //
             // For now, return placeholder
-            Log::channel('audit')->debug('Converting HTML to PDF', [
+            $this->logger->debug('Converting HTML to PDF', [
                 'html_length' => \strlen($html),
                 'metadata' => $metadata,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
             throw new \RuntimeException(
                 'HTML to PDF conversion not yet implemented. Install DOMPDF: composer require dompdf/dompdf'
@@ -542,7 +546,7 @@ final class HeatmapExportService extends Model
          */
         private function generateFilename(string $type, string $extension, int $tenantId): string
         {
-            $timestamp = \now()->format('YmdHis');
+            $timestamp = \Carbon::now()->format('YmdHis');
             $random = Str::random(8);
 
             return "{$type}-{$timestamp}-{$random}.{$extension}";
@@ -555,7 +559,7 @@ final class HeatmapExportService extends Model
          */
         private function generateTraceId(): string
         {
-            return \now()->timestamp . '-' . Str::random(8);
+            return \Carbon::now()->timestamp . '-' . Str::random(8);
         }
 
         /**
@@ -565,7 +569,7 @@ final class HeatmapExportService extends Model
          */
         public function getStorageDisk()
         {
-            return Storage::disk($this->disk);
+            return $this->storage->disk($this->disk);
         }
 
         /**

@@ -2,14 +2,14 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIHealthConstructorService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIHealthConstructorService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор: подбор врача и анализов по симптомам.
          */
@@ -45,7 +45,7 @@ final class AIHealthConstructorService extends Model
                     ->limit(3)
                     ->get();
 
-                Log::channel('audit')->info('AI Health Constructor matched symptoms', [
+                $this->logger->info('AI Health Constructor matched symptoms', [
                     'symptoms' => $symptoms,
                     'matched_specialization' => $suggestedSpecialization,
                     'doctors_count' => $doctors->count(),
@@ -71,7 +71,7 @@ final class AIHealthConstructorService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Health Constructor failed', [
+                $this->logger->error('AI Health Constructor failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
@@ -87,8 +87,8 @@ final class AIHealthConstructorService extends Model
             $correlationId = $correlationId ?? (string)Str::uuid();
 
             // КРИТИЧНО: Логируем факт анализа фото - это конфиденциальные данные!
-            Log::channel('audit')->info('Vision AI Analysis requested for patient photo', [
-                'user_id' => auth()->id(),
+            $this->logger->info('Vision AI Analysis requested for patient photo', [
+                'user_id' => $this->auth->id(),
                 'correlation_id' => $correlationId
             ]);
 

@@ -3,13 +3,16 @@
 namespace App\Models\Cleaning;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 final class CleaningOrder extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'cleaning_orders';
 
         protected $fillable = [
@@ -102,7 +105,7 @@ final class CleaningOrder extends Model
         /**
          * Review associated with this order (one review per order).
          */
-        public function review(): belongsTo
+        public function review(): HasOne
         {
             return $this->hasOne(CleaningReview::class);
         }

@@ -2,20 +2,32 @@
 
 namespace App\Jobs\CacheWarmers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class WarmPopularProductsJob extends Model
+/**
+ * Class WarmPopularProductsJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs\CacheWarmers
+ */
+final class WarmPopularProductsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
-        private int $tries = 3;
-        private int $timeout = 45;
+        protected int $tries = 3;
+        protected int $timeout = 45;
 
-        public function __construct(private readonly string $vertical) {}
+        public function __construct(private readonly string $vertical,
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
         public function handle(): void
         {
@@ -25,16 +37,16 @@ final class WarmPopularProductsJob extends Model
 
                 $popularProducts = $this->getPopularProducts();
 
-                Cache::store('redis')
+                $this->cache->store('redis')
                     ->tags([$cacheTag])
                     ->put($cacheKey, $popularProducts, now()->addHours(4));
 
-                Log::channel('audit')->info('Popular products cached', [
+                $this->logger->channel('audit')->info('Popular products cached', [
                     'vertical' => $this->vertical,
                     'products_count' => count($popularProducts),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to warm popular products cache', [
+                $this->logger->channel('audit')->error('Failed to warm popular products cache', [
                     'vertical' => $this->vertical,
                     'error' => $e->getMessage(),
                 ]);

@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CosmeticProductResource extends Model
+final class CosmeticProductResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = CosmeticProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-beaker';
         protected static ?string $navigationLabel = 'Косметика';
@@ -40,7 +38,7 @@ final class CosmeticProductResource extends Model
                                 ->placeholder('Артикул товара'),
                             Forms\Components\Select::make('salon_id')
                                 ->label('Основной салон')
-                                ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id')))
+                                ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', filament()->getTenant()?->id))
                                 ->nullable()
                                 ->preload(),
                         ])->columns(2),
@@ -180,7 +178,7 @@ final class CosmeticProductResource extends Model
                         ])->columns(2),
 
                     Forms\Components\Hidden::make('tenant_id')
-                        ->default(fn () => tenant('id')),
+                        ->default(fn () => filament()->getTenant()?->id),
                     Forms\Components\Hidden::make('correlation_id')
                         ->default(fn () => (string) Str::uuid()),
                     Forms\Components\Hidden::make('business_group_id')
@@ -212,7 +210,6 @@ final class CosmeticProductResource extends Model
                     Tables\Columns\TextColumn::make('product_type')
                         ->label('Тип')
                         ->formatStateUsing(fn ($state) => match ($state) {
-                            'foundation' => 'Основа',
                             'powder' => 'Пудра',
                             'lipstick' => 'Помада',
                             'eyeshadow' => 'Тени',
@@ -235,8 +232,9 @@ final class CosmeticProductResource extends Model
                             $state <= 10 => 'warning',
                             default => 'success',
                         }),
-                    Tables\Columns\BadgeColumn::make('rating')
+                    Tables\Columns\TextColumn::make('rating')
                         ->label('Рейтинг')
+                        ->badge()
                         ->numeric(1)
                         ->sortable()
                         ->color(fn ($state) => match (true) {
@@ -244,11 +242,13 @@ final class CosmeticProductResource extends Model
                             $state >= 3.5 => 'info',
                             default => 'warning',
                         }),
-                    Tables\Columns\BooleanColumn::make('is_active')
+                    Tables\Columns\IconColumn::make('is_active')
                         ->label('Активен')
+                        ->boolean()
                         ->sortable(),
-                    Tables\Columns\BooleanColumn::make('is_featured')
+                    Tables\Columns\IconColumn::make('is_featured')
                         ->label('Рекомендуемый')
+                        ->boolean()
                         ->sortable(),
                     Tables\Columns\TextColumn::make('created_at')
                         ->label('Дата добавления')
@@ -304,7 +304,7 @@ final class CosmeticProductResource extends Model
         public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
-                ->where('tenant_id', tenant('id'));
+                ->where('tenant_id', filament()->getTenant()?->id);
         }
 
         public static function getPages(): array

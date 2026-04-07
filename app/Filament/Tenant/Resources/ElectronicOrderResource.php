@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ElectronicOrderResource extends Model
+final class ElectronicOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ElectronicOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
@@ -108,31 +105,15 @@ final class ElectronicOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronicOrder::route('/'),
-                'create' => Pages\\CreateElectronicOrder::route('/create'),
-                'edit' => Pages\\EditElectronicOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListElectronicOrder::route('/'),
-                'create' => Pages\\CreateElectronicOrder::route('/create'),
-                'edit' => Pages\\EditElectronicOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicOrder::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListElectronicOrder::route('/'),
-                'create' => Pages\\CreateElectronicOrder::route('/create'),
-                'edit' => Pages\\EditElectronicOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewElectronicOrder::route('/{record}'),
+                'index' => Pages\ListElectronicOrder::route('/'),
+                'create' => Pages\CreateElectronicOrder::route('/create'),
+                'edit' => Pages\EditElectronicOrder::route('/{record}/edit'),
+                'view' => Pages\ViewElectronicOrder::route('/{record}'),
             ];
         }
 }

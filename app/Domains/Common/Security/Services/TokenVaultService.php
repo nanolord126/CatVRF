@@ -2,17 +2,17 @@
 
 namespace App\Domains\Common\Security\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TokenVaultService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class TokenVaultService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(string $correlationId = '')
+        public function __construct(string $correlationId = '',
+        private readonly Request $request, private readonly LoggerInterface $logger)
         {
             $this->correlationId = $correlationId ?: (string) Str::uuid();
         }
@@ -22,7 +22,7 @@ final class TokenVaultService extends Model
          */
         public function setSecret(string $keyName, mixed $value, int $userId = null): EncryptedSecret
         {
-            Log::channel('audit')->info('Vault: Storing secret', [
+            $this->logger->info('Vault: Storing secret', [
                 'key' => $keyName,
                 'user_id' => $userId,
                 'correlation_id' => $this->correlationId
@@ -63,8 +63,8 @@ final class TokenVaultService extends Model
 
             try {
                 return $this->crypt->decrypt($secret->encrypted_payload);
-            } catch (\Exception $e) {
-                Log::error('Vault: Decryption failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Vault: Decryption failed', [
                     'secret_id' => $secret->id,
                     'correlation_id' => $this->correlationId
                 ]);
@@ -81,7 +81,7 @@ final class TokenVaultService extends Model
                 'secret_id' => $secretId,
                 'user_id' => $userId,
                 'action' => $action,
-                'ip_address' => request()->ip(),
+                'ip_address' => $this->request->ip(),
                 'correlation_id' => $this->correlationId
             ]);
         }

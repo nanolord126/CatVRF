@@ -2,28 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class PostController extends Model
+final class PostController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    slug}/posts              — лента постов (публично)
-     * POST   /api/v1/channels/{uuid}/posts              — создать пост (бизнес)
-     * GET    /api/v1/channels/{slug}/posts/{postUuid}   — просмотр поста (публично)
-     * PUT    /api/v1/posts/{uuid}                       — редактировать пост (бизнес)
-     * DELETE /api/v1/posts/{uuid}                       — архивировать пост (бизнес)
-     * POST   /api/v1/posts/{uuid}/publish               — опубликовать (модератор)
-     * POST   /api/v1/posts/{uuid}/reject                — отклонить (модератор)
-     * GET    /api/v1/feed                               — личная лента (пользователь)
-     */
-    final class PostController extends BaseApiV1Controller
-    {
-        public function __construct(
+    public function __construct(
             private readonly PostService $postService,
-        ) {}
+            private readonly ResponseFactory $response,
+    ) {}
         /** Лента постов канала (публично) */
         public function index(Request $request, string $slug): JsonResponse
         {
@@ -33,7 +20,7 @@ final class PostController extends Model
                 $audience = $this->detectAudience($request);
                 $page     = (int) $request->query('page', 1);
                 $posts = $this->postService->getFeed($channel, $audience, 10, $page);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $this->formatPostCollection($posts),
                     'meta'           => [
@@ -62,7 +49,7 @@ final class PostController extends Model
                 // Инкремент просмотров
                 $userHash = md5(($request->user()?->id ?? $request->ip()) . date('YmdHi'));
                 $this->postService->incrementViews($post, $userHash);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $this->formatPost($post),
                     'correlation_id' => $correlationId,
@@ -104,10 +91,9 @@ final class PostController extends Model
                     poll:          $validated['poll'] ?? null,
                     correlationId: $correlationId,
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => match ($post->status) {
-                        'pending_moderation' => 'Пост отправлен на модерацию.',
                         'draft'              => 'Пост сохранён как черновик (отложенная публикация).',
                         default              => 'Пост опубликован.',
                     },
@@ -130,7 +116,7 @@ final class PostController extends Model
                     $request->user()?->email,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => 'Пост опубликован.',
                     'data'           => $this->formatPost($post),
@@ -154,7 +140,7 @@ final class PostController extends Model
                     $request->user()?->email ?? 'system',
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => 'Пост отклонён.',
                     'data'           => $this->formatPost($post),
@@ -172,7 +158,7 @@ final class PostController extends Model
                 $post = Post::withoutGlobalScopes()->where('uuid', $postUuid)->firstOrFail();
                 $this->authorize('delete', $post);
                 $this->postService->archivePost($post, $correlationId);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'message'        => 'Пост перенесён в архив.',
                     'correlation_id' => $correlationId,
@@ -192,7 +178,7 @@ final class PostController extends Model
                 /** @var \App\Domains\Content\Channels\Services\ChannelSubscriptionService $subService */
                 $subService = app(\App\Domains\Content\Channels\Services\ChannelSubscriptionService::class);
                 $feed       = $subService->getPersonalFeed($userId, $audience, 15);
-                return response()->json([
+                return $this->response->json([
                     'success'        => true,
                     'data'           => $this->formatPostCollection($feed),
                     'meta'           => [

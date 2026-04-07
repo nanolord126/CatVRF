@@ -8,9 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('short_term_rental_apartments')) {
-            return;
-        }
+        Schema::dropIfExists('str_reviews');
+        Schema::dropIfExists('str_availability_calendars');
+        Schema::dropIfExists('str_bookings');
+        Schema::dropIfExists('short_term_rental_apartments');
 
         Schema::create('short_term_rental_apartments', function (Blueprint $table) {
             $table->id();
@@ -20,7 +21,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('address');
-            $table->point('geo_point')->nullable()->spatialIndex();
+            $table->json('geo_point')->nullable();
             $table->integer('bedrooms');
             $table->integer('bathrooms');
             $table->integer('area_sqm');
@@ -145,3 +146,5 @@ return new class extends Migration
         Schema::dropIfExists('short_term_rental_apartments');
     }
 };
+
+

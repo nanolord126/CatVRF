@@ -2,23 +2,29 @@
 
 namespace App\Domains\Flowers\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UpdateFlowerShopRating extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class UpdateFlowerShopRating
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
         public function handle(FlowerDeliveryCompleted $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $order = $event->delivery->order;
 
-                    Log::channel('audit')->info('Update flower shop rating', [
+                    $this->logger->info('Update flower shop rating', [
                         'shop_id' => $event->delivery->shop_id,
                         'order_id' => $order->id,
                         'correlation_id' => $event->correlationId,
@@ -42,16 +48,17 @@ final class UpdateFlowerShopRating extends Model
                                 'review_count' => $reviews->count(),
                             ]);
 
-                            Log::channel('audit')->info('Shop rating updated', [
+                            $this->logger->info('Shop rating updated', [
                                 'shop_id' => $shop->id,
                                 'new_rating' => $shop->rating,
                                 'review_count' => $shop->review_count,
+                                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                             ]);
                         }
                     }
                 });
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('Rating update failed', [
+            } catch (\Throwable $exception) {
+                $this->logger->error('Rating update failed', [
                     'shop_id' => $event->delivery->shop_id,
                     'error' => $exception->getMessage(),
                     'correlation_id' => $event->correlationId,

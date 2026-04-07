@@ -2,20 +2,26 @@
 
 namespace App\Domains\Flowers\Filament\Resources\BouquetResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Filament\Resources\BouquetResource;
+use Filament\Actions\DeleteAction;
+use Filament\Resources\Pages\EditRecord;
 
-final class EditBouquet extends Model
+/**
+ * EditBouquet — CatVRF 2026 Component.
+ *
+ * Filament page for editing bouquets.
+ * Tenant-scoped: all data filtered by current tenant.
+ *
+ * @package App\Domains\Flowers\Filament\Resources\BouquetResource\Pages
+ */
+final class EditBouquet extends EditRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BouquetResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\DeleteAction::make(),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            DeleteAction::make(),
+        ];
+    }
 }

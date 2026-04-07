@@ -2,14 +2,18 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ChatController extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+use App\Http\Controllers\Controller;
+
+final class ChatController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Send chat message during stream
          */
@@ -17,7 +21,7 @@ final class ChatController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $stream = Stream::where('room_id', $roomId)
                     ->where('status', 'live')
@@ -30,11 +34,11 @@ final class ChatController extends Model
                     'message' => $request->string('message')->value(),
                     'message_type' => $request->string('message_type', 'text')->value(),
                     'is_pinned' => false,
-                    'moderation_status' => config('bloggers.chat.auto_approve') ? 'approved' : 'pending',
+                    'moderation_status' => $this->config->get('bloggers.chat.auto_approve') ? 'approved' : 'pending',
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Chat message sent', [
+                $this->logger->info('Chat message sent', [
                     'correlation_id' => $correlationId,
                     'stream_id' => $stream->id,
                     'user_id' => $userId,
@@ -47,17 +51,18 @@ final class ChatController extends Model
                     message: $message,
                 ))->toOthers();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $message,
                     'status' => $message->moderation_status,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Send message failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Send message failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to send message',
                     'error' => $e->getMessage(),
                 ], 400);
@@ -85,13 +90,13 @@ final class ChatController extends Model
                     ->offset($offset)
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => $messages,
                     'count' => count($messages),
                     'has_more' => count($messages) === $limit,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch messages',
                 ], 500);
             }
@@ -104,32 +109,32 @@ final class ChatController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
                 $message = StreamChatMessage::with('stream')
                     ->findOrFail($messageId);
 
                 // Check authorization
                 if ($message->user_id !== $userId && $message->stream->blogger_id !== $userId) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Unauthorized',
                     ], 403);
                 }
 
                 $message->delete();
 
-                Log::channel('audit')->info('Chat message deleted', [
+                $this->logger->info('Chat message deleted', [
                     'correlation_id' => $correlationId,
                     'message_id' => $messageId,
                     'user_id' => $userId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'success' => true,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to delete message',
                 ], 400);
             }
@@ -142,14 +147,14 @@ final class ChatController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $blogerId = auth()->id();
+                $blogerId = $request->user()?->id;
 
                 $message = StreamChatMessage::with('stream')
                     ->findOrFail($messageId);
 
                 // Check authorization
                 if ($message->stream->blogger_id !== $blogerId) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Only stream owner can pin messages',
                     ], 403);
                 }
@@ -160,25 +165,25 @@ final class ChatController extends Model
                     ->count();
 
                 if ($pinnedCount >= 3) {
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Maximum 3 pinned messages allowed',
                     ], 400);
                 }
 
                 $message->update(['is_pinned' => true]);
 
-                Log::channel('audit')->info('Chat message pinned', [
+                $this->logger->info('Chat message pinned', [
                     'correlation_id' => $correlationId,
                     'message_id' => $messageId,
                     'stream_id' => $message->stream_id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $message,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to pin message',
                 ], 400);
             }

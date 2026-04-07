@@ -2,14 +2,31 @@
 
 namespace App\Services\Compliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Log\LogManager;
 
-final class MdlpService extends Model
+
+/**
+ * Class MdlpService
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Services\Compliance
+ */
+final readonly class MdlpService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Verify KIZ (Identification Mark) for a specific medicine box.
          * КИЗ: Контрольно-идентификационный знак (Data Matrix).
@@ -31,8 +48,8 @@ final class MdlpService extends Model
                 if ($kizCode === 'test_kiz') return true;
 
                 return $response->successful() && $response->json('is_valid') === true;
-            } catch (Throwable $e) {
-                Log::channel('fraud_alert')->error('MDLP KIZ verification failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('fraud_alert')->error('MDLP KIZ verification failed', [
                     'kiz' => $kizCode,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class TicketsResource extends Model
+final class TicketsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BTicketStorefront::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +105,15 @@ final class TicketsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListTickets::route('/'),
-                'create' => Pages\\CreateTickets::route('/create'),
-                'edit' => Pages\\EditTickets::route('/{record}/edit'),
-                'view' => Pages\\ViewTickets::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListTickets::route('/'),
-                'create' => Pages\\CreateTickets::route('/create'),
-                'edit' => Pages\\EditTickets::route('/{record}/edit'),
-                'view' => Pages\\ViewTickets::route('/{record}'),
+                'index' => Pages\ListTickets::route('/'),
+                'create' => Pages\CreateTickets::route('/create'),
+                'edit' => Pages\EditTickets::route('/{record}/edit'),
+                'view' => Pages\ViewTickets::route('/{record}'),
             ];
         }
 }

@@ -4,12 +4,13 @@ namespace App\Models\Insurance;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 final class InsuranceType extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'insurance_types';
 
         protected $fillable = [
@@ -29,6 +30,12 @@ final class InsuranceType extends Model
 
         protected static function booted(): void
         {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();

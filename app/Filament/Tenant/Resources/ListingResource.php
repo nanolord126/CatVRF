@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ListingResource extends Model
+final class ListingResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Listing::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-queue-list';
@@ -100,23 +98,20 @@ final class ListingResource extends Model
                                                 ->title('Ошибка AI анализа')
                                                 ->danger()
                                                 ->send();
+                                        }
+                                    }),
+                            ]),
+                        ]),
+                ]);
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListListing::route('/'),
-                'create' => Pages\\CreateListing::route('/create'),
-                'edit' => Pages\\EditListing::route('/{record}/edit'),
-                'view' => Pages\\ViewListing::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListListing::route('/'),
-                'create' => Pages\\CreateListing::route('/create'),
-                'edit' => Pages\\EditListing::route('/{record}/edit'),
-                'view' => Pages\\ViewListing::route('/{record}'),
+                'index' => Pages\ListListing::route('/'),
+                'create' => Pages\CreateListing::route('/create'),
+                'edit' => Pages\EditListing::route('/{record}/edit'),
+                'view' => Pages\ViewListing::route('/{record}'),
             ];
         }
 }

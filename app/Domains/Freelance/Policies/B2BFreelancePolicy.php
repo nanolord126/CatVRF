@@ -2,14 +2,9 @@
 
 namespace App\Domains\Freelance\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class B2BFreelancePolicy extends Model
+final class B2BFreelancePolicy
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function viewAny(User $user): Response
         {
             return $this->response->allow();

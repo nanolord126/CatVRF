@@ -2,18 +2,37 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\FraudControlService;
+use Psr\Log\LoggerInterface;
 
-final class TourBookingService extends Model
+/**
+ * Сервис бронирования туров.
+ *
+ * Обрабатывает создание бронирований туристических туров.
+ * Все мутации оборачиваются в транзакцию с fraud-проверкой и audit-логированием.
+ *
+ * @package App\Domains\Travel\Services
+ */
+final readonly class TourBookingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct()
-        {
-        }
-
+    /**
+     * Забронировать тур для пользователя.
+     *
+     * @param int $tourId Идентификатор тура
+     * @param int $userId Идентификатор пользователя
+     * @param int $personCount Количество участников
+     * @param string $startDate Дата начала тура (Y-m-d)
+     * @param string $correlationId Идентификатор корреляции
+     * @return int ID созданного бронирования
+     *
+     * @throws \Throwable При ошибке бронирования
+     */
         public function bookTour(
             int $tourId,
             int $userId,
@@ -21,13 +40,18 @@ final class TourBookingService extends Model
             string $startDate,
             string $correlationId,
         ): int {
-
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'tour_booking',
+                amount: 0,
+                correlationId: $correlationId,
+            );
 
             try {
-                $bookingId = DB::transaction(function () use ($tourId, $userId, $personCount, $startDate, $correlationId) {
-                    $tour = DB::table('travel_tours')->findOrFail($tourId);
+                $bookingId = $this->db->transaction(function () use ($tourId, $userId, $personCount, $startDate, $correlationId) {
+                    $tour = $this->db->table('travel_tours')->findOrFail($tourId);
 
-                    $bookingId = DB::table('travel_bookings')->insertGetId([
+                    $bookingId = $this->db->table('travel_bookings')->insertGetId([
                         'tour_id' => $tourId,
                         'user_id' => $userId,
                         'person_count' => $personCount,
@@ -38,7 +62,7 @@ final class TourBookingService extends Model
                         'created_at' => now(),
                     ]);
 
-                    Log::channel('audit')->info('Tour booked', [
+                    $this->logger->info('Tour booked', [
                         'booking_id' => $bookingId,
                         'tour_id' => $tourId,
                         'persons' => $personCount,
@@ -49,8 +73,8 @@ final class TourBookingService extends Model
                 });
 
                 return $bookingId;
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Tour booking failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Tour booking failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),

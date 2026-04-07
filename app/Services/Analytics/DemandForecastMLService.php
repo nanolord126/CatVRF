@@ -2,14 +2,25 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DemandForecastMLService extends Model
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+
+
+
+final readonly class DemandForecastMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 86400; // 24 часа (долгосрочный прогноз)
         private const MIN_HISTORICAL_DAYS = 30;
         private const MAX_FORECAST_DAYS = 90;
@@ -38,7 +49,7 @@ final class DemandForecastMLService extends Model
 
             $cacheKey = "forecast:item:{$itemId}:days:{$daysAhead}";
 
-            return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($itemId, $daysAhead) {
+            return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($itemId, $daysAhead) {
                 try {
                     // Получаем историю спроса
                     $history = $this->getHistoricalDemand($itemId);
@@ -68,10 +79,11 @@ final class DemandForecastMLService extends Model
                     ];
 
                 } catch (\Throwable $e) {
-                    Log::channel('analytics_errors')->error('Demand forecast failed', [
+                    $this->logger->channel('analytics_errors')->error('Demand forecast failed', [
                         'item_id' => $itemId,
-                        'error' => $e->getMessage()
-                    ]);
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return $this->getDefaultForecast();
                 }
             });
@@ -107,14 +119,14 @@ final class DemandForecastMLService extends Model
         {
             $since = now()->subDays($days)->startOfDay();
 
-            $actuals = DB::table('demand_actuals')
+            $actuals = $this->db->table('demand_actuals')
                 ->where('vertical', $vertical)
                 ->where('date', '>=', $since)
                 ->get()
                 ->groupBy('date')
                 ->map(fn ($group) => $group->sum('actual_demand'));
 
-            $predictions = DB::table('demand_forecasts')
+            $predictions = $this->db->table('demand_forecasts')
                 ->where('vertical', $vertical)
                 ->where('forecast_date', '>=', $since)
                 ->get()
@@ -164,7 +176,7 @@ final class DemandForecastMLService extends Model
         {
             $since = now()->subDays(90)->startOfDay();
 
-            $history = DB::table('demand_actuals')
+            $history = $this->db->table('demand_actuals')
                 ->where('item_id', $itemId)
                 ->where('date', '>=', $since)
                 ->orderBy('date')
@@ -285,7 +297,8 @@ final class DemandForecastMLService extends Model
         {
             $values = array_values($history);
             $lastValue = end($values);
-            $lastDate = end(array_keys($history));
+            $historyDates = array_keys($history);
+            $lastDate = end($historyDates);
 
             // Прогноз = последнее значение + тренд * дни впёрёд + сезонный коэффициент
             $forecastDate = Carbon::parse($lastDate)->addDays($daysAhead);

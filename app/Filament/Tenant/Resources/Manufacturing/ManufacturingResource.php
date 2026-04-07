@@ -2,15 +2,6 @@
 
 namespace App\Filament\Tenant\Resources\Manufacturing;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class ManufacturingResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    DatePicker,FileUpload,Hidden,RichEditor,Section,Select,TagsInput,Textarea,TextInput,Toggle,Repeater};
     use Filament\Forms\Form;
     use Filament\Resources\Resource;
     use Filament\Tables\Columns\{BadgeColumn,TextColumn,ImageColumn};

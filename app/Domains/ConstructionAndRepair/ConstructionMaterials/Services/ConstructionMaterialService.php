@@ -2,19 +2,22 @@
 
 namespace App\Domains\ConstructionAndRepair\ConstructionMaterials\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ConstructionMaterialService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ConstructionMaterialService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly WalletService $walletService,
-            private readonly FraudControlService $fraudControlService,
-            private readonly string $correlationId = '',
-        ) {}
+
+    public function __construct(private readonly WalletService $walletService,
+            private readonly FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function orderMaterial(
             int $materialId,
@@ -25,28 +28,22 @@ final class ConstructionMaterialService extends Model
             ?string $correlationIdOverride = null
         ): MaterialOrder {
 
-
             $correlationId = $correlationIdOverride ?: Str::uuid()->toString();
 
             try {
                 // Fraud check
-                $this->fraudControlService->check([
-                    'type' => 'material_order',
-                    'user_id' => $userId,
-                    'amount' => 0, // Will be calculated
-                    'correlation_id' => $correlationId,
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'material_order', amount: 0, correlationId: $correlationId ?? '');
 
-                return DB::transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId, $userId, $tenantId) {
+                return $this->db->transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId, $userId, $tenantId) {
                     // Lock material for update
                     $material = ConstructionMaterial::lockForUpdate()->find($materialId);
 
                     if (!$material) {
-                        throw new Exception('Material not found', 404);
+                        throw new \DomainException('Material not found', 404);
                     }
 
                     if ($material->current_stock < $quantity) {
-                        throw new Exception('Insufficient stock. Available: ' . $material->current_stock, 422);
+                        throw new \DomainException('Insufficient stock. Available: ' . $material->current_stock, 422);
                     }
 
                     // Calculate prices
@@ -73,7 +70,7 @@ final class ConstructionMaterialService extends Model
                     ]);
 
                     // Log audit
-                    Log::channel('audit')->info('Construction material order created', [
+                    $this->logger->info('Construction material order created', [
                         'correlation_id' => $correlationId,
                         'order_id' => $order->id,
                         'material_id' => $materialId,
@@ -83,12 +80,12 @@ final class ConstructionMaterialService extends Model
                     ]);
 
                     // Invalidate cache
-                    Cache::forget('material:' . $materialId);
+                    cache()->forget('material:' . $materialId);
 
                     return $order;
                 });
-            } catch (Exception $e) {
-                Log::channel('error')->error('Material order failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Material order failed', [
                     'correlation_id' => $correlationId,
                     'material_id' => $materialId,
                     'error' => $e->getMessage(),
@@ -101,22 +98,21 @@ final class ConstructionMaterialService extends Model
         public function deliverOrder(MaterialOrder $order, string $trackingNumber = null): void
         {
 
-
             $correlationId = $order->correlation_id ?? Str::uuid()->toString();
 
             try {
                 $order->update([
                     'status' => 'delivered',
                     'tracking_number' => $trackingNumber,
-                    'delivery_date' => now(),
+                    'delivery_date' => Carbon::now(),
                 ]);
 
-                Log::channel('audit')->info('Material order delivered', [
+                $this->logger->info('Material order delivered', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                 ]);
-            } catch (Exception $e) {
-                Log::channel('error')->error('Delivery failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Delivery failed', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
@@ -129,11 +125,10 @@ final class ConstructionMaterialService extends Model
         public function cancelOrder(MaterialOrder $order): void
         {
 
-
             $correlationId = $order->correlation_id ?? Str::uuid()->toString();
 
             try {
-                DB::transaction(function () use ($order) {
+                $this->db->transaction(function () use ($order) {
                     $material = $order->material;
 
                     if ($material) {
@@ -144,15 +139,15 @@ final class ConstructionMaterialService extends Model
 
                     $order->update(['status' => 'cancelled']);
 
-                    Cache::forget('material:' . $order->material_id);
+                    cache()->forget('material:' . $order->material_id);
                 });
 
-                Log::channel('audit')->info('Material order cancelled', [
+                $this->logger->info('Material order cancelled', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                 ]);
-            } catch (Exception $e) {
-                Log::channel('error')->error('Cancellation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Cancellation failed', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
@@ -165,14 +160,12 @@ final class ConstructionMaterialService extends Model
         public function getMaterialsLowStock(): iterable
         {
 
-
-            return ConstructionMaterial::where('current_stock', '<=', DB::raw('min_stock_threshold'))
+            return ConstructionMaterial::where('current_stock', '<=', $this->db->raw('min_stock_threshold'))
                 ->get();
         }
 
         public function checkMaterialAvailability(int $materialId, int $quantity): bool
         {
-
 
             $material = ConstructionMaterial::find($materialId);
 

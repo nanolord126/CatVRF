@@ -1,31 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\BooksAndLiterature\Books\Models;
 
+use BooksDomainTrait, SoftDeletes;
+use BooksDomainTrait;
+use HasFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+     * Primary Book Model (L1/9)
+     */
 final class Book extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasUuids, SoftDeletes, TenantScoped;
-
+        use BooksDomainTrait, SoftDeletes;
         protected $table = 'books';
-        protected $fillable = ['uuid', 'tenant_id', 'publisher_id', 'correlation_id', 'title', 'author', 'price_kopecks', 'genre', 'format', 'is_available', 'tags'];
-        protected $casts = ['price_kopecks' => 'integer', 'is_available' => 'boolean', 'tags' => 'json'];
+        protected $fillable = [
+            'tenant_id', 'uuid', 'store_id', 'author_id', 'genre_id', 'title', 'isbn',
+            'description', 'format', 'price_b2c', 'price_b2b', 'stock_quantity',
+            'page_count', 'language', 'metadata', 'tags', 'is_active', 'correlation_id'
+        ];
+        protected $casts = ['metadata' => 'json', 'tags' => 'json', 'is_active' => 'boolean'];
 
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function orders() { return $this->hasMany(BookOrder::class, 'book_id'); }
-
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn($q) => $q->where('books.tenant_id', tenant()->id));
-        }
-}
+        public function author() { return $this->belongsTo(BookAuthor::class, 'author_id'); }
+        public function genre() { return $this->belongsTo(BookGenre::class, 'genre_id'); }
+        public function store() { return $this->belongsTo(BookStore::class, 'store_id'); }
+    }

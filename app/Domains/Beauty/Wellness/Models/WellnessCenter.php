@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Models;
 
@@ -7,9 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class WellnessCenter extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
         protected $table = 'wellness_centers';
@@ -48,7 +47,7 @@ final class WellnessCenter extends Model
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
                 $model->tenant_id = $model->tenant_id ?? (string) tenant()->id;
-                $model->correlation_id = $model->correlation_id ?? (string) request()->header('X-Correlation-ID', Str::uuid());
+                $model->correlation_id = $model->correlation_id ?? (string) \Illuminate\Support\Str::uuid();
             });
 
             static::addGlobalScope('tenant', function (Builder $builder) {

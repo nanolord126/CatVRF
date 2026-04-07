@@ -2,18 +2,16 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ShipmentService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ShipmentService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly TrackingService $trackingService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createShipment(
             int $tenantId,
@@ -24,11 +22,10 @@ final class ShipmentService extends Model
             float $weight,
             float $declaredValue,
             float $shippingCost,
-            string $correlationId,
-        ): Shipment {
+            string $correlationId
+    ): Shipment {
 
-
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $tenantId,
                 $courierServiceId,
                 $customerId,
@@ -37,8 +34,8 @@ final class ShipmentService extends Model
                 $weight,
                 $declaredValue,
                 $shippingCost,
-                $correlationId,
-            ) {
+                $correlationId
+    ) {
                 $commissionAmount = $shippingCost * 0.14;
 
                 $shipment = Shipment::create([
@@ -59,7 +56,7 @@ final class ShipmentService extends Model
 
                 ShipmentCreated::dispatch($shipment, $correlationId);
 
-                Log::channel('audit')->info('Shipment created', [
+                $this->logger->info('Shipment created', [
                     'shipment_id' => $shipment->id,
                     'tenant_id' => $tenantId,
                     'customer_id' => $customerId,
@@ -75,16 +72,8 @@ final class ShipmentService extends Model
         public function cancelShipment(Shipment $shipment, string $reason, string $correlationId): void
         {
 
-
-                    $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-            DB::transaction(function () use ($shipment, $reason, $correlationId) {
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($shipment, $reason, $correlationId) {
                 $shipment->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,
@@ -92,7 +81,7 @@ final class ShipmentService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Shipment cancelled', [
+                $this->logger->info('Shipment cancelled', [
                     'shipment_id' => $shipment->id,
                     'tenant_id' => $shipment->tenant_id,
                     'reason' => $reason,
@@ -104,16 +93,8 @@ final class ShipmentService extends Model
         public function updateShipmentStatus(Shipment $shipment, string $status, string $correlationId): void
         {
 
-
-                    $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-            DB::transaction(function () use ($shipment, $status, $correlationId) {
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($shipment, $status, $correlationId) {
                 $shipment->update([
                     'status' => $status,
                     'correlation_id' => $correlationId,
@@ -125,7 +106,7 @@ final class ShipmentService extends Model
                     $shipment->update(['delivered_at' => now()]);
                 }
 
-                Log::channel('audit')->info('Shipment status updated', [
+                $this->logger->info('Shipment status updated', [
                     'shipment_id' => $shipment->id,
                     'status' => $status,
                     'correlation_id' => $correlationId,

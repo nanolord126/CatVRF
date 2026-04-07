@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class HotelResource extends Model
+final class HotelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Hotel::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -57,22 +54,15 @@ final class HotelResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListHotel::route('/'),
-                'create' => Pages\\CreateHotel::route('/create'),
-                'edit' => Pages\\EditHotel::route('/{record}/edit'),
-                'view' => Pages\\ViewHotel::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListHotel::route('/'),
-                'create' => Pages\\CreateHotel::route('/create'),
-                'edit' => Pages\\EditHotel::route('/{record}/edit'),
-                'view' => Pages\\ViewHotel::route('/{record}'),
+                'index' => Pages\ListHotel::route('/'),
+                'create' => Pages\CreateHotel::route('/create'),
+                'edit' => Pages\EditHotel::route('/{record}/edit'),
+                'view' => Pages\ViewHotel::route('/{record}'),
             ];
         }
 }

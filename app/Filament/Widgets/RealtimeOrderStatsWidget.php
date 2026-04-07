@@ -2,14 +2,18 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RealtimeOrderStatsWidget extends Model
+use Illuminate\Cache\CacheManager;
+use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Cache;
+
+final class RealtimeOrderStatsWidget extends StatsOverviewWidget
 {
-    use HasFactory;
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?int $sort = 1;
         protected int | string | array $columnSpan = 'full';
 
@@ -19,12 +23,12 @@ final class RealtimeOrderStatsWidget extends Model
 
             try {
                 // Get real-time stats from cache (updated via events)
-                $todayOrders = Cache::get("stats:orders:today:{$tenantId}", 0);
-                $todayRevenue = Cache::get("stats:revenue:today:{$tenantId}", 0);
-                $pendingOrders = Cache::get("stats:orders:pending:{$tenantId}", 0);
+                $todayOrders = $this->cache->get("stats:orders:today:{$tenantId}", 0);
+                $todayRevenue = $this->cache->get("stats:revenue:today:{$tenantId}", 0);
+                $pendingOrders = $this->cache->get("stats:orders:pending:{$tenantId}", 0);
 
                 // Trending data
-                $yesterdayOrders = Cache::get("stats:orders:yesterday:{$tenantId}", 1);
+                $yesterdayOrders = $this->cache->get("stats:orders:yesterday:{$tenantId}", 1);
                 $orderTrend = $yesterdayOrders > 0
                     ? (($todayOrders - $yesterdayOrders) / $yesterdayOrders) * 100
                     : 0;

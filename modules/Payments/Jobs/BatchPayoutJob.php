@@ -5,7 +5,7 @@ namespace Modules\Payments\Jobs;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class BatchPayoutJob extends Model
+final class BatchPayoutJob
 {
     use HasFactory;
 

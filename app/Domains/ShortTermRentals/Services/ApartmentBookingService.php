@@ -2,18 +2,19 @@
 
 namespace App\Domains\ShortTermRentals\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ApartmentBookingService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ApartmentBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Создание бронирования с холдированием полной суммы и страхового депозита.
@@ -22,21 +23,16 @@ final class ApartmentBookingService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            if (RateLimiter::tooManyAttempts("str:booking:".$userId, 3)) {
+            if ($this->rateLimiter->tooManyAttempts("str:booking:".$userId, 3)) {
                 throw new \RuntimeException("Apartment booking frequency limit exceeded.", 429);
             }
-            RateLimiter::hit("str:booking:".$userId, 60);
+            $this->rateLimiter->hit("str:booking:".$userId, 60);
 
-            return DB::transaction(function () use ($apartmentId, $userId, $dates, $correlationId) {
+            return $this->db->transaction(function () use ($apartmentId, $userId, $dates, $correlationId) {
                 $apartment = Apartment::findOrFail($apartmentId);
 
                 // 1. Fraud Check (подозрительные брони)
-                $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "apartment_booking",
-                    "correlation_id" => $correlationId,
-                    "geo" => $dates['geo'] ?? null
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 $nights = count($dates['days'] ?? []);
                 $renderPrice = $apartment->price_kopecks * $nights;
@@ -66,12 +62,9 @@ final class ApartmentBookingService extends Model
                 $this->wallet->hold(
                     $userId,
                     $totalAmount,
-                    "str_apartment_booking_hold",
-                    "Apartment Booking #{$booking->uuid}",
-                    $correlationId
-                );
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::HOLD, $correlationId, null, null, null);
 
-                Log::channel("audit")->info("STR: Booking created and held", [
+                $this->logger->info("STR: Booking created and held", [
                     "booking_uuid" => $booking->uuid,
                     "user_id" => $userId,
                     "total_held" => $totalAmount
@@ -90,7 +83,7 @@ final class ApartmentBookingService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $booking = ApartmentBooking::with(['apartment', 'user'])->findOrFail($bookingId);
 
-            DB::transaction(function () use ($booking, $isClaims, $correlationId) {
+            $this->db->transaction(function () use ($booking, $isClaims, $correlationId) {
                 if ($booking->status !== "checked_in") {
                     // В реальности статус меняется после заезда, тут упростим
                 }
@@ -98,11 +91,11 @@ final class ApartmentBookingService extends Model
                 // Обработка депозита
                 if ($isClaims) {
                     // Если есть претензии - депозит остается замороженным до арбитража
-                    Log::channel("audit")->warning("STR: Deposit held due to damage claims", ["booking_id" => $booking->id]);
+                    $this->logger->warning("STR: Deposit held due to damage claims", ["booking_id" => $booking->id]);
                 } else {
                     // Возврат депозита гостю
                     $this->wallet->releaseHold($booking->user_id, $booking->deposit_amount, $correlationId);
-                    Log::channel("audit")->info("STR: Deposit released to guest", ["user_id" => $booking->user_id]);
+                    $this->logger->info("STR: Deposit released to guest", ["user_id" => $booking->user_id]);
                 }
 
                 // Выплата владельцу за вычетом комиссии (отложенная по канону в 2026, но тут инициируем процесс)
@@ -113,14 +106,7 @@ final class ApartmentBookingService extends Model
                 $this->wallet->credit(
                     $booking->tenant_id,
                     $payout,
-                    "str_payout",
-                    "Payout for Booking #{$booking->uuid}",
-                    $correlationId
-                );
-
-                $booking->update(["status" => "completed", "completed_at" => now()]);
-
-                Log::channel("audit")->info("STR: Booking checkout completed", [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     "booking_id" => $bookingId,
                     "payout" => $payout
                 ]);

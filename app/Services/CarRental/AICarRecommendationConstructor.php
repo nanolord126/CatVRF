@@ -2,22 +2,26 @@
 
 namespace App\Services\CarRental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AICarRecommendationConstructor extends Model
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Models\CarRental\Car;
+use App\Services\AI\RecommendationEngine as RecommendationService;
+use App\Services\InventoryService;
+use Illuminate\Log\LogManager;
+
+final readonly class AICarRecommendationConstructor
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Dependency injection for modular logic.
          */
         public function __construct(
             private \OpenAI\Client $openai, // AI Vision or GigaChat
             private RecommendationService $recommendation,
-            private InventoryService $inventory
-        ) {}
+            private InventoryService $inventory,
+        private readonly LogManager $logger,
+    ) {}
 
         /**
          * Core AI Matching Logic.
@@ -32,7 +36,7 @@ final class AICarRecommendationConstructor extends Model
         ): array {
             try {
                 // 1. Mandatory Audit Log (Canon Rule 2026)
-                Log::channel('audit')->info('[CarAI] Starting vehicle matching', [
+                $this->logger->channel('audit')->info('[CarAI] Starting vehicle matching', [
                     'correlation_id' => $correlationId,
                     'goal' => $userGoal,
                     'budget' => $budget,
@@ -50,7 +54,7 @@ final class AICarRecommendationConstructor extends Model
                 $scoredMatches = $this->scoreMatches($matches, $userGoal, $correlationId);
 
                 // 5. Final Analytics Log
-                Log::channel('recommend')->info('[CarAI] Vehicle matches found', [
+                $this->logger->channel('recommend')->info('[CarAI] Vehicle matches found', [
                     'count' => count($scoredMatches),
                     'top_match' => $scoredMatches[0]['brand'] ?? 'none',
                     'correlation_id' => $correlationId,
@@ -63,8 +67,8 @@ final class AICarRecommendationConstructor extends Model
                     'recommendations' => $scoredMatches,
                 ];
 
-            } catch (Throwable $e) {
-                Log::channel('audit')->error('[CarAI] Recommendation Failed Critical Error!', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('audit')->error('[CarAI] Recommendation Failed Critical Error!', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -99,7 +103,7 @@ final class AICarRecommendationConstructor extends Model
         {
             return Car::with('type')
                 ->where('status', 'available')
-                ->whereHas('type', function ($q) use ($ budget, $personCount) {
+                ->whereHas('type', function ($q) use ($budget, $personCount) {
                     // Ensure daily price is within budget (max 30% of total budget per day)
                     $maxDaily = (int) ($budget / 3);
                     $q->where('daily_price_base', '<=', $maxDaily)

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\SportingGoods;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class SportProductResource extends Model
+final class SportProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = SportProduct::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-rocket-launch';

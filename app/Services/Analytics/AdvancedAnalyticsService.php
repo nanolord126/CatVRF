@@ -2,14 +2,23 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class AdvancedAnalyticsService extends Model
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class AdvancedAnalyticsService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL_METRICS = 3600;      // 1 hour
         private const CACHE_TTL_FORECAST = 86400;    // 24 hours
         private const MAX_FORECAST_DAYS = 90;
@@ -28,9 +37,9 @@ final class AdvancedAnalyticsService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "analytics:metrics:{$tenantId}:{$metricType}:{$startDate}:{$endDate}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
-                Log::channel('analytics')->info('Metrics retrieved from cache', [
+                $this->logger->channel('analytics')->info('Metrics retrieved from cache', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'metric_type' => $metricType,
@@ -55,16 +64,16 @@ final class AdvancedAnalyticsService extends Model
                     $metrics = $this->calculateAOVMetrics($tenantId, $startDate, $endDate);
                     break;
                 default:
-                    Log::channel('analytics')->warning('Unknown metric type', [
+                    $this->logger->channel('analytics')->warning('Unknown metric type', [
                         'correlation_id' => $correlationId,
                         'metric_type' => $metricType,
                     ]);
                     return ['error' => "Unknown metric type: {$metricType}"];
             }
 
-            Cache::put($cacheKey, $metrics, self::CACHE_TTL_METRICS);
+            $this->cache->put($cacheKey, $metrics, self::CACHE_TTL_METRICS);
 
-            Log::channel('analytics')->info('Metrics calculated', [
+            $this->logger->channel('analytics')->info('Metrics calculated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'metric_type' => $metricType,
@@ -91,7 +100,7 @@ final class AdvancedAnalyticsService extends Model
             }
 
             $cacheKey = "analytics:forecast:{$tenantId}:{$metricType}:{$daysAhead}";
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -109,9 +118,9 @@ final class AdvancedAnalyticsService extends Model
             // Простой линейный прогноз
             $trend = $this->calculateLinearTrend($historicalMetrics, $daysAhead);
 
-            Cache::put($cacheKey, $trend, self::CACHE_TTL_FORECAST);
+            $this->cache->put($cacheKey, $trend, self::CACHE_TTL_FORECAST);
 
-            Log::channel('analytics')->info('Forecast generated', [
+            $this->logger->channel('analytics')->info('Forecast generated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'metric_type' => $metricType,
@@ -160,7 +169,7 @@ final class AdvancedAnalyticsService extends Model
                 ];
             }
 
-            Log::channel('analytics')->info('Custom report generated', [
+            $this->logger->channel('analytics')->info('Custom report generated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'sections_count' => count($report['sections']),
@@ -189,7 +198,7 @@ final class AdvancedAnalyticsService extends Model
                 ],
             ];
 
-            Log::channel('analytics')->info('KPIs calculated', [
+            $this->logger->channel('analytics')->info('KPIs calculated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -234,7 +243,7 @@ final class AdvancedAnalyticsService extends Model
                 ],
             ];
 
-            Log::channel('analytics')->info('Comparative analysis completed', [
+            $this->logger->channel('analytics')->info('Comparative analysis completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -341,7 +350,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getTotalRevenue(int $tenantId, int $days): int
         {
-            return (int) DB::table('balance_transactions')
+            return (int) $this->db->table('balance_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'deposit')
                 ->where('created_at', '>=', now()->subDays($days))
@@ -350,7 +359,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getTotalOrders(int $tenantId, int $days): int
         {
-            return (int) DB::table('payment_transactions')
+            return (int) $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->where('created_at', '>=', now()->subDays($days))
@@ -359,7 +368,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getAverageOrderValue(int $tenantId, int $days): float
         {
-            return (float) DB::table('payment_transactions')
+            return (float) $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->where('created_at', '>=', now()->subDays($days))
@@ -368,12 +377,12 @@ final class AdvancedAnalyticsService extends Model
 
         private function getConversionRate(int $tenantId, int $days): float
         {
-            $total = DB::table('payment_transactions')
+            $total = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>=', now()->subDays($days))
                 ->count();
             if ($total === 0) return 0.0;
-            $captured = DB::table('payment_transactions')
+            $captured = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->where('created_at', '>=', now()->subDays($days))
@@ -383,7 +392,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function estimateLTV(int $tenantId): float
         {
-            return (float) DB::table('payment_transactions')
+            return (float) $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->avg('amount') ?? 0.0;
@@ -391,14 +400,14 @@ final class AdvancedAnalyticsService extends Model
 
         private function getChurnRate(int $tenantId, int $days): float
         {
-            $prevPeriodUsers = DB::table('payment_transactions')
+            $prevPeriodUsers = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '<', now()->subDays($days))
                 ->where('created_at', '>=', now()->subDays($days * 2))
                 ->distinct('client_id')
                 ->count('client_id');
             if ($prevPeriodUsers === 0) return 0.0;
-            $retained = DB::table('payment_transactions')
+            $retained = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>=', now()->subDays($days))
                 ->distinct('client_id')
@@ -409,7 +418,7 @@ final class AdvancedAnalyticsService extends Model
         private function estimateROI(int $tenantId): float
         {
             $revenue = $this->getTotalRevenue($tenantId, 30);
-            $costs = (int) DB::table('balance_transactions')
+            $costs = (int) $this->db->table('balance_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'commission')
                 ->where('created_at', '>=', now()->subDays(30))
@@ -420,7 +429,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getTotalRevenueForRange(int $tenantId, string $start, string $end): int
         {
-            return (int) DB::table('balance_transactions')
+            return (int) $this->db->table('balance_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'deposit')
                 ->whereBetween('created_at', [$start, $end])
@@ -429,7 +438,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getTotalOrdersForRange(int $tenantId, string $start, string $end): int
         {
-            return (int) DB::table('payment_transactions')
+            return (int) $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->whereBetween('created_at', [$start, $end])
@@ -438,7 +447,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getAOVForRange(int $tenantId, string $start, string $end): float
         {
-            return (float) DB::table('payment_transactions')
+            return (float) $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->whereBetween('created_at', [$start, $end])
@@ -447,19 +456,19 @@ final class AdvancedAnalyticsService extends Model
 
         private function getDailyAverageRevenue(int $tenantId, string $start, string $end): float
         {
-            $days = max(1, (int) now()->parse($start)->diffInDays($end));
+            $days = max(1, (int) Carbon::parse($start)->diffInDays(Carbon::parse($end)));
             return round($this->getTotalRevenueForRange($tenantId, $start, $end) / $days, 2);
         }
 
         private function getDailyAverageOrders(int $tenantId, string $start, string $end): float
         {
-            $days = max(1, (int) now()->parse($start)->diffInDays($end));
+            $days = max(1, (int) Carbon::parse($start)->diffInDays(Carbon::parse($end)));
             return round($this->getTotalOrdersForRange($tenantId, $start, $end) / $days, 2);
         }
 
         private function getPeakRevenueDay(int $tenantId, string $start, string $end): string
         {
-            $row = DB::table('balance_transactions')
+            $row = $this->db->table('balance_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'deposit')
                 ->whereBetween('created_at', [$start, $end])
@@ -472,7 +481,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getPeakOrderDay(int $tenantId, string $start, string $end): string
         {
-            $row = DB::table('payment_transactions')
+            $row = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->whereBetween('created_at', [$start, $end])
@@ -485,12 +494,12 @@ final class AdvancedAnalyticsService extends Model
 
         private function getConversionRateForRange(int $tenantId, string $start, string $end): float
         {
-            $total = DB::table('payment_transactions')
+            $total = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->whereBetween('created_at', [$start, $end])
                 ->count();
             if ($total === 0) return 0.0;
-            $captured = DB::table('payment_transactions')
+            $captured = $this->db->table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'captured')
                 ->whereBetween('created_at', [$start, $end])
@@ -500,7 +509,7 @@ final class AdvancedAnalyticsService extends Model
 
         private function getDailyAverageConversion(int $tenantId, string $start, string $end): float
         {
-            $days = max(1, (int) now()->parse($start)->diffInDays($end));
+            $days = max(1, (int) Carbon::parse($start)->diffInDays(Carbon::parse($end)));
             return round($this->getConversionRateForRange($tenantId, $start, $end) / $days, 4);
         }
 

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class DietPlanResource extends Model
+final class DietPlanResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = DietPlan::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-heart';
@@ -108,31 +105,15 @@ final class DietPlanResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDietPlan::route('/'),
-                'create' => Pages\\CreateDietPlan::route('/create'),
-                'edit' => Pages\\EditDietPlan::route('/{record}/edit'),
-                'view' => Pages\\ViewDietPlan::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListDietPlan::route('/'),
-                'create' => Pages\\CreateDietPlan::route('/create'),
-                'edit' => Pages\\EditDietPlan::route('/{record}/edit'),
-                'view' => Pages\\ViewDietPlan::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListDietPlan::route('/'),
-                'create' => Pages\\CreateDietPlan::route('/create'),
-                'edit' => Pages\\EditDietPlan::route('/{record}/edit'),
-                'view' => Pages\\ViewDietPlan::route('/{record}'),
+                'index' => Pages\ListDietPlan::route('/'),
+                'create' => Pages\CreateDietPlan::route('/create'),
+                'edit' => Pages\EditDietPlan::route('/{record}/edit'),
+                'view' => Pages\ViewDietPlan::route('/{record}'),
             ];
         }
 }

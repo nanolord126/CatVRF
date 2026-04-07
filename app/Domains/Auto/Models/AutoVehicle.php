@@ -4,12 +4,14 @@ namespace App\Domains\Auto\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class AutoVehicle extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'auto_vehicles';
@@ -48,11 +50,11 @@ final class AutoVehicle extends Model
         {
             static::creating(function ($model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (tenant('id') ?? 1);
+                $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                $query->where('tenant_id', tenant('id') ?? 1);
+                $query->where('tenant_id', tenant()->id ?? 1);
             });
         }
 

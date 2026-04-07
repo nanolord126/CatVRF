@@ -2,14 +2,20 @@
 
 namespace App\Domains\Auto\Filament\Resources\TuningProjectResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CreateTuningProject extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateTuningProject extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = TuningProjectResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -19,15 +25,10 @@ final class CreateTuningProject extends Model
             $data['uuid'] = Str::uuid()->toString();
             $data['correlation_id'] = $correlationId;
 
-            $fraudCheck = app(FraudControlService::class)->check([
-                'operation_type' => 'tuning_project',
-                'user_id' => auth()->id(),
-                'amount' => $data['estimated_price'] ?? 0,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'tuning_project', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudCheck['blocked']) {
-                throw new \Exception('Операция заблокирована системой безопасности');
+                throw new \RuntimeException('Операция заблокирована системой безопасности');
             }
 
             return $data;
@@ -35,8 +36,8 @@ final class CreateTuningProject extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
-                Log::channel('audit')->info('TuningProject created', [
+            $this->db->transaction(function () {
+                $this->logger->info('TuningProject created', [
                     'correlation_id' => $this->record->correlation_id,
                     'project_id' => $this->record->id,
                 ]);
@@ -52,4 +53,27 @@ final class CreateTuningProject extends Model
                 ->title('Проект тюнинга создан')
                 ->send();
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

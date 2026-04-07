@@ -1,13 +1,18 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
-use Illuminate\Support\Facades\DB;
+
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final class Product3DService
 {
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
+
     private const ALLOWED_FORMATS = ['glb', 'gltf', 'obj', 'fbx', 'usdz'];
     private const STORAGE_PATH = '3d-models';
 
@@ -44,7 +49,7 @@ final class Product3DService
 
     public function getProduct3DModel(int $productId): array
     {
-        $record = DB::table('product_3d_models')
+        $record = $this->db->table('product_3d_models')
             ->where('product_id', $productId)
             ->first();
 

@@ -2,23 +2,27 @@
 
 namespace App\Domains\Food\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductOrderConsumablesListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductOrderConsumablesListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(OrderCompleted $event): void
         {
             try {
-                Log::channel('audit')->info('Order consumables deduction started', [
+                $this->logger->info('Order consumables deduction started', [
                     'order_id' => $event->order->id,
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+
+                $this->db->transaction(function () use ($event) {
                     $items = $event->order->items_json ?? [];
 
                     foreach ($items as $item) {
@@ -43,7 +47,7 @@ final class DeductOrderConsumablesListener extends Model
                             $quantity = ($consumable['qty'] ?? 1) * ($item['qty'] ?? 1);
                             $ingredient->decrement('current_stock', $quantity);
 
-                            Log::channel('audit')->info('Consumable deducted', [
+                            $this->logger->info('Consumable deducted', [
                                 'consumable_id' => $ingredient->id,
                                 'quantity' => $quantity,
                                 'current_stock' => $ingredient->current_stock,
@@ -61,12 +65,12 @@ final class DeductOrderConsumablesListener extends Model
                     }
                 });
 
-                Log::channel('audit')->info('Order consumables deduction completed', [
+                $this->logger->info('Order consumables deduction completed', [
                     'order_id' => $event->order->id,
                     'correlation_id' => $event->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Order consumables deduction failed', [
+                $this->logger->error('Order consumables deduction failed', [
                     'order_id' => $event->order->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

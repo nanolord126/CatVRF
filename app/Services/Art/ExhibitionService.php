@@ -2,19 +2,33 @@
 
 namespace App\Services\Art;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ExhibitionService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Models\Art\ArtGallery;
+use App\Models\Art\ArtExhibition;
+use Illuminate\Database\Eloquent\Collection;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ExhibitionService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private readonly FraudControlService $fraud,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (Request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -25,20 +39,20 @@ final class ExhibitionService extends Model
         {
             $gallery = ArtGallery::findOrFail($galleryId);
 
-            $this->fraud->check(['type' => 'exhibition_creation', 'gallery_id' => $galleryId, 'data' => $data]);
+            $this->fraud->check((int) $this->guard->id(), 'exhibition_creation', $this->request->ip());
 
-            return DB::transaction(function () use ($gallery, $data) {
+            return $this->db->transaction(function () use ($gallery, $data) {
                 $exhibition = ArtExhibition::create(array_merge($data, [
                     'gallery_id' => $gallery->id,
                     'status' => 'scheduled',
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                     'slug' => Str::slug($data['title']),
                 ]));
 
-                Log::channel('audit')->info('Art exhibition created', [
+                $this->logger->channel('audit')->info('Art exhibition created', [
                     'id' => $exhibition->id,
                     'title' => $exhibition->title,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $exhibition;
@@ -65,10 +79,10 @@ final class ExhibitionService extends Model
         {
             $exhibition = ArtExhibition::findOrFail($exhibitionId);
 
-            DB::transaction(function () use ($exhibition) {
+            $this->db->transaction(function () use ($exhibition) {
                 $exhibition->update(['status' => 'archived']);
 
-                Log::channel('audit')->warning('Exhibition finished', [
+                $this->logger->channel('audit')->warning('Exhibition finished', [
                     'id' => $exhibitionId,
                     'correlation_id' => $this->correlationId,
                 ]);

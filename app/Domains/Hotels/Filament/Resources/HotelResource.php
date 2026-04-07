@@ -2,14 +2,16 @@
 
 namespace App\Domains\Hotels\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Models\Hotel;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
-final class HotelResource extends Model
+final class HotelResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = Hotel::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-library';
@@ -57,16 +59,19 @@ final class HotelResource extends Model
                         ->sortable(),
                     Tables\Columns\TextColumn::make('address')
                         ->searchable(),
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->colors([
-                            'success' => 'active',
-                            'danger' => 'closed',
-                            'warning' => 'maintenance',
-                        ]),
+                    Tables\Columns\TextColumn::make('status')
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'active' => 'success',
+                            'closed' => 'danger',
+                            'maintenance' => 'warning',
+                            default => 'gray',
+                        }),
                     Tables\Columns\TextColumn::make('rating')
                         ->numeric()
                         ->sortable(),
-                    Tables\Columns\BooleanColumn::make('is_verified'),
+                    Tables\Columns\IconColumn::make('is_verified')
+                        ->boolean(),
                     Tables\Columns\TextColumn::make('created_at')
                         ->dateTime()
                         ->sortable(),

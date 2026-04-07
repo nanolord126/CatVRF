@@ -2,45 +2,111 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\GroceryResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
 
-final class ListGrocery extends Model
+final class ListGrocery extends ListRecords
 {
-    use HasFactory;
+    protected static string $resource = GroceryResource::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    EditAction, DeleteAction};
-    use Filament\Tables\Actions\DeleteBulkAction;
-    use Filament\Tables\Columns\TextColumn;
-    use Filament\Tables\Table;
-    use Illuminate\Database\Eloquent\Builder;
-
-    final class ListGrocery extends ListRecords
+    public function getTitle(): string
     {
-        protected static string $resource = GroceryResource::class;
+        return 'Магазины продуктов';
+    }
 
-        public function getTitle(): string
-        {
-            return 'List Grocery';
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить магазин')
+                ->icon('heroicon-m-plus'),
+        ];
+    }
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                CreateAction::make(),
-            ];
-        }
-
-        public function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('id')->sortable(),
-                    TextColumn::make('created_at')->dateTime()->sortable(),
-                ])
-                ->filters([])
-                ->actions([EditAction::make(), DeleteAction::make()])
-                ->bulkActions([DeleteBulkAction::make()]);
-        }
+    public function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable(),
+                TextColumn::make('uuid')
+                    ->label('UUID')
+                    ->copyable()
+                    ->searchable(),
+                TextColumn::make('name')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('phone')
+                    ->label('Телефон')
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('address')
+                    ->label('Адрес')
+                    ->limit(40)
+                    ->toggleable(),
+                TextColumn::make('rating')
+                    ->label('Рейтинг')
+                    ->sortable(),
+                TextColumn::make('review_count')
+                    ->label('Отзывы')
+                    ->sortable()
+                    ->toggleable(),
+                IconColumn::make('is_verified')
+                    ->label('Верифицирован')
+                    ->boolean(),
+                TextColumn::make('delivery_radius_km')
+                    ->label('Радиус, км')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('commission_percent')
+                    ->label('Комиссия, %')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('api_provider')
+                    ->label('API')
+                    ->toggleable(),
+                TextColumn::make('last_sync_at')
+                    ->label('Синхронизация')
+                    ->dateTime()
+                    ->toggleable(),
+                TextColumn::make('correlation_id')
+                    ->label('Correlation ID')
+                    ->toggleable(),
+                TextColumn::make('created_at')
+                    ->label('Создан')
+                    ->dateTime()
+                    ->sortable(),
+            ])
+            ->filters([
+                TernaryFilter::make('is_verified')
+                    ->label('Верификация'),
+                SelectFilter::make('api_provider')
+                    ->label('API провайдер')
+                    ->options([
+                        'manual' => 'Manual',
+                        'external' => 'External',
+                        'partner' => 'Partner',
+                    ]),
+            ])
+            ->actions([
+                EditAction::make(),
+                DeleteAction::make(),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->striped();
+    }
 }

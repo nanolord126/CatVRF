@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\LanguageLearning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class LanguageCourseResource extends Model
+final class LanguageCourseResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = LanguageCourse::class;
         protected static ?string $navigationIcon = 'heroicon-o-book-open';
         protected static ?string $navigationGroup = 'Language Learning';

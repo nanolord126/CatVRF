@@ -51,7 +51,7 @@ final class RateLimitMiddleware
         if ($this->limiter->tooManyAttempts($key, $limit)) {
             $retryAfter = $this->limiter->availableIn($key);
 
-            return response()->json([
+            return $this->response->json([
                 'error' => 'Too many requests',
                 'retry_after' => $retryAfter,
                 'correlation_id' => $request->get('correlation_id'),

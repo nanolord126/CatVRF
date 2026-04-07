@@ -1,41 +1,56 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Events\FlowerOrderPlaced;
+use App\Domains\Flowers\Models\FlowerOrder;
+use App\Domains\Flowers\Models\FlowerOrderItem;
+use App\Domains\Flowers\Models\FlowerProduct;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class FlowerOrderService extends Model
+final readonly class FlowerOrderService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-    }
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        public function createPublicOrder(
-            int $tenantId,
-            int $userId,
-            int $shopId,
-            array $items,
-            array $deliveryData,
-            string $correlationId = '',
-        ): FlowerOrder {
-            $correlationId = $correlationId ?: (string)Str::uuid()->toString();
+    /**
+     * Создать публичный заказ цветов (B2C).
+     *
+     * @param int    $tenantId      ID тенанта
+     * @param int    $userId        ID пользователя
+     * @param int    $shopId        ID магазина
+     * @param array  $items         Позиции заказа
+     * @param array  $deliveryData  Данные доставки
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function createPublicOrder(
+        int $tenantId,
+        int $userId,
+        int $shopId,
+        array $items,
+        array $deliveryData,
+        string $correlationId = '',
+    ): FlowerOrder {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            try {
-                $this->fraudControlService->check(
-                    tenantId: $tenantId,
-                    userId: $userId,
-                    action: 'flower_order_create',
-                    correlationId: $correlationId,
-                );
+        try {
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'flower_order_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
 
-                return DB::transaction(function () use ($tenantId, $userId, $shopId, $items, $deliveryData, $correlationId) {
+            return $this->db->transaction(function () use ($tenantId, $userId, $shopId, $items, $deliveryData, $correlationId): FlowerOrder {
                     $subtotal = 0;
                     $orderItems = [];
 
@@ -92,7 +107,7 @@ final class FlowerOrderService extends Model
                         ]);
                     }
 
-                    Log::channel('audit')->info('Flower order created', [
+                    $this->logger->info('Flower order created', [
                         'order_id' => $order->id,
                         'user_id' => $userId,
                         'total_amount' => $totalAmount,
@@ -104,8 +119,8 @@ final class FlowerOrderService extends Model
 
                     return $order;
                 });
-            } catch (\Exception $exception) {
-                Log::channel('audit')->error('Flower order creation failed', [
+            } catch (\Throwable $exception) {
+                $this->logger->error('Flower order creation failed', [
                     'user_id' => $userId,
                     'error' => $exception->getMessage(),
                     'correlation_id' => $correlationId,
@@ -114,24 +129,33 @@ final class FlowerOrderService extends Model
             }
         }
 
-        public function getPublicOrders(int $tenantId, int $userId): Collection
-        {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-
-            return FlowerOrder::query()
+    /**
+     * Получить публичные заказы пользователя.
+     *
+     * @param int $tenantId ID тенанта
+     * @param int $userId   ID пользователя
+     */
+    public function getPublicOrders(int $tenantId, int $userId): Collection
+    {
+        return FlowerOrder::query()
                 ->where('tenant_id', $tenantId)
                 ->where('user_id', $userId)
                 ->with(['shop', 'items.product'])
                 ->get();
         }
 
-        public function updateOrderStatus(int $orderId, string $status, string $correlationId = ''): FlowerOrder
-        {
-            $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+    /**
+     * Обновить статус заказа.
+     *
+     * @param int    $orderId       ID заказа
+     * @param string $status        Новый статус
+     * @param string $correlationId Трейсинг-идентификатор
+     */
+    public function updateOrderStatus(int $orderId, string $status, string $correlationId = ''): FlowerOrder
+    {
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            return DB::transaction(function () use ($orderId, $status, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $status, $correlationId): FlowerOrder {
                 $order = FlowerOrder::query()
                     ->where('id', $orderId)
                     ->lockForUpdate()
@@ -139,7 +163,7 @@ final class FlowerOrderService extends Model
 
                 $order->update(['status' => $status]);
 
-                Log::channel('audit')->info('Flower order status updated', [
+                $this->logger->info('Flower order status updated', [
                     'order_id' => $order->id,
                     'status' => $status,
                     'correlation_id' => $correlationId,
@@ -149,8 +173,11 @@ final class FlowerOrderService extends Model
             });
         }
 
-        private function generateOrderNumber(): string
-        {
-            return 'FLO-' . date('Ymd') . '-' . Str::upper(Str::random(8));
-        }
+    /**
+     * Сгенерировать номер заказа.
+     */
+    private function generateOrderNumber(): string
+    {
+        return 'FLO-' . date('Ymd') . '-' . Str::upper(Str::random(8));
+    }
 }

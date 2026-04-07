@@ -2,17 +2,13 @@
 
 namespace App\Domains\RealEstate\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RealEstateService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class RealEstateService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudMLService $fraudService
-        ) {}
+    public function __construct(private FraudMLService $fraudService,
+        private \App\Services\AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Создать новый объект недвижимости
@@ -23,8 +19,8 @@ final class RealEstateService extends Model
          */
         public function createProperty(array $data, string $correlationId): Property
         {
-            return DB::transaction(function () use ($data, $correlationId) {
-                Log::channel('audit')->info('Creating property start', [
+            return $this->db->transaction(function () use ($data, $correlationId) {
+                $this->logger->info('Creating property start', [
                     'data' => $data,
                     'correlation_id' => $correlationId
                 ]);
@@ -34,7 +30,7 @@ final class RealEstateService extends Model
                     'status' => 'available'
                 ]));
 
-                Log::channel('audit')->info('Property created successfully', [
+                $this->logger->info('Property created successfully', [
                     'property_id' => $property->id,
                     'correlation_id' => $correlationId
                 ]);
@@ -52,7 +48,7 @@ final class RealEstateService extends Model
          */
         public function createListing(array $data, string $correlationId): Listing
         {
-            return DB::transaction(function () use ($data, $correlationId) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // Fraud check перед публикацией
                 $this->fraudService->checkListingAbuse($data, $correlationId);
 
@@ -63,7 +59,7 @@ final class RealEstateService extends Model
                     'published_at' => now(),
                 ]));
 
-                Log::channel('audit')->info('RealEstate listing created', [
+                $this->logger->info('RealEstate listing created', [
                     'listing_id' => $listing->id,
                     'deal_type' => $listing->deal_type,
                     'correlation_id' => $correlationId
@@ -83,12 +79,12 @@ final class RealEstateService extends Model
          */
         public function signRentalContract(Listing $listing, array $tenantData, string $correlationId): RentalContract
         {
-            return DB::transaction(function () use ($listing, $tenantData, $correlationId) {
+            return $this->db->transaction(function () use ($listing, $tenantData, $correlationId) {
                 // Блокируем объявление на время сделки
                 $listing->lockForUpdate();
 
                 if ($listing->status !== 'active') {
-                    throw new \Exception("Listing is not active and cannot be rented.");
+                    throw new \DomainException("Listing is not active and cannot be rented.");
                 }
 
                 // Создаем контракт
@@ -108,7 +104,7 @@ final class RealEstateService extends Model
                 $listing->update(['status' => 'rented']);
                 $listing->property->update(['status' => 'occupied']);
 
-                Log::channel('audit')->info('Rental contract signed', [
+                $this->logger->info('Rental contract signed', [
                     'contract_id' => $contract->id,
                     'listing_id' => $listing->id,
                     'correlation_id' => $correlationId
@@ -126,12 +122,12 @@ final class RealEstateService extends Model
          */
         public function completeRental(RentalContract $contract, string $correlationId): void
         {
-            DB::transaction(function () use ($contract, $correlationId) {
+            $this->db->transaction(function () use ($contract, $correlationId) {
                 $contract->update(['contract_status' => 'completed', 'end_date' => now()]);
                 $contract->listing->update(['status' => 'active']);
                 $contract->listing->property->update(['status' => 'available']);
 
-                Log::channel('audit')->info('Rental contract completed (check-out)', [
+                $this->logger->info('Rental contract completed (check-out)', [
                     'contract_uuid' => $contract->uuid,
                     'correlation_id' => $correlationId
                 ]);

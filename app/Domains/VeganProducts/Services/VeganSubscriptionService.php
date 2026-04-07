@@ -2,18 +2,19 @@
 
 namespace App\Domains\VeganProducts\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VeganSubscriptionService extends Model
+
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class VeganSubscriptionService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly VeganProductService $productService,
-        ) {}
+            private readonly WalletService $walletService,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Subscribe user to a monthly or weekly curated vegan box.
@@ -23,7 +24,7 @@ final class VeganSubscriptionService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: New Vegan Subscription Request', [
+            $this->logger->info('LAYER-3: New Vegan Subscription Request', [
                 'user' => $userId,
                 'box' => $boxId,
                 'plan' => $planType,
@@ -34,31 +35,28 @@ final class VeganSubscriptionService extends Model
             $box = VeganSubscriptionBox::where('id', $boxId)->where('is_active', true)->firstOrFail();
 
             // 2. Fraud Check (check if user is creating too many subs)
-            $this->fraud->check('vegan_subscription_create', [
-                'user_id' => $userId,
-                'box_id' => $boxId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vegan_subscription_create', amount: 0, correlationId: $correlationId ?? '');
 
             // 3. Persist via transaction
-            DB::transaction(function () use ($userId, $box, $planType, $correlationId) {
+            $this->db->transaction(function () use ($userId, $box, $planType, $correlationId) {
                 // Check if active subscription already exists
-                $existing = DB::table('vegan_subscriptions')
+                $existing = $this->db->table('vegan_subscriptions')
                     ->where('user_id', $userId)
                     ->where('vegan_subscription_box_id', $box->id)
                     ->where('status', 'active')
                     ->exists();
 
                 if ($existing) {
-                    Log::error('LAYER-3: Duplicate Subscription Error', [
+                    $this->logger->error('LAYER-3: Duplicate Subscription Error', [
                         'user' => $userId,
                         'box' => $box->id,
                         'correlation_id' => $correlationId,
                     ]);
-                    throw new Exception("Active subscription for box #{$box->id} already exists.");
+                    throw new \LogicException("Active subscription for box #{$box->id} already exists.");
                 }
 
                 // Create record
-                DB::table('vegan_subscriptions')->insert([
+                $this->db->table('vegan_subscriptions')->insert([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => tenant()->id,
                     'user_id' => $userId,
@@ -71,7 +69,7 @@ final class VeganSubscriptionService extends Model
                     'updated_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('LAYER-3: Vegan Subscription CREATED', [
+                $this->logger->info('LAYER-3: Vegan Subscription CREATED', [
                     'user' => $userId,
                     'box' => $box->id,
                     'correlation_id' => $correlationId,
@@ -87,9 +85,9 @@ final class VeganSubscriptionService extends Model
         {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Renewal Batch START', ['correlation_id' => $correlationId]);
+            $this->logger->info('LAYER-3: Renewal Batch START', ['correlation_id' => $correlationId]);
 
-            $activeSubs = DB::table('vegan_subscriptions')
+            $activeSubs = $this->db->table('vegan_subscriptions')
                 ->where('status', 'active')
                 ->whereDate('next_delivery_at', '<=', now())
                 ->get();
@@ -99,8 +97,8 @@ final class VeganSubscriptionService extends Model
                 try {
                     $this->renewSingle($sub, $correlationId);
                     $count++;
-                } catch (Exception $e) {
-                    Log::error("LAYER-3: Renewal FAILED for sub #{$sub->id}", [
+                } catch (\Throwable $e) {
+                    $this->logger->error("LAYER-3: Renewal FAILED for sub #{$sub->id}", [
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
                     ]);
@@ -115,11 +113,16 @@ final class VeganSubscriptionService extends Model
          */
         private function renewSingle($sub, string $correlationId): void
         {
-            DB::transaction(function () use ($sub, $correlationId) {
+            $this->db->transaction(function () use ($sub, $correlationId) {
                 $box = VeganSubscriptionBox::findOrFail($sub->vegan_subscription_box_id);
 
-                // 1. Logic for charging wallet if exists
-                // app(WalletService::class)->debit(...);
+                // 1. Charge wallet for subscription renewal
+                $this->walletService->debit(
+                    walletId: (int) $sub->user_id,
+                    amount: $box->price_monthly,
+                    type: \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL,
+                    correlationId: $correlationId,
+                );
 
                 // 2. Reservation of products inside the box
                 foreach ($box->included_product_ids as $productId) {
@@ -132,18 +135,13 @@ final class VeganSubscriptionService extends Model
                 }
 
                 // 3. Update subscription next date
-                DB::table('vegan_subscriptions')
+                $this->db->table('vegan_subscriptions')
                     ->where('id', $sub->id)
                     ->update([
                         'last_delivery_at' => now(),
-                        'next_delivery_at' => now()->addWeek(), // or addMonth() based on plan
-                        'updated_at' => now(),
+                        'next_delivery_at' => now()->addMonth(),
+                        'correlation_id' => $correlationId,
                     ]);
-
-                Log::channel('audit')->info('LAYER-3: Renewed subscription', [
-                    'id' => $sub->id,
-                    'correlation_id' => $correlationId
-                ]);
             });
         }
 }

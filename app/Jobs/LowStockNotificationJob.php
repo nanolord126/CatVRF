@@ -7,11 +7,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Str;
 use Modules\Core\Models\Tenant;
 use Modules\Inventory\Models\InventoryItem;
 use Modules\Notifications\Jobs\SendNotificationJob;
+use Illuminate\Log\LogManager;
 
 /**
  * Low Stock Notification Job
@@ -29,7 +30,9 @@ final class LowStockNotificationJob implements ShouldQueue
 
     private readonly string $correlationId;
 
-    public function __construct()
+    public function __construct(
+        private readonly LogManager $logger,
+    )
     {
         $this->correlationId = (string) Str::uuid()->toString();
     }
@@ -37,7 +40,7 @@ final class LowStockNotificationJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Low stock notification check started', [
+            $this->logger->channel('audit')->info('Low stock notification check started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -48,7 +51,7 @@ final class LowStockNotificationJob implements ShouldQueue
                 ->get();
 
             if ($tenants->isEmpty()) {
-                Log::info('No tenants with low stock alerts enabled');
+                $this->logger->info('No tenants with low stock alerts enabled');
                 return;
             }
 
@@ -57,12 +60,19 @@ final class LowStockNotificationJob implements ShouldQueue
                 $this->checkTenantInventory($tenant);
             }
 
-            Log::channel('audit')->info('Low stock notification check completed', [
+            $this->logger->channel('audit')->info('Low stock notification check completed', [
                 'correlation_id' => $this->correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Low stock notification job failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Low stock notification job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -87,7 +97,7 @@ final class LowStockNotificationJob implements ShouldQueue
             return;
         }
 
-        Log::info('Low stock items found', [
+        $this->logger->info('Low stock items found', [
             'tenant_id' => $tenant->id,
             'count' => $lowStockItems->count(),
         ]);
@@ -139,7 +149,7 @@ final class LowStockNotificationJob implements ShouldQueue
             'correlation_id' => $this->correlationId,
         ]);
 
-        Log::info('Low stock notification sent to owner', [
+        $this->logger->info('Low stock notification sent to owner', [
             'tenant_id' => $tenant->id,
             'user_id' => $owner->id,
             'item_count' => $itemCount,
@@ -185,7 +195,7 @@ final class LowStockNotificationJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        Log::channel('audit')->error('LowStockNotificationJob failed permanently', [
+        $this->logger->channel('audit')->error('LowStockNotificationJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

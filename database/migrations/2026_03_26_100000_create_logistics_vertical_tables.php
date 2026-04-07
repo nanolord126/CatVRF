@@ -45,7 +45,7 @@ return new class extends Migration
                 $table->foreignId('vehicle_id')->nullable()->constrained('logistics_vehicles')->onDelete('set null');
                 $table->string('status')->default('offline')->index(); // offline, online, busy, vacation
                 $table->decimal('rating', 3, 2)->default(5.00);
-                $table->point('current_location')->nullable(); // PostGIS или GEOMETRY
+                $table->geometry('current_location')->nullable(); // PostGIS или GEOMETRY
                 $table->jsonb('work_hours')->nullable();
                 $table->jsonb('tags')->nullable();
                 $table->boolean('is_verified')->default(false);
@@ -65,7 +65,7 @@ return new class extends Migration
                 $table->uuid('uuid')->unique()->index();
                 $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
                 $table->string('name');
-                $table->polygon('boundaries'); // Координаты зоны (Polygon)
+                $table->json('boundaries'); // Координаты зоны (Polygon)
                 $table->string('type')->default('delivery'); // delivery, pickup, restricted
                 $table->decimal('base_price_multiplier', 5, 2)->default(1.00);
                 $table->jsonb('metadata')->nullable();
@@ -108,9 +108,9 @@ return new class extends Migration
                 $table->string('type')->default('b2c')->index(); // b2c, b2b (магазин-курьер)
                 
                 $table->string('pickup_address');
-                $table->point('pickup_location');
+                $table->geometry('pickup_location');
                 $table->string('dropoff_address');
-                $table->point('dropoff_location');
+                $table->geometry('dropoff_location');
                 
                 $table->integer('price_total')->default(0); // в копейках
                 $table->integer('price_delivery')->default(0);
@@ -161,3 +161,5 @@ return new class extends Migration
         Schema::dropIfExists('logistics_vehicles');
     }
 };
+
+

@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class VideoCallService extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class VideoCallService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-        ) {}
+
+    public function __construct(private FraudControlService $fraud,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger) {}
 
         /**
          * Запланировать живое занятие (WebRTC)
@@ -39,7 +39,7 @@ final class VideoCallService extends Model
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Video call meeting scheduled', [
+            $this->logger->info('Video call meeting scheduled', [
                 'teacher_id' => $teacherId,
                 'lesson_id' => $lessonId,
                 'room_id' => $videoCall->room_id,
@@ -58,7 +58,7 @@ final class VideoCallService extends Model
             $meeting = VideoCall::findOrFail($meetingId);
 
             // 1. Фрод-проверка
-            $this->fraudControl->checkOperation('start_vcall', [
+            $this->fraud->checkOperation('start_vcall', [
                 'meeting_id' => $meetingId,
                 'teacher_id' => $meeting->teacher_id,
                 'correlation_id' => $correlationId
@@ -67,11 +67,11 @@ final class VideoCallService extends Model
             // 2. Смена статуса на live
             $meeting->update([
                 'status' => 'live',
-                'started_at' => now(),
+                'started_at' => Carbon::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Video meeting started (WebRTC Live)', [
+            $this->logger->info('Video meeting started (WebRTC Live)', [
                 'meeting_id' => $meetingId,
                 'room_id' => $meeting->room_id,
                 'correlation_id' => $correlationId,
@@ -79,7 +79,7 @@ final class VideoCallService extends Model
 
             return [
                 'room_id' => $meeting->room_id,
-                'webrtc_url' => config('services.webrtc.base_url') . '/join/' . $meeting->room_id,
+                'webrtc_url' => $this->config->get('services.webrtc.base_url') . '/join/' . $meeting->room_id,
                 'status' => 'live',
             ];
         }
@@ -94,11 +94,11 @@ final class VideoCallService extends Model
 
             $meeting->update([
                 'status' => 'ended',
-                'ended_at' => now(),
+                'ended_at' => Carbon::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Video meeting ended', [
+            $this->logger->info('Video meeting ended', [
                 'meeting_id' => $meetingId,
                 'duration' => $meeting->ended_at->diffInMinutes($meeting->started_at),
                 'correlation_id' => $correlationId,

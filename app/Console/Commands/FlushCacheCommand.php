@@ -2,6 +2,10 @@
 
 namespace App\Console\Commands;
 
+
+
+use Illuminate\Cache\CacheManager;
+use Psr\Log\LoggerInterface;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -10,6 +14,11 @@ use Illuminate\Support\Str;
 
 final class FlushCacheCommand extends Command
 {
+    public function __construct(
+        private readonly CacheManager $cache,
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected $signature = 'cache:flush-tags
         {--tag= : Cache tag to flush}
         {--all : Flush all cache stores}
@@ -22,9 +31,9 @@ final class FlushCacheCommand extends Command
         $correlationId = $this->option('correlation-id') ?: (string) Str::uuid();
 
         if ($this->option('all')) {
-            Cache::flush();
+            $this->cache->flush();
 
-            Log::channel('audit')->info('Cache fully flushed', [
+            $this->logger->info('Cache fully flushed', [
                 'scope' => 'all',
                 'correlation_id' => $correlationId,
             ]);
@@ -37,15 +46,15 @@ final class FlushCacheCommand extends Command
 
         if ($tag !== null && $tag !== '') {
             /** @var TaggableStore|mixed $store */
-            $store = Cache::store('redis');
+            $store = $this->cache->store('redis');
 
             if ($store instanceof TaggableStore) {
                 $store->tags([$tag])->flush();
             } else {
-                Cache::tags([$tag])->flush();
+                $this->cache->tags([$tag])->flush();
             }
 
-            Log::channel('audit')->info('Cache flushed by tag', [
+            $this->logger->info('Cache flushed by tag', [
                 'tag' => $tag,
                 'correlation_id' => $correlationId,
             ]);

@@ -2,14 +2,25 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PriceSuggestionMLService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+
+
+
+
+
+final readonly class PriceSuggestionMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 3600; // 1 час
         private const MIN_PRICE_THRESHOLD = 0.8; // Не ниже 80% от себестоимости
         private const MAX_PRICE_THRESHOLD = 2.0; // Не выше 200% от базовой цены
@@ -26,10 +37,10 @@ final class PriceSuggestionMLService extends Model
         {
             $cacheKey = "price_suggestion:{$productId}";
 
-            return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($productId, $tenantId) {
+            return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($productId, $tenantId) {
                 try {
                     // Получаем исходные данные
-                    $product = DB::table('products')->find($productId);
+                    $product = $this->db->table('products')->find($productId);
                     if (!$product) {
                         return $this->getDefaultPriceResponse();
                     }
@@ -77,10 +88,11 @@ final class PriceSuggestionMLService extends Model
                     ];
 
                 } catch (\Throwable $e) {
-                    Log::channel('analytics_errors')->error('Price suggestion failed', [
+                    $this->logger->channel('analytics_errors')->error('Price suggestion failed', [
                         'product_id' => $productId,
-                        'error' => $e->getMessage()
-                    ]);
+                        'error' => $e->getMessage(),
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
                     return $this->getDefaultPriceResponse();
                 }
             });
@@ -97,17 +109,17 @@ final class PriceSuggestionMLService extends Model
         {
             $last30Days = now()->subDays(30)->startOfDay();
 
-            $views = DB::table('user_views')
+            $views = $this->db->table('user_views')
                 ->where('product_id', $productId)
                 ->where('created_at', '>=', $last30Days)
                 ->count();
 
-            $cartAdds = DB::table('cart_items')
+            $cartAdds = $this->db->table('cart_items')
                 ->where('product_id', $productId)
                 ->where('created_at', '>=', $last30Days)
                 ->count();
 
-            $sales = DB::table('order_items')
+            $sales = $this->db->table('order_items')
                 ->where('product_id', $productId)
                 ->where('created_at', '>=', $last30Days)
                 ->count();
@@ -144,10 +156,10 @@ final class PriceSuggestionMLService extends Model
          */
         private function analyzeCompetition(int $productId, float $basePrice): float
         {
-            $product = DB::table('products')->find($productId);
+            $product = $this->db->table('products')->find($productId);
 
             // Получаем среднюю цену конкурентов в той же категории
-            $competitorAvgPrice = DB::table('products')
+            $competitorAvgPrice = $this->db->table('products')
                 ->where('category_id', $product->category_id)
                 ->where('id', '!=', $productId)
                 ->where('status', 'active')
@@ -179,14 +191,14 @@ final class PriceSuggestionMLService extends Model
             $currentDayOfWeek = (int)now()->format('w');
 
             // Получаем среднюю продажу в этот месяц за последние 2 года
-            $historicalMonthAvg = DB::table('order_items')
+            $historicalMonthAvg = $this->db->table('order_items')
                 ->where('product_id', $productId)
                 ->whereRaw('MONTH(created_at) = ?', [$currentMonth])
                 ->where('created_at', '>=', now()->subYears(2))
                 ->count() / 2; // Делим на 2 года
 
             // Получаем среднюю продажу во все месяцы
-            $overallAvg = DB::table('order_items')
+            $overallAvg = $this->db->table('order_items')
                 ->where('product_id', $productId)
                 ->where('created_at', '>=', now()->subYears(2))
                 ->count() / 24; // Делим на 24 месяца

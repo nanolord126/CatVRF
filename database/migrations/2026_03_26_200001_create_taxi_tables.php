@@ -176,3 +176,5 @@ return new class extends Migration
         Schema::dropIfExists('taxi_fleets');
     }
 };
+
+

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\WeddingPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class WeddingVendorResource extends Model
+final class WeddingVendorResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = WeddingVendor::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-briefcase';
@@ -150,7 +147,6 @@ final class WeddingVendorResource extends Model
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
                         'busy' => 'warning',
                         'inactive' => 'danger',
                     }),

@@ -2,18 +2,17 @@
 
 namespace App\Domains\Hotels\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ReviewController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ReviewService $reviewService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(string $hotelId): JsonResponse
         {
@@ -23,27 +22,27 @@ final class ReviewController extends Model
                     ->orderByDesc('published_at')
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function store(string $hotelId): JsonResponse
+        public function store(\Illuminate\Http\Request $request, string $hotelId): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $this->authorize('create', Review::class);
 
-                $data = request()->validate([
+                $data = $request->validate([
                     'booking_id' => 'nullable|uuid',
                     'rating' => 'required|integer|between:1,5',
                     'title' => 'required|string|max:255',
@@ -60,38 +59,38 @@ final class ReviewController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Hotel review created', [
+                $this->logger->info('Hotel review created', [
                     'correlation_id' => $correlationId,
                     'hotel_id' => $hotelId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
                     'rating' => $data['rating'],
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);
             }
         }
 
-        public function myReviews(): JsonResponse
+        public function myReviews(\Illuminate\Http\Request $request): JsonResponse
         {
             try {
-                $reviews = Review::where('guest_id', auth()->id())
+                $reviews = Review::where('guest_id', $request->user()?->id)
                     ->paginate(10);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'error' => $e->getMessage(),
                 ], 500);

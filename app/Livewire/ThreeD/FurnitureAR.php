@@ -6,12 +6,12 @@ use Livewire\Component;
 
 final class FurnitureAR extends Component
 {
-    public int $productId;
-    public array $furnitureData = [];
-    public string $selectedColor = 'brown';
-    public bool $showARView = false;
-    public bool $showPlacementGuide = false;
-    public array $roomDimensions = [];
+    private int $productId;
+    private array $furnitureData = [];
+    private string $selectedColor = 'brown';
+    private bool $showARView = false;
+    private bool $showPlacementGuide = false;
+    private array $roomDimensions = [];
 
     public function mount(int $productId): void
     {

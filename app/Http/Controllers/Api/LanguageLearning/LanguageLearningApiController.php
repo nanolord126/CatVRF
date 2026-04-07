@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers\Api\LanguageLearning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class LanguageLearningApiController extends Model
+final class LanguageLearningApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private LanguageService $languageService,
             private EnrollmentService $enrollmentService,
-            private AILearningPathConstructor $aiConstructor
-        ) {}
+            private AILearningPathConstructor $aiConstructor,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
         /**
          * Получить список активных курсов.
          */
@@ -24,7 +27,7 @@ final class LanguageLearningApiController extends Model
                 ->where('is_active', true)
                 ->orderBy('rating', 'desc')
                 ->get();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $courses,
                 'meta' => [
@@ -45,18 +48,18 @@ final class LanguageLearningApiController extends Model
                     courseId: (int)$request->input('course_id'),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'enrollment_id' => $enrollment->id,
                     'status' => $enrollment->status,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('LanguageLearning Enrollment failed', [
+                $this->logger->channel('audit')->error('LanguageLearning Enrollment failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -72,16 +75,16 @@ final class LanguageLearningApiController extends Model
             try {
                 $path = $this->aiConstructor->constructPath(
                     params: $request->validated(),
-                    tenantId: (int)auth()->user()?->tenant_id ?? 0,
+                    tenantId: (int)$this->guard->user()?->tenant_id ?? 0,
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'plan' => $path,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'AI Generation failed: ' . $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -94,7 +97,7 @@ final class LanguageLearningApiController extends Model
         public function show(int $id): JsonResponse
         {
             $course = LanguageCourse::with(['teacher.school', 'lessons'])->findOrFail($id);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $course,
             ]);

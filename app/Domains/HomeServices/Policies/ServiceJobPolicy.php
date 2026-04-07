@@ -2,19 +2,27 @@
 
 namespace App\Domains\HomeServices\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ServiceJobPolicy extends Model
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+
+
+
+use App\Services\FraudControlService;
+use Illuminate\Contracts\Auth\Guard;
+final class ServiceJobPolicy
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly Guard $guard,
+        private readonly Request $request,) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     // Dependencies injected via constructor
         // Add private readonly properties here
         public function viewAny(User $user): Response
         {
-            return $user->auth() ? $this->response->allow() : $this->response->deny('Unauthorized');
+            return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
         }
 
         public function view(User $user, ServiceJob $job): Response
@@ -24,7 +32,9 @@ final class ServiceJobPolicy extends Model
 
         public function create(User $user): Response
         {
-            return $user->auth() ? $this->response->allow() : $this->response->deny('Unauthorized');
+        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+
+            return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
         }
 
         public function accept(User $user, ServiceJob $job): Response
@@ -36,4 +46,27 @@ final class ServiceJobPolicy extends Model
         {
             return $user->id === $job->client_id || $user->id === $job->contractor->user_id ? $this->response->allow() : $this->response->deny('Unauthorized');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

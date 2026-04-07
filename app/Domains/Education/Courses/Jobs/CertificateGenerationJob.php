@@ -2,20 +2,19 @@
 
 namespace App\Domains\Education\Courses\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CertificateGenerationJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class CertificateGenerationJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private ?int $certificateId;
         private ?string $correlationId;
 
-        public function __construct(int $certificateId = null, string $correlationId = '')
+        public function __construct(int $certificateId = null, string $correlationId = '', private readonly LoggerInterface $logger)
         {
             $this->certificateId = $certificateId;
             $this->correlationId = $correlationId;
@@ -30,7 +29,7 @@ final class CertificateGenerationJob extends Model
         public function handle(): void
         {
             try {
-                Log::channel('audit')->info('Generating certificate PDF', [
+                $this->logger->info('Generating certificate PDF', [
                     'certificate_id' => $this->certificateId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -39,7 +38,7 @@ final class CertificateGenerationJob extends Model
 
                 throw new \RuntimeException('PDF generation not yet configured. Install barryvdh/laravel-dompdf and implement certificate rendering.');
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to generate certificate', [
+                $this->logger->error('Failed to generate certificate', [
                     'certificate_id' => $this->certificateId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
@@ -50,6 +49,29 @@ final class CertificateGenerationJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(24)->toDateTime();
+            return Carbon::now()->addHours(24)->toDateTime();
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

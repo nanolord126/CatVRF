@@ -2,14 +2,11 @@
 
 namespace App\Domains\RealEstate\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ViewingAppointmentResource extends Model
+final class ViewingAppointmentResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ViewingAppointment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar';
@@ -52,7 +49,7 @@ final class ViewingAppointmentResource extends Model
                         ->label('Когда')
                         ->dateTime()
                         ->sortable(),
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')->badge()
                         ->label('Статус')
                         ->colors([
                             'info' => 'scheduled',

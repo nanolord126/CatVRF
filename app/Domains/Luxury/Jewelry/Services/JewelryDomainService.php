@@ -2,17 +2,15 @@
 
 namespace App\Domains\Luxury\Jewelry\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class JewelryDomainService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class JewelryDomainService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Create or update a jewelry product with inventory management.
@@ -21,15 +19,15 @@ final class JewelryDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Saving Jewelry Product', [
+            $this->logger->info('LAYER-3: Saving Jewelry Product', [
                 'sku' => $dto->sku,
                 'name' => $dto->name,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 // Fraud check
-                $this->fraudControl->check(['sku' => $dto->sku, 'type' => 'jewelry_product_save']);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'jewelry_product_save', amount: 0, correlationId: $correlationId ?? '');
 
                 $product = JewelryProduct::updateOrCreate(
                     ['sku' => $dto->sku, 'tenant_id' => tenant()->id ?? 0],
@@ -56,7 +54,7 @@ final class JewelryDomainService extends Model
                     ]
                 );
 
-                Log::channel('audit')->info('LAYER-3: Jewelry Product Saved Successfully', [
+                $this->logger->info('LAYER-3: Jewelry Product Saved Successfully', [
                     'id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -72,15 +70,15 @@ final class JewelryDomainService extends Model
         {
             $correlationId = $dto->correlationId ?? (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-3: Creating Custom Jewelry Order', [
+            $this->logger->info('LAYER-3: Creating Custom Jewelry Order', [
                 'store_id' => $dto->storeId,
                 'user_id' => $dto->userId,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($dto, $correlationId) {
+            return $this->db->transaction(function () use ($dto, $correlationId) {
                 // Authentication and permission checks handled by Middleware/Request
-                $this->fraudControl->check(['type' => 'jewelry_custom_order', 'user_id' => $dto->userId]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'jewelry_custom_order', amount: 0, correlationId: $correlationId ?? '');
 
                 $order = JewelryCustomOrder::create([
                     'store_id' => $dto->storeId,
@@ -95,7 +93,7 @@ final class JewelryDomainService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('LAYER-3: Custom Jewelry Order Created Successfully', [
+                $this->logger->info('LAYER-3: Custom Jewelry Order Created Successfully', [
                     'id' => $order->id,
                     'uuid' => $order->uuid,
                     'correlation_id' => $correlationId,

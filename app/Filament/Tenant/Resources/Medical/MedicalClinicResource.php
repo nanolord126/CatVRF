@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Medical;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalClinicResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor, Components\FileUpload};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -20,6 +15,10 @@ final class MedicalClinicResource extends Model
 
     final class MedicalClinicResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = Clinic::class;
         protected static ?string $navigationIcon = 'heroicon-m-hospital-box';
         protected static ?string $navigationGroup = 'Medical';
@@ -255,7 +254,6 @@ final class MedicalClinicResource extends Model
                     ->label('Тип')
                     ->badge()
                     ->color(fn ($state) => match($state) {
-                        'general' => 'blue',
                         'surgery' => 'red',
                         'pediatric' => 'green',
                         'obstetric' => 'pink',
@@ -367,9 +365,9 @@ final class MedicalClinicResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Clinic verified', [
+                            $this->logger->info('Clinic verified', [
                                 'clinic_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -382,9 +380,9 @@ final class MedicalClinicResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Clinic featured', [
+                            $this->logger->info('Clinic featured', [
                                 'clinic_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -402,9 +400,9 @@ final class MedicalClinicResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Clinic bulk activated', [
+                                $this->logger->info('Clinic bulk activated', [
                                     'clinic_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -419,9 +417,9 @@ final class MedicalClinicResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Clinic bulk verified', [
+                                $this->logger->info('Clinic bulk verified', [
                                     'clinic_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

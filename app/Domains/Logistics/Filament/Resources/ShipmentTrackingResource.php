@@ -2,14 +2,11 @@
 
 namespace App\Domains\Logistics\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ShipmentTrackingResource extends Model
+final class ShipmentTrackingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ShipmentTracking::class;
 
         protected static ?string $navigationGroup = 'Logistics';
@@ -35,9 +32,32 @@ final class ShipmentTrackingResource extends Model
         {
             return $table->columns([
                 TextColumn::make('shipment.tracking_number'),
-                BadgeColumn::make('event_type'),
+                TextColumn::make('event_type')->badge(),
                 TextColumn::make('location'),
                 TextColumn::make('event_time')->sortable(),
             ])->filters([])->actions([])->bulkActions([]);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

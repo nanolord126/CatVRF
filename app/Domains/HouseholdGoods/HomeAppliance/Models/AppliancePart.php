@@ -2,12 +2,17 @@
 
 namespace App\Domains\HouseholdGoods\HomeAppliance\Models;
 
+use Carbon\Carbon;
+
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class AppliancePart extends Model
 {
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
+
     use HasFactory;
 
         protected $table = 'appliance_parts';
@@ -31,14 +36,37 @@ final class AppliancePart extends Model
 
         protected static function booted(): void
         {
-            static::creating(function (AppliancePart $model) {
+            static::creating(function (AppliancePart $model): void {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (int) (auth()->user()?->tenant_id ?? session('tenant_id', 1));
+                $model->tenant_id = $model->tenant_id ?? (int) tenant()->id;
                 $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
             });
 
-            static::addGlobalScope('tenant', function ($builder) {
-                $builder->where('tenant_id', auth()->user()?->tenant_id ?? session('tenant_id', 1));
+            static::addGlobalScope('tenant', function ($builder): void {
+                $builder->where('tenant_id', tenant()->id);
             });
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

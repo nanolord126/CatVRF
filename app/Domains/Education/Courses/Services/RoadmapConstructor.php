@@ -2,34 +2,34 @@
 
 namespace App\Domains\Education\Courses\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class RoadmapConstructor extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class RoadmapConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private RecommendationService $recommendation,
+
+    public function __construct(private RecommendationService $recommendation,
             private FraudControlService $fraud,
-            private string $correlationId
-        ) {}
+            private string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать личную образовательную траекторию
          */
         public function construct(int $userId, string $goal, array $params = []): AIConstructionResult
         {
-            Log::channel('audit')->info('RoadmapConstructor: starting edu path', [
+            $this->logger->info('RoadmapConstructor: starting edu path', [
                 'user_id' => $userId,
                 'goal' => $goal,
                 'correlation_id' => $this->correlationId,
             ]);
 
-            return DB::transaction(function () use ($userId, $goal, $params) {
+            return $this->db->transaction(function () use ($userId, $goal, $params) {
                 // 1. Fraud Check (лимит генераций роадмапов)
-                $this->fraud->check('education_ai_roadmap', ['user_id' => $userId]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'education_ai_roadmap', amount: 0, correlationId: $correlationId ?? '');
 
                 // 2. Генерация траектории (Roadmap) на 30-90 дней
                 $level = $params['current_level'] ?? 'beginner';
@@ -66,7 +66,7 @@ final class RoadmapConstructor extends Model
                 // 5. Сохранение в БД
                 $this->saveToDatabase($userId, $result);
 
-                Log::channel('audit')->info('RoadmapConstructor: roadmap finished', [
+                $this->logger->info('RoadmapConstructor: roadmap finished', [
                     'user_id' => $userId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -88,7 +88,7 @@ final class RoadmapConstructor extends Model
 
         private function saveToDatabase(int $userId, AIConstructionResult $result): void
         {
-            DB::table('ai_constructions')->insert([
+            $this->db->table('ai_constructions')->insert([
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId,
                 'tenant_id' => tenant()->id ?? 0,
@@ -96,8 +96,8 @@ final class RoadmapConstructor extends Model
                 'design_data' => json_encode($result->payload),
                 'suggestions' => json_encode($result->suggestions),
                 'correlation_id' => $result->correlation_id,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
             ]);
         }
 }

@@ -2,6 +2,10 @@
 
 namespace App\Broadcasting;
 
+
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Psr\Log\LoggerInterface;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,15 +20,17 @@ final class TeamPresenceChanged implements ShouldBroadcast
     use SerializesModels;
 
     public function __construct(
-        public readonly int $tenantId,
-        public readonly string $documentType,
-        public readonly int $documentId,
-        public readonly array $presentUsers,
-        public readonly string $event,
-        public readonly int $affectedUserId,
-        public readonly string $correlationId,
+        private readonly ConfigRepository $config,
+        private readonly LoggerInterface $logger,
+        private readonly int $tenantId,
+        private readonly string $documentType,
+        private readonly int $documentId,
+        private readonly array $presentUsers,
+        private readonly string $event,
+        private readonly int $affectedUserId,
+        private readonly string $correlationId,
     ) {
-        Log::channel('audit')->info('TeamPresenceChanged event broadcasted', [
+        $this->logger->info('TeamPresenceChanged event broadcasted', [
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,
             'document_id' => $this->documentId,
@@ -63,6 +69,6 @@ final class TeamPresenceChanged implements ShouldBroadcast
 
     public function broadcastWhen(): bool
     {
-        return config('broadcasting.connections.pusher.enabled', true);
+        return $this->config->get('broadcasting.connections.pusher.enabled', true);
     }
 }

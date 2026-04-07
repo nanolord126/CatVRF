@@ -1,15 +1,40 @@
 <?php declare(strict_types=1);
 
+/**
+ * BaseConstructor — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/baseconstructor
+ * @see https://catvrf.ru/docs/baseconstructor
+ */
+
+
 namespace App\Services\AI\Constructors;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
-final class BaseConstructor extends Model
+abstract /**
+ * Class BaseConstructor
+ *
+ * Component of the CatVRF platform.
+ * Follows strict coding standards:
+ * - final class (no inheritance unless required)
+ * - private readonly properties
+ * - Constructor injection only
+ * - correlation_id in all operations
+ *
+ * @package App\Services\AI\Constructors
+ */
+readonly class BaseConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     abstract public function build(User $user, array $inputParams, ?array $imageAnalysis): array;
 
         protected function getTasteProfile(User $user): array
@@ -26,4 +51,24 @@ final class BaseConstructor extends Model
             $score = count($usedTastes) * 0.1 + $recommendationCount * 0.05;
             return min(round($score, 2), 1.0);
         }
+
+    /**
+     * Get the string representation of this object.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return static::class . '::' . ($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

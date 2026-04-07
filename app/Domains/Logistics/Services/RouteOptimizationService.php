@@ -2,18 +2,19 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RouteOptimizationService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class RouteOptimizationService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
+
+    public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
 
@@ -23,11 +24,11 @@ final class RouteOptimizationService extends Model
          */
         public function optimizeCourierRoute(Courier $courier, array $orderIds): Route
         {
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($courier, $orderIds) {
+            return $this->db->transaction(function () use ($courier, $orderIds) {
                 $orders = DeliveryOrder::whereIn('id', $orderIds)
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()?->id)
                     ->get();
 
                 if ($orders->isEmpty()) {
@@ -49,7 +50,7 @@ final class RouteOptimizationService extends Model
                 // 3. Создание или обновление маршрута
                 $route = Route::create([
                     'uuid' => (string) Str::uuid(),
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()?->id,
                     'courier_id' => $courier->id,
                     'status' => 'active',
                     'polyline' => json_encode($polyline),
@@ -59,7 +60,7 @@ final class RouteOptimizationService extends Model
                     'tags' => ['mode' => 'ai_optimized', 'orders_count' => count($orderIds)]
                 ]);
 
-                Log::channel('audit')->info('Route optimized by AI', [
+                $this->logger->info('Route optimized by AI', [
                     'courier_id' => $courier->id,
                     'route_uuid' => $route->uuid,
                     'orders' => $orderIds,
@@ -78,7 +79,7 @@ final class RouteOptimizationService extends Model
         {
             // Гео-запрос для поиска заказов в радиусе финиша основного заказа
             return DeliveryOrder::where('status', 'pending')
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', tenant()?->id)
                 ->where('id', '!=', $mainOrder->id)
                 ->get()
                 ->filter(function ($other) use ($mainOrder, $radiusKm) {

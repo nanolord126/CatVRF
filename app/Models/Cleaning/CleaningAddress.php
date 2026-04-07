@@ -3,13 +3,16 @@
 namespace App\Models\Cleaning;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class CleaningAddress extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'cleaning_addresses';
 
         protected $fillable = [
@@ -45,7 +48,7 @@ final class CleaningAddress extends Model
                 $model->tenant_id = $model->tenant_id ?? (int) (tenant()->id ?? 0);
             });
 
-            static::addGlobalScope('tenant', function ($query) {
+            static::addGlobalScope('tenant', function (Builder $query) {
                 if (tenant()) {
                     $query->where('tenant_id', tenant()->id);
                 }

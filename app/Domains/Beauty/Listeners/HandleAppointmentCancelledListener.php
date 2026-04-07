@@ -1,43 +1,68 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\AppointmentCancelled;
+use App\Domains\Beauty\Jobs\NotifyLowConsumablesJob;
+use App\Services\InventoryManagementService;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class HandleAppointmentCancelledListener extends Model
+/**
+ * HandleAppointmentCancelledListener
+ *
+ * Освобождает hold расходников при отмене записи.
+ */
+final class HandleAppointmentCancelledListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private InventoryManagementService $inventory,
+        private LoggerInterface            $auditLogger,
+    ) {}
+
     public function handle(AppointmentCancelled $event): void
-        {
-            $appointment = $event->appointment;
+    {
+        $this->inventory->releaseStock(
+            $event->appointmentId,
+            'appointment',
+            $event->appointmentId,
+        );
 
-            // Release held consumables (inventory)
-            if ($appointment->status === 'cancelled' && $appointment->held_consumables) {
-                app(\App\Services\InventoryManagementService::class)->releaseStock(
-                    $appointment->id,
-                    'appointment',
-                    $event->correlationId
-                );
-            }
+        $this->auditLogger->info('AppointmentCancelled handled: inventory released.', [
+            'appointment_id' => $event->appointmentId,
+            'client_id'      => $event->clientId,
+            'reason'         => $event->reason,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            // Notify client about cancellation
-            if ($appointment->client) {
-                $this->notification->send(
-                    $appointment->client,
-                    new \App\Notifications\AppointmentCancelledNotification(
-                        $appointment,
-                        $event->reason
-                    )
-                );
-            }
+    public function failed(AppointmentCancelled $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('HandleAppointmentCancelledListener failed.', [
+            'appointment_id' => $event->appointmentId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            Log::channel('audit')->info('AppointmentCancelled event handled', [
-                'appointment_id' => $appointment->id,
-                'reason' => $event->reason,
-                'correlation_id' => $event->correlationId,
-            ]);
-        }
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(AppointmentCancelled $event): bool
+    {
+        return $event->appointmentId > 0;
+    }
+
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-events';
+    }
 }

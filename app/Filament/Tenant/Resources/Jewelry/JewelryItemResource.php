@@ -2,15 +2,8 @@
 
 namespace App\Filament\Tenant\Resources\Jewelry;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class JewelryItemResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    DatePicker, Grid, Section, Select, TagsInput, Textarea, TextInput, Toggle, FileUpload, Hidden, Repeater};
+use Psr\Log\LoggerInterface;
     use Filament\Resources\Resource;
     use Filament\Tables;
     use Filament\Tables\Columns\{BadgeColumn, IconColumn, ImageColumn, TextColumn, NumericColumn};
@@ -24,6 +17,10 @@ final class JewelryItemResource extends Model
 
     final class JewelryItemResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = JewelryItem::class;
 
         protected static ?string $navigationIcon = 'heroicon-m-sparkles';
@@ -309,7 +306,7 @@ final class JewelryItemResource extends Model
                         EditAction::make(),
                         DeleteAction::make()
                             ->after(function (JewelryItem $record) {
-                                Log::channel('audit')->info('Jewelry item deleted', [
+                                $this->logger->info('Jewelry item deleted', [
                                     'id' => $record->id,
                                     'correlation_id' => $record->correlation_id ?? Str::uuid(),
                                 ]);
@@ -321,7 +318,7 @@ final class JewelryItemResource extends Model
                     BulkActionGroup::make([
                         DeleteBulkAction::make()
                             ->action(function () {
-                                Log::channel('audit')->info('Jewelry items bulk deleted', [
+                                $this->logger->info('Jewelry items bulk deleted', [
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),

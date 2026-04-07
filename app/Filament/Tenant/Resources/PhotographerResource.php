@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PhotographerResource extends Model
+final class PhotographerResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Photographer::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-circle';
@@ -79,22 +74,15 @@ final class PhotographerResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPhotographer::route('/'),
-                'create' => Pages\\CreatePhotographer::route('/create'),
-                'edit' => Pages\\EditPhotographer::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotographer::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPhotographer::route('/'),
-                'create' => Pages\\CreatePhotographer::route('/create'),
-                'edit' => Pages\\EditPhotographer::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotographer::route('/{record}'),
+                'index' => Pages\ListPhotographer::route('/'),
+                'create' => Pages\CreatePhotographer::route('/create'),
+                'edit' => Pages\EditPhotographer::route('/{record}/edit'),
+                'view' => Pages\ViewPhotographer::route('/{record}'),
             ];
         }
 }

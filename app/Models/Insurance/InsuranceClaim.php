@@ -2,14 +2,17 @@
 
 namespace App\Models\Insurance;
 
+
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 final class InsuranceClaim extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'insurance_claims';
 
         protected $fillable = [
@@ -48,8 +51,8 @@ final class InsuranceClaim extends Model
             });
 
             static::addGlobalScope('tenant', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if ($this->guard->check()) {
+                    $builder->where('tenant_id', $this->guard->user()->tenant_id);
                 }
             });
         }

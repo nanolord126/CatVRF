@@ -1,15 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * ViewAutoServiceOrder — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/viewautoserviceorder
+ */
+
+
 namespace App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ViewAutoServiceOrder extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\ViewRecord;
+
+final class ViewAutoServiceOrder extends ViewRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoServiceOrderResource::class;
 
         protected function getHeaderActions(): array
@@ -19,10 +39,10 @@ final class ViewAutoServiceOrder extends Model
 
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('Auto service order deleted from view page', [
+                        $this->logger->info('Auto service order deleted from view page', [
                             'correlation_id' => $this->record->correlation_id,
                             'order_id' => $this->record->id,
-                            'user_id' => auth()->id(),
+                            'user_id' => $this->guard->id(),
                         ]);
                     }),
             ];
@@ -30,14 +50,20 @@ final class ViewAutoServiceOrder extends Model
 
         protected function mutateFormDataBeforeFill(array $data): array
         {
-            Log::channel('audit')->info('Auto service order viewed', [
+            $this->logger->info('Auto service order viewed', [
                 'correlation_id' => $this->record->correlation_id,
                 'order_id' => $this->record->id,
                 'service_type' => $this->record->service_type,
                 'status' => $this->record->status,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
 
             return $data;
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

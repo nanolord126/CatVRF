@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class FashionOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'fashion_orders';
@@ -56,8 +55,8 @@ final class FashionOrder extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }

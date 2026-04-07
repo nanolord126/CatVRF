@@ -1,88 +1,166 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Hotels\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Hotels\Services\HotelPropertyService;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class HotelPropertyController extends Model
+/**
+ * Контроллер для управления объектами размещения (Hotel Properties).
+ *
+ * Layer 4: Controllers — CatVRF 2026.
+ * Tenant-scoping, fraud-check, correlation_id обязательны.
+ *
+ * @package App\Domains\Hotels\Http\Controllers
+ */
+final class HotelPropertyController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly HotelPropertyService $service,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+        private readonly HotelPropertyService $service,
+        private readonly FraudControlService $fraud,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-        public function index(): JsonResponse
-        {
-            $properties = HotelProperty::where('tenant_id', tenant()->id)->paginate();
+    /**
+     * Получить список объектов размещения текущего tenant.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $tenantId = (int) $request->user()?->tenant_id;
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-            return response()->json(['data' => $properties]);
+        $properties = $this->service->listProperties($tenantId, $correlationId);
+
+        $this->logger->info('Hotel properties listed', [
+            'tenant_id' => $tenantId,
+            'count' => $properties->count(),
+            'correlation_id' => $correlationId,
+        ]);
+
+        return new JsonResponse(['data' => $properties]);
+    }
+
+    /**
+     * Показать конкретный объект размещения.
+     */
+    public function show(Request $request, int $propertyId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+
+        $property = $this->service->getProperty($propertyId, $correlationId);
+
+        $this->logger->info('Hotel property viewed', [
+            'property_id' => $propertyId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return new JsonResponse(['data' => $property]);
+    }
+
+    /**
+     * Создать новый объект размещения.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $tenantId = (int) $request->user()?->tenant_id;
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+
+        $fraudResult = $this->fraud->check(
+            userId: (int) ($request->user()?->id ?? 0),
+            operationType: 'hotel_property_create',
+            amount: 0,
+            ipAddress: $request->ip(),
+            deviceFingerprint: $request->header('X-Device-Fingerprint'),
+            correlationId: $correlationId,
+        );
+
+        if (($fraudResult['decision'] ?? '') === 'block') {
+            return new JsonResponse(['error' => 'Operation blocked by security'], 403);
         }
 
-        public function show(HotelProperty $property): JsonResponse
-        {
-            $this->authorize('view', $property);
+        $property = $this->service->createProperty(
+            data: $request->only(['name', 'address', 'geo_point', 'star_rating']),
+            tenantId: $tenantId,
+            correlationId: $correlationId,
+        );
 
-            return response()->json(['data' => $property->load(['rooms', 'bookings'])]);
+        $this->logger->info('Hotel property created', [
+            'property_id' => $property->id,
+            'tenant_id' => $tenantId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return new JsonResponse(['data' => $property], 201);
+    }
+
+    /**
+     * Обновить объект размещения.
+     */
+    public function update(Request $request, int $propertyId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+
+        $fraudResult = $this->fraud->check(
+            userId: (int) ($request->user()?->id ?? 0),
+            operationType: 'hotel_property_update',
+            amount: 0,
+            ipAddress: $request->ip(),
+            deviceFingerprint: $request->header('X-Device-Fingerprint'),
+            correlationId: $correlationId,
+        );
+
+        if (($fraudResult['decision'] ?? '') === 'block') {
+            return new JsonResponse(['error' => 'Operation blocked by security'], 403);
         }
 
-        public function store(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+        $property = $this->service->updateProperty(
+            propertyId: $propertyId,
+            data: $request->only(['name', 'address', 'star_rating']),
+            correlationId: $correlationId,
+        );
 
-            $this->authorize('create', HotelProperty::class);
+        $this->logger->info('Hotel property updated', [
+            'property_id' => $propertyId,
+            'correlation_id' => $correlationId,
+        ]);
 
-            try {
-                $property = $this->service->createProperty([
-                    'name' => $request->input('name'),
-                    'address' => $request->input('address'),
-                    'geo_point' => $request->input('geo_point'),
-                    'star_rating' => $request->input('star_rating'),
-                ], tenant()->id, $correlationId);
+        return new JsonResponse(['data' => $property]);
+    }
 
-                return response()->json(['data' => $property], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Property creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+    /**
+     * Удалить объект размещения.
+     */
+    public function destroy(Request $request, int $propertyId): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-                return response()->json(['error' => 'Failed to create property'], 422);
-            }
+        $fraudResult = $this->fraud->check(
+            userId: (int) ($request->user()?->id ?? 0),
+            operationType: 'hotel_property_delete',
+            amount: 0,
+            ipAddress: $request->ip(),
+            deviceFingerprint: $request->header('X-Device-Fingerprint'),
+            correlationId: $correlationId,
+        );
+
+        if (($fraudResult['decision'] ?? '') === 'block') {
+            return new JsonResponse(['error' => 'Operation blocked by security'], 403);
         }
 
-        public function update(Request $request, HotelProperty $property): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+        $this->service->deleteProperty($propertyId, $correlationId);
 
-            $this->authorize('update', $property);
+        $this->logger->info('Hotel property deleted', [
+            'property_id' => $propertyId,
+            'correlation_id' => $correlationId,
+        ]);
 
-            try {
-                $property->update($request->only(['name', 'address', 'star_rating']));
-                Log::channel('audit')->info('Property updated', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
-
-                return response()->json(['data' => $property]);
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'Failed to update property'], 422);
-            }
-        }
-
-        public function destroy(HotelProperty $property): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
-
-            $this->authorize('delete', $property);
-
-            try {
-                $property->delete();
-                Log::channel('audit')->info('Property deleted', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
-
-                return response()->json(null, 204);
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'Failed to delete property'], 422);
-            }
-        }
+        return new JsonResponse(null, 204);
+    }
 }

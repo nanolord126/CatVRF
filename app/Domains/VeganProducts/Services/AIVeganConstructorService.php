@@ -2,18 +2,14 @@
 
 namespace App\Domains\VeganProducts\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIVeganConstructorService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIVeganConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RecommendationService $baseRecommendation,
-            private readonly VeganProductService $productService,
-        ) {}
+            private readonly VeganProductService $productService, private readonly LoggerInterface $logger) {}
 
         /**
          * Generate a personalized Vegan Box recommendation using AI.
@@ -27,7 +23,7 @@ final class AIVeganConstructorService extends Model
         ): array {
             $correlationId = $correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-4: AI Vegan Box Generation START', [
+            $this->logger->info('LAYER-4: AI Vegan Box Generation START', [
                 'goals' => $dietaryGoals,
                 'allergies' => $allergies,
                 'budget' => $budgetInKopecks,
@@ -40,7 +36,7 @@ final class AIVeganConstructorService extends Model
                 $safeProducts = $this->productService->findSafeProducts($allergies, $correlationId);
 
                 if ($safeProducts->isEmpty()) {
-                    throw new Exception("No safe vegan products found matching the specified allergy profile.");
+                    throw new \DomainException("No safe vegan products found matching the specified allergy profile.");
                 }
 
                 // 2. Select products matching DIETARY GOALS (AI logic simulation)
@@ -57,7 +53,7 @@ final class AIVeganConstructorService extends Model
                 // 4. Calculate final nutritional summary
                 $summary = $this->calculateNutritionalSummary($recommendedProducts);
 
-                Log::channel('audit')->info('LAYER-4: AI Vegan Box Generation SUCCESS', [
+                $this->logger->info('LAYER-4: AI Vegan Box Generation SUCCESS', [
                     'items_count' => $recommendedProducts->count(),
                     'recipes_count' => $suggestedRecipes->count(),
                     'correlation_id' => $correlationId,
@@ -80,7 +76,7 @@ final class AIVeganConstructorService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('LAYER-4: AI Generation FAILED', [
+                $this->logger->error('LAYER-4: AI Generation FAILED', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

@@ -2,17 +2,17 @@
 
 namespace App\Domains\ConstructionAndRepair\Construction\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConstructionService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ConstructionService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(?string $correlationId = null)
+        public function __construct(?string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -23,9 +23,9 @@ final class ConstructionService extends Model
         public function createProject(array $data, int $tenantId): ConstructionProject
         {
             // 1. Fraud Check (защита от массового создания фейковых строек)
-            FraudControlService::check($this->correlationId);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $tenantId) {
+            return $this->db->transaction(function () use ($data, $tenantId) {
                 $project = ConstructionProject::create([
                     'tenant_id' => $tenantId,
                     'business_group_id' => $data['business_group_id'] ?? null,
@@ -38,7 +38,7 @@ final class ConstructionService extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Construction project created', [
+                $this->logger->info('Construction project created', [
                     'project_id' => $project->id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $this->correlationId,
@@ -53,7 +53,7 @@ final class ConstructionService extends Model
          */
         public function deductMaterial(int $materialId, float $usage, string $reason = 'manual'): bool
         {
-            return DB::transaction(function () use ($materialId, $usage, $reason) {
+            return $this->db->transaction(function () use ($materialId, $usage, $reason) {
                 $material = ConstructionMaterial::lockForUpdate()->findOrFail($materialId);
 
                 if ($material->quantity < $usage) {
@@ -64,7 +64,7 @@ final class ConstructionService extends Model
                 $material->actual_usage += $usage;
                 $material->save();
 
-                Log::channel('audit')->info('Material deducted from project', [
+                $this->logger->info('Material deducted from project', [
                     'material_id' => $materialId,
                     'project_id' => $material->project_id,
                     'usage' => $usage,

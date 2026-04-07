@@ -2,85 +2,100 @@
 
 namespace App\Domains\Education\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Education\Models\Enrollment;
+use App\Domains\Education\Models\Teacher;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
 
-final class PayoutInstructorJob extends Model
+final class PayoutInstructorJob implements ShouldQueue
 {
-    use HasFactory;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    public int $tries = 3;
+    public int $backoff = 60;
 
-        public int $tries = 3;
-        public int $backoff = 60; // 1 min
+    public function __construct(
+        private readonly int $enrollmentId,
+        private readonly string $correlationId,
+        private readonly int $payoutAmountKopecks,
+    ) {}
 
-        public function __construct(
-            public readonly int $enrollmentId,
-            public readonly string $correlationId,
-            private readonly int $payoutAmountKopecks, // Фиксированная сумма выплаты или доля
-        ) {}
+    /**
+     * Основная логика выплаты инструктору.
+     */
+    public function handle(
+        WalletService $walletService,
+        FraudControlService $fraud,
+        AuditService $audit,
+        LoggerInterface $logger,
+    ): void {
+        $correlationId = $this->correlationId;
+        $enrollment = Enrollment::findOrFail($this->enrollmentId);
+        $course = $enrollment->course;
+        $teacher = Teacher::findOrFail($course->teacher_id);
 
-        /**
-         * Основная логика выплаты
-         */
-        public function handle(WalletService $walletService, FraudControlService $fraudControl): void
-        {
-            $correlationId = $this->correlationId;
-            $enrollment = Enrollment::findOrFail($this->enrollmentId);
-            $course = $enrollment->course;
-            $teacher = Teacher::findOrFail($course->teacher_id);
+        $fraud->check(
+            userId: $teacher->user_id ?? $teacher->id,
+            operationType: 'instructor_payout',
+            amount: $this->payoutAmountKopecks,
+            correlationId: $correlationId,
+        );
 
-            // 1. Предварительная фрод-проверка
-            $fraudControl->checkOperation('instructor_payout', [
-                'enrollment_id' => $enrollment->id,
+        try {
+            $walletService->credit(
+                walletId: $teacher->wallet_id ?? $teacher->tenant_id ?? tenant()->id,
+                amount: $this->payoutAmountKopecks,
+                reason: 'instructor_payout',
+                correlationId: $correlationId,
+            );
+
+            $audit->record(
+                action: 'instructor_payout_completed',
+                subjectType: Enrollment::class,
+                subjectId: $enrollment->id,
+                oldValues: [],
+                newValues: [
+                    'teacher_id' => $teacher->id,
+                    'amount' => $this->payoutAmountKopecks,
+                ],
+                correlationId: $correlationId,
+            );
+
+            $logger->info('Instructor payout completed', [
                 'teacher_id' => $teacher->id,
+                'enrollment_id' => $enrollment->id,
                 'amount' => $this->payoutAmountKopecks,
                 'correlation_id' => $correlationId,
             ]);
+        } catch (\Throwable $e) {
+            $logger->error('Instructor payout failed', [
+                'teacher_id' => $teacher->id,
+                'enrollment_id' => $enrollment->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
 
-            // 2. Выполнение выплаты (WalletService::credit - пополнение кошелька)
-            try {
-                // Выплата на кошелек преподавателя (через wallet_id если он есть, или через бизнес-кошелек тенанта)
-                $walletData = [
-                    'type' => 'payout',
-                    'amount' => $this->payoutAmountKopecks,
-                    'status' => 'completed',
-                    'correlation_id' => $correlationId,
-                    'business_group_id' => $teacher->business_group_id,
-                ];
-
-                // credit() увеличивает баланс, это зачисление вознаграждения
-                $walletService->credit($walletData);
-
-                // 3. Логирование аудита
-                Log::channel('audit')->info('Instructor payout completed', [
-                    'teacher_id' => $teacher->id,
-                    'course_id' => $course->id,
-                    'amount_kopecks' => $this->payoutAmountKopecks,
-                    'enrollment_id' => $enrollment->id,
-                    'correlation_id' => $correlationId,
-                ]);
-
-            } catch (\Throwable $e) {
-                // Ошибка транзакции или кошелька
-                Log::channel('audit')->error('Failed to payout instructor', [
-                    'teacher_id' => $teacher->id,
-                    'enrollment_id' => $enrollment->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                throw $e; // Для ретрая в очереди
-            }
+            throw $e;
         }
+    }
 
-        /**
-         * Теги для очереди
-         */
-        public function tags(): array
-        {
-            return ['education', 'payout', $this->correlationId];
-        }
+    /**
+     * Теги для очереди.
+     *
+     * @return array<int, string>
+     */
+    public function tags(): array
+    {
+        return ['education', 'payout', $this->correlationId];
+    }
 }

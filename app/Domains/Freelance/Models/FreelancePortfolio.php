@@ -1,5 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * FreelancePortfolio — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/freelanceportfolio
+ */
+
+
 namespace App\Domains\Freelance\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,8 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 final class FreelancePortfolio extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'freelance_portfolios';
 
         protected $fillable = [
@@ -45,4 +60,10 @@ final class FreelancePortfolio extends Model
         {
             return $this->belongsTo(Freelancer::class);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

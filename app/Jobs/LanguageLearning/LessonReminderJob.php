@@ -2,21 +2,38 @@
 
 namespace App\Jobs\LanguageLearning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
 
-final class LessonReminderJob extends Model
+/**
+ * Class LessonReminderJob
+ *
+ * Queued job for async processing.
+ * Maintains correlation_id for full traceability.
+ * Retries and timeout configured per job.
+ *
+ * @see \Illuminate\Contracts\Queue\ShouldQueue
+ * @package App\Jobs\LanguageLearning
+ */
+final class LessonReminderJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
             public int $lessonId,
-            public string $correlationId
-        ) {}
+            public string $correlationId,
+        private readonly LogManager $logger,
+    ) {}
 
+        /**
+         * Handle handle operation.
+         *
+         * @throws \DomainException
+         */
         public function handle(): void
         {
             $lesson = LanguageLesson::with(['enrollment.student', 'teacher'])->find($this->lessonId);
@@ -25,7 +42,7 @@ final class LessonReminderJob extends Model
                 return;
             }
 
-            Log::channel('audit')->info('LanguageLearning: Sending lesson reminder', [
+            $this->logger->channel('audit')->info('LanguageLearning: Sending lesson reminder', [
                 'lesson_id' => $this->lessonId,
                 'correlation_id' => $this->correlationId,
                 'student_id' => $lesson->enrollment->student_id,
@@ -34,7 +51,7 @@ final class LessonReminderJob extends Model
             // Эмуляция отправки пуша / имейла / SMS по ФЗ-152
             // Notification::send($lesson->enrollment->student, new LessonUpcomingNotification($lesson));
 
-            Log::channel('audit')->info('LanguageLearning: Reminder sent', [
+            $this->logger->channel('audit')->info('LanguageLearning: Reminder sent', [
                 'lesson_id' => $this->lessonId,
                 'correlation_id' => $this->correlationId,
             ]);

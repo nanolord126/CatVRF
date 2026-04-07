@@ -132,3 +132,5 @@ return new class extends Migration
         Schema::dropIfExists('ritual_agencies');
     }
 };
+
+

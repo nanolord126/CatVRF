@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('address');
-            $table->point('geo_point')->nullable()->spatialIndex();
+            $table->geometry('geo_point')->nullable()->spatialIndex();
             $table->json('cuisine_types')->nullable()->comment('["Italian", "Asian", "Fast-food"]');
             $table->json('schedule')->nullable()->comment('Operating hours');
             $table->float('rating', 3, 2)->default(0);
@@ -102,7 +102,7 @@ return new class extends Migration
             $table->integer('delivery_fee')->nullable()->comment('in kopeks');
             $table->integer('discount_amount')->default(0);
             $table->string('delivery_address')->nullable();
-            $table->point('delivery_point')->nullable();
+            $table->geometry('delivery_point')->nullable();
             $table->integer('surge_multiplier')->nullable()->comment('for delivery surge');
             $table->string('correlation_id')->nullable()->index();
             $table->json('tags')->nullable();
@@ -156,7 +156,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique()->index();
             $table->foreignId('delivery_partner_id')->nullable()->constrained('users')->onDelete('set null')->index();
             $table->string('delivery_address');
-            $table->point('delivery_point')->nullable();
+            $table->geometry('delivery_point')->nullable();
             $table->enum('status', ['pending', 'assigned', 'picked_up', 'delivered', 'failed'])->default('pending')->index();
             $table->dateTime('assigned_at')->nullable();
             $table->dateTime('picked_up_at')->nullable();
@@ -217,3 +217,5 @@ return new class extends Migration
         Schema::dropIfExists('restaurants');
     }
 };
+
+

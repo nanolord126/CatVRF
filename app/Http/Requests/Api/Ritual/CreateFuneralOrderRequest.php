@@ -2,21 +2,19 @@
 
 namespace App\Http\Requests\Api\Ritual;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateFuneralOrderRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class CreateFuneralOrderRequest extends FormRequest
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Авторизация и Fraud Check (Канон 2026).
          */
         public function authorize(): bool
         {
             // 1. Проверка прав (Middleware 'auth:sanctum' уже проверил сессию)
-            if (!auth()->check()) {
+            if (!$this->guard->check()) {
                 return false;
             }
 
@@ -25,7 +23,7 @@ final class CreateFuneralOrderRequest extends Model
 
             $fraud->check([
                 'operation' => 'ritual_api_create_authorize',
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'ip' => $this->ip(),
                 'correlation_id' => $this->header('X-Correlation-ID'),
             ]);

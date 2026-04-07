@@ -2,26 +2,30 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class TicketSaleController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TicketSaleController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function myTickets(): JsonResponse
         {
             try {
                 $tickets = TicketSale::whereHas('booking', function ($query) {
-                    $query->where('customer_id', auth()->id());
+                    $query->where('customer_id', $request->user()?->id);
                 })
                     ->with('booking')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $tickets, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $tickets, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -30,9 +34,9 @@ final class TicketSaleController extends Model
             try {
                 $ticket = TicketSale::findOrFail($id);
 
-                return response()->json(['success' => true, 'data' => $ticket->load('booking'), 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $ticket->load('booking'), 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ticket not found', 'correlation_id' => Str::uuid()], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ticket not found', 'correlation_id' => Str::uuid()], 404);
             }
         }
 
@@ -41,13 +45,13 @@ final class TicketSaleController extends Model
             try {
                 $ticket = TicketSale::findOrFail($id);
 
-                $ticket->update(['status' => 'used', 'used_at' => now()]);
+                $ticket->update(['status' => 'used', 'used_at' => Carbon::now()]);
 
-                Log::channel('audit')->info('Ticket validated', ['ticket_id' => $id]);
+                $this->logger->info('Ticket validated', ['ticket_id' => $id]);
 
-                return response()->json(['success' => true, 'data' => $ticket, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $ticket, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -59,9 +63,9 @@ final class TicketSaleController extends Model
                 })
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $tickets, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $tickets, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

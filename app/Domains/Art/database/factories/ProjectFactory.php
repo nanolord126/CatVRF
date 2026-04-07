@@ -5,12 +5,13 @@ namespace Database\Factories;
 
 use App\Domains\Art\Models\Artist;
 use App\Domains\Art\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 final class ProjectFactory extends Factory
 {
-    protected $model = Project::class;
+    private $model = Project::class;
 
     public function definition(): array
     {
@@ -27,7 +28,7 @@ final class ProjectFactory extends Factory
             'budget_cents' => $this->faker->numberBetween(10_000, 100_000),
             'status' => 'active',
             'mode' => $this->faker->randomElement(['b2c', 'b2b']),
-            'deadline_at' => now()->addWeeks(3),
+            'deadline_at' => Carbon::now()->addWeeks(3),
             'preferences' => ['color' => 'warm'],
             'tags' => ['vertical' => 'art'],
             'meta' => ['factory' => true],
@@ -51,7 +52,7 @@ final class ProjectFactory extends Factory
 
     public function urgent(): self
     {
-        return $this->state(fn () => ['deadline_at' => now()->addDays(5), 'status' => 'active']);
+        return $this->state(fn () => ['deadline_at' => Carbon::now()->addDays(5), 'status' => 'active']);
     }
 
     public function enterprise(): self

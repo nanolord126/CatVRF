@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Api\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ConsultingApiController extends Model
+final class ConsultingApiController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Unified response format with correlation_id.
          */
         protected function respond(array $data, int $status = 200, string $correlationId = ''): JsonResponse
         {
-            return response()->json(array_merge($data, [
+            return $this->response->json(array_merge($data, [
                 'correlation_id' => $correlationId ?: (string) Str::uuid(),
             ]), $status);
         }
@@ -31,7 +35,7 @@ final class ConsultingApiController extends Model
                 'min_experience_years' => 'nullable|integer',
                 'skills' => 'nullable|array',
             ]);
-            Log::channel('audit')->info('Consulting Match Request', array_merge($requirements, ['correlation_id' => $correlationId]));
+            $this->logger->channel('audit')->info('Consulting Match Request', array_merge($requirements, ['correlation_id' => $correlationId]));
             $matches = $matcher->matchConsultant($requirements, (int) tenant()->id);
             return $this->respond(['matches' => $matches], 200, $correlationId);
         }
@@ -63,7 +67,14 @@ final class ConsultingApiController extends Model
                 $service->fulfillSession($id, $data['duration_minutes'], $data['session_notes']);
                 return $this->respond(['status' => 'success', 'message' => 'Session fulfilled.'], 200, $correlationId);
             } catch (\Exception $e) {
-                Log::channel('audit')->error("Session fulfillment failed: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error("Session fulfillment failed: " . $e->getMessage());
                 return $this->respond(['error' => $e->getMessage()], 400, $correlationId);
             }
         }
@@ -97,6 +108,13 @@ final class ConsultingApiController extends Model
                 );
                 return $this->respond(['contract' => $contract], 201, $correlationId);
             } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->respond(['error' => $e->getMessage()], 400, $correlationId);
             }
         }
@@ -120,6 +138,13 @@ final class ConsultingApiController extends Model
                 );
                 return $this->respond(['review' => $review], 201, $correlationId);
             } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 return $this->respond(['error' => $e->getMessage()], 400, $correlationId);
             }
         }

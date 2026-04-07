@@ -2,19 +2,32 @@
 
 namespace App\Services\Collectibles;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ValuationService extends Model
+use Illuminate\Http\Request;
+use App\Services\FraudControlService;
+use App\Models\Collectibles\CollectibleItem;
+use App\Models\Collectibles\CollectibleCertificate;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ValuationService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private FraudControlService $fraud,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -40,10 +53,10 @@ final class ValuationService extends Model
 
             $estimatedValue = (int) ($baseValue * $conditionMultiplier * $provenanceBonus);
 
-            Log::channel('audit')->info('Value estimation completed', [
+            $this->logger->channel('audit')->info('Value estimation completed', [
                 'item_id' => $itemId,
                 'estimated_value' => $estimatedValue,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             return $estimatedValue;
@@ -57,26 +70,21 @@ final class ValuationService extends Model
             $item = CollectibleItem::findOrFail($itemId);
 
             // Fraud check for manual cert issuance
-            $this->fraud->check([
-                'operation' => 'issue_certificate',
-                'item_id' => $itemId,
-                'cert_number' => $certNum,
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check((int) $this->guard->id(), 'issue_certificate', $this->request->ip());
 
-            return DB::transaction(function () use ($item, $certNum, $issuer) {
+            return $this->db->transaction(function () use ($item, $certNum, $issuer) {
                 $certificate = CollectibleCertificate::create([
                     'item_id' => $item->id,
                     'certificate_number' => $certNum,
                     'issuer' => $issuer,
                     'issued_at' => now(),
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
-                Log::channel('audit')->warning('Collectible Item Certified', [
+                $this->logger->channel('audit')->warning('Collectible Item Certified', [
                     'item_id' => $item->id,
                     'cert_uuid' => $certificate->uuid,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return $certificate;

@@ -2,44 +2,46 @@
 
 namespace App\Domains\Food\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RestaurantController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class RestaurantController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function index(): JsonResponse
         {
             try {
                 $correlationId = Str::uuid()->toString();
 
                 $restaurants = Restaurant::query()
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()->id)
                     ->select(['id', 'name', 'address', 'geo_point', 'rating', 'cuisine_type', 'is_verified'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $restaurants,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch restaurants', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                $this->logger->error('Failed to fetch restaurants', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 
         public function show(Restaurant $restaurant): JsonResponse
         {
             try {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $restaurant->load(['menus', 'tables']),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ресторан не найден'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ресторан не найден'], 404);
             }
         }
 
@@ -51,12 +53,12 @@ final class RestaurantController extends Model
                     ->with(['dishes' => fn ($q) => $q->where('is_available', true)])
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $menus,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка'], 500);
             }
         }
 }

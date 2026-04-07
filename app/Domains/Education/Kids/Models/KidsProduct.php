@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class KidsProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, SoftDeletes;
 
         protected $table = 'kids_products';
@@ -34,7 +33,6 @@ final class KidsProduct extends Model
 
         protected $casts = [
             'price' => 'integer', // Kopecks (Canon 2026)
-            'stock_quantity' => 'integer',
             'age_range' => 'json', // min_months, max_months
             'material_details' => 'json',
             'tags' => 'json',

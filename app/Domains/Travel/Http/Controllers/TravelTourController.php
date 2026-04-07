@@ -2,17 +2,15 @@
 
 namespace App\Domains\Travel\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelTourController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TravelTourController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
         public function index(Request $request): JsonResponse
         {
             try {
@@ -35,7 +33,7 @@ final class TravelTourController extends Model
 
                 $tours = $query->paginate($per_page, ['*'], 'page', $page);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $tours->items(),
                     'pagination' => [
@@ -45,11 +43,12 @@ final class TravelTourController extends Model
                     'correlation_id' => Str::uuid()->toString(),
                 ]);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to list tours', [
+                $this->logger->error('Failed to list tours', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list tours',
                     'correlation_id' => Str::uuid()->toString(),
@@ -62,13 +61,13 @@ final class TravelTourController extends Model
             try {
                 $tour = TravelTour::where('tenant_id', tenant()->id)->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $tour,
                     'correlation_id' => Str::uuid()->toString(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Tour not found',
                     'correlation_id' => Str::uuid()->toString(),
@@ -79,7 +78,7 @@ final class TravelTourController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = $request->get('correlation_id', (string) Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'tour_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'tour_store', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $request->validate([
@@ -100,7 +99,7 @@ final class TravelTourController extends Model
                 $this->authorize('create', TravelTour::class);
 
                 $validated = $request->all();
-                $tour = DB::transaction(function () use ($validated, $agency, $correlationId) {
+                $tour = $this->db->transaction(function () use ($validated, $agency, $correlationId) {
                     return TravelTour::create([
                         'tenant_id' => tenant()->id,
                         'agency_id' => $agency->id,
@@ -121,24 +120,24 @@ final class TravelTourController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Travel tour created', [
+                $this->logger->info('Travel tour created', [
                     'tour_id' => $tour->id,
                     'agency_id' => $agency->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $tour,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Tour creation failed', [
+                $this->logger->error('Tour creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create tour',
                     'correlation_id' => $correlationId,
@@ -149,7 +148,7 @@ final class TravelTourController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = $request->get('correlation_id', (string) Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'tour_update', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'tour_update', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $tour = TravelTour::where('tenant_id', tenant()->id)->findOrFail($id);
@@ -157,7 +156,7 @@ final class TravelTourController extends Model
                 $this->authorize('update', $tour);
 
                 $validated = $request->all();
-                $tour = DB::transaction(function () use ($validated, $tour, $correlationId) {
+                $tour = $this->db->transaction(function () use ($validated, $tour, $correlationId) {
                     $tour->update([
                         'name' => ($validated['name'] ?? $tour->name),
                         'destination' => ($validated['destination'] ?? $tour->destination),
@@ -174,18 +173,18 @@ final class TravelTourController extends Model
                     return $tour;
                 });
 
-                Log::channel('audit')->info('Travel tour updated', [
+                $this->logger->info('Travel tour updated', [
                     'tour_id' => $tour->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $tour,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update tour',
                     'correlation_id' => $correlationId,
@@ -196,28 +195,28 @@ final class TravelTourController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = (string) Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'tour_destroy', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'tour_destroy', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $tour = TravelTour::where('tenant_id', tenant()->id)->findOrFail($id);
 
                 $this->authorize('delete', $tour);
 
-                DB::transaction(function () use ($tour, $correlationId) {
+                $this->db->transaction(function () use ($tour, $correlationId) {
                     $tour->delete();
                 });
 
-                Log::channel('audit')->info('Travel tour deleted', [
+                $this->logger->info('Travel tour deleted', [
                     'tour_id' => $tour->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete tour',
                     'correlation_id' => $correlationId,
@@ -234,13 +233,13 @@ final class TravelTourController extends Model
                     ->where('status', 'approved')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews->items(),
                     'correlation_id' => Str::uuid()->toString(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to get reviews',
                     'correlation_id' => Str::uuid()->toString(),
@@ -257,22 +256,22 @@ final class TravelTourController extends Model
                     ->where('tenant_id', tenant()->id)
                     ->findOrFail($id);
 
-                DB::transaction(function () use ($tour, $correlationId) {
+                $this->db->transaction(function () use ($tour, $correlationId) {
                     $tour->restore();
                     $tour->update(['correlation_id' => $correlationId]);
                 });
 
-                Log::channel('audit')->info('Travel tour restored', [
+                $this->logger->info('Travel tour restored', [
                     'tour_id' => $tour->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to restore tour',
                     'correlation_id' => $correlationId,

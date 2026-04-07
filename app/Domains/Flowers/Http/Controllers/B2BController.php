@@ -2,43 +2,65 @@
 
 namespace App\Domains\Flowers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Services\B2BService;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
-final class B2BController extends Model
+/**
+ * B2BController — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+ * @see https://catvrf.ru/docs/b2bcontroller
+ */
+final readonly class B2BController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly B2BService $b2bService,
-            private readonly FraudControlService $fraudControl
-        ) {}
+        private B2BService $b2bService,
+        private FraudControlService $fraud,
+    ) {}
 
-        public function createStorefront(Request $request): JsonResponse
-        {
-            $correlationId = (string) Str::uuid();
+    public function createStorefront(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $isB2B = $request->has('inn') && $request->has('business_card_id');
-                if (!$isB2B) {
-                    return response()->json(['error' => 'B2B only', 'correlation_id' => $correlationId], 403);
-                }
-
-                $this->fraudControl->check($request->all(), 'create_b2b_storefront');
-
-                $storefront = $this->b2bService->createStorefront($request->all(), $correlationId);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $storefront,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
+        try {
+            $isB2B = $request->has('inn') && $request->has('business_card_id');
+            if (!$isB2B) {
+                return new JsonResponse([
+                    'error' => 'B2B only',
+                    'correlation_id' => $correlationId,
                 ], 403);
             }
+
+            $this->fraud->check(
+                userId: $request->user()?->id ?? 0,
+                operationType: 'mutation',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $storefront = $this->b2bService->createStorefront($request->all(), $correlationId);
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => $storefront,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 403);
         }
+    }
 }

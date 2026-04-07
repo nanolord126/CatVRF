@@ -2,14 +2,16 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BFreelanceController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BFreelanceController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function storefronts(): JsonResponse
         {
             try {
@@ -17,18 +19,18 @@ final class B2BFreelanceController extends Model
                     ->where('is_verified', true)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $storefronts,
                     'correlation_id' => Str::uuid(),
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Failed to fetch storefronts', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Failed to fetch storefronts', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при загрузке витрин',
                     'correlation_id' => Str::uuid(),
@@ -52,32 +54,32 @@ final class B2BFreelanceController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($validated, $correlationId) {
+                $this->db->transaction(function () use ($validated, $correlationId) {
                     B2BFreelanceStorefront::create([
                         'uuid' => Str::uuid(),
-                        'tenant_id' => auth()->user()->tenant_id,
+                        'tenant_id' => $request->user()->tenant_id,
                         ...$validated,
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Freelance B2B: Storefront created', [
+                    $this->logger->info('Freelance B2B: Storefront created', [
                         'inn' => $validated['inn'],
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Витрина создана',
                     'correlation_id' => $correlationId,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Storefront creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Storefront creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании витрины',
                     'correlation_id' => Str::uuid(),
@@ -99,10 +101,10 @@ final class B2BFreelanceController extends Model
                 $correlationId = Str::uuid()->toString();
                 $commission = (int) ($validated['total_amount'] * 0.14);
 
-                DB::transaction(function () use ($validated, $correlationId, $commission) {
+                $this->db->transaction(function () use ($validated, $correlationId, $commission) {
                     B2BFreelanceOrder::create([
                         'uuid' => Str::uuid(),
-                        'tenant_id' => auth()->user()->tenant_id,
+                        'tenant_id' => $request->user()->tenant_id,
                         'order_number' => 'B2B-' . Str::random(8),
                         'commission_amount' => $commission,
                         'status' => 'pending',
@@ -110,24 +112,24 @@ final class B2BFreelanceController extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Freelance B2B: Order created', [
+                    $this->logger->info('Freelance B2B: Order created', [
                         'amount' => $validated['total_amount'],
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ создан',
                     'correlation_id' => $correlationId,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Order creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Order creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании заказа',
                     'correlation_id' => Str::uuid(),
@@ -138,22 +140,22 @@ final class B2BFreelanceController extends Model
         public function myB2BOrders(): JsonResponse
         {
             try {
-                $orders = B2BFreelanceOrder::where('tenant_id', auth()->user()->tenant_id)
+                $orders = B2BFreelanceOrder::where('tenant_id', $request->user()->tenant_id)
                     ->latest()
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $orders,
                     'correlation_id' => Str::uuid(),
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Failed to fetch orders', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Failed to fetch orders', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при загрузке заказов',
                     'correlation_id' => Str::uuid(),
@@ -169,27 +171,27 @@ final class B2BFreelanceController extends Model
 
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($order, $correlationId) {
+                $this->db->transaction(function () use ($order, $correlationId) {
                     $order->update(['status' => 'approved']);
 
-                    Log::channel('audit')->info('Freelance B2B: Order approved', [
+                    $this->logger->info('Freelance B2B: Order approved', [
                         'order_id' => $order->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ одобрен',
                     'correlation_id' => $correlationId,
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Order approval failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Order approval failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при одобрении заказа',
                     'correlation_id' => Str::uuid(),
@@ -206,31 +208,31 @@ final class B2BFreelanceController extends Model
                 $correlationId = Str::uuid()->toString();
                 $reason = $request->get('reason', '');
 
-                DB::transaction(function () use ($order, $correlationId, $reason) {
+                $this->db->transaction(function () use ($order, $correlationId, $reason) {
                     $order->update([
                         'status' => 'rejected',
                         'notes' => $reason,
                     ]);
 
-                    Log::channel('audit')->info('Freelance B2B: Order rejected', [
+                    $this->logger->info('Freelance B2B: Order rejected', [
                         'order_id' => $order->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Заказ отклонен',
                     'correlation_id' => $correlationId,
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Order rejection failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Order rejection failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при отклонении заказа',
                     'correlation_id' => Str::uuid(),
@@ -246,28 +248,28 @@ final class B2BFreelanceController extends Model
                 $storefront = B2BFreelanceStorefront::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($storefront, $correlationId) {
+                $this->db->transaction(function () use ($storefront, $correlationId) {
                     $storefront->update(['is_verified' => true]);
 
-                    Log::channel('audit')->info('Freelance B2B: Storefront verified', [
+                    $this->logger->info('Freelance B2B: Storefront verified', [
                         'storefront_id' => $storefront->id,
                         'inn' => $storefront->inn,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Витрина верифицирована',
                     'correlation_id' => $correlationId,
                 ], 200);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Freelance B2B: Verification failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Freelance B2B: Verification failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => Str::uuid(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при верификации',
                     'correlation_id' => Str::uuid(),

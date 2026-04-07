@@ -2,17 +2,17 @@
 
 namespace App\Domains\Consulting\HR\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HRService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class HRService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(?string $correlationId = null)
+        public function __construct(?string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -23,9 +23,9 @@ final class HRService extends Model
         public function createVacancy(array $data, int $tenantId): JobVacancy
         {
             // Fraud Check: лимит на количество активных вакансий в зависимости от тарифа (через сервис)
-            FraudControlService::check($this->correlationId);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $tenantId) {
+            return $this->db->transaction(function () use ($data, $tenantId) {
                 $vacancy = JobVacancy::create([
                     'tenant_id' => $tenantId,
                     'business_group_id' => $data['business_group_id'] ?? null,
@@ -39,7 +39,7 @@ final class HRService extends Model
                     'status' => 'open', // По умолчанию открываем а не драфт
                 ]);
 
-                Log::channel('audit')->info('Job vacancy created', [
+                $this->logger->info('Job vacancy created', [
                     'vacancy_id' => $vacancy->id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $this->correlationId,
@@ -55,9 +55,9 @@ final class HRService extends Model
         public function submitApplication(int $vacancyId, int $userId, array $data): JobApplication
         {
             // 1. Fraud Check (защита от спама откликами)
-            FraudControlService::check($this->correlationId);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($vacancyId, $userId, $data) {
+            return $this->db->transaction(function () use ($vacancyId, $userId, $data) {
                 $vacancy = JobVacancy::findOrFail($vacancyId);
 
                 if ($vacancy->status !== 'open') {
@@ -73,7 +73,7 @@ final class HRService extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Job application submitted', [
+                $this->logger->info('Job application submitted', [
                     'application_id' => $application->id,
                     'vacancy_id' => $vacancyId,
                     'user_id' => $userId,

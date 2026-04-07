@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\Education\CourseResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateCourse extends Model
+
+
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateCourse extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = CourseResource::class;
 
         /**
@@ -22,11 +30,11 @@ final class CreateCourse extends Model
             // 1. Фрод-проверка на создание контента
             app(FraudControlService::class)->checkOperation('create_education_course', [
                 'tenant_id' => tenant()->id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'correlation_id' => $correlationId
             ]);
 
-            Log::channel('audit')->info('Creating new Education Course', [
+            $this->logger->info('Creating new Education Course', [
                 'tenant_id' => tenant()->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -37,7 +45,7 @@ final class CreateCourse extends Model
          */
         protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
         {
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 $record = parent::handleRecordCreation($data);
 
                 // Дополнительная логика (например, создание первого модуля по умолчанию)
@@ -57,7 +65,7 @@ final class CreateCourse extends Model
          */
         protected function afterCreate(): void
         {
-            Log::channel('audit')->info('Education Course created successfully', [
+            $this->logger->info('Education Course created successfully', [
                 'course_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

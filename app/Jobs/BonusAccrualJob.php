@@ -2,18 +2,22 @@
 
 namespace App\Jobs;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
 use Illuminate\Support\Str;
 use Modules\Finances\Models\Bonus;
 use Modules\Finances\Services\BonusService;
 use Modules\Marketplace\Models\Order;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Bonus Accrual Job
@@ -33,7 +37,11 @@ final class BonusAccrualJob implements ShouldQueue
     private readonly BonusService $bonusService;
     private readonly string $correlationId;
 
-    public function __construct()
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
     {
         $this->bonusService = app(BonusService::class);
         $this->correlationId = (string) Str::uuid()->toString();
@@ -42,7 +50,7 @@ final class BonusAccrualJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Bonus accrual job started', [
+            $this->logger->channel('audit')->info('Bonus accrual job started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -58,11 +66,11 @@ final class BonusAccrualJob implements ShouldQueue
                 ->pluck('user_id');
 
             if ($users->isEmpty()) {
-                Log::info('No users with completed orders found for bonus accrual');
+                $this->logger->info('No users with completed orders found for bonus accrual');
                 return;
             }
 
-            Log::info('Starting bonus accrual for users', [
+            $this->logger->info('Starting bonus accrual for users', [
                 'correlation_id' => $this->correlationId,
                 'user_count' => $users->count(),
             ]);
@@ -73,13 +81,20 @@ final class BonusAccrualJob implements ShouldQueue
                 $bonusesCreated += $this->accrueUserBonuses($userId, $lastMonth);
             }
 
-            Log::channel('audit')->info('Bonus accrual job completed', [
+            $this->logger->channel('audit')->info('Bonus accrual job completed', [
                 'correlation_id' => $this->correlationId,
                 'bonuses_created' => $bonusesCreated,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Bonus accrual job failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Bonus accrual job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -110,7 +125,7 @@ final class BonusAccrualJob implements ShouldQueue
             }
 
             // Рассчитать оборот (сумму успешных платежей)
-            $monthlyTurnover = $orders->sum(DB::raw('total_price - refunded_amount'));
+            $monthlyTurnover = $orders->sum($this->db->raw('total_price - refunded_amount'));
 
             // 1. Бонус за оборот (turnover bonus)
             $bonusesCreated += $this->accrueOverBonuses($userId, $monthlyTurnover, $month);
@@ -121,7 +136,14 @@ final class BonusAccrualJob implements ShouldQueue
             return $bonusesCreated;
 
         } catch (\Exception $e) {
-            Log::warning('Error accruing bonuses for user', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->warning('Error accruing bonuses for user', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
@@ -136,8 +158,8 @@ final class BonusAccrualJob implements ShouldQueue
      */
     private function accrueOverBonuses(int $userId, int $turnover, Carbon $month): int
     {
-        $turnoverThreshold = (int) config('bonuses.turnover.threshold', 5000000); // 50,000 RUB в коп
-        $bonusAmount = (int) config('bonuses.turnover.bonus_amount', 200000); // 2,000 RUB в коп
+        $turnoverThreshold = (int) $this->config->get('bonuses.turnover.threshold', 5000000); // 50,000 RUB в коп
+        $bonusAmount = (int) $this->config->get('bonuses.turnover.bonus_amount', 200000); // 2,000 RUB в коп
 
         if ($turnover < $turnoverThreshold) {
             return 0; // Не прошли порог
@@ -160,7 +182,7 @@ final class BonusAccrualJob implements ShouldQueue
 
         // Начислить бонус за каждый полный порог
         for ($i = 0; $i < $bonusCount; $i++) {
-            DB::transaction(function () use ($userId, $bonusAmount, $month) {
+            $this->db->transaction(function () use ($userId, $bonusAmount, $month) {
                 Bonus::create([
                     'user_id' => $userId,
                     'type' => 'turnover_bonus',
@@ -171,7 +193,7 @@ final class BonusAccrualJob implements ShouldQueue
                     'comment' => "Turnover bonus for {$month->format('F Y')}",
                 ]);
 
-                Log::info('Turnover bonus accrued', [
+                $this->logger->info('Turnover bonus accrued', [
                     'user_id' => $userId,
                     'amount' => $bonusAmount,
                     'month' => $month->format('Y-m'),
@@ -188,7 +210,7 @@ final class BonusAccrualJob implements ShouldQueue
      */
     private function accrueLoyaltyBonuses(int $userId, int $orderCount, Carbon $month): int
     {
-        $loyaltyPercentage = (float) config('bonuses.loyalty.percentage', 0.5); // 0.5%
+        $loyaltyPercentage = (float) $this->config->get('bonuses.loyalty.percentage', 0.5); // 0.5%
 
         // Получить сумму всех заказов
         $totalAmount = Order::query()
@@ -221,7 +243,7 @@ final class BonusAccrualJob implements ShouldQueue
             return 0;
         }
 
-        DB::transaction(function () use ($userId, $bonusAmount, $month) {
+        $this->db->transaction(function () use ($userId, $bonusAmount, $month) {
             Bonus::create([
                 'user_id' => $userId,
                 'type' => 'loyalty_bonus',
@@ -232,7 +254,7 @@ final class BonusAccrualJob implements ShouldQueue
                 'comment' => "Loyalty bonus for {$month->format('F Y')}",
             ]);
 
-            Log::info('Loyalty bonus accrued', [
+            $this->logger->info('Loyalty bonus accrued', [
                 'user_id' => $userId,
                 'amount' => $bonusAmount,
                 'month' => $month->format('Y-m'),
@@ -244,7 +266,7 @@ final class BonusAccrualJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        Log::channel('audit')->error('BonusAccrualJob failed permanently', [
+        $this->logger->channel('audit')->error('BonusAccrualJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

@@ -2,20 +2,28 @@
 
 namespace App\Filament\Tenant\Resources\Flowers\FlowerOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Flowers\FlowerOrderResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
 
-final class EditFlowerOrder extends Model
+final class EditFlowerOrder extends EditRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FlowerOrderResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\DeleteAction::make(),
-            ];
-        }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Заказ цветов успешно обновлён';
+    }
 }

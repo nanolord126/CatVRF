@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Appointment extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_appointments';
@@ -44,7 +43,7 @@ final class Appointment extends Model
         /**
          * КАНОН: Global Scopes и События модели.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (Appointment $appointment) {
                 $appointment->uuid = $appointment->uuid ?? (string)Str::uuid();

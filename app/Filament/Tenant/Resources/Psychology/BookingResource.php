@@ -2,14 +2,15 @@
 
 namespace App\Filament\Tenant\Resources\Psychology;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingResource extends Model
+use Psr\Log\LoggerInterface;
+final class BookingResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PsychologicalBooking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -95,7 +96,7 @@ final class BookingResource extends Model
                         ->color('success')
                         ->visible(fn (PsychologicalBooking $record) => $record->status === 'confirmed')
                         ->action(function (PsychologicalBooking $record) {
-                            Log::channel('audit')->info('Filament manual session start', [
+                            $this->logger->info('Filament manual session start', [
                                 'booking_id' => $record->id,
                             ]);
                             // Logic handled by PsychologicalService ideally

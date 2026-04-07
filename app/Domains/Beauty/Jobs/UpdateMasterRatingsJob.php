@@ -1,42 +1,76 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\Master;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+use App\Services\FraudControlService;
 
-final class UpdateMasterRatingsJob extends Model
+/**
+ * UpdateMasterRatingsJob — пересчитывает средний рейтинг всех мастеров
+ * на основании отзывов.
+ *
+ * Запускается ежедневно в 03:30.
+ */
+final class UpdateMasterRatingsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(
-            private readonly string $correlationId,
-        ) {}
+    public int $tries   = 3;
+    public int $timeout = 300;
 
-        public function handle(): void
-        {
-            $masters = Master::query()->with('reviews')->get();
+    private string $correlationId;
 
-            DB::transaction(function () use ($masters): void {
-                foreach ($masters as $master) {
-                    $avgRating = $master->reviews()->avg('rating') ?? 0.0;
-                    $oldRating = $master->rating;
+    public function __construct(string $correlationId = '')
+    {
+        $this->correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+    }
 
-                    $master->update(['rating' => $avgRating]);
+    public function handle(
+        LoggerInterface $logger,
+        \Illuminate\Database\DatabaseManager $db,
+    ): void {
+        $masters = Master::with('reviews')->get();
 
-                    Log::channel('audit')->info('Master rating updated', [
-                        'master_id' => $master->id,
-                        'old_rating' => $oldRating,
-                        'new_rating' => $avgRating,
-                        'correlation_id' => $this->correlationId,
-                    ]);
-                }
-            });
-        }
+        $db->transaction(function () use ($masters, $logger): void {
+            foreach ($masters as $master) {
+                $oldRating = (float) ($master->rating ?? 0.0);
+                $avgRating = round((float) ($master->reviews()->avg('rating') ?? 0.0), 2);
+
+                $master->update([
+                    'rating'       => $avgRating,
+                    'review_count' => $master->reviews()->count(),
+                ]);
+
+                $logger->info('Master rating updated.', [
+                    'master_id'      => $master->id,
+                    'old_rating'     => $oldRating,
+                    'new_rating'     => $avgRating,
+                    'correlation_id' => $this->correlationId,
+                ]);
+            }
+        });
+
+        $logger->info('UpdateMasterRatingsJob completed.', [
+            'masters_count'  => $masters->count(),
+            'correlation_id' => $this->correlationId,
+        ]);
+    }
+
+    /** @return array<int, string> */
+    public function tags(): array
+    {
+        return ['beauty', 'job:update-master-ratings'];
+    }
 }

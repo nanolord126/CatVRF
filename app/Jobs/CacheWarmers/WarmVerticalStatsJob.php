@@ -2,20 +2,22 @@
 
 namespace App\Jobs\CacheWarmers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
 
-final class WarmVerticalStatsJob extends Model
+final class WarmVerticalStatsJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
-        private int $tries = 3;
-        private int $timeout = 45;
+        protected int $tries = 3;
+        protected int $timeout = 45;
 
-        public function __construct(private readonly string $vertical) {}
+        public function __construct(private readonly string $vertical,
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
         public function handle(): void
         {
@@ -25,16 +27,16 @@ final class WarmVerticalStatsJob extends Model
 
                 $stats = $this->calculateStats();
 
-                Cache::store('redis')
+                $this->cache->store('redis')
                     ->tags([$cacheTag])
                     ->put($cacheKey, $stats, now()->addHours(8));
 
-                Log::channel('audit')->info('Vertical stats cached', [
+                $this->logger->channel('audit')->info('Vertical stats cached', [
                     'vertical' => $this->vertical,
                     'correlation_id' => $stats['correlation_id'],
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to warm vertical stats cache', [
+                $this->logger->channel('audit')->error('Failed to warm vertical stats cache', [
                     'vertical' => $this->vertical,
                     'error' => $e->getMessage(),
                 ]);

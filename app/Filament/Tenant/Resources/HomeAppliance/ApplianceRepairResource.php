@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\HomeAppliance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ApplianceRepairResource extends Model
+final class ApplianceRepairResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ApplianceRepairOrder::class;
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
         protected static ?string $navigationGroup = 'Сервисное обслуживание';

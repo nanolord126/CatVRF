@@ -2,23 +2,27 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ProfileController extends Model
+
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ProfileController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * GET /api/profile
          * Get current blogger profile
          */
         public function show(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => [
                     'id' => $profile->id,
                     'uuid' => $profile->uuid,
@@ -57,9 +61,9 @@ final class ProfileController extends Model
                 'profile_picture' => 'sometimes|image|max:5120',
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            DB::transaction(function () use ($profile, $validated, $request) {
+            $this->db->transaction(function () use ($profile, $validated, $request) {
                 if ($request->hasFile('profile_picture')) {
                     $path = $request->file('profile_picture')->store('profiles', 'public');
                     $validated['profile_picture'] = $path;
@@ -67,14 +71,14 @@ final class ProfileController extends Model
 
                 $profile->update($validated);
 
-                Log::channel('audit')->info('Blogger updated profile', [
+                $this->logger->info('Blogger updated profile', [
                     'blogger_id' => $profile->id,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                     'changes' => array_keys($validated),
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Профиль обновлён',
                 'data' => [
                     'display_name' => $profile->display_name,
@@ -96,19 +100,19 @@ final class ProfileController extends Model
                 'bank_bik' => 'required|string|regex:/^\d{9}$/',
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            DB::transaction(function () use ($profile, $validated) {
+            $this->db->transaction(function () use ($profile, $validated) {
                 $profile->update($validated);
 
-                Log::channel('audit')->info('Blogger updated banking info', [
+                $this->logger->info('Blogger updated banking info', [
                     'blogger_id' => $profile->id,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                     'bank_last_digits' => substr($validated['bank_account'], -4),
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Реквизиты обновлены',
                 'bank_account_masked' => str_pad(
                     substr($validated['bank_account'], -4),
@@ -130,24 +134,24 @@ final class ProfileController extends Model
                 'reason' => 'nullable|string|max:500',
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            DB::transaction(function () use ($profile, $validated) {
+            $this->db->transaction(function () use ($profile, $validated) {
                 $profile->update([
                     'moderation_status' => 'banned',
-                    'deactivated_at' => now(),
+                    'deactivated_at' => Carbon::now(),
                 ]);
 
-                auth()->user()->delete();
+                $request->user()->delete();
 
-                Log::channel('audit')->info('Blogger account deactivated', [
+                $this->logger->info('Blogger account deactivated', [
                     'blogger_id' => $profile->id,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                     'reason' => $validated['reason'] ?? 'No reason provided',
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Аккаунт деактивирован',
             ]);
         }
@@ -158,15 +162,15 @@ final class ProfileController extends Model
          */
         public function payoutHistory(): JsonResponse
         {
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
-            $payouts = DB::table('blogger_payouts')
+            $payouts = $this->db->table('blogger_payouts')
                 ->where('blogger_id', $profile->id)
                 ->orderByDesc('paid_at')
                 ->limit(50)
                 ->get();
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $payouts,
                 'summary' => [
                     'total_paid' => $payouts->sum('amount'),
@@ -185,36 +189,36 @@ final class ProfileController extends Model
                 'amount' => 'required|integer|min:50000', // Min 500 rubles
             ]);
 
-            $profile = auth()->user()->bloggerProfile;
+            $profile = $request->user()->bloggerProfile;
 
             if ($validated['amount'] > $profile->wallet_balance) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'error' => 'Недостаточно средств',
                 ], 422);
             }
 
-            DB::transaction(function () use ($profile, $validated) {
+            $this->db->transaction(function () use ($profile, $validated) {
                 $profile->decrement('wallet_balance', $validated['amount']);
 
-                DB::table('blogger_payouts')->insert([
+                $this->db->table('blogger_payouts')->insert([
                     'blogger_id' => $profile->id,
                     'amount' => $validated['amount'],
                     'status' => 'processing',
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
-                    'created_at' => now(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'created_at' => Carbon::now(),
                 ]);
 
-                Log::channel('audit')->info('Blogger requested payout', [
+                $this->logger->info('Blogger requested payout', [
                     'blogger_id' => $profile->id,
                     'amount' => $validated['amount'],
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Str::uuid(),
                 ]);
             });
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => 'Выплата запрошена',
                 'amount' => $validated['amount'],
-                'estimated_payment' => now()->addDays(4),
+                'estimated_payment' => Carbon::now()->addDays(4),
             ]);
         }
 }

@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Veterinary;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class VeterinaryClinicResource extends Model
+final class VeterinaryClinicResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = VeterinaryClinic::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-office-2';

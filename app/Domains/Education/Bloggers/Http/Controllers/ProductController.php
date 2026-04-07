@@ -2,26 +2,24 @@
 
 namespace App\Domains\Education\Bloggers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProductController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ProductController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly LiveCommerceService $commerceService,
-        ) {}
+            private readonly LiveCommerceService $commerceService, private readonly LoggerInterface $logger) {}
 
         /**
          * Add product to stream
          */
-        public function a: JsonResponse
+        public function addProduct(): JsonResponse
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $blogerId = auth()->id();
+                $blogerId = $request->user()?->id;
 
                 $stream = Stream::where('room_id', $roomId)
                     ->where('blogger_id', $blogerId)
@@ -36,22 +34,23 @@ final class ProductController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Product added to stream', [
+                $this->logger->info('Product added to stream', [
                     'correlation_id' => $correlationId,
                     'stream_id' => $stream->id,
                     'product_id' => $product->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $product,
                 ], 201);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Add product failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Add product failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to add product',
                     'error' => $e->getMessage(),
                 ], 400);
@@ -65,7 +64,7 @@ final class ProductController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $blogerId = auth()->id();
+                $blogerId = $request->user()?->id;
 
                 $stream = Stream::where('room_id', $roomId)
                     ->where('blogger_id', $blogerId)
@@ -78,23 +77,24 @@ final class ProductController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Product pinned', [
+                $this->logger->info('Product pinned', [
                     'correlation_id' => $correlationId,
                     'stream_id' => $stream->id,
                     'product_id' => $product->id,
                     'pin_position' => $product->pin_position,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $product,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Pin product failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Pin product failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to pin product',
                     'error' => $e->getMessage(),
                 ], 400);
@@ -108,7 +108,7 @@ final class ProductController extends Model
         {
             try {
                 $correlationId = (string) Str::uuid();
-                $blogerId = auth()->id();
+                $blogerId = $request->user()?->id;
 
                 $stream = Stream::where('room_id', $roomId)
                     ->where('blogger_id', $blogerId)
@@ -121,22 +121,23 @@ final class ProductController extends Model
                     correlationId: $correlationId,
                 );
 
-                Log::channel('audit')->info('Product unpinned', [
+                $this->logger->info('Product unpinned', [
                     'correlation_id' => $correlationId,
                     'stream_id' => $stream->id,
                     'product_id' => $product->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'correlation_id' => $correlationId,
                     'data' => $product,
                 ]);
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Unpin product failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Unpin product failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to unpin product',
                 ], 400);
             }
@@ -156,12 +157,12 @@ final class ProductController extends Model
                     ->orderBy('pin_position', 'asc')
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'data' => $products,
                     'count' => count($products),
                 ]);
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Failed to fetch pinned products',
                 ], 400);
             }

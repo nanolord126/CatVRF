@@ -2,22 +2,22 @@
 
 namespace App\Domains\SportsNutrition\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AISupplementConstructor extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class AISupplementConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(
-            private readonly RecommendationService $baseRecommendation,
+        public function __construct(private readonly RecommendationService $baseRecommendation,
             private readonly InventoryManagementService $inventory,
-            private readonly FraudControlService $fraudControl
-        ) {
-            $this->correlationId = request()->header('X-Correlation-ID', (string) Str::uuid());
+            private readonly FraudControlService $fraud,
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+            $this->correlationId = $this->request->header('X-Correlation-ID', (string) Str::uuid());
         }
 
         /**
@@ -27,7 +27,7 @@ final class AISupplementConstructor extends Model
         {
             $cid = $cid ?? $this->correlationId;
 
-            Log::channel('recommend')->info('AI Supplement Stack Construction Inbound', [
+            $this->logger->info('AI Supplement Stack Construction Inbound', [
                 'cid' => $cid,
                 'user' => $dto->user_id,
                 'goal' => $dto->goal,
@@ -36,7 +36,7 @@ final class AISupplementConstructor extends Model
             ]);
 
             // 1. Mandatory Security: Check for abuse or spam generation
-            $this->fraudControl->check($cid, 'ai_stack_generate');
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_stack_generate', amount: 0, correlationId: $correlationId ?? '');
 
             // 2. Logic: Define macro requirements based on goal & weight
             $proteinPerKg = 1.6; // Base default (Maintenance)
@@ -77,7 +77,6 @@ final class AISupplementConstructor extends Model
             // 4. Construct the Result Payload
             $confidence = 0.85; // Simulated AI confidence based on data availability
             $stackName = match ($dto->goal) {
-                'bulking' => 'Hyper-Mass AI Pro Stack',
                 'cutting' => 'Elite-Cut AI Shredder',
                 'recovery' => 'Night-Repair Recovery Core',
                 'endurance' => 'Stamina-Max Endurance Fuel',
@@ -100,7 +99,7 @@ final class AISupplementConstructor extends Model
                 correlation_id: $cid
             );
 
-            Log::channel('recommend')->info('AI Supplement Stack Generated', [
+            $this->logger->info('AI Supplement Stack Generated', [
                 'cid' => $cid,
                 'stack' => $stackName,
                 'matches' => $suggestions->count(),

@@ -2,14 +2,22 @@
 
 namespace App\Services\API;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class WebhookManagementService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Log\LogManager;
+
+
+final readonly class WebhookManagementService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Регистрирует вебхук
          *
@@ -26,7 +34,7 @@ final class WebhookManagementService extends Model
             array $headers = []
         ): array {
             $webhookId = 'wh_' . uniqid();
-            $secret = hash_hmac('sha256', $webhookId . microtime(), config('app.key'));
+            $secret = hash_hmac('sha256', $webhookId . microtime(), $this->config->get('app.key'));
 
             $webhook = [
                 'id' => $webhookId,
@@ -41,7 +49,7 @@ final class WebhookManagementService extends Model
                 'failed_attempts' => 0,
             ];
 
-            Log::channel('webhooks')->info('Webhook registered', [
+            $this->logger->channel('webhooks')->info('Webhook registered', [
                 'webhook_id' => $webhookId,
                 'url' => $url,
                 'events_count' => count($events),
@@ -63,7 +71,7 @@ final class WebhookManagementService extends Model
             array $payload,
             int $tenantId
         ): array {
-            $correlationId = request()?->header('X-Correlation-ID') ?? uniqid();
+            $correlationId = $this->request?->header('X-Correlation-ID') ?? uniqid();
 
             $event = [
                 'id' => 'evt_' . uniqid(),
@@ -82,7 +90,7 @@ final class WebhookManagementService extends Model
                 $results[] = self::deliverWebhook($webhook, $event);
             }
 
-            Log::channel('webhooks')->info('Event triggered', [
+            $this->logger->channel('webhooks')->info('Event triggered', [
                 'event' => $eventName,
                 'webhooks_triggered' => count($webhooks),
                 'correlation_id' => $correlationId,
@@ -122,7 +130,7 @@ final class WebhookManagementService extends Model
 
                 $status = $response->successful() ? 'success' : 'failed';
 
-                Log::channel('webhooks')->info('Webhook delivery', [
+                $this->logger->channel('webhooks')->info('Webhook delivery', [
                     'webhook_id' => $webhook['id'],
                     'delivery_id' => $deliveryId,
                     'status' => $status,
@@ -137,7 +145,7 @@ final class WebhookManagementService extends Model
                     'timestamp' => now()->toDateTimeString(),
                 ];
             } catch (\Throwable $e) {
-                Log::channel('webhooks')->warning('Webhook delivery failed', [
+                $this->logger->channel('webhooks')->warning('Webhook delivery failed', [
                     'webhook_id' => $webhook['id'],
                     'error' => $e->getMessage(),
                 ]);
@@ -173,7 +181,7 @@ final class WebhookManagementService extends Model
          */
         public static function retryDelivery(string $deliveryId): array
         {
-            Log::channel('webhooks')->info('Webhook retry requested', [
+            $this->logger->channel('webhooks')->info('Webhook retry requested', [
                 'delivery_id' => $deliveryId,
             ]);
 
@@ -218,7 +226,7 @@ final class WebhookManagementService extends Model
          */
         public static function disableWebhook(string $webhookId): void
         {
-            Log::channel('webhooks')->info('Webhook disabled', [
+            $this->logger->channel('webhooks')->info('Webhook disabled', [
                 'webhook_id' => $webhookId,
             ]);
         }

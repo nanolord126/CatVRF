@@ -2,12 +2,13 @@
 
 namespace App\Domains\Pet\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Veterinarian extends Model
-{
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+{
     use HasFactory;
 
         protected $table = 'veterinarians';
@@ -45,7 +46,7 @@ final class Veterinarian extends Model
         /**
          * Инициализация модели.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             // Global scope для изоляции тенантов
             static::addGlobalScope('tenant', function ($query) {
@@ -57,7 +58,7 @@ final class Veterinarian extends Model
             // Автогенерация UUID и correlation_id
             static::creating(function (Veterinarian $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
+                $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
                 if (function_exists('tenant') && tenant()) {
                     $model->tenant_id = $model->tenant_id ?? tenant()->id;

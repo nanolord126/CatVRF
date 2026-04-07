@@ -2,20 +2,22 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class BookingService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private WalletService $walletService,
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
-        }
+
+    public function __construct(private WalletService $walletService,
+            private readonly FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
+
+    }
 
         private function getCorrelationId(): string
         {
@@ -29,7 +31,7 @@ final class BookingService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('Initiating entertainment booking', [
+            $this->logger->info('Initiating entertainment booking', [
                 'event_uuid' => $event->uuid,
                 'seats' => $seats,
                 'user_id' => $userId,
@@ -37,14 +39,9 @@ final class BookingService extends Model
             ]);
 
             // 1. Fraud Check
-            $this->fraudControl->check([
-                'user_id' => $userId,
-                'operation' => 'entertainment_booking_init',
-                'event_id' => $event->id,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'entertainment_booking_init', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($event, $seats, $userId, $type, $correlationId) {
+            return $this->db->transaction(function () use ($event, $seats, $userId, $type, $correlationId) {
                 // 2. Lock check for capacity
                 $eventRefresh = Event::where('id', $event->id)->lockForUpdate()->first();
 
@@ -69,7 +66,7 @@ final class BookingService extends Model
                 // 4. Update capacity
                 $eventRefresh->decrementCapacity(count($seats));
 
-                Log::channel('audit')->info('Booking created (Hold state)', [
+                $this->logger->info('Booking created (Hold state)', [
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId,
                 ]);
@@ -94,12 +91,12 @@ final class BookingService extends Model
                 throw new \RuntimeException("Booking expired and cannot be completed");
             }
 
-            Log::channel('audit')->info('Completing entertainment booking', [
+            $this->logger->info('Completing entertainment booking', [
                 'booking_uuid' => $booking->uuid,
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($booking, $correlationId) {
+            return $this->db->transaction(function () use ($booking, $correlationId) {
                 $lockingBooking = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
                 // 1. Wallet Deduction (Debit) via WalletService
@@ -107,17 +104,7 @@ final class BookingService extends Model
                 $this->walletService->debit(
                     $booking->user_id,
                     $booking->total_amount_kopecks,
-                    'Entertainment booking payout: ' . $booking->uuid,
-                    $correlationId
-                );
-
-                // 2. Update status
-                $lockingBooking->markAsPaid();
-
-                // 3. Issue Tickets
-                $this->generateTickets($lockingBooking);
-
-                Log::channel('audit')->info('Booking completed and tickets issued', [
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $correlationId, null, null, [
                     'booking_uuid' => $lockingBooking->uuid,
                     'correlation_id' => $correlationId,
                 ]);
@@ -152,13 +139,13 @@ final class BookingService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->warning('Cancelling entertainment booking', [
+            $this->logger->warning('Cancelling entertainment booking', [
                 'booking_uuid' => $booking->uuid,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
             ]);
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $lockingBooking = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
                 if ($lockingBooking->status === 'cancelled') {
@@ -174,7 +161,7 @@ final class BookingService extends Model
                 // 2. Mark cancelled
                 $lockingBooking->markAsCancelled();
 
-                Log::channel('audit')->info('Booking cancelled and capacity released', [
+                $this->logger->info('Booking cancelled and capacity released', [
                     'booking_uuid' => $lockingBooking->uuid,
                     'correlation_id' => $correlationId,
                 ]);

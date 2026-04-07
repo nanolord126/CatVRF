@@ -2,17 +2,15 @@
 
 namespace App\Domains\Luxury\Jewelry\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CertificateService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class CertificateService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Выпуск цифрового сертификата на ювелирное изделие.
@@ -22,7 +20,7 @@ final class CertificateService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $item = JewelryItem::findOrFail($itemId);
 
-            return DB::transaction(function () use ($item, $data, $correlationId) {
+            return $this->db->transaction(function () use ($item, $data, $correlationId) {
                 // 1. Проверка на дублирование сертификата
                 if (JewelryCertificate::where("item_id", $item->id)->where("status", "active")->exists()) {
                     throw new \RuntimeException("Item already has an active certificate.", 409);
@@ -30,11 +28,7 @@ final class CertificateService extends Model
 
                 // 2. ПОД/ФТ проверка (ФЗ-115) при высокой стоимости
                 if ($item->price_kopecks > 60000000) { // 600к руб
-                    $this->fraud->check([
-                        "operation_type" => "jewelry_high_value_certification",
-                        "item_id" => $item->id,
-                        "correlation_id" => $correlationId
-                    ]);
+                    $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
                 }
 
                 $certificate = JewelryCertificate::create([
@@ -50,7 +44,7 @@ final class CertificateService extends Model
                     "correlation_id" => $correlationId
                 ]);
 
-                Log::channel("audit")->info("Jewelry: certificate issued", [
+                $this->logger->info("Jewelry: certificate issued", [
                     "cert_uuid" => $certificate->uuid,
                     "item_id" => $item->id
                 ]);
@@ -92,14 +86,14 @@ final class CertificateService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $cert = JewelryCertificate::findOrFail($certId);
 
-            DB::transaction(function () use ($cert, $reason, $correlationId) {
+            $this->db->transaction(function () use ($cert, $reason, $correlationId) {
                 $cert->update([
                     "status" => "revoked",
                     "revocation_reason" => $reason,
                     "revoked_at" => now()
                 ]);
 
-                Log::channel("audit")->warning("Jewelry: certificate revoked", [
+                $this->logger->warning("Jewelry: certificate revoked", [
                     "cert_id" => $cert->id,
                     "reason" => $reason,
                     "correlation_id" => $correlationId

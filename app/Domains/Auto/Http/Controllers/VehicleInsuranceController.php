@@ -2,18 +2,16 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VehicleInsuranceController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class VehicleInsuranceController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl,
-            private readonly InsuranceCalculatorService $calculator
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+            private readonly InsuranceCalculatorService $calculator,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -26,18 +24,18 @@ final class VehicleInsuranceController extends Model
                     ->with(['vehicle', 'owner'])
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $insurances,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle insurance index failed', [
+                $this->logger->error('Vehicle insurance index failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve vehicle insurances',
                     'correlation_id' => $correlationId,
@@ -64,7 +62,7 @@ final class VehicleInsuranceController extends Model
                     $validated['duration_months']
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => [
                         'premium_amount' => $premium,
@@ -74,12 +72,12 @@ final class VehicleInsuranceController extends Model
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Insurance calculation failed', [
+                $this->logger->error('Insurance calculation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to calculate insurance premium',
                     'correlation_id' => $correlationId,
@@ -103,12 +101,9 @@ final class VehicleInsuranceController extends Model
             ]);
 
             try {
-                $this->fraudControl->check('vehicle_insurance_purchase', $request->ip(), [
-                    'user_id' => auth()->id(),
-                    'amount' => $validated['premium_amount'],
-                ]);
+                $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'amount', amount: 0, correlationId: $correlationId ?? '');
 
-                $insurance = DB::transaction(function () use ($validated, $correlationId) {
+                $insurance = $this->db->transaction(function () use ($validated, $correlationId) {
                     return VehicleInsurance::create([
                         ...$validated,
                         'tenant_id' => tenant()->id,
@@ -120,23 +115,23 @@ final class VehicleInsuranceController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Vehicle insurance created', [
+                $this->logger->info('Vehicle insurance created', [
                     'correlation_id' => $correlationId,
                     'insurance_id' => $insurance->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $insurance->load(['vehicle', 'owner']),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle insurance creation failed', [
+                $this->logger->error('Vehicle insurance creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create vehicle insurance',
                     'correlation_id' => $correlationId,
@@ -146,7 +141,7 @@ final class VehicleInsuranceController extends Model
 
         public function show(VehicleInsurance $insurance): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $insurance->load(['vehicle', 'owner']),
             ]);
@@ -159,23 +154,23 @@ final class VehicleInsuranceController extends Model
             try {
                 $insurance->delete();
 
-                Log::channel('audit')->info('Vehicle insurance deleted', [
+                $this->logger->info('Vehicle insurance deleted', [
                     'correlation_id' => $correlationId,
                     'insurance_id' => $insurance->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Vehicle insurance deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Vehicle insurance deletion failed', [
+                $this->logger->error('Vehicle insurance deletion failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete vehicle insurance',
                     'correlation_id' => $correlationId,

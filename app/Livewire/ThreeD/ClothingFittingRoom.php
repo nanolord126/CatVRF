@@ -6,13 +6,13 @@ use Livewire\Component;
 
 final class ClothingFittingRoom extends Component
 {
-    public int $productId;
-    public string $selectedSize = 'M';
-    public string $selectedColor = 'black';
-    public array $availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-    public array $availableColors = [];
-    public bool $showAvatarOptions = false;
-    public string $selectedBodyType = 'regular';
+    private int $productId;
+    private string $selectedSize = 'M';
+    private string $selectedColor = 'black';
+    private array $availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+    private array $availableColors = [];
+    private bool $showAvatarOptions = false;
+    private string $selectedBodyType = 'regular';
 
     public function mount(int $productId): void
     {

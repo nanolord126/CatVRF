@@ -1,4 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CosmeticOrder — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/cosmeticorder
+ */
+
 
 namespace App\Domains\Beauty\Cosmetics\Models;
 
@@ -7,10 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class CosmeticOrder extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use SoftDeletes, TenantScoped;
+    use HasFactory, SoftDeletes, TenantScoped;
 
         protected $table = 'cosmetic_orders';
         protected $fillable = [
@@ -27,7 +42,7 @@ final class CosmeticOrder extends Model
          * Выполнить операцию
          *
          * @return mixed
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function product()
         {
@@ -38,9 +53,20 @@ final class CosmeticOrder extends Model
         {
             parent::booted();
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

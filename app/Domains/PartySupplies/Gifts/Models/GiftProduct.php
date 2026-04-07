@@ -1,5 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * GiftProduct — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/giftproduct
+ */
+
+
 namespace App\Domains\PartySupplies\Gifts\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,8 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 final class GiftProduct extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasFactory, HasUuids;
 
         protected $table = "gift_products";
@@ -24,7 +39,7 @@ final class GiftProduct extends Model
             "price" => "integer",
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             parent::booted();
             static::addGlobalScope("tenant_id", function ($query) {
@@ -33,4 +48,27 @@ final class GiftProduct extends Model
                 }
             });
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

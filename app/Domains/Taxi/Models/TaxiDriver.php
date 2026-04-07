@@ -2,19 +2,24 @@
 
 namespace App\Domains\Taxi\Models;
 
+use App\Models\Traits\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class TaxiDriver extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HasUuids, SoftDeletes;
 
         protected $table = 'taxi_drivers';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'tenant_id',
             'user_id',
             'license_number',
@@ -37,7 +42,7 @@ final class TaxiDriver extends Model
 
         protected static function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+            static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant()?->id ?? 0));
         }
 
         public function user(): BelongsTo

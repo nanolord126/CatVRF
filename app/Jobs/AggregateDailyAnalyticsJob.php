@@ -1,23 +1,42 @@
 <?php declare(strict_types=1);
 
+/**
+ * AggregateDailyAnalyticsJob — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ * @see https://catvrf.ru/docs/aggregatedailyanalyticsjob
+ */
+
+
 namespace App\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
-final class AggregateDailyAnalyticsJob extends Model
+final class AggregateDailyAnalyticsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
         public int $timeout = 300;
 
         public function __construct(
-            public readonly int $tenantId,
-        ) {
+            private readonly int $tenantId,
+        private readonly LogManager $logger,
+    ) {
             $this->onQueue('analytics');
         }
 
@@ -28,12 +47,12 @@ final class AggregateDailyAnalyticsJob extends Model
             try {
                 $analyticsService->aggregateDailyStats($this->tenantId, $yesterday);
 
-                Log::channel('audit')->info('Daily analytics aggregated', [
+                $this->logger->channel('audit')->info('Daily analytics aggregated', [
                     'tenant_id' => $this->tenantId,
                     'date' => $yesterday,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to aggregate daily analytics', [
+                $this->logger->channel('audit')->error('Failed to aggregate daily analytics', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -41,4 +60,15 @@ final class AggregateDailyAnalyticsJob extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

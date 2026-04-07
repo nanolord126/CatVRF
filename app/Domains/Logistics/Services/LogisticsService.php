@@ -2,17 +2,17 @@
 
 namespace App\Domains\Logistics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LogisticsService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class LogisticsService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private string $correlationId;
 
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -26,7 +26,7 @@ final class LogisticsService extends Model
          */
         public function calculateSurgeMultiplier(array $point, int $tenantId): float
         {
-            Log::channel("audit")->info("Calculating surge multiplier", [
+            $this->logger->info("Calculating surge multiplier", [
                 "point" => $point,
                 "tenant_id" => $tenantId,
                 "correlation_id" => $this->correlationId
@@ -56,9 +56,9 @@ final class LogisticsService extends Model
 
         public function findOptimalCourier(DeliveryOrder $order): ?Courier
         {
-            FraudControlService::check(["operation" => "courier_matching", "order_id" => $order->id]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function() use ($order) {
+            return $this->db->transaction(function() use ($order) {
                 $couriers = Courier::query()
                     ->where("tenant_id", $order->tenant_id)
                     ->status("online")
@@ -67,11 +67,11 @@ final class LogisticsService extends Model
                     ->get();
 
                 if ($couriers->isEmpty()) {
-                    Log::channel("audit")->warning("No online couriers available", [
+                    $this->logger->warning("No online couriers available", [
                         "order_uuid" => $order->uuid,
                         "correlation_id" => $this->correlationId
                     ]);
-                    return null;
+                    throw new \RuntimeException('Unexpected null return');
                 }
 
                 $winner = $couriers->first();
@@ -83,7 +83,7 @@ final class LogisticsService extends Model
                         "correlation_id" => $this->correlationId
                     ]);
 
-                    Log::channel("audit")->info("Courier assigned", [
+                    $this->logger->info("Courier assigned", [
                         "order_uuid" => $order->uuid,
                         "courier_uuid" => $winner->uuid,
                         "correlation_id" => $this->correlationId
@@ -96,9 +96,9 @@ final class LogisticsService extends Model
 
         public function createDeliveryOrder(array $data, int $tenantId): DeliveryOrder
         {
-            FraudControlService::check(["operation" => "create_delivery_order"]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function() use ($data, $tenantId) {
+            return $this->db->transaction(function() use ($data, $tenantId) {
                 $multiplier = $this->calculateSurgeMultiplier($data["pickup"], $tenantId);
                 $totalPrice = (int) ($data["base_price"] * $multiplier);
 
@@ -115,7 +115,7 @@ final class LogisticsService extends Model
                     "metadata" => $data["metadata"] ?? []
                 ]);
 
-                Log::channel("audit")->info("Delivery order created", [
+                $this->logger->info("Delivery order created", [
                     "order_uuid" => $order->uuid,
                     "total_price" => $totalPrice,
                     "correlation_id" => $this->correlationId

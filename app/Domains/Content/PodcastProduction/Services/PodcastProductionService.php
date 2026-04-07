@@ -4,25 +4,26 @@ namespace App\Domains\Content\PodcastProduction\Services;
 
 use App\Domains\Content\PodcastProduction\Models\PodcastProducer;
 use App\Domains\Content\PodcastProduction\Models\PodcastProject;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class PodcastProductionService extends Model
+final readonly class PodcastProductionService
 {
-    use HasFactory;
-
     public function __construct(
-        private readonly FraudControlService $fraud,
-        private readonly WalletService $wallet,
-    ) {
-    }
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
     public function createProject(
         int $producerId,
@@ -32,34 +33,34 @@ final class PodcastProductionService extends Model
         string $correlationId = '',
     ): PodcastProject {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
-        $rateLimiterKey = 'podcast:proj:' . (auth()->id() ?? 0);
+        $rateLimiterKey = 'podcast:proj:' . ($this->guard->id() ?? 0);
 
-        if (RateLimiter::tooManyAttempts($rateLimiterKey, 7)) {
-            throw new \RuntimeException('Too many', 429);
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 7)) {
+            throw new \RuntimeException('Too many requests', 429);
         }
 
-        RateLimiter::hit($rateLimiterKey, 3600);
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
 
-        return DB::transaction(function () use ($producerId, $projectType, $productionHours, $dueDate, $correlationId): PodcastProject {
+        return $this->db->transaction(function () use ($producerId, $projectType, $productionHours, $dueDate, $correlationId): PodcastProject {
             $producer = PodcastProducer::findOrFail($producerId);
             $total = (int) ($producer->price_kopecks_per_hour * $productionHours);
 
-            $fraud = $this->fraud->check([
-                'user_id' => auth()->id() ?? 0,
-                'operation_type' => 'podcast_prod',
-                'correlation_id' => $correlationId,
-                'amount' => $total,
-            ]);
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'podcast_prod',
+                amount: $total,
+                correlationId: $correlationId,
+            );
 
-            if ($fraud['decision'] === 'block') {
-                throw new \RuntimeException('Security', 403);
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
             }
 
             $project = PodcastProject::create([
-                'uuid' => Str::uuid(),
+                'uuid' => (string) Str::uuid(),
                 'tenant_id' => tenant()->id,
                 'producer_id' => $producerId,
-                'client_id' => auth()->id() ?? 0,
+                'client_id' => $this->guard->id() ?? 0,
                 'correlation_id' => $correlationId,
                 'status' => 'pending_payment',
                 'total_kopecks' => $total,
@@ -71,7 +72,7 @@ final class PodcastProductionService extends Model
                 'tags' => ['podcast' => true],
             ]);
 
-            Log::channel('audit')->info('Podcast project created', [
+            $this->logger->info('Podcast project created', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -84,11 +85,11 @@ final class PodcastProductionService extends Model
     {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        return DB::transaction(function () use ($projectId, $correlationId): PodcastProject {
+        return $this->db->transaction(function () use ($projectId, $correlationId): PodcastProject {
             $project = PodcastProject::findOrFail($projectId);
 
             if ($project->payment_status !== 'completed') {
-                throw new \RuntimeException('Not paid', 400);
+                throw new \RuntimeException('Project not paid yet', 400);
             }
 
             $project->update([
@@ -97,16 +98,17 @@ final class PodcastProductionService extends Model
             ]);
 
             $this->wallet->credit(
-                tenant()->id,
-                $project->payout_kopecks,
-                'podcast_payout',
-                [
-                    'correlation_id' => $correlationId,
+                walletId: tenant()->id,
+                amount: $project->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: [
                     'project_id' => $project->id,
+                    'correlation_id' => $correlationId,
                 ],
             );
 
-            Log::channel('audit')->info('Podcast project completed', [
+            $this->logger->info('Podcast project completed', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -119,11 +121,11 @@ final class PodcastProductionService extends Model
     {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
 
-        return DB::transaction(function () use ($projectId, $correlationId): PodcastProject {
+        return $this->db->transaction(function () use ($projectId, $correlationId): PodcastProject {
             $project = PodcastProject::findOrFail($projectId);
 
             if ($project->status === 'completed') {
-                throw new \RuntimeException('Cannot cancel', 400);
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
             }
 
             $project->update([
@@ -134,17 +136,18 @@ final class PodcastProductionService extends Model
 
             if ($project->payment_status === 'completed') {
                 $this->wallet->credit(
-                    tenant()->id,
-                    $project->total_kopecks,
-                    'podcast_refund',
-                    [
-                        'correlation_id' => $correlationId,
+                    walletId: tenant()->id,
+                    amount: $project->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: [
                         'project_id' => $project->id,
+                        'correlation_id' => $correlationId,
                     ],
                 );
             }
 
-            Log::channel('audit')->info('Podcast project cancelled', [
+            $this->logger->info('Podcast project cancelled', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);

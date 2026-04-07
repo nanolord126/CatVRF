@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\Entertainment\EventResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateEvent extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateEvent extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = EventResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -18,10 +23,10 @@ final class CreateEvent extends Model
             $data['uuid'] = (string) Str::uuid();
             $data['correlation_id'] = (string) Str::uuid();
 
-            Log::channel('audit')->info('Entertainment Event record mutation before creation', [
+            $this->logger->info('Entertainment Event record mutation before creation', [
                 'tenant_id' => $data['tenant_id'],
                 'correlation_id' => $data['correlation_id'],
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
 
             return $data;
@@ -29,10 +34,33 @@ final class CreateEvent extends Model
 
         protected function afterCreate(): void
         {
-            Log::channel('audit')->info('Entertainment Event record created successfully', [
+            $this->logger->info('Entertainment Event record created successfully', [
                 'event_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

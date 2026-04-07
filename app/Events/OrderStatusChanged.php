@@ -2,28 +2,29 @@
 
 namespace App\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithBroadcasting;
+use Illuminate\Queue\SerializesModels;
+use App\Models\Order;
 
-final class OrderStatusChanged extends Model
+/**
+ * Event: Order status changed.
+ * Broadcast: private-tenant.{tenantId}
+ *
+ * @package App\Events
+ */
+final class OrderStatusChanged implements ShouldBroadcast
 {
-    use HasFactory;
+    use Dispatchable, InteractsWithBroadcasting, SerializesModels;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    id}/status
-     * Broadcast: private-tenant.{tenantId}
-     *
-     * @package App\Events
-     */
-    final class OrderStatusChanged implements ShouldBroadcast
-    {
-        use Dispatchable, InteractsWithBroadcasting, SerializesModels;
-
-        public readonly Order $order;
-        public readonly string $oldStatus;
-        public readonly string $newStatus;
-        public readonly string $correlationId;
-        public readonly int $tenantId;
+        private Order $order;
+        private string $oldStatus;
+        private string $newStatus;
+        private string $correlationId;
+        private int $tenantId;
 
         /**
          * @param Order $order

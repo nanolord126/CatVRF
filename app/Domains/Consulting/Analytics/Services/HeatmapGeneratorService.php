@@ -2,18 +2,23 @@
 
 namespace App\Domains\Consulting\Analytics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class HeatmapGeneratorService extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class HeatmapGeneratorService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    private readonly string $cachePrefix = 'heatmap:';
-        private readonly int $cacheTTL = 3600; // 1 час
 
-        public function __construct() {
+    private readonly string $cachePrefix;
+        private readonly int $cacheTTL; // 1 час
+
+        public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger, private readonly \Illuminate\Contracts\Cache\Repository $cache) {
+        $this->cachePrefix = 'heatmap:';
+        $this->cacheTTL = 3600;
         }
 
         /**
@@ -25,8 +30,8 @@ final class HeatmapGeneratorService extends Model
             ?int $tenantId = null,
             ?string $vertical = null,
             ?Carbon $fromDate = null,
-            ?Carbon $toDate = null,
-        ): array {
+            ?Carbon $toDate = null
+    ): array {
             $cacheKey = $this->buildCacheKey('geo', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -35,7 +40,7 @@ final class HeatmapGeneratorService extends Model
             ]);
 
             // Проверяем кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
                 return $cached;
             }
@@ -77,25 +82,27 @@ final class HeatmapGeneratorService extends Model
                     'total_points' => count($heatmapData),
                     'aggregated_points' => count($aggregated),
                     'data' => $aggregated,
-                    'timestamp' => now()->toIso8601String(),
+                    'timestamp' => Carbon::now()->toIso8601String(),
                 ];
 
                 // Кэшируем результат
-                Cache::put($cacheKey, $result, $this->cacheTTL);
+                cache()->put($cacheKey, $result, $this->cacheTTL);
 
-                Log::channel('audit')->info('Гео-тепловая карта сгенерирована', [
+                $this->logger->info('Гео-тепловая карта сгенерирована', [
                     'tenant_id' => $tenantId,
                     'vertical' => $vertical,
                     'points_count' => count($heatmapData),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return $result;
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Ошибка при генерации гео-тепловой карты', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Ошибка при генерации гео-тепловой карты', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'type' => 'geo',
@@ -113,8 +120,8 @@ final class HeatmapGeneratorService extends Model
         public function generateClickHeatmap(
             string $pageUrl,
             ?Carbon $fromDate = null,
-            ?Carbon $toDate = null,
-        ): array {
+            ?Carbon $toDate = null
+    ): array {
             $cacheKey = $this->buildCacheKey('click', [
                 'url' => md5($pageUrl),
                 'from' => $fromDate?->format('Y-m-d'),
@@ -122,7 +129,7 @@ final class HeatmapGeneratorService extends Model
             ]);
 
             // Проверяем кэш
-            $cached = Cache::get($cacheKey);
+            $cached = cache()->get($cacheKey);
             if ($cached) {
                 return $cached;
             }
@@ -150,24 +157,26 @@ final class HeatmapGeneratorService extends Model
                     'total_clicks' => count($heatmapData),
                     'aggregated_points' => count($aggregated),
                     'data' => $aggregated,
-                    'timestamp' => now()->toIso8601String(),
+                    'timestamp' => Carbon::now()->toIso8601String(),
                 ];
 
                 // Кэшируем результат
-                Cache::put($cacheKey, $result, $this->cacheTTL);
+                cache()->put($cacheKey, $result, $this->cacheTTL);
 
-                Log::channel('audit')->info('Клик-тепловая карта сгенерирована', [
+                $this->logger->info('Клик-тепловая карта сгенерирована', [
                     'page_url' => $pageUrl,
                     'clicks_count' => count($heatmapData),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return $result;
 
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Ошибка при генерации клик-тепловой карты', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Ошибка при генерации клик-тепловой карты', [
                     'page_url' => $pageUrl,
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 return [
                     'type' => 'click',
@@ -235,11 +244,12 @@ final class HeatmapGeneratorService extends Model
         {
             // Инвалидируем все кэши этого типа
             $pattern = $this->cachePrefix . '*';
-            Cache::flush();
+            $this->cache->flush();
 
-            Log::channel('audit')->info('Кэш тепловых карт инвалидирован', [
+            $this->logger->info('Кэш тепловых карт инвалидирован', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 

@@ -1,21 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * UpdateDeliverableStatusJob — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/updatedeliverablestatusjob
+ */
+
+
 namespace App\Domains\Freelance\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class UpdateDeliverableStatusJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class UpdateDeliverableStatusJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            public readonly int $deliverableId = 0,
-            public readonly string $correlationId = '',
-        ) {
+            private int $deliverableId = 0,
+            private string $correlationId = '', private readonly LoggerInterface $logger) {
             $this->onQueue('default');
 
         }
@@ -24,7 +38,7 @@ final class UpdateDeliverableStatusJob extends Model
         {
             $deliverable = FreelanceDeliverable::find($this->deliverableId);
             if (!$deliverable) {
-                Log::channel('audit')->warning('Deliverable not found', [
+                $this->logger->warning('Deliverable not found', [
                     'deliverable_id' => $this->deliverableId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -34,7 +48,7 @@ final class UpdateDeliverableStatusJob extends Model
             if ($deliverable->status === 'submitted' && $deliverable->created_at->addDays(7)->isPast()) {
                 $deliverable->update(['status' => 'pending']);
 
-                Log::channel('audit')->info('Deliverable status auto-reset to pending after 7 days', [
+                $this->logger->info('Deliverable status auto-reset to pending after 7 days', [
                     'deliverable_id' => $this->deliverableId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -43,6 +57,17 @@ final class UpdateDeliverableStatusJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(24);
+            return Carbon::now()->addHours(24);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

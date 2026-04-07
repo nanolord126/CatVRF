@@ -1,15 +1,39 @@
 <?php declare(strict_types=1);
 
+/**
+ * ListBookings — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listbookings
+ * @see https://catvrf.ru/docs/listbookings
+ * @see https://catvrf.ru/docs/listbookings
+ * @see https://catvrf.ru/docs/listbookings
+ */
+
+
 namespace App\Filament\Tenant\Resources\Entertainment\BookingResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListBookings extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\ListRecords;
+
+final class ListBookings extends ListRecords
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = BookingResource::class;
 
         protected function getHeaderActions(): array
@@ -17,11 +41,34 @@ final class ListBookings extends Model
             return [
                 Actions\CreateAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('Entertainment Booking creation started', [
+                        $this->logger->info('Entertainment Booking creation started', [
                             'tenant_id' => filament()->getTenant()->id,
-                            'user_id' => auth()->id(),
+                            'user_id' => $this->guard->id(),
                         ]);
                     }),
             ];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

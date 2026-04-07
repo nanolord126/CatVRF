@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FurnitureOrderResource extends Model
+final class FurnitureOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FurnitureOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home';
@@ -108,22 +105,15 @@ final class FurnitureOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFurnitureOrder::route('/'),
-                'create' => Pages\\CreateFurnitureOrder::route('/create'),
-                'edit' => Pages\\EditFurnitureOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewFurnitureOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFurnitureOrder::route('/'),
-                'create' => Pages\\CreateFurnitureOrder::route('/create'),
-                'edit' => Pages\\EditFurnitureOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewFurnitureOrder::route('/{record}'),
+                'index' => Pages\ListFurnitureOrder::route('/'),
+                'create' => Pages\CreateFurnitureOrder::route('/create'),
+                'edit' => Pages\EditFurnitureOrder::route('/{record}/edit'),
+                'view' => Pages\ViewFurnitureOrder::route('/{record}'),
             ];
         }
 }

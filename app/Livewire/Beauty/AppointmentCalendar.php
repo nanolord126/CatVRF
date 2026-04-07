@@ -2,37 +2,41 @@
 
 namespace App\Livewire\Beauty;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentCalendar extends Model
+use Illuminate\Auth\AuthManager;
+use Livewire\Component;
+use Illuminate\Log\LogManager;
+
+final class AppointmentCalendar extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly AuthManager $authManager,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     // -------------------------------------------------------------------------
         // Props (переданы при монтировании)
         // -------------------------------------------------------------------------
 
-        public int $salonId;
-        public ?int $masterId = null;
+        private int $salonId;
+        private ?int $masterId = null;
 
         // -------------------------------------------------------------------------
         // Навигация по месяцам
         // -------------------------------------------------------------------------
 
-        public int $year;
-        public int $month;
+        private int $year;
+        private int $month;
 
         // -------------------------------------------------------------------------
         // Данные календаря
         // -------------------------------------------------------------------------
 
         /** Матрица недель: [[{day, date, appointments, isToday, isPast},...], ...] */
-        public array $weeks = [];
+        private array $weeks = [];
 
         /** Статистика за месяц */
-        public array $stats = [
+        private array $stats = [
             'total'     => 0,
             'completed' => 0,
             'cancelled' => 0,
@@ -41,11 +45,11 @@ final class AppointmentCalendar extends Model
         ];
 
         /** Список мастеров для фильтра */
-        public array $masters = [];
+        private array $masters = [];
 
         /** Записи выбранного дня (для popover) */
-        public array $selectedDayAppointments = [];
-        public ?string $selectedDate = null;
+        private array $selectedDayAppointments = [];
+        private ?string $selectedDate = null;
 
         // -------------------------------------------------------------------------
         // Mount
@@ -119,8 +123,8 @@ final class AppointmentCalendar extends Model
             $this->loadDayAppointments($date);
 
             $correlationId = (string) Str::uuid()->toString();
-            Log::channel('audit')->info('BeautyCalendar: day selected', [
-                'user_id'        => Auth::id(),
+            $this->logger->channel('audit')->info('BeautyCalendar: day selected', [
+                'user_id'        => $this->authManager->id(),
                 'salon_id'       => $this->salonId,
                 'master_id'      => $this->masterId,
                 'date'           => $date,

@@ -1,32 +1,66 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Ramsey\Uuid\Uuid;
 
-final class BeautyBaseService extends Model
+/**
+ * BeautyBaseService — утилитный класс для общих констант и хелперов вертикали Beauty.
+ *
+ * Содержит статические вычислительные методы. Не наследуется — используется через DI.
+ *
+ * @package App\Domains\Beauty\Services
+ */
+final readonly class BeautyBaseService
 {
-    use HasFactory;
+    /** Комиссия платформы: 14% стандарт. */
+    private const PLATFORM_COMMISSION = 0.14;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /** Имя вертикали. */
+    public function getVerticalName(): string
+    {
+        return 'beauty';
+    }
+
+    /** Базовая комиссия (14%). */
+    public function getBaseCommissionRate(): float
+    {
+        return self::PLATFORM_COMMISSION;
+    }
+
     /**
-         * @return string
-         */
-        public function getVerticalName(): string
-        {
-            return 'beauty';
-        }
+     * Рассчитать выплату после вычета комиссии платформы.
+     *
+     * @param int $totalKopecks Сумма в копейках
+     * @return int Выплата после вычета комиссии
+     */
+    public function calculatePayout(int $totalKopecks): int
+    {
+        return (int) ($totalKopecks * (1 - self::PLATFORM_COMMISSION));
+    }
 
-        /**
-         * Beauty standard commission is 14%.
-         * (With reduction to 10% or 12% if migrated from Dikidi).
-         *
-         * @return float
-         */
-        public function getBaseCommissionRate(): float
-        {
-            // 14% is represented as 14.0 or 0.14. Using 0.14 for calculations.
-            return 0.14;
-        }
+    /**
+     * Рассчитать сумму комиссии в копейках.
+     *
+     * @param int $totalKopecks Сумма в копейках
+     * @return int Комиссия платформы в копейках
+     */
+    public function calculateCommission(int $totalKopecks): int
+    {
+        return (int) ($totalKopecks * self::PLATFORM_COMMISSION);
+    }
+
+    /**
+     * Сгенерировать correlation_id если не передан.
+     *
+     * @param string $correlationId Существующий ID или пустая строка
+     * @return string UUID correlation_id
+     */
+    public function resolveCorrelationId(string $correlationId): string
+    {
+        return $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+    }
 }
+

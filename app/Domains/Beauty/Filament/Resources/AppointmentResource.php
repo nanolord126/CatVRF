@@ -1,15 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\Appointment;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
 
-final class AppointmentResource extends Model
+final class AppointmentResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Appointment::class;
 
         protected static ?string $slug = 'marketplace/beauty/bookings';
@@ -59,7 +69,7 @@ final class AppointmentResource extends Model
                 TextColumn::make('appointment_date')->date(),
                 TextColumn::make('appointment_time')->time(),
                 TextColumn::make('price')->numeric(),
-                BadgeColumn::make('status')->colors([
+                TextColumn::make('status')->badge()->colors([
                     'pending' => 'warning',
                     'confirmed' => 'info',
                     'completed' => 'success',

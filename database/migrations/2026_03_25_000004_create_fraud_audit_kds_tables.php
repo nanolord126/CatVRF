@@ -148,3 +148,5 @@ return new class extends Migration
         Schema::dropIfExists('low_stock_alerts');
     }
 };
+
+

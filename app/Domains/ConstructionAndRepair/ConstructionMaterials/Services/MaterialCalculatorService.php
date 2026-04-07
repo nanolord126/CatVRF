@@ -2,17 +2,15 @@
 
 namespace App\Domains\ConstructionAndRepair\ConstructionMaterials\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MaterialCalculatorService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class MaterialCalculatorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct()
+
+    public function __construct(private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger)
         {
-        }
+
+    }
 
         public function calculateMaterialNeeds(
             int $areaM2,
@@ -21,14 +19,13 @@ final class MaterialCalculatorService extends Model
             string $correlationId = '',
         ): array {
 
-
             try {
-                $calculator = DB::table('material_calculators')
+                $calculator = $this->db->table('material_calculators')
                     ->where('material_type', $materialType)
                     ->first();
 
                 if (!$calculator) {
-                    throw new \Exception("Calculator not found for $materialType");
+                    throw new \RuntimeException("Calculator not found for $materialType");
                 }
 
                 // Базовый расчёт
@@ -44,7 +41,7 @@ final class MaterialCalculatorService extends Model
                     'estimated_cost' => $quantity * $calculator->unit_price,
                 ];
 
-                Log::channel('audit')->info('Material calculation completed', [
+                $this->logger->info('Material calculation completed', [
                     'area_m2' => $areaM2,
                     'material_type' => $materialType,
                     'quantity' => $quantity,
@@ -52,8 +49,8 @@ final class MaterialCalculatorService extends Model
                 ]);
 
                 return $result;
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Material calculation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Material calculation failed', [
                     'material_type' => $materialType,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

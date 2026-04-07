@@ -2,32 +2,30 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoPartController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class AutoPartController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly AutoPartsInventoryService $inventoryService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly AutoPartsInventoryService $inventoryService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
             try {
                 $parts = AutoPart::query()
-                    ->where('tenant_id', tenant('id'))
+                    ->where('tenant_id', tenant()->id)
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $parts,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при получении запчастей',
                 ], 500);
@@ -38,22 +36,15 @@ final class AutoPartController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'auto_part_creation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'auto_part_creation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -73,9 +64,9 @@ final class AutoPartController extends Model
                 ]);
 
                 $validated = $request->all();
-                $part = DB::transaction(function () use ($validated) {
+                $part = $this->db->transaction(function () use ($validated) {
                     return AutoPart::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'sku' => ($validated['sku'] ?? null),
                         'name' => ($validated['name'] ?? null),
                         'brand' => ($validated['brand'] ?? null),
@@ -85,12 +76,12 @@ final class AutoPartController extends Model
                     ]);
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $part,
                 ], 201);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при создании запчасти',
                 ], 500);
@@ -101,7 +92,7 @@ final class AutoPartController extends Model
         {
             $this->authorize('view', $part);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $part,
             ]);
@@ -111,22 +102,15 @@ final class AutoPartController extends Model
         {
             $correlationId = Str::uuid()->toString();
 
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'auto_part_update',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'auto_part_update', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -143,12 +127,12 @@ final class AutoPartController extends Model
 
                 $part->update($request->only(['price', 'min_stock_threshold']));
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $part,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при обновлении запчасти',
                 ], 500);
@@ -171,13 +155,13 @@ final class AutoPartController extends Model
                     $request->get('reason', 'Пополнение остатка'),
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Остаток пополнен',
                     'data' => $part->fresh(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при пополнении остатка',
                 ], 500);
@@ -187,11 +171,11 @@ final class AutoPartController extends Model
         public function lowStock(Request $request): JsonResponse
         {
             $parts = AutoPart::query()
-                ->where('tenant_id', tenant('id'))
+                ->where('tenant_id', tenant()->id)
                 ->whereRaw('current_stock < min_stock_threshold')
                 ->get();
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $parts,
                 'count' => $parts->count(),
@@ -205,12 +189,12 @@ final class AutoPartController extends Model
 
                 $part->delete();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Запчасть удалена',
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Ошибка при удалении запчасти',
                 ], 500);

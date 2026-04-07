@@ -1,15 +1,31 @@
 <?php declare(strict_types=1);
 
+/**
+ * HandleMusicReviewSubmitted — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/handlemusicreviewsubmitted
+ */
+
+
 namespace App\Domains\MusicAndInstruments\Music\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HandleMusicReviewSubmitted extends Model
+use Psr\Log\LoggerInterface;
+final class HandleMusicReviewSubmitted
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Handle the event.
          */
@@ -17,7 +33,7 @@ final class HandleMusicReviewSubmitted extends Model
         {
             $review = $event->review;
 
-            Log::channel('audit')->info('New music review submitted', [
+            $this->logger->info('New music review submitted', [
                 'review_id' => $review->id,
                 'rating' => $review->rating,
                 'user_id' => $review->user_id,
@@ -34,7 +50,7 @@ final class HandleMusicReviewSubmitted extends Model
             elseif ($review->lesson) $store = $review->lesson->store;
 
             if ($store) {
-                Log::channel('audit')->info('Notifying store owner of new review', [
+                $this->logger->info('Notifying store owner of new review', [
                     'store_id' => $store->id,
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -43,7 +59,7 @@ final class HandleMusicReviewSubmitted extends Model
 
             // Low rating alert
             if ($review->rating <= 2) {
-                Log::channel('audit')->warning('Low music review alert', [
+                $this->logger->warning('Low music review alert', [
                     'review_id' => $review->id,
                     'rating' => $review->rating,
                     'correlation_id' => $event->correlationId,

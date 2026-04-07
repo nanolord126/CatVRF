@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Api\V2\Realtime;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class SubscriptionController extends Model
+final class SubscriptionController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly RealtimeService $realtimeService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {
             parent::__construct();
         }
         /**
@@ -31,11 +32,11 @@ final class SubscriptionController extends Model
                 ]);
                 $channel = $request->get('channel');
                 $this->realtimeService->subscribe(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     channel: $channel
                 );
-                Log::channel('audit')->info('Channel subscription', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Channel subscription', [
+                    'user_id' => $this->guard->id(),
                     'channel' => $channel,
                     'action' => 'subscribe',
                     'correlation_id' => $correlationId,
@@ -49,7 +50,7 @@ final class SubscriptionController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Subscription failed', [
+                $this->logger->channel('audit')->error('Subscription failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                     'trace' => $e->getTraceAsString(),
@@ -77,11 +78,11 @@ final class SubscriptionController extends Model
                 ]);
                 $channel = $request->get('channel');
                 $this->realtimeService->unsubscribe(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     channel: $channel
                 );
-                Log::channel('audit')->info('Channel unsubscription', [
-                    'user_id' => auth()->id(),
+                $this->logger->channel('audit')->info('Channel unsubscription', [
+                    'user_id' => $this->guard->id(),
                     'channel' => $channel,
                     'action' => 'unsubscribe',
                     'correlation_id' => $correlationId,
@@ -95,7 +96,7 @@ final class SubscriptionController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Unsubscription failed', [
+                $this->logger->channel('audit')->error('Unsubscription failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -116,7 +117,7 @@ final class SubscriptionController extends Model
         {
             $correlationId = (string) Str::uuid()->toString();
             try {
-                $userId = auth()->id() ?? 0;
+                $userId = $this->guard->id() ?? 0;
                 $pattern = "subscription:user.{$userId}:*";
                 // Retrieve subscribed channels from cache using pattern scan
                 $channels = [];
@@ -126,7 +127,7 @@ final class SubscriptionController extends Model
                 } catch (\Throwable $redisEx) {
                     // Redis unavailable — return empty list gracefully
                 }
-                Log::channel('audit')->info('Channels retrieved', [
+                $this->logger->channel('audit')->info('Channels retrieved', [
                     'user_id' => $userId,
                     'count' => count($channels),
                     'correlation_id' => $correlationId,
@@ -140,7 +141,7 @@ final class SubscriptionController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to retrieve channels', [
+                $this->logger->channel('audit')->error('Failed to retrieve channels', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PharmacyResource extends Model
+final class PharmacyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Medicine::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-heart';
@@ -56,22 +51,15 @@ final class PharmacyResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPharmacy::route('/'),
-                'create' => Pages\\CreatePharmacy::route('/create'),
-                'edit' => Pages\\EditPharmacy::route('/{record}/edit'),
-                'view' => Pages\\ViewPharmacy::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPharmacy::route('/'),
-                'create' => Pages\\CreatePharmacy::route('/create'),
-                'edit' => Pages\\EditPharmacy::route('/{record}/edit'),
-                'view' => Pages\\ViewPharmacy::route('/{record}'),
+                'index' => Pages\ListPharmacy::route('/'),
+                'create' => Pages\CreatePharmacy::route('/create'),
+                'edit' => Pages\EditPharmacy::route('/{record}/edit'),
+                'view' => Pages\ViewPharmacy::route('/{record}'),
             ];
         }
 }

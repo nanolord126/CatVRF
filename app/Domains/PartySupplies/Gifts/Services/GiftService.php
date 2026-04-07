@@ -1,107 +1,120 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\PartySupplies\Gifts\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\PartySupplies\Gifts\Models\Gift;
+use App\Domains\PartySupplies\Gifts\Models\GiftOrder;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class GiftService extends Model
+/**
+ * Сервис управления подарками и подарочными заказами.
+ *
+ * Обрабатывает: создание заказа на подарок, управление упаковкой,
+ * списание средств, начисление поставщику, аудит всех операций.
+ *
+ * @throws \RuntimeException
+ * @throws \DomainException
+ */
+final readonly class GiftService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly WalletService $wallet,
-        ) {}
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+        private AuditService $audit,
+    ) {}
 
-        /**
-         * Создание заказа на подарок с индивидуальной упаковкой.
-         */
-        public function orderGift(int $clientId, array $data, string $correlationId = ""): GiftOrder
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $gift = Gift::findOrFail($data["gift_id"]);
+    /**
+     * Создание заказа на подарок с индивидуальной упаковкой.
+     *
+     * @param int    $clientId      Идентификатор клиента
+     * @param array  $data          Данные заказа (gift_id, total_amount, wrapping_id и т.д.)
+     * @param string $correlationId Идентификатор корреляции
+     *
+     * @throws \RuntimeException  При превышении лимита запросов
+     * @throws \DomainException   При нехватке средств или отсутствии товара
+     */
+    public function orderGift(int $clientId, array $data, string $correlationId = ''): GiftOrder
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $gift = Gift::findOrFail($data['gift_id']);
 
-            if (RateLimiter::tooManyAttempts("gifts:order:".$clientId, 3)) {
-                throw new \RuntimeException("Rate limit exceeded for gift orders.", 429);
-            }
-            RateLimiter::hit("gifts:order:".$clientId, 3600);
-
-            return DB::transaction(function () use ($clientId, $gift, $data, $correlationId) {
-                $this->fraud->check([
-                    "user_id" => $clientId,
-                    "operation_type" => "gift_order",
-                    "correlation_id" => $correlationId
-                ]);
-
-                $fee = (int) ($data["total_amount"] * 0.14);
-                $payout = $data["total_amount"] - $fee;
-
-                // Списание с кошелька клиента
-                $this->wallet->debit($clientId, $data["total_amount"], "gift_purchase", "Gift: {$gift->name}", $correlationId);
-
-                // Кредит поставщику (14% комиссия)
-                $this->wallet->credit($gift->tenant_id, $payout, "gift_sale_payout", "Sale #{$gift->uuid}", $correlationId);
-
-                $order = GiftOrder::create([
-                    "uuid" => (string) Str::uuid(),
-                    "tenant_id" => auth()->user()->tenant_id ?? 1,
-                    "client_id" => $clientId,
-                    "gift_id" => $gift->id,
-                    "wrapping_id" => $data["wrapping_id"] ?? null,
-                    "recipient_name" => $data["recipient_name"],
-                    "is_anonymous" => $data["is_anonymous"] ?? false,
-                    "status" => "processing",
-                    "correlation_id" => $correlationId,
-                    "tags" => ["vertical:gifts", "delivery_type:surprise"]
-                ]);
-
-                Log::channel("audit")->info("Gifts: gift ordered", ["order_uuid" => $order->uuid, "payout" => $payout]);
-
-                return $order;
-            });
+        if ($this->rateLimiter->tooManyAttempts('gifts:order:' . $clientId, 3)) {
+            throw new \RuntimeException('Rate limit exceeded for gift orders.', 429);
         }
+        $this->rateLimiter->hit('gifts:order:' . $clientId, 3600);
 
-        /**
-         * Добавление праздничной упаковки к заказу.
-         */
-        public function addWrapping(int $orderId, int $wrappingId, string $correlationId = ""): void
-        {
-            $correlationId = $correlationId ?: (string) Str::uuid();
-            $order = GiftOrder::findOrFail($orderId);
-            $wrapping = Wrapping::findOrFail($wrappingId);
+        return $this->db->transaction(function () use ($clientId, $gift, $data, $correlationId): GiftOrder {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'gift_order',
+                amount: $data['total_amount'],
+                correlationId: $correlationId,
+            );
 
-            DB::transaction(function () use ($order, $wrapping, $correlationId) {
-                $order->update(["wrapping_id" => $wrappingId]);
-                // Списание доп. стоимости упаковки (упрощенно)
-                if ($wrapping->price > 0) {
-                   $this->wallet->debit($order->client_id, $wrapping->price, "gift_wrapping", "Wrapping for #{$order->uuid}", $correlationId);
-                   $this->wallet->credit($order->tenant_id, (int)($wrapping->price * 0.86), "gift_wrapping_payout", "Wrapping payout", $correlationId);
-                }
-                Log::channel("audit")->info("Gifts: wrapping added to product", ["order_id" => $orderId, "wrapping_id" => $wrappingId]);
-            });
-        }
+            $totalAmount = (int) $data['total_amount'];
+            $fee = (int) ($totalAmount * 0.14);
+            $payout = $totalAmount - $fee;
 
-        /**
-         * Подбор подарка по поводу и бюджету (Recommender hook).
-         */
-        public function suggestGifts(array $filters): array
-        {
-            $query = Gift::query();
+            $order = GiftOrder::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => tenant()->id,
+                'client_id' => $clientId,
+                'gift_id' => $gift->id,
+                'correlation_id' => $correlationId,
+                'status' => 'pending',
+                'total_kopecks' => $totalAmount,
+                'payout_kopecks' => $payout,
+                'fee_kopecks' => $fee,
+                'wrapping_id' => $data['wrapping_id'] ?? null,
+                'message' => $data['message'] ?? null,
+                'tags' => ['gift' => true],
+            ]);
 
-            if (isset($filters["max_price"])) {
-                $query->where("price_kopecks", "<=", $filters["max_price"]);
-            }
+            $this->wallet->debit(
+                $clientId,
+                $totalAmount,
+                BalanceTransactionType::WITHDRAWAL,
+                $correlationId,
+            );
 
-            if (isset($filters["occasion"])) {
-               $query->whereJsonContains("tags", $filters["occasion"]);
-            }
+            $this->wallet->credit(
+                $gift->tenant_id,
+                $payout,
+                BalanceTransactionType::PAYOUT,
+                $correlationId,
+            );
 
-            $results = $query->limit(10)->get();
+            $this->audit->record(
+                action: 'gift_order_created',
+                subjectType: GiftOrder::class,
+                subjectId: $order->id,
+                newValues: ['total' => $totalAmount, 'payout' => $payout, 'fee' => $fee],
+                correlationId: $correlationId,
+            );
 
-            Log::channel("audit")->info("Gifts: search suggestions generated", ["count" => $results->count()]);
+            $this->logger->info('Gift order created', [
+                'order_id' => $order->id,
+                'gift_id' => $gift->id,
+                'client_id' => $clientId,
+                'total' => $totalAmount,
+                'correlation_id' => $correlationId,
+            ]);
 
-            return $results->toArray();
-        }
+            return $order;
+        });
+    }
 }

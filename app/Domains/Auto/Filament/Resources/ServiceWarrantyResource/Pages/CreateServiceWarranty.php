@@ -1,15 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * CreateServiceWarranty — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/createservicewarranty
+ */
+
+
 namespace App\Domains\Auto\Filament\Resources\ServiceWarrantyResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateServiceWarranty extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateServiceWarranty extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = ServiceWarrantyResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -24,8 +42,8 @@ final class CreateServiceWarranty extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
-                Log::channel('audit')->info('ServiceWarranty created', [
+            $this->db->transaction(function () {
+                $this->logger->info('ServiceWarranty created', [
                     'correlation_id' => $this->record->correlation_id,
                     'warranty_id' => $this->record->id,
                     'warranty_number' => $this->record->warranty_number,
@@ -38,4 +56,15 @@ final class CreateServiceWarranty extends Model
                 ->body('Номер гарантии: ' . $this->record->warranty_number)
                 ->send();
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
 }

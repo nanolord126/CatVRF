@@ -2,14 +2,13 @@
 
 namespace App\Filament\Tenant\Resources\Art;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ArtistResource extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class ArtistResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Artist::class;
 
         protected static ?string $navigationGroup = 'Art Vertical';
@@ -81,7 +80,7 @@ final class ArtistResource extends Model
 
                     ToggleColumn::make('is_verified')
                         ->label('Verified Artist')
-                        ->disabled(!auth()->user()?->hasRole('admin')),
+                        ->disabled(!$this->guard->user()?->hasRole('admin')),
 
                     Tables\Columns\TextColumn::make('artworks_count')
                         ->label('Total Pieces')

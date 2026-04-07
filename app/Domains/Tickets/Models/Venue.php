@@ -4,12 +4,14 @@ namespace App\Domains\Tickets\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class Venue extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'venues';
@@ -30,15 +32,15 @@ final class Venue extends Model
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $builder->where('tenant_id', tenant()?->id);
                 }
             });
 
             static::creating(function ($model) {
                 $model->uuid = (string) Str::uuid();
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = tenant('id');
+                    $model->tenant_id = tenant()?->id;
                 }
             });
         }

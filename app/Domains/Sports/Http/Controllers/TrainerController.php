@@ -1,22 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * TrainerController — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/trainercontroller
+ */
+
+
 namespace App\Domains\Sports\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
 
-final class TrainerController extends Model
+final class TrainerController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function byStudio(int $studioId): JsonResponse
         {
             try {
                 $trainers = Trainer::where('studio_id', $studioId)->where('is_active', true)->paginate(15);
-                return response()->json(['success' => true, 'data' => $trainers, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainers, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Failed to list trainers'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Failed to list trainers'], 500);
             }
         }
 
@@ -24,9 +37,32 @@ final class TrainerController extends Model
         {
             try {
                 $trainer = Trainer::with(['studio', 'reviews', 'classes'])->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $trainer, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Trainer not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Trainer not found'], 404);
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

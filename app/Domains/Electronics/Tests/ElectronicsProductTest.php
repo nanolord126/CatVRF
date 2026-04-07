@@ -2,14 +2,16 @@
 
 namespace App\Domains\Electronics\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ElectronicsProductTest extends Model
+use Psr\Log\LoggerInterface;
+use Tests\TestCase;
+
+final class ElectronicsProductTest extends TestCase
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         /**
@@ -47,7 +49,7 @@ final class ElectronicsProductTest extends Model
             // 4. Assert - Spec JSONB logic
             $this->assertEquals('128GB', $product->specs['ram']);
 
-            Log::channel('audit')->info('LAYER-9: Test PASSED for gadget creation', [
+            $this->logger->info('LAYER-9: Test PASSED for gadget creation', [
                 'sku' => $product->sku,
                 'correlation_id' => $correlationId,
             ]);
@@ -70,7 +72,7 @@ final class ElectronicsProductTest extends Model
             $this->assertEquals(80000, $product->b2b_price);
             $this->assertTrue($product->is_b2b_available);
 
-            Log::channel('audit')->info('LAYER-9: Test PASSED for B2B pricing', [
+            $this->logger->info('LAYER-9: Test PASSED for B2B pricing', [
                 'id' => $product->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -90,7 +92,7 @@ final class ElectronicsProductTest extends Model
             ]);
 
             // Mock DB Transaction with lock
-            DB::transaction(function () use ($product, $correlationId) {
+            $this->db->transaction(function () use ($product, $correlationId) {
                 $lockedProduct = ElectronicsProduct::where('id', $product->id)->lockForUpdate()->first();
 
                 $lockedProduct->update([
@@ -106,7 +108,7 @@ final class ElectronicsProductTest extends Model
                 'availability_status' => 'low_stock',
             ]);
 
-            Log::channel('audit')->info('LAYER-9: Test PASSED for stock locking', [
+            $this->logger->info('LAYER-9: Test PASSED for stock locking', [
                 'sku' => $product->sku,
                 'correlation_id' => $correlationId,
             ]);

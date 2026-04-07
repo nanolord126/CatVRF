@@ -2,120 +2,181 @@
 
 namespace App\Domains\PersonalDevelopment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class PersonalDevelopmentService extends Model
+final readonly class PersonalDevelopmentService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly PricingService $pricingService,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Конструктор с зависимостями.
-         */
-        public function __construct(
-            private WalletService $walletService,
-            private string $correlationId = ''
-        ) {
-            $this->correlationId = $this->correlationId ?: (string) Str::uuid();
-        }
+     * Создание программы личного развития (курс, вебинар, коучинг).
+     */
+    public function createProgram(
+        int $tenantId,
+        string $title,
+        string $description,
+        string $type,
+        int $priceKopecks,
+        int $maxParticipants,
+        string $correlationId,
+    ): Program {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_program_create',
+            amount: $priceKopecks,
+            correlationId: $correlationId,
+        );
 
-        /**
-         * Записаться на программу (B2C: оплата из Wallet, B2B: оплата со счета компании).
-         *
-         * @param Program $program
-         * @param \App\Models\User $user
-         * @return Enrollment
-         * @throws Throwable
-         */
-        public function enrollToProgram(Program $program, \App\Models\User $user): Enrollment
-        {
-            Log::channel('audit')->info('PD Main Service: Initializing program enrollment', [
+        return $this->db->transaction(function () use ($tenantId, $title, $description, $type, $priceKopecks, $maxParticipants, $correlationId): Program {
+            $program = Program::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'author_id' => $this->guard->id(),
+                'title' => $title,
+                'description' => $description,
+                'type' => $type,
+                'price_kopecks' => $priceKopecks,
+                'max_participants' => $maxParticipants,
+                'status' => 'draft',
+                'is_corporate' => false,
+                'correlation_id' => $correlationId,
+                'tags' => ['type' => $type],
+            ]);
+
+            $this->logger->info('PD: Program created', [
                 'program_uuid' => $program->uuid,
-                'user_id' => $user->id,
-                'correlation_id' => $this->correlationId,
+                'title' => $title,
+                'type' => $type,
+                'tenant_id' => $tenantId,
+                'correlation_id' => $correlationId,
             ]);
 
-            // Fraud Control Check
-            FraudControlService::check([
-                'user_id' => $user->id,
-                'type' => 'pd_program_enrollment',
-                'amount' => $program->price_kopecks,
-                'correlation_id' => $this->correlationId,
-            ]);
+            return $program;
+        });
+    }
 
-            return DB::transaction(function () use ($program, $user) {
+    /**
+     * Публикация программы (из draft в active).
+     */
+    public function publishProgram(int $programId, string $correlationId): Program
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_program_publish',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
-                // 1. Оплата (в B2B режиме цена может быть нулевой для сотрудника, списана со счета компании)
-                if ($program->is_corporate) {
-                    // Корпоративная оплата: списание со счета Tenant компании
-                    $this->walletService->debit(
-                        userId: $user->id, // В 2026 дебет теннанта идет через контекст пользователя/организации
-                        amount: $program->price_kopecks,
-                        type: 'withdrawal',
-                        reason: "Корпоративное обучение: {$program->title}",
-                        correlationId: $this->correlationId
-                    );
-                } else {
-                    // Частная оплата (B2C)
-                    $this->walletService->debit(
-                        userId: $user->id,
-                        amount: $program->price_kopecks,
-                        type: 'withdrawal',
-                        reason: "Запись на программу: {$program->title}",
-                        correlationId: $this->correlationId
-                    );
-                }
+        return $this->db->transaction(function () use ($programId, $correlationId): Program {
+            $program = Program::lockForUpdate()->findOrFail($programId);
 
-                // 2. Создание записи об участии
-                /** @var Enrollment $enrollment */
-                $enrollment = Enrollment::create([
-                    'uuid' => (string) Str::uuid(),
-                    'tenant_id' => $program->tenant_id,
-                    'user_id' => $user->id,
-                    'program_id' => $program->id,
-                    'status' => 'active',
-                    'progress_percent' => 0,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                Log::channel('audit')->info('PD Main Service: Enrollment successful', [
-                    'enrollment_uuid' => $enrollment->uuid,
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                return $enrollment;
-            });
-        }
-
-        /**
-         * Завершение программы с выдачей сертификата.
-         */
-        public function completeEnrollment(Enrollment $enrollment): void
-        {
-            if ($enrollment->progress_percent < 100) {
-                throw new \Exception('Программа еще не завершена.');
+            if ($program->status !== 'draft') {
+                throw new \RuntimeException("Program {$programId} is not in draft status.");
             }
 
-            DB::transaction(function () use ($enrollment) {
-                $enrollment->update([
-                    'status' => 'completed',
-                    'correlation_id' => $this->correlationId,
-                ]);
+            $program->update([
+                'status' => 'active',
+                'published_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                // Выдача бонусных баллов за завершение (Канон 2026)
-                $this->walletService->credit(
-                    userId: $enrollment->user_id,
-                    amount: 100000, // 1000 бонусов
-                    type: 'bonus',
-                    reason: "Бонус за завершение обучения: " . ($enrollment->program?->title ?? $enrollment->course?->title),
-                    correlationId: $this->correlationId
-                );
+            $this->logger->info('PD: Program published', [
+                'program_uuid' => $program->uuid,
+                'program_id' => $programId,
+                'correlation_id' => $correlationId,
+            ]);
 
-                Log::channel('audit')->info('PD Main Service: Enrollment completed with bonuses', [
-                    'enrollment_uuid' => $enrollment->uuid,
-                    'correlation_id' => $this->correlationId,
-                ]);
-            });
-        }
+            return $program->refresh();
+        });
+    }
+
+    /**
+     * Обновление параметров программы.
+     */
+    public function updateProgram(int $programId, array $data, string $correlationId): Program
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'pd_program_update',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($programId, $data, $correlationId): Program {
+            $program = Program::lockForUpdate()->findOrFail($programId);
+
+            $allowedFields = ['title', 'description', 'price_kopecks', 'max_participants', 'is_corporate'];
+            $filteredData = array_intersect_key($data, array_flip($allowedFields));
+            $filteredData['correlation_id'] = $correlationId;
+
+            $program->update($filteredData);
+
+            $this->logger->info('PD: Program updated', [
+                'program_uuid' => $program->uuid,
+                'updated_fields' => array_keys($filteredData),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $program->refresh();
+        });
+    }
+
+    /**
+     * Архивирование программы (закрытие набора).
+     */
+    public function archiveProgram(int $programId, string $correlationId): Program
+    {
+        return $this->db->transaction(function () use ($programId, $correlationId): Program {
+            $program = Program::lockForUpdate()->findOrFail($programId);
+
+            $program->update([
+                'status' => 'archived',
+                'archived_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->logger->info('PD: Program archived', [
+                'program_uuid' => $program->uuid,
+                'program_id' => $programId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $program->refresh();
+        });
+    }
+
+    /**
+     * Получение активных программ для тенанта.
+     */
+    public function getActivePrograms(int $tenantId): \Illuminate\Support\Collection
+    {
+        return Program::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->orderByDesc('published_at')
+            ->get();
+    }
+
+    /**
+     * Поиск программ по ключевому слову.
+     */
+    public function searchPrograms(string $query, int $tenantId): \Illuminate\Support\Collection
+    {
+        return Program::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->where(function ($q) use ($query): void {
+                $q->where('title', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%");
+            })
+            ->orderByDesc('created_at')
+            ->get();
+    }
 }

@@ -2,22 +2,36 @@
 
 namespace App\Http\Requests\Api\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoVinSearchRequest extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Class AutoVinSearchRequest
+ *
+ * Form Request with validation rules.
+ * Validates input before reaching the controller.
+ * Authorization checks tenant and business group access.
+ *
+ * @package App\Http\Requests\Api\Auto
+ */
+final class AutoVinSearchRequest extends FormRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
         {
             // Fraud Check перед выполнением запроса
-            FraudControlService::check([
-                'type' => 'vin_search_attempt',
-                'vin' => $this->get('vin'),
-                'ip' => $this->ip(),
-            ]);
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) ($this->guard->id() ?? 0),
+                operationType: 'vin_search_attempt',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
 
             return true;
         }

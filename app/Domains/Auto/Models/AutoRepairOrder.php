@@ -2,14 +2,16 @@
 
 namespace App\Domains\Auto\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class AutoRepairOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
         protected $table = 'auto_repair_orders';
@@ -59,11 +61,11 @@ final class AutoRepairOrder extends Model
         {
             static::creating(function (AutoRepairOrder $order) {
                 $order->uuid = $order->uuid ?? (string) Str::uuid();
-                $order->tenant_id = $order->tenant_id ?? (tenant('id') ?? 1);
+                $order->tenant_id = $order->tenant_id ?? (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant', function (Builder $builder) {
-                $builder->where('auto_repair_orders.tenant_id', tenant('id') ?? 1);
+                $builder->where('auto_repair_orders.tenant_id', tenant()->id ?? 1);
             });
         }
 

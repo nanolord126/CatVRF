@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // Beauty salons table
+        Schema::dropIfExists('appointments');
         Schema::create('beauty_salons', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
@@ -131,6 +132,7 @@ return new class extends Migration
         });
 
         // Hotels table
+        Schema::dropIfExists('hotels');
         Schema::create('hotels', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
@@ -147,6 +149,7 @@ return new class extends Migration
         });
 
         // Room types table
+        Schema::dropIfExists('room_types');
         Schema::create('room_types', function (Blueprint $table) {
             $table->id();
             $table->foreignId('hotel_id')->constrained('hotels')->onDelete('cascade');
@@ -159,6 +162,7 @@ return new class extends Migration
         });
 
         // Bookings table
+        Schema::dropIfExists('bookings');
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
@@ -207,3 +211,5 @@ return new class extends Migration
         Schema::dropIfExists('beauty_salons');
     }
 };
+
+

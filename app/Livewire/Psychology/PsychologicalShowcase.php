@@ -2,75 +2,77 @@
 
 namespace App\Livewire\Psychology;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Psychology\Models\Therapist;
+use App\Services\AI\Psychology\SymptomMatcherService;
+use Filament\Notifications\Notification;
+use Illuminate\Contracts\View\View;
 
-final class PsychologicalShowcase extends Model
+use Livewire\Component;
+use Livewire\WithPagination;
+use Illuminate\Log\LogManager;
+
+final class PsychologicalShowcase extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use WithPagination;
 
-        public string $search = '';
-        public array $aiSymptoms = [];
-        public bool $isAiMatching = false;
-        public ?array $aiPlan = null;
+    private string $search = '';
+    private array $aiSymptoms = [];
+    private bool $isAiMatching = false;
+    private ?array $aiPlan = null;
+    private ?int $selectedTherapistId = null;
 
-        public ?int $selectedTherapistId = null;
+    protected $queryString = ['search'];
 
-        protected $queryString = ['search'];
+    public function mount(): void
+    {
+        // Инициализация, если необходимо
+    }
 
-        /**
-         * Запуск AI-подбора терапии.
-         */
-        public function startAiMatch(): void
-        {
-            $this->isAiMatching = true;
+    public function findTherapist(SymptomMatcherService $symptomMatcher): void
+    {
+        $this->isAiMatching = true;
+        $this->aiPlan = null;
 
-            $aiService = app(AITherapyConstructorService::class);
-            $this->aiPlan = $aiService->generateTherapyPlan([
+        try {
+            $this->aiPlan = $symptomMatcher->analyzeSymptoms($this->aiSymptoms);
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error('AI Symptom Matcher failed', [
                 'symptoms' => $this->aiSymptoms,
-                'user_id' => auth()->id(),
-            ], 'frontend-ai-' . now()->timestamp);
-
-            Log::channel('audit')->info('Frontend AI Match triggered', [
-                'symptoms' => $this->aiSymptoms,
+                'error' => $e->getMessage(),
             ]);
 
+            Notification::make()
+                ->title('Ошибка анализа')
+                ->body('Не удалось проанализировать симптомы. Попробуйте позже.')
+                ->danger()
+                ->send();
+        } finally {
             $this->isAiMatching = false;
         }
+    }
 
-        /**
-         * Сброс AI результатов.
-         */
-        public function resetAi(): void
-        {
-            $this->aiPlan = null;
-            $this->aiSymptoms = [];
-        }
+    public function selectTherapist(int $therapistId): void
+    {
+        $this->selectedTherapistId = $therapistId;
+        $this->dispatch('therapistSelected', $therapistId);
+    }
 
-        /**
-         * Выбор терапевта.
-         */
-        public function selectTherapist(int $id): void
-        {
-            $this->selectedTherapistId = $id;
-            $this->dispatch('therapist-selected', therapistId: $id);
-        }
+    public function render(): View
+    {
+        $therapists = Therapist::query()
+            ->when($this->search, fn ($query) => $query->where('specialization', 'like', "%{$this->search}%"))
+            ->when($this->aiPlan, function ($query) {
+                // @phpstan-ignore-next-line
+                return $query->whereIn('id', collect($this->aiPlan['recommended_therapists'])->pluck('id'));
+            })
+            ->paginate(10);
 
-        public function render()
-        {
-            $query = Psychologist::with(['clinic', 'reviews'])
-                ->where('is_available', true);
-
-            if ($this->search) {
-                $query->where('full_name', 'like', '%' . $this->search . '%')
-                    ->orWhere('specialization', 'like', '%' . $this->search . '%');
-            }
-
-            return view('livewire.psychology.psychological-showcase', [
-                'psychologists' => $query->paginate(12),
-            ])->layout('layouts.marketplace');
-        }
+        return view('livewire.psychology.psychological-showcase', [
+            'therapists' => $therapists,
+        ]);
+    }
 }

@@ -2,26 +2,44 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIConstructorService extends Model
+use Illuminate\Http\Request;
+use App\Models\AI\AIConstruction;
+use App\Models\UserTasteProfile;
+use App\Models\User;
+use App\Services\AI\Constructors\BeautyLookConstructor;
+use App\Services\AI\Constructors\CakeConstructor;
+use App\Services\AI\Constructors\InteriorConstructor;
+use App\Services\AI\Constructors\MenuConstructor;
+use App\Services\AI\Constructors\OutfitConstructor;
+use App\Services\FraudControlService;
+use App\Services\Inventory\InventoryManagementService;
+use App\Services\RecommendationService;
+use App\Services\WalletService;
+use Illuminate\Http\UploadedFile;
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class AIConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private ImageAnalysisService $imageAnalysis,
-            private InteriorConstructor $interiorConstructor,
-            private BeautyLookConstructor $beautyLookConstructor,
-            private OutfitConstructor $outfitConstructor,
-            private CakeConstructor $cakeConstructor,
-            private MenuConstructor $menuConstructor,
-            private \App\Services\FraudControlService $fraudControl,
-            private \App\Services\InventoryManagementService $inventory,
-            private \App\Services\RecommendationService $recommendation,
-            private \App\Services\WalletService $wallet,
-        ) {}
+        private readonly Request $request,
+        private ImageAnalysisService $imageAnalysis,
+        private InteriorConstructor $interiorConstructor,
+        private BeautyLookConstructor $beautyLookConstructor,
+        private OutfitConstructor $outfitConstructor,
+        private CakeConstructor $cakeConstructor,
+        private MenuConstructor $menuConstructor,
+        private FraudControlService $fraud,
+        private InventoryManagementService $inventory,
+        private RecommendationService $recommendation,
+        private WalletService $wallet,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Запустить конструктор (основная точка входа)
@@ -40,16 +58,16 @@ final class AIConstructorService extends Model
         ): array {
             $correlationId = Str::uuid()->toString();
 
-            return DB::transaction(function () use ($user, $type, $photo, $params, $correlationId) {
+            return $this->db->transaction(function () use ($user, $type, $photo, $params, $correlationId) {
                 try {
                     // 1. Fraud check
-                    $this->fraudControl->check([
+                    $this->fraud->check([
                         'user_id' => $user->id,
                         'action' => "ai_constructor_{$type}",
-                        'ip' => \request()->ip(),
+                        'ip' => $this->request->ip(),
                     ]);
 
-                    Log::channel('audit')->info("AI Constructor started: {$type}", [
+                    $this->logger->channel('audit')->info("AI Constructor started: {$type}", [
                         'correlation_id' => $correlationId,
                         'user_id' => $user->id,
                         'type' => $type,
@@ -106,7 +124,7 @@ final class AIConstructorService extends Model
                         'confidence_breakdown' => $constructorResult['confidence_breakdown'] ?? [],
                     ]);
 
-                    Log::channel('audit')->info("AI Constructor completed successfully", [
+                    $this->logger->channel('audit')->info("AI Constructor completed successfully", [
                         'correlation_id' => $correlationId,
                         'user_id' => $user->id,
                         'type' => $type,
@@ -127,7 +145,7 @@ final class AIConstructorService extends Model
                         'confidence' => $construction->confidence_score,
                     ];
                 } catch (\Throwable $e) {
-                    Log::channel('audit')->error("AI Constructor failed", [
+                    $this->logger->channel('audit')->error("AI Constructor failed", [
                         'correlation_id' => $correlationId,
                         'user_id' => $user->id,
                         'type' => $type,
@@ -204,12 +222,11 @@ final class AIConstructorService extends Model
             array $params,
         ): array {
             return match ($type) {
-                'interior' => $this->interiorConstructor->construct($analysis, $explicit, $implicit, $params),
                 'beauty_look' => $this->beautyLookConstructor->construct($analysis, $explicit, $implicit, $params),
                 'outfit' => $this->outfitConstructor->construct($analysis, $explicit, $implicit, $params),
                 'cake' => $this->cakeConstructor->construct($analysis, $explicit, $implicit, $params),
                 'menu' => $this->menuConstructor->construct($analysis, $explicit, $implicit, $params),
-                default => throw new \Exception("Unknown constructor type: {$type}"),
+                default => throw new \InvalidArgumentException("Unknown constructor type: {$type}"),
             };
         }
 
@@ -273,7 +290,7 @@ final class AIConstructorService extends Model
             $construction->deletePhoto();
             $construction->delete();
 
-            Log::channel('audit')->info("AI Construction deleted", [
+            $this->logger->channel('audit')->info("AI Construction deleted", [
                 'correlation_id' => $construction->correlation_id,
                 'construction_id' => $construction->id,
             ]);

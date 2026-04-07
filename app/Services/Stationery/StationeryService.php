@@ -2,21 +2,34 @@
 
 namespace App\Services\Stationery;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StationeryService extends Model
+
+
+
+use Illuminate\Http\Request;
+use Illuminate\Auth\AuthManager;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use App\Models\Stationery\StationeryProduct;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class StationeryService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private FraudControlService $fraud,
-            private string $correlationId = ''
-        ) {
-            // Ensure correlation_id is present for tracing
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
-        }
+        private readonly Request $request,
+        private readonly AuthManager $authManager,
+        private FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Creates a new stationery product with mandatory transaction and audit.
@@ -27,26 +40,32 @@ final class StationeryService extends Model
          */
         public function createProduct(array $data): StationeryProduct
         {
-            Log::channel('audit')->info('Attempting to create stationery product', [
+            $correlationId = $this->correlationId();
+            $userId = (int) ($this->authManager->id() ?? 0);
+
+            $this->logger->channel('audit')->info('Attempting to create stationery product', [
                 'sku' => $data['sku'] ?? 'unknown',
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $correlationId,
             ]);
 
             // Pre-mutation fraud check
-            $this->fraud->check([
-                'operation' => 'product_create',
-                'tenant_id' => $data['tenant_id'] ?? tenant()->id,
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check(
+                userId: $userId,
+                operationType: 'product_create',
+                amount: (int) ($data['price_cents'] ?? 0),
+                ipAddress: $this->request->ip(),
+                deviceFingerprint: $this->request->header('X-Device-Id'),
+                correlationId: $correlationId,
+            );
 
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 $product = StationeryProduct::create(array_merge($data, [
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]));
 
-                Log::channel('audit')->info('Stationery product created successfully', [
+                $this->logger->channel('audit')->info('Stationery product created successfully', [
                     'uuid' => $product->uuid,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 return $product;
@@ -63,31 +82,31 @@ final class StationeryService extends Model
          */
         public function adjustStock(int $productId, int $adjustment, string $reason): bool
         {
-            return DB::transaction(function () use ($productId, $adjustment, $reason) {
+            return $this->db->transaction(function () use ($productId, $adjustment, $reason) {
                 $product = StationeryProduct::lockForUpdate()->findOrFail($productId);
 
                 $newQuantity = $product->stock_quantity + $adjustment;
 
                 if ($newQuantity < 0) {
-                    Log::channel('audit')->warning('Negative stock prevention triggered', [
+                    $this->logger->channel('audit')->warning('Negative stock prevention triggered', [
                         'product_id' => $productId,
                         'adjustment' => $adjustment,
-                        'correlation_id' => $this->correlationId,
+                        'correlation_id' => $this->correlationId(),
                     ]);
                     throw new \DomainException('Insufficient stock quality in stationery warehouse.');
                 }
 
                 $product->update([
                     'stock_quantity' => $newQuantity,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
-                Log::channel('audit')->info('Stock adjusted for stationery product', [
+                $this->logger->channel('audit')->info('Stock adjusted for stationery product', [
                     'product_id' => $productId,
                     'adjustment' => $adjustment,
                     'reason' => $reason,
                     'new_stock' => $newQuantity,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 return true;

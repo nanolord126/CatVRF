@@ -2,19 +2,17 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CalculateEntertainerEarningsJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class CalculateEntertainerEarningsJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public function __construct(
-            public ?string $correlationId = null,
-        ) {
+            private ?string $correlationId = null, private readonly LoggerInterface $logger) {
             $this->onQueue('default');
 
         }
@@ -22,8 +20,8 @@ final class CalculateEntertainerEarningsJob extends Model
         public function handle(): void
         {
             try {
-                $month = now()->month;
-                $year = now()->year;
+                $month = Carbon::now()->month;
+                $year = Carbon::now()->year;
 
                 Entertainer::where('is_active', true)
                     ->chunk(50, function ($entertainers) use ($month, $year) {
@@ -32,13 +30,13 @@ final class CalculateEntertainerEarningsJob extends Model
                         }
                     });
 
-                Log::channel('audit')->info('Entertainer earnings calculated', [
+                $this->logger->info('Entertainer earnings calculated', [
                     'month' => $month,
                     'year' => $year,
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to calculate entertainer earnings', [
+                $this->logger->error('Failed to calculate entertainer earnings', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -58,7 +56,7 @@ final class CalculateEntertainerEarningsJob extends Model
                 ->get();
 
             foreach ($events as $event) {
-                Log::channel('audit')->info('Entertainer earnings updated', [
+                $this->logger->info('Entertainer earnings updated', [
                     'entertainer_id' => $entertainer->id,
                     'event_id' => $event->id,
                     'month' => $month,
@@ -70,6 +68,6 @@ final class CalculateEntertainerEarningsJob extends Model
 
         public function retryUntil(): \DateTime
         {
-            return now()->addHours(6);
+            return Carbon::now()->addHours(6);
         }
 }

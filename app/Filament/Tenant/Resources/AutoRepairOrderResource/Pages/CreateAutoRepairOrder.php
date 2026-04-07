@@ -2,14 +2,13 @@
 
 namespace App\Filament\Tenant\Resources\AutoRepairOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateAutoRepairOrder extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateAutoRepairOrder extends CreateRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoRepairOrderResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -31,10 +30,33 @@ final class CreateAutoRepairOrder extends Model
             }
 
             activity()
-                ->performedBy(auth()->user())
+                ->performedBy($this->guard->user())
                 ->on($this->getRecord())
                 ->withProperty('correlation_id', $this->getRecord()->correlation_id)
                 ->withProperty('vehicle_uuid', $vehicle->uuid ?? 'N/A')
                 ->log('Auto repair order opened');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

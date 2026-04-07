@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+
+
 
 /**
  * Promo Campaign Management Service
@@ -20,6 +23,11 @@ use Illuminate\Support\Facades\Log;
  */
 final class PromoService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     /**
      * Apply promo code to order
      *
@@ -33,7 +41,7 @@ final class PromoService
      */
     public function applyPromo(string $code, int $orderAmount, string $vertical, int $userId, string $correlationId): array
     {
-        $this->fraudControl->check([
+        $this->fraud->check([
             'operation' => promo_apply,
             'user_id' => $userId,
             'discount' => $discount,
@@ -41,67 +49,67 @@ final class PromoService
         ]);
 
 
-        Log::channel('audit')->info('Method applyPromo() called', [
+        $this->logger->channel('audit')->info('Method applyPromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return DB::transaction(function () use ($code, $orderAmount, $vertical, $userId, $correlationId): array {
+        return $this->db->transaction(function () use ($code, $orderAmount, $vertical, $userId, $correlationId): array {
             // Get campaign
-            $campaign = DB::table('promo_campaigns')
+            $campaign = $this->db->table('promo_campaigns')
                 ->where('code', strtoupper($code))
                 ->where('tenant_id', tenant()->id)
                 ->lockForUpdate()
                 ->first();
 
             if (!$campaign) {
-                throw new \Exception('Promo code not found');
+                throw new \DomainException('Promo code not found');
             }
 
             // Check if active
             if ($campaign->status !== 'active') {
-                throw new \Exception('Promo code is not active');
+                throw new \DomainException('Promo code is not active');
             }
 
             // Check if expired
             if ($campaign->end_at && $campaign->end_at < now()) {
-                throw new \Exception('Promo code has expired');
+                throw new \DomainException('Promo code has expired');
             }
 
             // Check start date
             if ($campaign->start_at > now()) {
-                throw new \Exception('Promo code is not yet active');
+                throw new \DomainException('Promo code is not yet active');
             }
 
             // Check minimum order amount
             if ($orderAmount < ($campaign->min_order_amount ?? 0)) {
-                throw new \Exception('Order amount is below minimum for this promo');
+                throw new \DomainException('Order amount is below minimum for this promo');
             }
 
             // Check applicable verticals
             $applicableVerticals = json_decode($campaign->applicable_verticals, true) ?? [];
             if (!empty($applicableVerticals) && !in_array($vertical, $applicableVerticals)) {
-                throw new \Exception('This promo is not applicable to this vertical');
+                throw new \DomainException('This promo is not applicable to this vertical');
             }
 
             // Check per-user usage limit
-            $userUsageCount = DB::table('promo_uses')
+            $userUsageCount = $this->db->table('promo_uses')
                 ->where('promo_campaign_id', $campaign->id)
                 ->where('user_id', $userId)
                 ->count();
 
             if ($userUsageCount >= ($campaign->max_uses_per_user ?? PHP_INT_MAX)) {
-                throw new \Exception('You have reached the maximum uses for this promo');
+                throw new \DomainException('You have reached the maximum uses for this promo');
             }
 
             // Check total usage limit
             if (($campaign->used_count ?? 0) >= ($campaign->max_uses_total ?? PHP_INT_MAX)) {
-                throw new \Exception('This promo code has reached its limit');
+                throw new \DomainException('This promo code has reached its limit');
             }
 
             // Check budget
             if ($campaign->spent_budget >= $campaign->budget) {
-                throw new \Exception('Promo code budget exhausted');
+                throw new \DomainException('Promo code budget exhausted');
             }
 
             // Calculate discount
@@ -109,11 +117,11 @@ final class PromoService
 
             // Check if discount would exceed budget
             if ($campaign->spent_budget + $discountAmount > $campaign->budget) {
-                throw new \Exception('Promo code has insufficient budget');
+                throw new \DomainException('Promo code has insufficient budget');
             }
 
             // Record usage
-            DB::table('promo_uses')->insert([
+            $this->db->table('promo_uses')->insert([
                 'promo_campaign_id' => $campaign->id,
                 'tenant_id' => tenant()->id,
                 'user_id' => $userId,
@@ -123,7 +131,7 @@ final class PromoService
             ]);
 
             // Update campaign budget
-            DB::table('promo_campaigns')
+            $this->db->table('promo_campaigns')
                 ->where('id', $campaign->id)
                 ->update([
                     'spent_budget' => $campaign->spent_budget + $discountAmount,
@@ -131,7 +139,7 @@ final class PromoService
                     'status' => $campaign->spent_budget + $discountAmount >= $campaign->budget ? 'exhausted' : 'active',
                 ]);
 
-            Log::channel('promo')->info('Promo applied', [
+            $this->logger->channel('promo')->info('Promo applied', [
                 'correlation_id' => $correlationId,
                 'code' => $code,
                 'user_id' => $userId,
@@ -159,12 +167,12 @@ final class PromoService
      */
     public function validatePromo(string $code, int $orderAmount, string $vertical): array
     {
-        Log::channel('audit')->info('Method validatePromo() called', [
+        $this->logger->channel('audit')->info('Method validatePromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        $campaign = DB::table('promo_campaigns')
+        $campaign = $this->db->table('promo_campaigns')
             ->where('code', strtoupper($code))
             ->where('tenant_id', tenant()->id)
             ->first();
@@ -217,7 +225,6 @@ final class PromoService
     private function calculateDiscount(object $campaign, int $orderAmount): int
     {
         return match ($campaign->type) {
-            'discount_percent' => (int) floor($orderAmount * $campaign->value / 100),
             'fixed_amount' => (int) min($campaign->value, $orderAmount),
             'buy_x_get_y' => 0,
             'referral_bonus' => (int) $campaign->value,
@@ -235,17 +242,17 @@ final class PromoService
      */
     public function cancelPromoUse(int $useId, string $correlationId): bool
     {
-        Log::channel('audit')->info('Method cancelPromoUse() called', [
+        $this->logger->channel('audit')->info('Method cancelPromoUse() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return DB::transaction(function () use ($useId, $correlationId): bool {
-            $use = DB::table('promo_uses')->findOrFail($useId);
-            $campaign = DB::table('promo_campaigns')->findOrFail($use->promo_campaign_id);
+        return $this->db->transaction(function () use ($useId, $correlationId): bool {
+            $use = $this->db->table('promo_uses')->findOrFail($useId);
+            $campaign = $this->db->table('promo_campaigns')->findOrFail($use->promo_campaign_id);
 
             // Return discount to budget
-            DB::table('promo_campaigns')
+            $this->db->table('promo_campaigns')
                 ->where('id', $campaign->id)
                 ->update([
                     'spent_budget' => max(0, $campaign->spent_budget - $use->discount_amount),
@@ -254,13 +261,13 @@ final class PromoService
                 ]);
 
             // Mark use as cancelled
-            DB::table('promo_uses')
+            $this->db->table('promo_uses')
                 ->where('id', $useId)
                 ->update([
                     'cancelled_at' => now(),
                 ]);
 
-            Log::channel('promo')->info('Promo use cancelled', [
+            $this->logger->channel('promo')->info('Promo use cancelled', [
                 'correlation_id' => $correlationId,
                 'promo_use_id' => $useId,
                 'discount_refunded' => $use->discount_amount,

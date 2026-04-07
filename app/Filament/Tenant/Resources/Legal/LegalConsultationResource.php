@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Legal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class LegalConsultationResource extends Model
+final class LegalConsultationResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = LegalConsultation::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
@@ -137,7 +134,6 @@ final class LegalConsultationResource extends Model
                             'danger' => 'cancelled',
                         ])
                         ->formatStateUsing(fn ($state) => match ($state) {
-                            'pending' => 'Ожидает',
                             'confirmed' => 'Подтверждена',
                             'completed' => 'Завершена',
                             'cancelled' => 'Отменена',

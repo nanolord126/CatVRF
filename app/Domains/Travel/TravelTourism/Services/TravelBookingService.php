@@ -2,194 +2,212 @@
 
 namespace App\Domains\Travel\TravelTourism\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class TravelBookingService extends Model
+final readonly class TravelBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-            private readonly WalletService $walletService,
-        ) {}
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly InventoryManagementService $inventoryService,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+    ) {}
 
-        public function createBooking(array $data): TravelBooking
-        {
+    /**
+     * Бронирование тура с проверкой доступных мест.
+     */
+    public function bookTour(int $tourId, int $participants, string $correlationId): TravelBooking
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'travel_booking',
+            amount: 0,
+            correlationId: $correlationId,
+        );
 
+        return $this->db->transaction(function () use ($tourId, $participants, $correlationId): TravelBooking {
+            $tour = TravelTour::lockForUpdate()->findOrFail($tourId);
 
-            Log::channel('audit')->info('TravelBookingService: Creating travel booking', [
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tour_id' => $data['tour_id'],
-                'tenant_id' => filament()->getTenant()->id,
-            ]);
+            if ($tour->status !== 'active' && $tour->status !== 'published') {
+                throw new \RuntimeException("Tour {$tourId} is not available for booking.");
+            }
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(fn () => TravelBooking::create([
-                'uuid' => Str::uuid(),
-                'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
-                'tenant_id' => filament()->getTenant()->id,
-                'tour_id' => $data['tour_id'],
-                'traveler_name' => $data['traveler_name'],
-                'traveler_email' => $data['traveler_email'],
-                'traveler_phone' => $data['traveler_phone'],
-                'participants' => $data['participants'] ?? 1,
-                'total_price' => $data['total_price'],
-                'booking_date' => now(),
-                'departure_date' => $data['departure_date'],
-                'status' => 'pending',
+            $availableSlots = $tour->max_participants - $tour->current_participants;
+            if ($participants > $availableSlots) {
+                throw new \RuntimeException("Not enough slots. Available: {$availableSlots}, requested: {$participants}.");
+            }
+
+            $totalPrice = $tour->base_price * $participants;
+            $platformFee = (int) ($totalPrice * 0.14);
+
+            $booking = TravelBooking::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $tour->tenant_id,
+                'tour_id' => $tourId,
+                'client_id' => $this->guard->id(),
+                'participants' => $participants,
+                'total_price' => $totalPrice,
+                'platform_fee' => $platformFee,
+                'status' => 'pending_payment',
                 'payment_status' => 'pending',
-                'special_requests' => $data['special_requests'] ?? [],
-                'tags' => $data['tags'] ?? [],
-            ]));
-        }
-
-        public function confirmBooking(int $bookingId): bool
-        {
-
-
-            $booking = TravelBooking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('TravelBookingService: Confirming booking', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+                'correlation_id' => $correlationId,
+                'tags' => [
+                    'destination' => $tour->destination_country,
+                    'duration_days' => $tour->duration_days,
+                ],
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking) {
-                $booking->update(['status' => 'confirmed']);
-                return true;
-            });
-        }
+            $tour->increment('current_participants', $participants);
 
-        public function processPayment(int $bookingId, string $paymentMethodId): bool
-        {
-
-
-            $booking = TravelBooking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('TravelBookingService: Processing payment', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
-                'payment_method' => $paymentMethodId,
+            $this->logger->info('Travel booking created', [
+                'booking_id' => $booking->id,
+                'booking_uuid' => $booking->uuid,
+                'tour_id' => $tourId,
+                'participants' => $participants,
+                'total_price' => $totalPrice,
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking) {
-                $booking->update(['payment_status' => 'paid']);
+            return $booking;
+        });
+    }
 
-                // Debit from traveler wallet
-                $this->walletService->debit(
-                    tenantId: $booking->tenant_id,
+    /**
+     * Подтверждение оплаты бронирования.
+     */
+    public function confirmPayment(int $bookingId, string $correlationId): TravelBooking
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'travel_payment_confirm',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($bookingId, $correlationId): TravelBooking {
+            $booking = TravelBooking::lockForUpdate()->findOrFail($bookingId);
+
+            if ($booking->payment_status !== 'pending') {
+                throw new \RuntimeException("Booking {$bookingId} payment is not pending.");
+            }
+
+            $booking->update([
+                'payment_status' => 'completed',
+                'status' => 'confirmed',
+                'confirmed_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->logger->info('Travel booking payment confirmed', [
+                'booking_id' => $booking->id,
+                'total_price' => $booking->total_price,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $booking->refresh();
+        });
+    }
+
+    /**
+     * Отмена бронирования с возвратом мест и средств.
+     */
+    public function cancelBooking(int $bookingId, string $reason, string $correlationId): TravelBooking
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'travel_booking_cancel',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($bookingId, $reason, $correlationId): TravelBooking {
+            $booking = TravelBooking::with('tour')->lockForUpdate()->findOrFail($bookingId);
+
+            if ($booking->status === 'completed') {
+                throw new \RuntimeException("Cannot cancel a completed booking.");
+            }
+
+            if ($booking->payment_status === 'completed') {
+                $this->wallet->credit(
+                    userId: $booking->client_id,
                     amount: $booking->total_price,
-                    reason: 'travel_booking_paid',
-                    correlationId: $booking->correlation_id,
+                    type: 'travel_refund',
+                    reason: "Travel booking #{$booking->id} cancelled: {$reason}",
+                    correlationId: $correlationId,
                 );
+            }
 
-                return true;
-            });
-        }
+            $booking->tour->decrement('current_participants', $booking->participants);
 
-        public function issueVouchers(int $bookingId): bool
-        {
-
-
-            $booking = TravelBooking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('TravelBookingService: Issuing vouchers', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+            $booking->update([
+                'status' => 'cancelled',
+                'payment_status' => $booking->payment_status === 'completed' ? 'refunded' : $booking->payment_status,
+                'cancellation_reason' => $reason,
+                'cancelled_at' => now(),
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-    DB::transaction(function () use ($booking) {
-                $booking->update([
-                    'vouchers_issued_at' => now(),
-                    'voucher_codes' => $this->generateVoucherCodes($booking->participants),
-                ]);
-                return true;
-            });
-        }
-
-        public function cancelBooking(int $bookingId, string $reason = ''): bool
-        {
-
-
-            $booking = TravelBooking::findOrFail($bookingId);
-
-            Log::channel('audit')->info('TravelBookingService: Cancelling booking', [
-                'correlation_id' => $booking->correlation_id,
-                'booking_id' => $bookingId,
+            $this->logger->info('Travel booking cancelled', [
+                'booking_id' => $booking->id,
+                'participants_released' => $booking->participants,
                 'reason' => $reason,
+                'refund_issued' => $booking->payment_status === 'refunded',
+                'correlation_id' => $correlationId,
             ]);
 
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            return $booking->refresh();
+        });
+    }
+
+    /**
+     * Завершение тура и выплата туроператору.
+     */
+    public function completeTourPayout(int $bookingId, string $correlationId): TravelBooking
+    {
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'travel_payout',
+            amount: 0,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($bookingId, $correlationId): TravelBooking {
+            $booking = TravelBooking::with('tour')->lockForUpdate()->findOrFail($bookingId);
+
+            if ($booking->status !== 'confirmed') {
+                throw new \RuntimeException("Booking {$bookingId} is not confirmed for payout.");
+            }
+
+            $payoutAmount = $booking->total_price - $booking->platform_fee;
+
+            $this->wallet->credit(
+                userId: $booking->tour->tour_operator_id,
+                amount: $payoutAmount,
+                type: 'travel_tour_payout',
+                reason: "Tour booking #{$booking->id} completed",
+                correlationId: $correlationId,
             );
-    DB::transaction(function () use ($booking, $reason) {
-                $booking->update([
-                    'status' => 'cancelled',
-                    'cancellation_reason' => $reason,
-                ]);
 
-                // Refund if paid
-                if ($booking->payment_status === 'paid') {
-                    $this->walletService->credit(
-                        tenantId: $booking->tenant_id,
-                        amount: (int) ($booking->total_price * 0.95),
-                        reason: 'travel_booking_refund',
-                        correlationId: $booking->correlation_id,
-                    );
-                }
+            $booking->update([
+                'status' => 'completed',
+                'payout_amount' => $payoutAmount,
+                'completed_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                return true;
-            });
-        }
+            $this->logger->info('Travel tour payout completed', [
+                'booking_id' => $booking->id,
+                'payout_amount' => $payoutAmount,
+                'tour_operator_id' => $booking->tour->tour_operator_id,
+                'correlation_id' => $correlationId,
+            ]);
 
-        public function generateItinerary(int $bookingId): Collection
-        {
-
-
-            $booking = TravelBooking::with('tour')->findOrFail($bookingId);
-            return collect($booking->tour->itinerary ?? []);
-        }
-
-        private function generateVoucherCodes(int $count): array
-        {
-            return collect()->times($count, fn () => 'TOUR-' . strtoupper(Str::random(8)))->toArray();
-        }
+            return $booking->refresh();
+        });
+    }
 }

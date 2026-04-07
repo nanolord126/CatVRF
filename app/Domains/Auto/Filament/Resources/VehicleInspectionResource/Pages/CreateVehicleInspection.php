@@ -2,14 +2,16 @@
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInspectionResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateVehicleInspection extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateVehicleInspection extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = VehicleInspectionResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -24,8 +26,8 @@ final class CreateVehicleInspection extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
-                Log::channel('audit')->info('VehicleInspection created', [
+            $this->db->transaction(function () {
+                $this->logger->info('VehicleInspection created', [
                     'correlation_id' => $this->record->correlation_id,
                     'inspection_id' => $this->record->id,
                     'vehicle_id' => $this->record->vehicle_id,

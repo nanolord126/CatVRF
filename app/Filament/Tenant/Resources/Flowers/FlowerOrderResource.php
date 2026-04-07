@@ -2,14 +2,21 @@
 
 namespace App\Filament\Tenant\Resources\Flowers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Models\FlowerOrder;
+use Filament\Forms;
+use Filament\Forms\Components\{DatePicker, FileUpload, RichEditor, Section, Select, TagsInput, Textarea, TextInput, Toggle};
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\{Filter, SelectFilter};
+use Filament\Tables\Actions\{BulkActionGroup, DeleteBulkAction, EditAction, ViewAction};
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
-final class FlowerOrderResource extends Model
+final class FlowerOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = FlowerOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -124,30 +131,27 @@ final class FlowerOrderResource extends Model
                         ->sortable()
                         ->toggleable(isToggledHiddenByDefault: true),
 
-                    BadgeColumn::make('status')
+                    TextColumn::make('status')
                         ->label('Статус')
-                        ->colors([
-                            'gray' => 'draft',
-                            'success' => 'published',
-                            'danger' => 'archived',
-                        ])
-                        ->icons([
-                            'heroicon-m-pencil' => 'draft',
-                            'heroicon-m-check' => 'published',
-                            'heroicon-m-archive-box' => 'archived',
-                        ])
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'published' => 'success',
+                            'archived' => 'danger',
+                            default => 'gray',
+                        })
+                        ->icon(fn (string $state): string => match ($state) {
+                            'draft' => 'heroicon-m-pencil',
+                            'published' => 'heroicon-m-check',
+                            'archived' => 'heroicon-m-archive-box',
+                            default => 'heroicon-m-question-mark-circle',
+                        })
                         ->sortable(),
 
-                    BadgeColumn::make('is_active')
+                    TextColumn::make('is_active')
                         ->label('Активно')
-                        ->colors([
-                            'success' => true,
-                            'gray' => false,
-                        ])
-                        ->icons([
-                            'heroicon-m-check-circle' => true,
-                            'heroicon-m-x-circle' => false,
-                        ]),
+                        ->badge()
+                        ->color(fn ($state): string => $state ? 'success' : 'gray')
+                        ->icon(fn ($state): string => $state ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle'),
 
                     TextColumn::make('priority')
                         ->label('Приоритет')

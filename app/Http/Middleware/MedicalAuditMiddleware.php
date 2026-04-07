@@ -2,14 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class MedicalAuditMiddleware extends Model
+final class MedicalAuditMiddleware
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Обработка запроса: аудит, лимиты, заголовки.
          *
@@ -24,13 +27,13 @@ final class MedicalAuditMiddleware extends Model
             $request->attributes->set('correlation_id', $correlationId);
 
             // 2. Начальный лог обращения (до обработки)
-            Log::channel('audit')->info('Medical API Request Initialized', [
+            $this->logger->channel('audit')->info('Medical API Request Initialized', [
                 'correlation_id' => $correlationId,
                 'method' => $request->method(),
                 'url' => $request->fullUrl(),
                 'ip' => $request->ip(),
-                'user_id' => auth()->id() ?? 'guest',
-                'tenant_id' => auth()->user()?->tenant_id ?? 'unknown',
+                'user_id' => $this->guard->id() ?? 'guest',
+                'tenant_id' => $this->guard->user()?->tenant_id ?? 'unknown',
                 'payload_size' => strlen($request->getContent()),
             ]);
 
@@ -45,7 +48,7 @@ final class MedicalAuditMiddleware extends Model
             // 5. Финальный лог с результатом и заголовком
             $response->headers->set('X-Correlation-ID', $correlationId);
 
-            Log::channel('audit')->info('Medical API Request Completed', [
+            $this->logger->channel('audit')->info('Medical API Request Completed', [
                 'correlation_id' => $correlationId,
                 'status' => $response->getStatusCode(),
                 'execution_time_ms' => round((microtime(true) - LARAVEL_START) * 1000, 2),
@@ -76,15 +79,15 @@ final class MedicalAuditMiddleware extends Model
          */
         private function checkRequestDensity(Request $request, string $correlationId): void
         {
-            $userId = auth()->id() ?? $request->ip();
+            $userId = $this->guard->id() ?? $request->ip();
             $key = "audit_scan:{$userId}:" . now()->format('Y-m-d-H');
 
             $count = \Illuminate\Support\Facades\Redis::incr($key);
             \Illuminate\Support\Facades\Redis::expire($key, 3600);
 
             // Порог: 200 приватных записей в час для врача (лимит по умолчанию в 2026)
-            if ($count > 200 && !auth()->user()?->hasRole('admin')) {
-                Log::channel('fraud_alert')->error('SUSPECTED DATA SCRAPING DETECTED (Medical Records Scan)', [
+            if ($count > 200 && !$this->guard->user()?->hasRole('admin')) {
+                $this->logger->channel('fraud_alert')->error('SUSPECTED DATA SCRAPING DETECTED (Medical Records Scan)', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'request_count' => $count,

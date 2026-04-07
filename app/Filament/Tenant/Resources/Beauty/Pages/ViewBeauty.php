@@ -1,32 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\BeautyResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
+/**
+ * ViewBeauty — Filament Page (Layer 9).
+ *
+ * Tenant-scoped salon view with audit logging.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\Pages
+ */
 final class ViewBeauty extends ViewRecord
 {
     protected static string $resource = BeautyResource::class;
 
     protected function afterLoad(): void
     {
-        Log::channel('audit')->info('Beauty salon viewed', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
+        app(LoggerInterface::class)->info('Beauty salon viewed', [
+            'record_id'      => $this->record->id,
+            'uuid'           => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
+            'user_id'        => filament()->auth()->id(),
+            'tenant_id'      => filament()->getTenant()?->id,
+            'timestamp'      => now()->toIso8601String(),
         ]);
     }
 
-    public function render()
+    /**
+     * Handle render operation.
+     *
+     * @throws \DomainException
+     */
+    public function render(): \Illuminate\Contracts\View\View
     {
-        Log::channel('audit')->debug('ViewBeauty page rendered', [
+        app(LoggerInterface::class)->debug('ViewBeauty page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
+            'user_id'   => filament()->auth()->id(),
         ]);
 
         return parent::render();

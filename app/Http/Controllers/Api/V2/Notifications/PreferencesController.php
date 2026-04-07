@@ -2,25 +2,17 @@
 
 namespace App\Http\Controllers\Api\V2\Notifications;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class PreferencesController extends Model
+final class PreferencesController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    channel}
-     * - POST /api/v2/notifications/do-not-disturb
-     * - DELETE /api/v2/notifications/do-not-disturb
-     *
-     * @package App\Http\Controllers\Api\V2\Notifications
-     */
-    final class PreferencesController extends BaseApiV2Controller
-    {
-        public function __construct(
+    public function __construct(
             private readonly NotificationPreferencesService $preferencesService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {
             parent::__construct();
         }
         /**
@@ -33,14 +25,14 @@ final class PreferencesController extends Model
         {
             $correlationId = (string) Str::uuid()->toString();
             try {
-                $preferences = $this->preferencesService->getPreferences(auth()->id() ?? 0);
+                $preferences = $this->preferencesService->getPreferences($this->guard->id() ?? 0);
                 return $this->successResponse(
                     data: $preferences,
                     message: 'Preferences retrieved',
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get preferences', [
+                $this->logger->channel('audit')->error('Failed to get preferences', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -75,7 +67,7 @@ final class PreferencesController extends Model
                     'reminders' => 'nullable|boolean'
                 ]);
                 $this->preferencesService->updateChannelPreferences(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     channel: $channel,
                     preferences: $validated
                 );
@@ -85,7 +77,7 @@ final class PreferencesController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update channel preferences', [
+                $this->logger->channel('audit')->error('Failed to update channel preferences', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -112,7 +104,7 @@ final class PreferencesController extends Model
                     'end_time' => 'required|date_format:H:i',
                 ]);
                 $this->preferencesService->setDoNotDisturb(
-                    userId: auth()->id() ?? 0,
+                    userId: $this->guard->id() ?? 0,
                     startTime: $request->get('start_time'),
                     endTime: $request->get('end_time')
                 );
@@ -122,7 +114,7 @@ final class PreferencesController extends Model
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to set DND', [
+                $this->logger->channel('audit')->error('Failed to set DND', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -143,14 +135,14 @@ final class PreferencesController extends Model
         {
             $correlationId = (string) Str::uuid()->toString();
             try {
-                $this->preferencesService->disableDoNotDisturb(auth()->id() ?? 0);
+                $this->preferencesService->disableDoNotDisturb($this->guard->id() ?? 0);
                 return $this->successResponse(
                     data: ['dnd_enabled' => false],
                     message: 'Do-not-disturb disabled',
                     correlationId: $correlationId
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to disable DND', [
+                $this->logger->channel('audit')->error('Failed to disable DND', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

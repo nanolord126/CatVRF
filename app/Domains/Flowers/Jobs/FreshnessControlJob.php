@@ -1,20 +1,35 @@
 <?php declare(strict_types=1);
 
+/**
+ * FreshnessControlJob — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/freshnesscontroljob
+ */
+
+
 namespace App\Domains\Flowers\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class FreshnessControlJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class FreshnessControlJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
 
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null, private readonly LoggerInterface $logger)
         {
             $this->correlationId = $correlationId ?? Str::uuid()->toString();
         }
@@ -24,12 +39,12 @@ final class FreshnessControlJob extends Model
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('FreshnessControlJob started', [
+            $this->logger->info('FreshnessControlJob started', [
                 'correlation_id' => $this->correlationId,
             ]);
 
             // 1. Получение всех цветов (Inventory) с прошлым сроком свежести
-            $staleFlowers = FlowerProduct::whereDate('freshness_date', '<', now())->get();
+            $staleFlowers = FlowerProduct::whereDate('freshness_date', '<', Carbon::now())->get();
 
             foreach ($staleFlowers as $flower) {
                 // 2. Списание или уменьшение остатка (как правило, списание в ноль)
@@ -39,7 +54,7 @@ final class FreshnessControlJob extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
 
-                Log::channel('audit')->warning('Flower Expired (Freshness Control)', [
+                $this->logger->warning('Flower Expired (Freshness Control)', [
                     'flower_id' => $flower->id,
                     'name' => $flower->name,
                     'freshness_date' => $flower->freshness_date,
@@ -47,7 +62,7 @@ final class FreshnessControlJob extends Model
                 ]);
             }
 
-            Log::channel('audit')->info('FreshnessControlJob finished', [
+            $this->logger->info('FreshnessControlJob finished', [
                 'stale_count' => $staleFlowers->count(),
                 'correlation_id' => $this->correlationId,
             ]);

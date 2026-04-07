@@ -2,23 +2,22 @@
 
 namespace App\Domains\GroceryAndDelivery\Integrations;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class PartnerStoreAPIIntegration extends Model
+
+use Psr\Log\LoggerInterface;
+final class PartnerStoreAPIIntegration
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private const PROVIDER_ENDPOINTS = [
             'magnit' => 'https://api.magnit.com/v1',
             'pyaterochka' => 'https://api.pyaterochka.com/v1',
             'vkusvill' => 'https://api.vkusvill.com/v1',
         ];
 
-        public function __construct(
-            private readonly Factory $http,
-        ) {}
+        public function __construct(private readonly Factory $http,
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Синхронизировать товары и остатки из внешнего магазина
@@ -29,12 +28,12 @@ final class PartnerStoreAPIIntegration extends Model
         ): array {
             try {
                 if (!$store->api_provider || !$store->api_token) {
-                    throw new \Exception('Store API credentials not configured');
+                    throw new \RuntimeException('Store API credentials not configured');
                 }
 
                 $endpoint = self::PROVIDER_ENDPOINTS[$store->api_provider] ?? null;
                 if (!$endpoint) {
-                    throw new \Exception("Unsupported API provider: {$store->api_provider}");
+                    throw new \RuntimeException("Unsupported API provider: {$store->api_provider}");
                 }
 
                 // Получаем каталог и остатки
@@ -46,14 +45,14 @@ final class PartnerStoreAPIIntegration extends Model
                     ]);
 
                 if (!$response->successful()) {
-                    throw new \Exception("API call failed: {$response->status()}");
+                    throw new \RuntimeException("API call failed: {$response->status()}");
                 }
 
                 $products = $response->json('data', []);
                 $syncedCount = 0;
                 $errors = [];
 
-                DB::transaction(function () use ($store, $products, &$syncedCount, &$errors, $correlationId) {
+                $this->db->transaction(function () use ($store, $products, &$syncedCount, &$errors, $correlationId) {
                     foreach ($products as $productData) {
                         try {
                             $product = GroceryProduct::firstOrCreate(
@@ -91,7 +90,7 @@ final class PartnerStoreAPIIntegration extends Model
                     }
                 });
 
-                Log::channel('audit')->info('Store inventory synced', [
+                $this->logger->info('Store inventory synced', [
                     'store_id' => $store->id,
                     'provider' => $store->api_provider,
                     'synced_count' => $syncedCount,
@@ -106,7 +105,7 @@ final class PartnerStoreAPIIntegration extends Model
                     'errors' => $errors,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Inventory sync failed', [
+                $this->logger->error('Inventory sync failed', [
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -129,24 +128,24 @@ final class PartnerStoreAPIIntegration extends Model
             try {
                 $endpoint = self::PROVIDER_ENDPOINTS[$store->api_provider] ?? null;
                 if (!$endpoint) {
-                    throw new \Exception("Unsupported API provider: {$store->api_provider}");
+                    throw new \RuntimeException("Unsupported API provider: {$store->api_provider}");
                 }
 
                 $response = $this->http->withToken($store->api_token)
                     ->timeout(15)
                     ->get("{$endpoint}/delivery/slots", [
                         'store_id' => $store->id,
-                        'date_from' => now()->toDateString(),
-                        'date_to' => now()->addDays(7)->toDateString(),
+                        'date_from' => Carbon::now()->toDateString(),
+                        'date_to' => Carbon::now()->addDays(7)->toDateString(),
                     ]);
 
                 if (!$response->successful()) {
-                    throw new \Exception("Failed to fetch delivery slots");
+                    throw new \RuntimeException("Failed to fetch delivery slots");
                 }
 
                 $slots = $response->json('data', []);
 
-                Log::channel('audit')->info('Delivery slots fetched from partner', [
+                $this->logger->info('Delivery slots fetched from partner', [
                     'store_id' => $store->id,
                     'slots_count' => count($slots),
                     'correlation_id' => $correlationId,
@@ -157,7 +156,7 @@ final class PartnerStoreAPIIntegration extends Model
                     'slots' => $slots,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch delivery slots', [
+                $this->logger->error('Failed to fetch delivery slots', [
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -181,7 +180,7 @@ final class PartnerStoreAPIIntegration extends Model
             try {
                 $endpoint = self::PROVIDER_ENDPOINTS[$store->api_provider] ?? null;
                 if (!$endpoint) {
-                    throw new \Exception("Unsupported API provider: {$store->api_provider}");
+                    throw new \RuntimeException("Unsupported API provider: {$store->api_provider}");
                 }
 
                 $response = $this->http->withToken($store->api_token)
@@ -195,12 +194,12 @@ final class PartnerStoreAPIIntegration extends Model
                     ]);
 
                 if (!$response->successful()) {
-                    throw new \Exception("Failed to create delivery order");
+                    throw new \RuntimeException("Failed to create delivery order");
                 }
 
                 $deliveryId = $response->json('delivery_id');
 
-                Log::channel('audit')->info('Delivery order created in partner system', [
+                $this->logger->info('Delivery order created in partner system', [
                     'store_id' => $store->id,
                     'order_id' => $orderData['order_id'],
                     'delivery_id' => $deliveryId,
@@ -212,7 +211,7 @@ final class PartnerStoreAPIIntegration extends Model
                     'delivery_id' => $deliveryId,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create delivery order in partner system', [
+                $this->logger->error('Failed to create delivery order in partner system', [
                     'store_id' => $store->id,
                     'order_id' => $orderData['order_id'] ?? null,
                     'error' => $e->getMessage(),
@@ -237,7 +236,7 @@ final class PartnerStoreAPIIntegration extends Model
             try {
                 $endpoint = self::PROVIDER_ENDPOINTS[$store->api_provider] ?? null;
                 if (!$endpoint) {
-                    throw new \Exception("Unsupported API provider: {$store->api_provider}");
+                    throw new \RuntimeException("Unsupported API provider: {$store->api_provider}");
                 }
 
                 $response = $this->http->withToken($store->api_token)
@@ -245,12 +244,12 @@ final class PartnerStoreAPIIntegration extends Model
                     ->get("{$endpoint}/deliveries/{$deliveryId}");
 
                 if (!$response->successful()) {
-                    throw new \Exception("Failed to fetch delivery status");
+                    throw new \RuntimeException("Failed to fetch delivery status");
                 }
 
                 $status = $response->json();
 
-                Log::channel('audit')->info('Delivery status fetched', [
+                $this->logger->info('Delivery status fetched', [
                     'store_id' => $store->id,
                     'delivery_id' => $deliveryId,
                     'status' => $status['status'] ?? 'unknown',
@@ -264,7 +263,7 @@ final class PartnerStoreAPIIntegration extends Model
                     'eta' => $status['eta'] ?? null,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to fetch delivery status', [
+                $this->logger->error('Failed to fetch delivery status', [
                     'store_id' => $store->id,
                     'delivery_id' => $deliveryId,
                     'error' => $e->getMessage(),
@@ -287,9 +286,9 @@ final class PartnerStoreAPIIntegration extends Model
     {
         private const OSRM_ENDPOINT = 'http://router.project-osrm.org/route/v1';
 
-        public function __construct(
-            private readonly Factory $http,
-        ) {}
+        public function __construct(private readonly Factory $http,
+        private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db) {}
 
         /**
          * Получить оптимальный маршрут для доставки
@@ -335,12 +334,12 @@ final class PartnerStoreAPIIntegration extends Model
                 );
 
                 if (!$response->successful()) {
-                    throw new \Exception('OSRM route calculation failed');
+                    throw new \RuntimeException('OSRM route calculation failed');
                 }
 
                 $trips = $response->json('trips', []);
                 if (empty($trips)) {
-                    throw new \Exception('No trips found in OSRM response');
+                    throw new \RuntimeException('No trips found in OSRM response');
                 }
 
                 $trip = $trips[0];
@@ -359,7 +358,7 @@ final class PartnerStoreAPIIntegration extends Model
                     }
                 }
 
-                Log::channel('audit')->info('Route optimized', [
+                $this->logger->info('Route optimized', [
                     'deliveries_count' => count($deliveries),
                     'total_distance_km' => round($totalDistance / 1000, 2),
                     'total_duration_min' => round($totalDuration / 60, 2),
@@ -373,7 +372,7 @@ final class PartnerStoreAPIIntegration extends Model
                     'duration_minutes' => round($totalDuration / 60, 2),
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Route optimization failed', [
+                $this->logger->error('Route optimization failed', [
                     'deliveries_count' => count($deliveries),
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

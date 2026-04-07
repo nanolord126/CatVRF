@@ -2,18 +2,18 @@
 
 namespace App\Domains\Sports\Fitness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ClassBookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ClassBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,)
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
-        }
+
+    }
 
         /**
          * Забронировать занятие в фитнес-центре
@@ -24,29 +24,21 @@ final class ClassBookingService extends Model
             string $correlationId,
         ): int {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                $bookingId = DB::transaction(function () use ($classId, $userId, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $bookingId = $this->db->transaction(function () use ($classId, $userId, $correlationId) {
                     // Проверить лимит участников
-                    $booked = DB::table('class_bookings')
+                    $booked = $this->db->table('class_bookings')
                         ->where('class_id', $classId)
                         ->where('status', 'booked')
                         ->count();
 
-                    $classData = DB::table('fitness_classes')->findOrFail($classId);
+                    $classData = $this->db->table('fitness_classes')->findOrFail($classId);
                     if ($booked >= $classData->max_participants) {
-                        throw new \Exception('Class is full');
+                        throw new \DomainException('Class is full');
                     }
 
-                    $bookingId = DB::table('class_bookings')->insertGetId([
+                    $bookingId = $this->db->table('class_bookings')->insertGetId([
                         'class_id' => $classId,
                         'user_id' => $userId,
                         'status' => 'booked',
@@ -54,7 +46,7 @@ final class ClassBookingService extends Model
                         'created_at' => now(),
                     ]);
 
-                    Log::channel('audit')->info('Fitness class booked', [
+                    $this->logger->info('Fitness class booked', [
                         'booking_id' => $bookingId,
                         'class_id' => $classId,
                         'user_id' => $userId,
@@ -65,8 +57,8 @@ final class ClassBookingService extends Model
                 });
 
                 return $bookingId;
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Fitness class booking failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Fitness class booking failed', [
                     'class_id' => $classId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -82,30 +74,22 @@ final class ClassBookingService extends Model
         public function cancelBooking(int $bookingId, string $correlationId): bool
         {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($bookingId, $correlationId) {
-                    DB::table('class_bookings')
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($bookingId, $correlationId) {
+                    $this->db->table('class_bookings')
                         ->where('id', $bookingId)
                         ->update(['status' => 'cancelled', 'cancelled_at' => now()]);
 
-                    Log::channel('audit')->info('Fitness class booking cancelled', [
+                    $this->logger->info('Fitness class booking cancelled', [
                         'booking_id' => $bookingId,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
                 return true;
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Fitness class cancellation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Fitness class cancellation failed', [
                     'booking_id' => $bookingId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

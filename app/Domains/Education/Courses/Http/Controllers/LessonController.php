@@ -2,17 +2,16 @@
 
 namespace App\Domains\Education\Courses\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LessonController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class LessonController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly ProgressTrackingService $progressService,
-            private readonly FraudControlService $fraudControlService,) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function indexByCourse(int $id): JsonResponse
         {
@@ -22,16 +21,17 @@ final class LessonController extends Model
                     ->orderBy('sort_order')
                     ->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $lessons,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list lessons', [
+                $this->logger->error('Failed to list lessons', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list lessons',
                 ], 500);
@@ -40,22 +40,15 @@ final class LessonController extends Model
 
         public function store(int $courseId): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -66,7 +59,7 @@ final class LessonController extends Model
                 $course = Course::findOrFail($courseId);
                 $this->authorize('update', $course);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'title' => 'required|string|max:255',
                     'description' => 'required|string',
                     'content' => 'required|string',
@@ -78,7 +71,7 @@ final class LessonController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $lesson = Lesson::create([
-                    'tenant_id' => tenant('id'),
+                    'tenant_id' => tenant()->id,
                     'course_id' => $courseId,
                     'title' => $validated['title'],
                     'description' => $validated['description'],
@@ -90,21 +83,22 @@ final class LessonController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                \Log::channel('audit')->info('Lesson created', [
+                $this->logger->info('Lesson created', [
                     'lesson_id' => $lesson->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $lesson,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create lesson', [
+                $this->logger->error('Failed to create lesson', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create lesson',
                 ], 500);
@@ -113,22 +107,15 @@ final class LessonController extends Model
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -139,7 +126,7 @@ final class LessonController extends Model
                 $lesson = Lesson::findOrFail($id);
                 $this->authorize('update', $lesson);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'title' => 'sometimes|string|max:255',
                     'description' => 'sometimes|string',
                     'content' => 'sometimes|string',
@@ -151,21 +138,22 @@ final class LessonController extends Model
                 $correlationId = Str::uuid()->toString();
                 $lesson->update($validated + ['correlation_id' => $correlationId]);
 
-                \Log::channel('audit')->info('Lesson updated', [
+                $this->logger->info('Lesson updated', [
                     'lesson_id' => $lesson->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $lesson,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update lesson', [
+                $this->logger->error('Failed to update lesson', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update lesson',
                 ], 500);
@@ -181,21 +169,22 @@ final class LessonController extends Model
                 $correlationId = Str::uuid()->toString();
                 $lesson->delete();
 
-                \Log::channel('audit')->info('Lesson deleted', [
+                $this->logger->info('Lesson deleted', [
                     'lesson_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Lesson deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to delete lesson', [
+                $this->logger->error('Failed to delete lesson', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete lesson',
                 ], 500);
@@ -205,7 +194,7 @@ final class LessonController extends Model
         public function updateProgress(int $enrollmentId, int $lessonId): JsonResponse
         {
             try {
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'watch_time_seconds' => 'required|integer|min:0',
                     'mark_complete' => 'sometimes|boolean',
                 ]);
@@ -227,16 +216,17 @@ final class LessonController extends Model
                     );
                 }
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $progress,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update lesson progress', [
+                $this->logger->error('Failed to update lesson progress', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update lesson progress',
                 ], 500);

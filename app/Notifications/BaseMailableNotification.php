@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -16,57 +18,58 @@ abstract class BaseMailableNotification extends BaseNotification
     /**
      * Email template blade file (resources/views/emails/...)
      */
-    protected string $template = 'emails.generic';
+    private string $template = 'emails.generic';
 
     /**
      * Email subject
      */
-    protected string $subject = 'Notification';
+    private string $subject = 'Notification';
 
     /**
      * Email from address (переопределять в подклассах)
      */
-    protected ?string $fromAddress = null;
+    private ?string $fromAddress = null;
 
     /**
      * Email from name
      */
-    protected ?string $fromName = null;
+    private ?string $fromName = null;
 
     /**
      * Reply-to address
      */
-    protected ?string $replyTo = null;
+    private ?string $replyTo = null;
 
     /**
      * CC addresses
      */
-    protected array $cc = [];
+    private array $cc = [];
 
     /**
      * BCC addresses
      */
-    protected array $bcc = [];
+    private array $bcc = [];
 
     /**
      * Вложения (файлы или inline)
      */
-    protected array $attachments = [];
+    private array $attachments = [];
 
     /**
      * Inline attachments (для логотипов, картинок)
      */
-    protected array $inlineAttachments = [];
+    private array $inlineAttachments = [];
 
     /**
      * Locale для email
      */
-    protected ?string $locale = null;
+    private ?string $locale = null;
 
     /**
      * Конструктор
      */
     public function __construct(
+        private readonly ConfigRepository $config,
         int $userId,
         int $tenantId,
         array $data = [],
@@ -83,8 +86,8 @@ abstract class BaseMailableNotification extends BaseNotification
     {
         return new Envelope(
             from: new Address(
-                $this->fromAddress ?? config('mail.from.address'),
-                $this->fromName ?? config('mail.from.name')
+                $this->fromAddress ?? $this->config->get('mail.from.address'),
+                $this->fromName ?? $this->config->get('mail.from.name')
             ),
             replyTo: $this->replyTo ? [new Address($this->replyTo)] : [],
             subject: $this->subject,

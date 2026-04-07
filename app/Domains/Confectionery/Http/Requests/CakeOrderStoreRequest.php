@@ -1,18 +1,34 @@
 <?php declare(strict_types=1);
 
+/**
+ * CakeOrderStoreRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/cakeorderstorerequest
+ */
+
+
 namespace App\Domains\Confectionery\Http\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CakeOrderStoreRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class CakeOrderStoreRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function authorize(): bool
         {
-            return auth()->check();
+            return $this->guard->check();
         }
 
         public function rules(): array
@@ -37,4 +53,20 @@ final class CakeOrderStoreRequest extends Model
                 'delivery_address.required' => 'Укажите адрес доставки',
             ];
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

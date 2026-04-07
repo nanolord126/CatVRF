@@ -2,37 +2,35 @@
 
 namespace App\Domains\FarmDirect\FreshProduce\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProduceOrderController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class ProduceOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FreshProduceService $freshProduceService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FreshProduceService $freshProduceService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $orders = ProduceOrder::where('client_id', auth()->id())
+                $orders = ProduceOrder::where('client_id', $request->user()?->id)
                     ->with('box')
                     ->orderByDesc('created_at')
                     ->paginate(20);
 
-                Log::channel('audit')->info('FreshProduce: orders list', [
-                    'user_id'        => auth()->id(),
+                $this->logger->info('FreshProduce: orders list', [
+                    'user_id'        => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: orders index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: orders index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -40,16 +38,16 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'fresh_produce_order',
                     amount: (int) $request->input('price_kopecks', 0),
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -69,12 +67,12 @@ final class ProduceOrderController extends Model
                     subscriptionId: $validated['subscription_id'] ?? null,
                 );
 
-                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: store error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка оформления заказа', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: store error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка оформления заказа', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -82,10 +80,10 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $order = ProduceOrder::where('client_id', auth()->id())->with('box')->findOrFail($id);
-                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
+                $order = ProduceOrder::where('client_id', $request->user()?->id)->with('box')->findOrFail($id);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Заказ не найден', 'correlation_id' => $correlationId], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Заказ не найден', 'correlation_id' => $correlationId], 404);
             }
         }
 
@@ -93,22 +91,22 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $order = ProduceOrder::where('client_id', auth()->id())->findOrFail($id);
+                $order = ProduceOrder::where('client_id', $request->user()?->id)->findOrFail($id);
 
-                DB::transaction(function () use ($order, $correlationId): void {
+                $this->db->transaction(function () use ($order, $correlationId): void {
                     $order->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
 
-                    Log::channel('audit')->info('FreshProduce: Order cancelled', [
+                    $this->logger->info('FreshProduce: Order cancelled', [
                         'order_id'       => $order->id,
-                        'user_id'        => auth()->id(),
+                        'user_id'        => $request->user()?->id,
                         'correlation_id' => $correlationId,
                     ]);
                 });
 
-                return response()->json(['success' => true, 'message' => 'Заказ отменён', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Заказ отменён', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: cancel error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка отмены', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: cancel error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка отмены', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -118,13 +116,13 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $subs = ProduceSubscription::where('client_id', auth()->id())
+                $subs = ProduceSubscription::where('client_id', $request->user()?->id)
                     ->with('box')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $subs, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $subs, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -132,16 +130,16 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $userId = auth()->id();
+                $userId = $request->user()?->id;
 
-                $fraudResult = $this->fraudControlService->check(
+                $fraudResult = $this->fraud->check(
                     userId: $userId,
                     operationType: 'fresh_produce_subscribe',
                     amount: 0,
                     correlationId: $correlationId,
                 );
                 if ($fraudResult['decision'] === 'block') {
-                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
                 $validated = $request->validate([
@@ -151,7 +149,7 @@ final class ProduceOrderController extends Model
                     'delivery_slot'    => 'required|string',
                 ]);
 
-                $sub = DB::transaction(function () use ($validated, $userId, $correlationId): ProduceSubscription {
+                $sub = $this->db->transaction(function () use ($validated, $userId, $correlationId): ProduceSubscription {
                     $existing = ProduceSubscription::where('client_id', $userId)
                         ->where('box_id', $validated['box_id'])
                         ->where('status', 'active')
@@ -172,7 +170,7 @@ final class ProduceOrderController extends Model
                         'correlation_id'   => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('FreshProduce: Subscription created', [
+                    $this->logger->info('FreshProduce: Subscription created', [
                         'subscription_id' => $sub->id,
                         'user_id'         => $userId,
                         'correlation_id'  => $correlationId,
@@ -181,14 +179,14 @@ final class ProduceOrderController extends Model
                     return $sub;
                 });
 
-                return response()->json(['success' => true, 'data' => $sub, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $sub, 'correlation_id' => $correlationId], 201);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
             } catch (\RuntimeException $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 409);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 409);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: subscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка подписки', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: subscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка подписки', 'correlation_id' => $correlationId], 500);
             }
         }
 
@@ -196,17 +194,17 @@ final class ProduceOrderController extends Model
         {
             $correlationId = Str::uuid()->toString();
             try {
-                $sub = ProduceSubscription::where('client_id', auth()->id())->findOrFail($id);
+                $sub = ProduceSubscription::where('client_id', $request->user()?->id)->findOrFail($id);
 
-                DB::transaction(function () use ($sub, $correlationId): void {
+                $this->db->transaction(function () use ($sub, $correlationId): void {
                     $sub->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('FreshProduce: Subscription cancelled', ['sub_id' => $sub->id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('FreshProduce: Subscription cancelled', ['sub_id' => $sub->id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'message' => 'Подписка отменена', 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'message' => 'Подписка отменена', 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('FreshProduce: unsubscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                $this->logger->error('FreshProduce: unsubscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
         }
 }

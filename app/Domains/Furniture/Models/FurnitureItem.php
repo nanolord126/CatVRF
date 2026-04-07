@@ -1,40 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Models;
 
+use FurnitureDomainTrait, SoftDeletes;
+use FurnitureDomainTrait;
+use HasFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FurnitureItem extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
-
-        protected $table = 'furniture_items';
-        protected $fillable = [
-            'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
-            'name', 'description', 'category', 'material', 'style',
-            'price', 'current_stock', 'dimensions', 'weight_kg',
-            'assembly_required', 'assembly_price', 'photo_url', 'status', 'tags',
-        ];
-        protected $casts = [
-            'price'             => 'int',
-            'current_stock'     => 'int',
-            'assembly_price'    => 'int',
-            'weight_kg'         => 'float',
-            'assembly_required' => 'boolean',
-            'tags'              => 'json',
-        ];
-
+
+    /**
+         * Boot the model to handle automatic UUID and tenant scoping.
+         */
         protected static function booted(): void
         {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+            static::creating(function (Model $model) {
+                if (empty($model->uuid)) {
+                    $model->uuid = (string) Str::uuid();
+                }
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                    $model->tenant_id = tenant()->id;
                 }
             });
+
+            if (function_exists('tenant') && tenant()) {
+                static::addGlobalScope('tenant_id', function ($builder) {
+                    $builder->where('tenant_id', tenant()->id);
+                });
+            }
         }
-}
+    }

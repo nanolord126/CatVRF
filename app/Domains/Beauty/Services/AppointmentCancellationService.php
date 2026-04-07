@@ -1,120 +1,127 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyAppointment;
+use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 
-final class AppointmentCancellationService extends Model
+/**
+ * AppointmentCancellationService — расчёт штрафа и возврата при отмене записи.
+ *
+ * Учитывает групповые, свадебные, корпоративные и детские правила отмены,
+ * no-show историю, B2B-специфику и сложность услуги.
+ */
+final readonly class AppointmentCancellationService
 {
-    use HasFactory;
+    public function __construct(
+        private GroupBookingService $groupBookingService,
+        private WeddingGroupService $weddingGroupService,
+        private KidsPartyService $kidsPartyService,
+        private CorporateEventService $corporateEventService,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {
+    }
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Рассчитать штраф и сумму к возврату (Refund Calculation).
-         *
-         * @param Appointment $appointment Запись
-         * @param Carbon $cancelledAt Момент отмены
-         * @return array {penalty_amount, refund_amount, penalty_percent, reason}
-         */
-        public function calculateRefund(Appointment $appointment, Carbon $cancelledAt): array
-        {
-            $policy = $appointment->cancellation_policy ?? CancellationPolicy::FLEXIBLE;
-            $startAt = $appointment->datetime_start;
-            $hoursBefore = $cancelledAt->diffInHours($startAt, false);
-            $totalPrice = $appointment->price_cents;
+     * Рассчитать штраф и сумму к возврату (Refund Calculation).
+     *
+     * @return array{penalty_amount: int, refund_amount: int, penalty_percent: int, reason: string}
+     */
+    public function calculateRefund(BeautyAppointment $appointment, Carbon $cancelledAt): array
+    {
+        $startAt = $appointment->start_at;
+        $hoursBefore = $cancelledAt->diffInHours($startAt, false);
+        $totalPrice = $appointment->price_cents;
 
-            // 1. Базовый штраф по политике
-            $penaltyPercent = (float)$policy->getPenaltyPercent($hoursBefore);
+        $penaltyPercent = $this->getBasePenaltyPercent($hoursBefore);
 
-            // 2. Групповые правила (Увеличение штрафа при отмене группы)
-            if ($appointment->is_group) {
-                $groupService = new GroupBookingService();
-                $groupFees = $groupService->calculateGroupFees($appointment, 'cancel');
-                $penaltyMultiplier = $groupFees['penalty_multiplier'];
-                $penaltyPercent = min(100, $penaltyPercent * $penaltyMultiplier);
-            }
-
-            // 2.1. Свадебные правила (Wedding Canon 2026)
-            if ($appointment->is_wedding_group) {
-                $weddingService = new WeddingGroupService();
-                $weddingFees = $weddingService->calculateWeddingFees($appointment, 'cancel');
-                $weddingPenalty = (float)$weddingFees['fee_percent'];
-                $weddingMultiplier = (float)$weddingFees['multiplier'];
-
-                // Если свадебный штраф выше базового, используем его, умножая на коэффициент
-                $penaltyPercent = max($penaltyPercent, $weddingPenalty);
-                $penaltyPercent = min(100, $penaltyPercent * $weddingMultiplier);
-            }
-
-            // 2.2. Правила детских праздников (Kids Party Canon 2026)
-            if ($appointment->is_kids_party) {
-                $kidsService = new KidsPartyService();
-                $kidsFees = $kidsService->calculateKidsPartyFees($appointment, 'cancel');
-                $kidsPenalty = (float)$kidsFees['fee_percent'];
-                $kidsMultiplier = (float)$kidsFees['multiplier'];
-
-                // Выбираем более строгий штраф
-                $penaltyPercent = max($penaltyPercent, $kidsPenalty);
-                $penaltyPercent = min(100, $penaltyPercent * $kidsMultiplier);
-            }
-
-            // 2.3. Корпоративные правила (Corporate Canon 2026)
-            if ($appointment->is_corporate_event) {
-                $corporateService = new CorporateEventService();
-                $corporateFees = $corporateService->calculateCorporateFees($appointment, 'cancel');
-                $corporatePenalty = (float)$corporateFees['fee_percent'];
-                $corporateMultiplier = (float)$corporateFees['multiplier'];
-
-                // Выбираем более строгий штраф (максимальный из всех политик)
-                $penaltyPercent = max($penaltyPercent, $corporatePenalty);
-                $penaltyPercent = min(100, $penaltyPercent * $corporateMultiplier);
-            }
-
-            // 3. Увеличение штрафа для сложных услуг (+10%)
-            $isComplex = isset($appointment->metadata['is_complex']) && $appointment->metadata['is_complex'];
-            if ($isComplex && $penaltyPercent > 0 && $penaltyPercent < 100) {
-                $penaltyPercent += 10;
-            }
-
-            // 4. Проверка на повторные no-show (+20% штраф)
-            $noShowCount = DB::table('appointments')
-                ->where('client_id', $appointment->client_id)
-                ->where('status', Appointment::STATUS_NO_SHOW)
-                ->where('created_at', '>=', now()->subMonths(3))
-                ->count();
-
-            if ($noShowCount > 1 && $penaltyPercent > 0 && $penaltyPercent < 100) {
-                $penaltyPercent = min(100, $penaltyPercent + 20);
-            }
-
-            // 5. Специальные правила для B2B (через metadata или бизнес-группу)
-            $isB2B = $appointment->metadata['is_b2b'] ?? false;
-            if ($isB2B && $penaltyPercent === 0) {
-                // В B2B всегда удерживаем 5% за банковский эквайринг при отмене
-                $penaltyPercent = 5;
-            }
-
-            // Финализация суммы
-            $penaltyAmount = (int)($totalPrice * ($penaltyPercent / 100));
-            $refundAmount  = max(0, $totalPrice - $penaltyAmount);
-
-            Log::channel('audit')->info('Penalty calculated for appointment cancellation', [
-                'appointment_id' => $appointment->id,
-                'hours_before' => $hoursBefore,
-                'is_group' => $appointment->is_group,
-                'policy' => $policy->value,
-                'penalty_percent' => $penaltyPercent,
-                'penalty_amount' => $penaltyAmount,
-                'refund_amount' => $refundAmount,
-                'correlation_id' => $appointment->correlation_id,
-            ]);
-
-            return [
-                'penalty_amount' => $penaltyAmount,
-                'refund_amount'  => $refundAmount,
-                'penalty_percent'=> (int)$penaltyPercent,
-                'reason'         => "Policy: {$policy->value}, Complex: " . ($isComplex ? 'yes' : 'no') . ", Group: " . ($appointment->is_group ? 'yes' : 'no'),
-            ];
+        if ($appointment->is_group) {
+            $groupFees = $this->groupBookingService->calculateGroupFees($appointment, 'cancel');
+            $penaltyMultiplier = (float) $groupFees['penalty_multiplier'];
+            $penaltyPercent = min(100.0, $penaltyPercent * $penaltyMultiplier);
         }
+
+        if ($appointment->is_wedding_group) {
+            $weddingFees = $this->weddingGroupService->calculateWeddingFees($appointment, 'cancel');
+            $weddingPenalty = (float) $weddingFees['fee_percent'];
+            $weddingMultiplier = (float) $weddingFees['multiplier'];
+            $penaltyPercent = max($penaltyPercent, $weddingPenalty);
+            $penaltyPercent = min(100.0, $penaltyPercent * $weddingMultiplier);
+        }
+
+        if ($appointment->is_kids_party) {
+            $kidsFees = $this->kidsPartyService->calculateKidsPartyFees($appointment, 'cancel');
+            $kidsPenalty = (float) $kidsFees['fee_percent'];
+            $kidsMultiplier = (float) $kidsFees['multiplier'];
+            $penaltyPercent = max($penaltyPercent, $kidsPenalty);
+            $penaltyPercent = min(100.0, $penaltyPercent * $kidsMultiplier);
+        }
+
+        if ($appointment->is_corporate_event) {
+            $corporateFees = $this->corporateEventService->calculateCorporateFees($appointment, 'cancel');
+            $corporatePenalty = (float) $corporateFees['fee_percent'];
+            $corporateMultiplier = (float) $corporateFees['multiplier'];
+            $penaltyPercent = max($penaltyPercent, $corporatePenalty);
+            $penaltyPercent = min(100.0, $penaltyPercent * $corporateMultiplier);
+        }
+
+        $isComplex = isset($appointment->metadata['is_complex']) && $appointment->metadata['is_complex'];
+        if ($isComplex && $penaltyPercent > 0 && $penaltyPercent < 100) {
+            $penaltyPercent += 10;
+        }
+
+        $noShowCount = $this->db->table('beauty_appointments')
+            ->where('client_id', $appointment->client_id)
+            ->where('status', 'no_show')
+            ->where('created_at', '>=', Carbon::now()->subMonths(3))
+            ->count();
+
+        if ($noShowCount > 1 && $penaltyPercent > 0 && $penaltyPercent < 100) {
+            $penaltyPercent = min(100.0, $penaltyPercent + 20);
+        }
+
+        $isB2B = $appointment->metadata['is_b2b'] ?? false;
+        if ($isB2B && $penaltyPercent === 0.0) {
+            $penaltyPercent = 5.0;
+        }
+
+        $penaltyAmount = (int) ($totalPrice * ($penaltyPercent / 100));
+        $refundAmount = max(0, $totalPrice - $penaltyAmount);
+
+        $this->logger->info('Penalty calculated for appointment cancellation', [
+            'appointment_id' => $appointment->id,
+            'hours_before' => $hoursBefore,
+            'is_group' => $appointment->is_group,
+            'penalty_percent' => $penaltyPercent,
+            'penalty_amount' => $penaltyAmount,
+            'refund_amount' => $refundAmount,
+            'correlation_id' => $appointment->correlation_id,
+        ]);
+
+        return [
+            'penalty_amount' => $penaltyAmount,
+            'refund_amount' => $refundAmount,
+            'penalty_percent' => (int) $penaltyPercent,
+            'reason' => 'Complex: ' . ($isComplex ? 'yes' : 'no') . ', Group: ' . ($appointment->is_group ? 'yes' : 'no'),
+        ];
+    }
+
+    /**
+     * Базовый процент штрафа при отмене по количеству часов.
+     */
+    private function getBasePenaltyPercent(int $hoursBefore): float
+    {
+        return match (true) {
+            $hoursBefore >= 48 => 0.0,
+            $hoursBefore >= 24 => 10.0,
+            $hoursBefore >= 12 => 25.0,
+            $hoursBefore >= 4 => 50.0,
+            default => 100.0,
+        };
+    }
 }

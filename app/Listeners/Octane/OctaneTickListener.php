@@ -2,11 +2,21 @@
 
 namespace App\Listeners\Octane;
 
-use Illuminate\Support\Facades\Log;
+
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Laravel\Octane\Events\TickReceived;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 final class OctaneTickListener
 {
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     private int $tickCount = 0;
     private int $lastSecond = 0;
 
@@ -32,13 +42,13 @@ final class OctaneTickListener
     {
         // Trigger job processing if queue is pending
         try {
-            if (\DB::table('jobs')->count() > 0) {
-                Log::channel('octane')->debug('Job queue processed', [
-                    'pending_jobs' => \DB::table('jobs')->count(),
+            if ($this->db->table('jobs')->count() > 0) {
+                $this->logger->channel('octane')->debug('Job queue processed', [
+                    'pending_jobs' => $this->db->table('jobs')->count(),
                 ]);
             }
         } catch (\Exception $e) {
-            Log::channel('octane')->error('Job queue check failed', [
+            $this->logger->channel('octane')->error('Job queue check failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -52,12 +62,12 @@ final class OctaneTickListener
             // Existing TTL keys are auto-expired by Redis
             $info = $redis->info('memory');
 
-            if ($info['used_memory'] > (config('cache.default') === 'redis' ? 512 * 1024 * 1024 : 100 * 1024 * 1024)) {
+            if ($info['used_memory'] > ($this->config->get('cache.default') === 'redis' ? 512 * 1024 * 1024 : 100 * 1024 * 1024)) {
                 $redis->flushdb();
-                Log::channel('octane')->warning('Cache flushed due to memory pressure');
+                $this->logger->channel('octane')->warning('Cache flushed due to memory pressure');
             }
         } catch (\Exception $e) {
-            Log::channel('octane')->error('Cache cleanup failed', [
+            $this->logger->channel('octane')->error('Cache cleanup failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -70,13 +80,13 @@ final class OctaneTickListener
             $memoryUsage = memory_get_usage(true) / 1024 / 1024;
             $peakMemory = memory_get_peak_usage(true) / 1024 / 1024;
 
-            Log::channel('octane')->debug('Octane metrics', [
+            $this->logger->channel('octane')->debug('Octane metrics', [
                 'memory_mb' => round($memoryUsage, 2),
                 'peak_memory_mb' => round($peakMemory, 2),
                 'tick_count' => $this->tickCount,
             ]);
         } catch (\Exception $e) {
-            Log::channel('octane')->error('Metrics reporting failed', [
+            $this->logger->channel('octane')->error('Metrics reporting failed', [
                 'error' => $e->getMessage(),
             ]);
         }

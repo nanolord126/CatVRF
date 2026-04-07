@@ -2,19 +2,22 @@
 
 namespace App\Domains\Education\Courses\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CourseService extends Model
+use Illuminate\Cache\RateLimiter;
+use Carbon\Carbon;
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class CourseService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraud,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
 
         /**
          * Запись на курс (Enrollment).
@@ -24,28 +27,22 @@ final class CourseService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // 1. Rate Limiting — защита от массовых бесплатных записей
-            if (RateLimiter::tooManyAttempts("courses:enroll:{$userId}", 5)) {
+            if ($this->rateLimiter->tooManyAttempts("courses:enroll:{$userId}", 5)) {
                 throw new \RuntimeException("Слишком много попыток записи. Попробуйте позже.", 429);
             }
-            RateLimiter::hit("courses:enroll:{$userId}", 3600);
+            $this->rateLimiter->hit("courses:enroll:{$userId}", 3600);
 
-            return DB::transaction(function () use ($userId, $courseId, $isB2B, $meta, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $courseId, $isB2B, $meta, $correlationId) {
                 $course = Course::findOrFail($courseId);
 
                 // Расчет цены с учетом B2B скидки (КАНОН 20%)
                 $priceKopecks = $isB2B ? (int)($course->price_kopecks * 0.8) : $course->price_kopecks;
 
                 // 2. Fraud Check (проверка на отмыв бонусов через курсы)
-                $fraud = $this->fraud->check([
-                    "user_id" => $userId,
-                    "operation_type" => "course_enroll",
-                    "amount" => $priceKopecks,
-                    "correlation_id" => $correlationId,
-                    "meta" => ["course_id" => $courseId, "is_b2b" => $isB2B]
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
                 if ($fraud["decision"] === "block") {
-                    Log::channel("audit")->warning("Courses Security Block", ["user_id" => $userId, "score" => $fraud["score"]]);
+                    $this->logger->warning("Courses Security Block", ["user_id" => $userId, "score" => $fraud["score"]]);
                     throw new \RuntimeException("Запись заблокирована службой безопасности.", 403);
                 }
 
@@ -62,7 +59,7 @@ final class CourseService extends Model
                     "tags" => ["vertical:education", $isB2B ? "segment:b2b" : "segment:b2c"]
                 ]);
 
-                Log::channel("audit")->info("Courses: user enrolled", ["enrollment_id" => $enrollment->id, "corr" => $correlationId]);
+                $this->logger->info("Courses: user enrolled", ["enrollment_id" => $enrollment->id, "corr" => $correlationId]);
 
                 return $enrollment;
             });
@@ -77,7 +74,7 @@ final class CourseService extends Model
             $enrollment = Enrollment::findOrFail($enrollmentId);
             $course = $enrollment->course;
 
-            DB::transaction(function () use ($enrollment, $lessonId, $course, $correlationId) {
+            $this->db->transaction(function () use ($enrollment, $lessonId, $course, $correlationId) {
                 $totalLessons = $course->lessons()->count();
                 $completedLessons = $enrollment->completed_lessons_count + 1;
                 $newProgress = (int)(($completedLessons / $totalLessons) * 100);
@@ -95,13 +92,13 @@ final class CourseService extends Model
                         "user_id" => $enrollment->user_id,
                         "course_id" => $course->id,
                         "enrollment_id" => $enrollment->id,
-                        "issued_at" => now(),
+                        "issued_at" => Carbon::now(),
                         "correlation_id" => $correlationId,
                         "verification_code" => Str::upper(Str::random(8))
                     ]);
 
                     $enrollment->update(["certificate_id" => $certificate->id]);
-                    Log::channel("audit")->info("Courses: certificate issued", ["user_id" => $enrollment->user_id, "cert" => $certificate->uuid]);
+                    $this->logger->info("Courses: certificate issued", ["user_id" => $enrollment->user_id, "cert" => $certificate->uuid]);
                 }
             });
         }
@@ -117,7 +114,7 @@ final class CourseService extends Model
             }
 
             // Логирование доступа к живому уроку
-            Log::channel("audit")->info("Courses: access live room", ["user_id" => $userId, "lesson_id" => $lessonId]);
+            $this->logger->info("Courses: access live room", ["user_id" => $userId, "lesson_id" => $lessonId]);
 
             return "https://meet.catvrf.io/" . $lesson->uuid . "?token=" . Str::random(32);
         }

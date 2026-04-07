@@ -2,18 +2,18 @@
 
 namespace App\Domains\Electronics\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ElectronicsAIConstructorService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ElectronicsAIConstructorService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly RecommendationService $recommendation,
+
+    public function __construct(private readonly RecommendationService $recommendation,
             private readonly FraudControlService $fraud,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Analyze a user's intent to build a custom gadget bundle or check compatibility.
@@ -23,17 +23,14 @@ final class ElectronicsAIConstructorService extends Model
         {
             $correlationId = $dto->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-4: AI Gadget Compatibility Check', [
+            $this->logger->info('LAYER-4: AI Gadget Compatibility Check', [
                 'user_id' => $dto->userId,
                 'intent' => $dto->userIntent,
                 'correlation_id' => $correlationId,
             ]);
 
             // 1. Basic Fraud/Quota Check for AI queries
-            $this->fraud->check('ai_constructor_usage', [
-                'user_id' => $dto->userId,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_usage', amount: 0, correlationId: $correlationId ?? '');
 
             // 2. Fetch all related products based on user intent keywords
             $keywords = explode(' ', strtolower($dto->userIntent));
@@ -60,7 +57,7 @@ final class ElectronicsAIConstructorService extends Model
             // 4. Construct AI Response Payload
             $analyzedBundles = $this->analyzeBundles($inventory, $recommendations);
 
-            Log::channel('audit')->info('LAYER-4: AI Construction Complete', [
+            $this->logger->info('LAYER-4: AI Construction Complete', [
                 'bundles_count' => count($analyzedBundles),
                 'correlation_id' => $correlationId,
             ]);
@@ -109,19 +106,19 @@ final class ElectronicsAIConstructorService extends Model
          */
         public function saveDesignDraft(int $userId, array $payload, string $correlationId): void
         {
-            Log::channel('audit')->info('LAYER-4: Saving AI Design Draft', [
+            $this->logger->info('LAYER-4: Saving AI Design Draft', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
 
             // Persistence in user_ai_designs table (as per CANON)
-            DB::table('user_ai_designs')->insert([
+            $this->db->table('user_ai_designs')->insert([
                 'user_id' => $userId,
                 'vertical' => 'electronics',
                 'design_data' => json_encode($payload),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
             ]);
         }
 }

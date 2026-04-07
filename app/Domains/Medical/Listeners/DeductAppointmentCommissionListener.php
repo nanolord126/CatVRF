@@ -2,18 +2,21 @@
 
 namespace App\Domains\Medical\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductAppointmentCommissionListener extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductAppointmentCommissionListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(AppointmentBooked $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $appointment = $event->appointment;
                     $commission = $appointment->commission_amount;
 
@@ -34,7 +37,7 @@ final class DeductAppointmentCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Medical appointment commission deducted', [
+                    $this->logger->info('Medical appointment commission deducted', [
                         'appointment_id' => $appointment->id,
                         'doctor_id' => $appointment->doctor_id,
                         'patient_id' => $appointment->patient_id,
@@ -43,7 +46,7 @@ final class DeductAppointmentCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to deduct appointment commission', [
+                $this->logger->error('Failed to deduct appointment commission', [
                     'appointment_id' => $event->appointment->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -51,4 +54,27 @@ final class DeductAppointmentCommissionListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

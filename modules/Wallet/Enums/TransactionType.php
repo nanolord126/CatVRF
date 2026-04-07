@@ -5,19 +5,16 @@ namespace Modules\Wallet\Enums;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-final class TransactionType extends Model
+enum TransactionType: string
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     case DEPOSIT = 'deposit';
-        case WITHDRAWAL = 'withdrawal';
-        case TRANSFER = 'transfer';
-        case PAYMENT = 'payment';
-        case REFUND = 'refund';
-        case BONUS = 'bonus';
-        case COMMISSION = 'commission';
-        case FEE = 'fee';
+    case WITHDRAWAL = 'withdrawal';
+    case TRANSFER = 'transfer';
+    case PAYMENT = 'payment';
+    case REFUND = 'refund';
+    case BONUS = 'bonus';
+    case COMMISSION = 'commission';
+    case FEE = 'fee';
     
         public function label(): string
         {

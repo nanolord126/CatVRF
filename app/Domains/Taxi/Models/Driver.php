@@ -2,14 +2,18 @@
 
 namespace App\Domains\Taxi\Models;
 
+use Illuminate\Http\Request;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 final class Driver extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes, LogsActivity;
 
         protected $table = 'taxi_drivers';
@@ -49,7 +53,7 @@ final class Driver extends Model
             static::creating(function (Driver $driver) {
                 $driver->uuid = $driver->uuid ?? (string) Str::uuid();
                 $driver->tenant_id = $driver->tenant_id ?? (tenant()->id ?? 1);
-                $driver->correlation_id = $driver->correlation_id ?? request()->header('X-Correlation-ID');
+                $driver->correlation_id = $driver->correlation_id ?? $this->request->header('X-Correlation-ID');
             });
 
             static::addGlobalScope('tenant', function ($query) {

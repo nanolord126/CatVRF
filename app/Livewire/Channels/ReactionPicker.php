@@ -2,25 +2,32 @@
 
 namespace App\Livewire\Channels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ReactionPicker extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Livewire\Component;
+use Illuminate\Contracts\Auth\Guard;
+
+final class ReactionPicker extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly ConfigRepository $config,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public int $postId;
+    private int $postId;
 
-        public string $postUuid;
+        private string $postUuid;
 
         /** @var array{emoji: string, name: string, count: int}[] */
-        public array $reactions = [];
+        private array $reactions = [];
 
         /** emoji → bool */
-        public array $myReactions = [];
+        private array $myReactions = [];
 
-        public bool $showPicker = false;
+        private bool $showPicker = false;
 
         protected $listeners = ['reaction-updated' => 'refreshReactions'];
 
@@ -47,12 +54,12 @@ final class ReactionPicker extends Model
             $this->reactions = $service->getReactions($post);
 
             // Реакции текущего пользователя
-            if (auth()->check()) {
+            if ($this->guard->check()) {
                 foreach ($this->reactions as $r) {
                     $this->myReactions[$r['emoji']] = $service->hasReacted(
                         $post,
                         $r['emoji'],
-                        (int) auth()->id(),
+                        (int) $this->guard->id(),
                         ''
                     );
                 }
@@ -68,14 +75,14 @@ final class ReactionPicker extends Model
                     ->firstOrFail();
 
                 $sessionHash = session()->getId();
-                $userId      = auth()->id() ? (int) auth()->id() : null;
+                $userId      = $this->guard->id() ? (int) $this->guard->id() : null;
 
                 $updatedReactions = app(ReactionService::class)->addReaction(
                     post:        $post,
                     emoji:       $emoji,
                     userId:      $userId,
                     sessionHash: $sessionHash,
-                    ipAddress:   request()->ip() ?? '',
+                    ipAddress:   $this->request->ip() ?? '',
                 );
 
                 $this->reactions = $updatedReactions;
@@ -98,7 +105,7 @@ final class ReactionPicker extends Model
         public function render(): View
         {
             return view('livewire.channels.reaction-picker', [
-                'allowed' => config('channels.allowed_reactions', []),
+                'allowed' => $this->config->get('channels.allowed_reactions', []),
             ]);
         }
 }

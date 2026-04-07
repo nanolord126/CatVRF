@@ -2,14 +2,14 @@
 
 namespace App\Domains\Auto\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PricingService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class PricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Расчет стоимости такси с учетом времени суток, спроса (Surge) и класса авто.
          */
@@ -19,14 +19,13 @@ final class PricingService extends Model
             $perKmPrice = 2500;  // 25 руб/км
 
             $classMultiplier = match ($carClass) {
-                'comfort' => 1.5,
                 'business' => 2.5,
                 default => 1.0,
             };
 
             $totalKopecks = (int) (($basePrice + ($distanceKm * $perKmPrice)) * $classMultiplier * $surgeMultiplier);
 
-            Log::channel('audit')->info('Taxi ride estimate', [
+            $this->logger->info('Taxi ride estimate', [
                 'distance_km' => $distanceKm,
                 'class' => $carClass,
                 'surge' => $surgeMultiplier,
@@ -55,7 +54,7 @@ final class PricingService extends Model
                 $total += ($task['work_hour_estimate'] ?? 1) * 150000;
             }
 
-            Log::channel('audit')->info('Repair basic estimate', [
+            $this->logger->info('Repair basic estimate', [
                 'tasks_count' => count($tasks),
                 'total_kopecks' => $total,
                 'correlation_id' => $correlationId,
@@ -70,7 +69,6 @@ final class PricingService extends Model
         public function calculateWashCost(string $washType, string $vehicleType, string $correlationId): int
         {
             $base = match ($washType) {
-                'internal' => 50000,
                 'external' => 30000,
                 'full' => 75000,
                 'complex' => 120000,
@@ -78,7 +76,6 @@ final class PricingService extends Model
             };
 
             $multiplier = match ($vehicleType) {
-                'suv' => 1.25,
                 'truck' => 2.0,
                 'bus' => 3.0,
                 default => 1.0,
@@ -86,7 +83,7 @@ final class PricingService extends Model
 
             $total = (int) ($base * $multiplier);
 
-            Log::channel('audit')->info('Wash cost calculation', [
+            $this->logger->info('Wash cost calculation', [
                 'type' => $washType,
                 'vehicle' => $vehicleType,
                 'total_kopecks' => $total,

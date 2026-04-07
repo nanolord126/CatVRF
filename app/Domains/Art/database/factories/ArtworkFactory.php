@@ -5,12 +5,13 @@ namespace Database\Factories;
 
 use App\Domains\Art\Models\Artwork;
 use App\Domains\Art\Models\Artist;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 final class ArtworkFactory extends Factory
 {
-    protected $model = Artwork::class;
+    private $model = Artwork::class;
 
     public function definition(): array
     {
@@ -35,7 +36,7 @@ final class ArtworkFactory extends Factory
 
     public function delivered(): self
     {
-        return $this->state(fn () => ['delivered_at' => now()]);
+        return $this->state(fn () => ['delivered_at' => Carbon::now()]);
     }
 
     public function hidden(): self

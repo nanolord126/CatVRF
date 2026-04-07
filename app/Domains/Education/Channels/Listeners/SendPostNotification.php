@@ -2,27 +2,25 @@
 
 namespace App\Domains\Education\Channels\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SendPostNotification extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final class SendPostNotification
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
 
         public string $queue = 'notifications';
 
         public int $tries = 3;
 
-        public function __construct(
-            private readonly NotificationService $notificationService,
-        ) {}
+        public function __construct(private readonly NotificationService $notificationService,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger) {}
 
         public function handle(PostPublished $event): void
         {
-            if (!config('channels.notifications.push_on_publish', true)) {
+            if (!$this->config->get('channels.notifications.push_on_publish', true)) {
                 return;
             }
 
@@ -58,7 +56,7 @@ final class SendPostNotification extends Model
                                 ],
                             );
                         } catch (\Throwable $e) {
-                            Log::channel('audit')->warning('Failed to send post notification', [
+                            $this->logger->warning('Failed to send post notification', [
                                 'correlation_id' => $event->correlationId,
                                 'post_id'        => $post->id,
                                 'user_id'        => $subscriber->user_id,
@@ -68,7 +66,7 @@ final class SendPostNotification extends Model
                     }
                 });
 
-            Log::channel('audit')->info('PostPublished notifications dispatched', [
+            $this->logger->info('PostPublished notifications dispatched', [
                 'correlation_id' => $event->correlationId,
                 'post_id'        => $post->id,
                 'channel_id'     => $channel->id,

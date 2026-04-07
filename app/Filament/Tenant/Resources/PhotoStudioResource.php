@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PhotoStudioResource extends Model
+final class PhotoStudioResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PhotoStudio::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-camera';
@@ -98,22 +93,15 @@ final class PhotoStudioResource extends Model
                         ])->columns(2),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPhotoStudio::route('/'),
-                'create' => Pages\\CreatePhotoStudio::route('/create'),
-                'edit' => Pages\\EditPhotoStudio::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotoStudio::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPhotoStudio::route('/'),
-                'create' => Pages\\CreatePhotoStudio::route('/create'),
-                'edit' => Pages\\EditPhotoStudio::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotoStudio::route('/{record}'),
+                'index' => Pages\ListPhotoStudio::route('/'),
+                'create' => Pages\CreatePhotoStudio::route('/create'),
+                'edit' => Pages\EditPhotoStudio::route('/{record}/edit'),
+                'view' => Pages\ViewPhotoStudio::route('/{record}'),
             ];
         }
 }

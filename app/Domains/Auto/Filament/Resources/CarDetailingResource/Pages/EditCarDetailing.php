@@ -2,14 +2,16 @@
 
 namespace App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditCarDetailing extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditCarDetailing extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = CarDetailingResource::class;
 
         protected function getHeaderActions(): array
@@ -17,7 +19,7 @@ final class EditCarDetailing extends Model
             return [
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('CarDetailing deleted', [
+                        $this->logger->info('CarDetailing deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'detailing_id' => $this->record->id,
                         ]);
@@ -27,10 +29,10 @@ final class EditCarDetailing extends Model
                     ->visible(fn () => $this->record->status === 'in_progress')
                     ->requiresConfirmation()
                     ->action(function () {
-                        DB::transaction(function () {
+                        $this->db->transaction(function () {
                             $this->record->update(['status' => 'completed']);
 
-                            Log::channel('audit')->info('DetailingCompleted', [
+                            $this->logger->info('DetailingCompleted', [
                                 'correlation_id' => $this->record->correlation_id,
                                 'detailing_id' => $this->record->id,
                             ]);
@@ -51,7 +53,7 @@ final class EditCarDetailing extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('CarDetailing updated', [
+            $this->logger->info('CarDetailing updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'detailing_id' => $this->record->id,
                 'status' => $this->record->status,

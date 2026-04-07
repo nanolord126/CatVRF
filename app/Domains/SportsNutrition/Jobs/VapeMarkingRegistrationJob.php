@@ -2,14 +2,11 @@
 
 namespace App\Domains\SportsNutrition\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VapeMarkingRegistrationJob extends Model
+use Psr\Log\LoggerInterface;
+final class VapeMarkingRegistrationJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 5;
@@ -20,15 +17,14 @@ final class VapeMarkingRegistrationJob extends Model
          */
         public function __construct(
             public int $orderId,
-            public string $correlationId,
-        ) {}
+            public string $correlationId, private readonly LoggerInterface $logger) {}
 
         /**
          * Выполнение регистрации выбытия в ГИС МТ.
          */
         public function handle(): void
         {
-            Log::channel('audit')->info('Vape marking registration job: started', [
+            $this->logger->info('Vape marking registration job: started', [
                 'order_id' => $this->orderId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -46,17 +42,17 @@ final class VapeMarkingRegistrationJob extends Model
                         'marking_response' => $gisMtResponse,
                     ]);
 
-                    Log::channel('audit')->info('Vape marking registration: SUCCESS', [
+                    $this->logger->info('Vape marking registration: SUCCESS', [
                         'order_id' => $this->orderId,
                         'correlation_id' => $this->correlationId,
                     ]);
                 } else {
-                    throw new \Exception('GIS MT API returned error: ' . $gisMtResponse['message']);
+                    throw new \RuntimeException('GIS MT API returned error: ' . $gisMtResponse['message']);
                 }
 
             } catch (\Throwable $e) {
 
-                Log::channel('audit')->error('Vape marking registration: FAILED', [
+                $this->logger->error('Vape marking registration: FAILED', [
                     'order_id' => $this->orderId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $this->correlationId,

@@ -2,30 +2,33 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class AIConstructorController extends Model
+final class AIConstructorController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIConstructorService $constructorService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Запустить конструктор
          */
         public function run(AIConstructorRequest $request): JsonResponse
         {
             try {
-                $result = DB::transaction(fn () => $this->constructorService->run(
+                $result = $this->db->transaction(fn () => $this->constructorService->run(
                     user: $request->user(),
                     type: $request->validated('type'),
                     photo: $request->file('photo'),
                     params: $request->validated('params', []),
                 ));
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $result['correlation_id'],
                     'construction' => [
@@ -39,11 +42,11 @@ final class AIConstructorController extends Model
                     'taste_used' => $result['taste_used'],
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI Constructor API failed', [
+                $this->logger->channel('audit')->error('AI Constructor API failed', [
                     'user_id' => $request->user()?->id,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => $e->getMessage(),
                 ], 500);
@@ -55,7 +58,7 @@ final class AIConstructorController extends Model
         public function show(AIConstruction $construction): JsonResponse
         {
             $this->authorize('view', $construction);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'construction' => $this->formatConstruction($construction),
             ]);
@@ -70,7 +73,7 @@ final class AIConstructorController extends Model
                 $request->query('type'),
                 $request->query('limit', 20),
             );
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'data' => $constructions,
                 'count' => \count($constructions),
@@ -82,7 +85,7 @@ final class AIConstructorController extends Model
         public function statistics(Request $request): JsonResponse
         {
             $stats = $this->constructorService->getStatistics($request->user());
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'statistics' => $stats,
             ]);
@@ -94,7 +97,7 @@ final class AIConstructorController extends Model
         {
             $this->authorize('update', $construction);
             $construction->markAsSaved();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Construction saved',
             ]);
@@ -106,7 +109,7 @@ final class AIConstructorController extends Model
         {
             $this->authorize('update', $construction);
             $construction->unmarkAsSaved();
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Construction removed from saved',
             ]);
@@ -125,7 +128,7 @@ final class AIConstructorController extends Model
                 $validated['rating'],
                 $validated['feedback'] ?? null,
             );
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Review added',
             ]);
@@ -137,7 +140,7 @@ final class AIConstructorController extends Model
         {
             $this->authorize('delete', $construction);
             $this->constructorService->deleteConstruction($construction);
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Construction deleted',
             ]);
@@ -156,7 +159,7 @@ final class AIConstructorController extends Model
                 $validated['items_count'],
                 $validated['total_amount'],
             );
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => 'Purchase recorded',
                 'conversion_rate' => $construction->getConversionRate(),

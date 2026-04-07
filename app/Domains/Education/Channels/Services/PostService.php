@@ -2,18 +2,22 @@
 
 namespace App\Domains\Education\Channels\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class PostService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class PostService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly ChannelTariffService $tariffService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FilesystemManager $storage, private readonly ChannelTariffService $tariffService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать пост (статус: draft или pending_moderation).
@@ -56,8 +60,8 @@ final class PostService extends Model
             }
 
             // Fraud check
-            $fraud = $this->fraudControlService->check(
-                userId:        (int) auth()->id(),
+            $fraud = $this->fraud->check(
+                userId:        (int) $this->guard->id(),
                 operationType: 'post_create',
                 amount:        0,
                 correlationId: $correlationId,
@@ -68,18 +72,18 @@ final class PostService extends Model
             }
 
             // Проверить длину контента
-            $maxLen = config('channels.limits.max_post_length', 10000);
+            $maxLen = $this->config->get('channels.limits.max_post_length', 10000);
             if (mb_strlen($content) > $maxLen) {
                 throw new \InvalidArgumentException(
                     "Текст поста слишком длинный (максимум {$maxLen} символов)."
                 );
             }
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $channel, $content, $title, $visibility, $isPromo,
                 $mediaFiles, $scheduledAt, $poll, $correlationId
             ): Post {
-                $needsModeration = config('channels.moderation.enabled', true);
+                $needsModeration = $this->config->get('channels.moderation.enabled', true);
 
                 $status = match (true) {
                     $scheduledAt !== null => 'draft',      // отложенная — черновик до часа
@@ -111,14 +115,14 @@ final class PostService extends Model
 
                 // Обновить счётчик постов канала
                 $channel->increment('posts_count');
-                $channel->update(['last_post_at' => now()]);
+                $channel->update(['last_post_at' => Carbon::now()]);
 
                 // Инвалидировать кэш ленты
-                Cache::forget("channel_feed:{$channel->id}");
-                Cache::forget("channel_feed_b2c:{$channel->id}");
-                Cache::forget("channel_feed_b2b:{$channel->id}");
+                cache()->forget("channel_feed:{$channel->id}");
+                cache()->forget("channel_feed_b2c:{$channel->id}");
+                cache()->forget("channel_feed_b2b:{$channel->id}");
 
-                Log::channel('audit')->info('Post created', [
+                $this->logger->info('Post created', [
                     'correlation_id' => $correlationId,
                     'tenant_id'      => $channel->tenant_id,
                     'channel_id'     => $channel->id,
@@ -142,19 +146,19 @@ final class PostService extends Model
         ): Post {
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            DB::transaction(function () use ($post, $moderatedBy, $correlationId): void {
+            $this->db->transaction(function () use ($post, $moderatedBy, $correlationId): void {
                 $post->update([
                     'status'             => 'published',
-                    'published_at'       => now(),
+                    'published_at'       => Carbon::now(),
                     'is_moderated'       => true,
                     'moderated_by'       => $moderatedBy,
-                    'moderated_at'       => now(),
+                    'moderated_at'       => Carbon::now(),
                 ]);
 
-                Cache::forget("post:{$post->id}");
-                Cache::forget("channel_feed:{$post->channel_id}");
+                cache()->forget("post:{$post->id}");
+                cache()->forget("channel_feed:{$post->channel_id}");
 
-                Log::channel('audit')->info('Post published', [
+                $this->logger->info('Post published', [
                     'correlation_id' => $correlationId,
                     'tenant_id'      => $post->tenant_id,
                     'post_id'        => $post->id,
@@ -180,16 +184,16 @@ final class PostService extends Model
         ): Post {
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            DB::transaction(function () use ($post, $reason, $moderatedBy, $correlationId): void {
+            $this->db->transaction(function () use ($post, $reason, $moderatedBy, $correlationId): void {
                 $post->update([
                     'status'             => 'rejected',
                     'is_moderated'       => true,
                     'moderated_by'       => $moderatedBy,
-                    'moderated_at'       => now(),
+                    'moderated_at'       => Carbon::now(),
                     'moderation_comment' => $reason,
                 ]);
 
-                Log::channel('audit')->warning('Post rejected by moderator', [
+                $this->logger->warning('Post rejected by moderator', [
                     'correlation_id' => $correlationId,
                     'tenant_id'      => $post->tenant_id,
                     'post_id'        => $post->id,
@@ -208,11 +212,11 @@ final class PostService extends Model
         {
             $correlationId = $correlationId ?: Str::uuid()->toString();
 
-            DB::transaction(function () use ($post, $correlationId): void {
+            $this->db->transaction(function () use ($post, $correlationId): void {
                 $post->update(['status' => 'archived']);
-                Cache::forget("post:{$post->id}");
+                cache()->forget("post:{$post->id}");
 
-                Log::channel('audit')->info('Post archived', [
+                $this->logger->info('Post archived', [
                     'correlation_id' => $correlationId,
                     'post_id'        => $post->id,
                     'tenant_id'      => $post->tenant_id,
@@ -229,14 +233,13 @@ final class PostService extends Model
             BusinessChannel $channel,
             string $audience = 'all',
             int $perPage = 10,
-            int $page = 1,
-        ) {
+            int $page = 1) {
             // Лента не кэшируется постранично, только первая страница
             if ($page === 1) {
                 $cacheKey = "channel_feed_{$audience}:{$channel->id}";
-                return Cache::remember(
+                return cache()->remember(
                     $cacheKey,
-                    config('channels.cache.feed_ttl', 120),
+                    $this->config->get('channels.cache.feed_ttl', 120),
                     fn () => $this->buildFeedQuery($channel, $audience)->paginate($perPage)
                 );
             }
@@ -253,17 +256,17 @@ final class PostService extends Model
             $key = "post_views:{$post->id}:{$userHash}";
 
             // Дедупликация — не считать повторные просмотры с того же юзера за 5 мин
-            if (!Cache::has($key)) {
-                Cache::put($key, 1, 300);
-                DB::table('posts')->where('id', $post->id)->increment('views_count');
+            if (!cache()->has($key)) {
+                cache()->put($key, 1, 300);
+                $this->db->table('posts')->where('id', $post->id)->increment('views_count');
 
                 // Запись в daily-статистику
-                DB::table('post_stats_daily')->updateOrInsert(
+                $this->db->table('post_stats_daily')->updateOrInsert(
                     ['post_id' => $post->id, 'stat_date' => today()],
                     [
                         'tenant_id' => $post->tenant_id,
-                        'views'     => DB::raw('views + 1'),
-                        'updated_at' => now(),
+                        'views'     => $this->db->raw('views + 1'),
+                        'updated_at' => Carbon::now(),
                     ]
                 );
             }
@@ -279,7 +282,7 @@ final class PostService extends Model
                 ->where('channel_id', $channel->id)
                 ->where('status', 'published')
                 ->whereNotNull('published_at')
-                ->where('published_at', '<=', now())
+                ->where('published_at', '<=', Carbon::now())
                 ->when($audience !== 'all', fn ($q) => $q->whereIn('visibility', [$audience, 'all']))
                 ->with(['media', 'channel:id,name,slug,avatar_url'])
                 ->orderByDesc('published_at');
@@ -301,7 +304,7 @@ final class PostService extends Model
 
         private function attachMedia(Post $post, UploadedFile $file, int $sortOrder): PostMedia
         {
-            $maxSize = config('channels.limits.max_media_size_bytes', 52_428_800);
+            $maxSize = $this->config->get('channels.limits.max_media_size_bytes', 52_428_800);
 
             if ($file->getSize() > $maxSize) {
                 throw new \InvalidArgumentException(
@@ -322,7 +325,7 @@ final class PostService extends Model
                 $type = 'shorts';
             }
 
-            $path = Storage::disk('public')->putFile(
+            $path = $this->storage->disk('public')->putFile(
                 "channels/{$post->channel_id}/posts/{$post->id}",
                 $file
             );
@@ -331,7 +334,7 @@ final class PostService extends Model
                 'post_id'        => $post->id,
                 'tenant_id'      => $post->tenant_id,
                 'type'           => $type,
-                'url'            => Storage::disk('public')->url($path),
+                'url'            => $this->storage->disk('public')->url($path),
                 'mime_type'      => $mime,
                 'size_bytes'     => $file->getSize(),
                 'sort_order'     => $sortOrder,

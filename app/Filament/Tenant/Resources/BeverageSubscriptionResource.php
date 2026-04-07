@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class BeverageSubscriptionResource extends Model
+final class BeverageSubscriptionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = BeverageSubscription::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
@@ -103,31 +100,15 @@ final class BeverageSubscriptionResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageSubscription::route('/'),
-                'create' => Pages\\CreateBeverageSubscription::route('/create'),
-                'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListBeverageSubscription::route('/'),
-                'create' => Pages\\CreateBeverageSubscription::route('/create'),
-                'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListBeverageSubscription::route('/'),
-                'create' => Pages\\CreateBeverageSubscription::route('/create'),
-                'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
-                'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
+                'index' => Pages\ListBeverageSubscription::route('/'),
+                'create' => Pages\CreateBeverageSubscription::route('/create'),
+                'edit' => Pages\EditBeverageSubscription::route('/{record}/edit'),
+                'view' => Pages\ViewBeverageSubscription::route('/{record}'),
             ];
         }
 }

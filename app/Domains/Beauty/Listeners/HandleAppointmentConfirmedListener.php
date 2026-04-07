@@ -1,39 +1,68 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Events\AppointmentConfirmed;
+use App\Domains\Beauty\Jobs\SendAppointmentRemindersJob;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Psr\Log\LoggerInterface;
 
-final class HandleAppointmentConfirmedListener extends Model
+/**
+ * HandleAppointmentConfirmedListener — CatVRF 2026.
+ *
+ * Планирует напоминание клиенту за 24 ч до записи.
+ * Runs asynchronously via queue (ShouldQueue).
+ * Maintains correlation_id chain.
+ *
+ * @package App\Domains\Beauty\Listeners
+ */
+final class HandleAppointmentConfirmedListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+        private Dispatcher $bus,
+        private LoggerInterface $auditLogger,
+    ) {}
+
     public function handle(AppointmentConfirmed $event): void
-        {
-            $appointment = $event->appointment;
+    {
+        $this->bus->dispatch(new SendAppointmentRemindersJob($event->correlationId));
 
-            // Schedule reminder job (24h before appointment)
-            $reminderTime = $appointment->datetime_start?->subHours(24);
+        $this->auditLogger->info('AppointmentConfirmed handled: reminder dispatched.', [
+            'appointment_id' => $event->appointmentId,
+            'client_id'      => $event->clientId,
+            'master_id'      => $event->masterId,
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            if ($reminderTime && $reminderTime->isFuture()) {
-                SendAppointmentRemindersJob::dispatch($event->correlationId)
-                    ->delay($reminderTime);
-            }
+    public function failed(AppointmentConfirmed $event, \Throwable $exception): void
+    {
+        $this->auditLogger->error('HandleAppointmentConfirmedListener failed.', [
+            'appointment_id' => $event->appointmentId,
+            'error'          => $exception->getMessage(),
+            'correlation_id' => $event->correlationId,
+        ]);
+    }
 
-            // Notify client immediately
-            if ($appointment->client) {
-                $this->notification->send(
-                    $appointment->client,
-                    new \App\Notifications\AppointmentConfirmedNotification($appointment)
-                );
-            }
+    /**
+     * Определяет, нужно ли обрабатывать событие.
+     */
+    public function shouldQueue(AppointmentConfirmed $event): bool
+    {
+        return $event->appointmentId > 0;
+    }
 
-            Log::channel('audit')->info('AppointmentConfirmed event handled', [
-                'appointment_id' => $appointment->id,
-                'reminder_scheduled_at' => $reminderTime?->toDateTimeString(),
-                'correlation_id' => $event->correlationId,
-            ]);
-        }
+    /**
+     * Очередь для обработки события.
+     */
+    public function viaQueue(): string
+    {
+        return 'beauty-events';
+    }
 }

@@ -2,19 +2,16 @@
 
 namespace App\Notifications;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 
 final class OrderStatusNotification extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Queueable;
 
-        public readonly Order $order;
-        public readonly string $status;
-        public readonly string $correlationId;
+        private Order $order;
+        private string $status;
+        private string $correlationId;
 
         /**
          * @param Order $order
@@ -44,7 +41,6 @@ final class OrderStatusNotification extends Model
         public function toMail(object $notifiable): MailMessage
         {
             $statusText = match ($this->status) {
-                'created' => 'создан',
                 'confirmed' => 'подтвержден',
                 'processing' => 'обрабатывается',
                 'completed' => 'завершен',
@@ -68,7 +64,6 @@ final class OrderStatusNotification extends Model
         public function toDatabase(object $notifiable): DatabaseMessage
         {
             $statusText = match ($this->status) {
-                'created' => 'создан',
                 'confirmed' => 'подтвержден',
                 'processing' => 'обрабатывается',
                 'completed' => 'завершен',

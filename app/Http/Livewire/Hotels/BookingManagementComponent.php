@@ -2,14 +2,19 @@
 
 namespace App\Http\Livewire\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingManagementComponent extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Livewire\Component;
+
+final class BookingManagementComponent extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public array $bookings = [];
         public bool $isLoading = true;
         public ?string $filterStatus = null;
@@ -27,7 +32,7 @@ final class BookingManagementComponent extends Model
             try {
                 $this->isLoading = true;
 
-                $query = Booking::where('client_id', auth()->user()->id);
+                $query = Booking::where('client_id', $this->guard->user()->id);
 
                 if ($this->filterStatus) {
                     $query = $query->where('status', $this->filterStatus);
@@ -50,8 +55,8 @@ final class BookingManagementComponent extends Model
                     ->toArray();
 
             } catch (\Exception $e) {
-                \Log::channel('error')->error('Failed to load bookings', [
-                    'user_id' => auth()->user()->id,
+                $this->logger->error('Failed to load bookings', [
+                    'user_id' => $this->guard->user()->id,
                     'exception' => $e->getMessage(),
                     'correlation_id' => (string) Str::uuid(),
                 ]);
@@ -63,7 +68,6 @@ final class BookingManagementComponent extends Model
         private function getStatusLabel(string $status): string
         {
             return match ($status) {
-                'pending' => 'На рассмотрении',
                 'confirmed' => 'Подтверждено',
                 'checked_in' => 'Заселено',
                 'checked_out' => 'Выселено',
@@ -77,12 +81,12 @@ final class BookingManagementComponent extends Model
             try {
                 $booking = Booking::findOrFail($bookingId);
 
-                if ($booking->client_id !== auth()->user()->id) {
-                    throw new \Exception('Unauthorized');
+                if ($booking->client_id !== $this->guard->user()->id) {
+                    throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Unauthorized');
                 }
 
                 if ($booking->status === 'checked_in') {
-                    throw new \Exception('Cannot cancel checked-in booking');
+                    throw new \LogicException('Cannot cancel checked-in booking');
                 }
 
                 $this->bookingService->cancelBooking($booking, [
@@ -90,16 +94,16 @@ final class BookingManagementComponent extends Model
                     'correlation_id' => (string) Str::uuid(),
                 ]);
 
-                \Log::channel('audit')->info('Booking cancelled', [
+                $this->logger->info('Booking cancelled', [
                     'booking_id' => $bookingId,
-                    'user_id' => auth()->user()->id,
+                    'user_id' => $this->guard->user()->id,
                 ]);
 
                 $this->loadBookings();
                 $this->emit('bookingCancelled', $bookingId);
 
             } catch (\Exception $e) {
-                \Log::channel('error')->error('Failed to cancel booking', [
+                $this->logger->error('Failed to cancel booking', [
                     'exception' => $e->getMessage(),
                 ]);
             }

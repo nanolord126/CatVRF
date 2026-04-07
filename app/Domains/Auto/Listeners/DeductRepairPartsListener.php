@@ -2,18 +2,23 @@
 
 namespace App\Domains\Auto\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class DeductRepairPartsListener extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final class DeductRepairPartsListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function handle(RepairWorkCompleted $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($event) {
                     $order = $event->order;
                     $service = $order->service;
                     $correlationId = $event->correlationId;
@@ -30,7 +35,7 @@ final class DeductRepairPartsListener extends Model
                         $qty = (int) ($part['qty'] ?? 1);
                         $partModel->decrement('current_stock', $qty);
 
-                        Log::channel('audit')->info('Auto part deducted', [
+                        $this->logger->info('Auto part deducted', [
                             'order_id' => $order->id,
                             'part_id' => $partModel->id,
                             'quantity' => $qty,
@@ -43,7 +48,7 @@ final class DeductRepairPartsListener extends Model
                     }
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('DeductRepairPartsListener failed', [
+                $this->logger->error('DeductRepairPartsListener failed', [
                     'order_id' => $event->order->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -52,4 +57,27 @@ final class DeductRepairPartsListener extends Model
                 throw $e;
             }
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

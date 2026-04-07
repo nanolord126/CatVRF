@@ -2,43 +2,56 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PaymentIntegrationService extends Model
+use Illuminate\Http\Request;
+use App\Models\PaymentTransaction;
+use App\Services\FraudControlService;
+use App\Services\Security\IdempotencyService;
+use App\Services\WalletService;
+
+
+use Illuminate\Support\Str;
+use Throwable;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class PaymentIntegrationService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private WalletService $wallet,
-            private FraudControlService $fraud,
-            private IdempotencyService $idempotency,
-            private string $correlationId
-        ) {}
+        private readonly Request $request,
+        private WalletService $wallet,
+        private FraudControlService $fraud,
+        private IdempotencyService $idempotency,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Инициация платежа (Hold или Capture)
          */
         public function processPayment(Order $order, array $params = []): array
         {
-            Log::channel('audit')->info('PaymentIntegrationService: initiating payment', [
+            $this->logger->channel('audit')->info('PaymentIntegrationService: initiating payment', [
                 'order_id' => $order->id,
                 'correlation_id' => $this->correlationId,
                 'type' => $order->type
             ]);
 
-            return DB::transaction(function () use ($order, $params) {
+            return $this->db->transaction(function () use ($order, $params) {
                 // 1. Idempotency Check
                 $idempotencyKey = $params['idempotency_key'] ?? Str::uuid()->toString();
                 $this->idempotency->check($idempotencyKey, $order->toArray());
 
                 // 2. Fraud Control (ML Scoring)
-                $this->fraud->check('payment_init', [
-                    'user_id' => $order->user_id,
-                    'amount' => $order->amount,
-                    'type' => $order->type
-                ]);
+                $this->fraud->check((int) $this->guard->id(), 'payment_init', $this->request->ip());
 
                 // 3. Резерв 20 минут (включается для корзины и AI-конструкторов)
                 if ($this->shouldReserve($order->type)) {
@@ -57,10 +70,10 @@ final class PaymentIntegrationService extends Model
                     'status' => 'pending',
                     'is_hold' => $requestHold,
                     'idempotency_key' => $idempotencyKey,
-                    'correlation_id' => $this->correlationId,
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
-                Log::channel('audit')->info('PaymentIntegrationService: payment recorded', [
+                $this->logger->channel('audit')->info('PaymentIntegrationService: payment recorded', [
                     'payment_id' => $payment->id,
                     'is_hold' => $requestHold
                 ]);
@@ -78,22 +91,15 @@ final class PaymentIntegrationService extends Model
          */
         public function capture(string $paymentUuid): bool
         {
-            return DB::transaction(function () use ($paymentUuid) {
+            return $this->db->transaction(function () use ($paymentUuid) {
                 $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
                 if ($payment->status !== 'authorized') {
-                    throw new \Exception("Cannot capture payment in status: {$payment->status}");
+                    throw new \LogicException("Cannot capture payment in status: {$payment->status}");
                 }
 
                 // Списание из холда в кошелек продавца (минус комиссия 14%)
-                $this->wallet->credit($payment->tenant_id, $payment->amount, 'deposit', $this->correlationId);
-
-                $payment->update([
-                    'status' => 'captured',
-                    'captured_at' => now()
-                ]);
-
-                Log::channel('audit')->info('PaymentIntegrationService: captured successfully', [
+                $this->wallet->credit($payment->tenant_id, $payment->amount, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'payment_uuid' => $paymentUuid
                 ]);
 
@@ -106,54 +112,26 @@ final class PaymentIntegrationService extends Model
          */
         public function handleForceMajeure(string $paymentUuid, string $reason): bool
         {
-            return DB::transaction(function () use ($paymentUuid, $reason) {
+            return $this->db->transaction(function () use ($paymentUuid, $reason) {
                 $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
                 // 1. Полный возврат клиенту
-                $this->wallet->refund($payment->user_id, $payment->amount, $this->correlationId);
-
-                // 2. Начисление компенсации 10% от платформы (бонус)
-                $compensation = (int)($payment->amount * 0.10);
-                $this->wallet->credit($payment->user_id, $compensation, 'bonus', $this->correlationId);
-
-                $payment->update([
-                    'status' => 'refunded_force_majeure',
-                    'meta' => json_encode(['reason' => $reason, 'compensation' => $compensation])
-                ]);
-
-                Log::channel('audit')->warning('FORCE MAJEURE: full refund + 10% compensation', [
+                $correlationId = \Illuminate\Support\Str::uuid()->toString();
+                $this->wallet->credit($payment->user_id, $payment->amount, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
                     'payment_uuid' => $paymentUuid,
-                    'compensation' => $compensation
+                    'reason' => $reason,
                 ]);
+
+                // 2. 10% компенсация от платформы
+                $compensation = (int) ($payment->amount * 0.10);
+                $this->wallet->credit($payment->user_id, $compensation, \App\Domains\Wallet\Enums\BalanceTransactionType::BONUS, $correlationId, null, null, [
+                    'payment_uuid' => $paymentUuid,
+                    'type' => 'force_majeure_compensation',
+                ]);
+
+                $payment->update(['status' => 'refunded', 'correlation_id' => $correlationId]);
 
                 return true;
             });
-        }
-
-        private function determineHoldStrategy(string $orderType): bool
-        {
-            return match ($orderType) {
-                'wedding', 'corporate', 'event_hall', 'photosession' => true, // Всегда ХОЛД до события
-                'single_appointment', 'ai_constructor', 'gift_card' => false, // Прямое списание
-                default => true
-            };
-        }
-
-        private function shouldReserve(string $orderType): bool
-        {
-            return in_array($orderType, ['cart_order', 'ai_constructor', 'single_appointment']);
-        }
-
-        private function extendReservation(Order $order): void
-        {
-            // Логика блокировки Inventory на 20 мин (Redis + DB)
-            $expiresAt = now()->addMinutes(20);
-            DB::table('inventory_reservations')->insert([
-                'order_id' => $order->id,
-                'expires_at' => $expiresAt,
-                'correlation_id' => $this->correlationId
-            ]);
-
-            Log::channel('audit')->info('20-min Reservation activated', ['order_id' => $order->id]);
         }
 }

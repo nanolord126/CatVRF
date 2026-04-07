@@ -1,15 +1,28 @@
 <?php declare(strict_types=1);
 
+/**
+ * ProcessRideMatching — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/processridematching
+ */
+
+
 namespace App\Domains\Taxi\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ProcessRideMatching extends Model
+use Psr\Log\LoggerInterface;
+final class ProcessRideMatching
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         /**
@@ -17,7 +30,7 @@ final class ProcessRideMatching extends Model
          */
         public function __construct(
             private readonly TaxiRide $ride,
-            private readonly string $correlationId
+            private readonly string $correlationId, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -25,7 +38,7 @@ final class ProcessRideMatching extends Model
          */
         public function handle(TaxiService $taxiService): void
         {
-            Log::channel('audit')->info('Processing ride matching for ride', [
+            $this->logger->info('Processing ride matching for ride', [
                 'ride_id' => $this->ride->id,
                 'correlation_id' => $this->correlationId
             ]);
@@ -54,7 +67,7 @@ final class ProcessRideMatching extends Model
             // 3. Отмена поездки, если водитель не найден за 5 минут
             if ($this->ride->created_at->addMinutes(5)->isPast()) {
                 $this->ride->update(['status' => 'cancelled', 'reason' => 'No drivers found']);
-                Log::channel('audit')->warning('Ride auto-cancelled: No drivers found', ['ride_uuid' => $this->ride->uuid]);
+                $this->logger->warning('Ride auto-cancelled: No drivers found', ['ride_uuid' => $this->ride->uuid]);
             }
         }
 }

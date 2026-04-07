@@ -2,6 +2,8 @@
 
 namespace App\Http;
 
+
+use Illuminate\Auth\AuthManager;
 use App\Http\Middleware\RoleBasedAccess;
 use App\Http\Middleware\TenantCRMOnly;
 use App\Http\Middleware\TenantScoping;
@@ -9,6 +11,10 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 final class Kernel extends HttpKernel
 {
+    public function __construct(
+        private readonly AuthManager $authManager,
+    ) {}
+
     /**
      * The application's global HTTP middleware stack.
      *
@@ -69,7 +75,7 @@ final class Kernel extends HttpKernel
      */
     protected $middlewareAliases = [
         'auth' => \App\Http\Middleware\Authenticate::class,
-        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasic$this->authManager->class,
         'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,

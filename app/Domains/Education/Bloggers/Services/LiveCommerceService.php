@@ -2,22 +2,26 @@
 
 namespace App\Domains\Education\Bloggers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class LiveCommerceService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Cache\RateLimiter;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class LiveCommerceService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly StreamService $streamService,
-            private readonly FraudControlService $fraudControl,
+
+    public function __construct(private readonly StreamService $streamService,
+            private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
             private readonly PaymentService $paymentService,
             private readonly WalletService $walletService,
             private readonly InventoryManagementService $inventoryService,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Добавить товар в стрим
@@ -40,19 +44,18 @@ final class LiveCommerceService extends Model
             }
 
             // Rate limiting
-            if (! $this->rateLimiter->allow('live_commerce:add:' . $streamId, config('bloggers.rate_limit.live_commerce_add'))) {
+            if (! $this->rateLimiter->allow('live_commerce:add:' . $streamId, $this->config->get('bloggers.rate_limit.live_commerce_add'))) {
                 throw new \RuntimeException('Rate limit exceeded for adding products');
             }
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $stream,
                 $productId,
                 $productName,
                 $priceKopiykas,
                 $originalPriceKopiykas,
                 $quantityAvailable,
-                $correlationId,
-            ) {
+                $correlationId) {
                 $product = StreamProduct::create([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => tenant()->id,
@@ -66,7 +69,7 @@ final class LiveCommerceService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Product added to stream', [
+                $this->logger->info('Product added to stream', [
                     'stream_id' => $stream->id,
                     'product_id' => $productId,
                     'price' => $priceKopiykas,
@@ -95,22 +98,22 @@ final class LiveCommerceService extends Model
 
             // Check max pinned products
             $pinnedCount = $product->stream->pinnedProducts()->count();
-            if ($pinnedCount >= config('bloggers.live_commerce.max_pinned_products')) {
+            if ($pinnedCount >= $this->config->get('bloggers.live_commerce.max_pinned_products')) {
                 throw new \RuntimeException('Maximum pinned products limit reached');
             }
 
-            return DB::transaction(function () use ($product, $position, $correlationId) {
+            return $this->db->transaction(function () use ($product, $position, $correlationId) {
                 $product->update([
                     'is_pinned' => true,
                     'pin_position' => $position,
-                    'pinned_at' => now(),
+                    'pinned_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
                 // Broadcast pin update
                 broadcast(new \App\Domains\Content\Bloggers\Events\ProductPinned($product))->toOthers();
 
-                Log::channel('audit')->info('Product pinned', [
+                $this->logger->info('Product pinned', [
                     'product_id' => $product->id,
                     'position' => $position,
                     'correlation_id' => $correlationId,
@@ -129,11 +132,11 @@ final class LiveCommerceService extends Model
 
             $product = StreamProduct::findOrFail($productId);
 
-            return DB::transaction(function () use ($product, $correlationId) {
+            return $this->db->transaction(function () use ($product, $correlationId) {
                 $product->update([
                     'is_pinned' => false,
                     'pin_position' => null,
-                    'unpinned_at' => now(),
+                    'unpinned_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -168,21 +171,15 @@ final class LiveCommerceService extends Model
             }
 
             // Fraud check
-            $this->fraudControl->check([
-                'operation_type' => 'stream_order_create',
-                'user_id' => $userId,
-                'amount' => (int)($product->price_during_stream * 100 * $quantity),
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'stream_order_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $stream,
                 $product,
                 $userId,
                 $quantity,
                 $paymentMethod,
-                $correlationId,
-            ) {
+                $correlationId) {
                 // Calculate totals
                 $subtotal = (int)($product->price_during_stream * 100 * $quantity);
                 $discount = 0;
@@ -226,7 +223,7 @@ final class LiveCommerceService extends Model
                         'idempotency_key' => $paymentResult['idempotency_key'] ?? null,
                     ]);
 
-                    Log::channel('audit')->info('Stream order created', [
+                    $this->logger->info('Stream order created', [
                         'order_id' => $order->id,
                         'amount' => $total,
                         'correlation_id' => $correlationId,
@@ -248,10 +245,10 @@ final class LiveCommerceService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
             $order = StreamOrder::findOrFail($orderId);
 
-            return DB::transaction(function () use ($order, $correlationId) {
+            return $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update([
                     'status' => 'paid',
-                    'paid_at' => now(),
+                    'paid_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -267,14 +264,14 @@ final class LiveCommerceService extends Model
                 $stream->increment('total_revenue', $order->total);
 
                 // Calculate and apply commission
-                $commissionPercent = config('bloggers.monetization.commission_percent');
+                $commissionPercent = $this->config->get('bloggers.monetization.commission_percent');
                 $commission = (int)($order->total * $commissionPercent * 100);
                 $stream->increment('platform_commission', $commission / 100);
 
                 // Payout to blogger wallet
                 $bloggerEarnings = (int)($order->total * 100) - $commission;
 
-                Log::channel('audit')->info('Stream order paid', [
+                $this->logger->info('Stream order paid', [
                     'order_id' => $order->id,
                     'amount' => $order->total,
                     'commission' => $commission,

@@ -2,20 +2,25 @@
 
 namespace App\Livewire\Marketplace;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class ProductCard extends Model
+/**
+ * Class ProductCard
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Marketplace
+ */
+final class ProductCard extends Component
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public int $productId;
-        public string $productName;
-        public int $price;
-        public float $rating;
-        public string $imageUrl;
-        public string $vertical;
+    private int $productId;
+        private string $productName;
+        private int $price;
+        private float $rating;
+        private string $imageUrl;
+        private string $vertical;
 
         public function mount(int $productId, string $productName, int $price, float $rating, string $imageUrl, string $vertical): void
         {

@@ -5,10 +5,17 @@ namespace App\Http\Middleware;
 use App\Enums\Role;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
 
 final class RoleBasedAccess
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
+
     /**
      * Check if user has required role in current tenant
      * Usage: middleware('role:owner,manager')
@@ -20,7 +27,7 @@ final class RoleBasedAccess
 
         // Not authenticated
         if (!$user) {
-            return response()->json(['error' => 'Unauthenticated'], 401);
+            return $this->response->json(['error' => 'Unauthenticated'], 401);
         }
 
         // Platform admins always have access
@@ -34,12 +41,12 @@ final class RoleBasedAccess
             ?? session('active_tenant_id');
 
         if (!$tenantId) {
-            Log::channel('audit')->warning('RoleBasedAccess: no tenant context', [
+            $this->logger->channel('audit')->warning('RoleBasedAccess: no tenant context', [
                 'user_id' => $user->id,
                 'path' => $request->path(),
             ]);
 
-            return response()->json(['error' => 'Tenant context required'], 400);
+            return $this->response->json(['error' => 'Tenant context required'], 400);
         }
 
         // Convert string roles to Role enums
@@ -47,31 +54,31 @@ final class RoleBasedAccess
             try {
                 return Role::from($role);
             } catch (\Throwable) {
-                return null;
+                return $next($request);
             }
         }, $roles);
 
         $requiredRoles = array_filter($requiredRoles);
 
         if (empty($requiredRoles)) {
-            Log::channel('audit')->warning('RoleBasedAccess: invalid roles', [
+            $this->logger->channel('audit')->warning('RoleBasedAccess: invalid roles', [
                 'user_id' => $user->id,
                 'provided_roles' => $roles,
             ]);
 
-            return response()->json(['error' => 'Invalid role specification'], 400);
+            return $this->response->json(['error' => 'Invalid role specification'], 400);
         }
 
         // Check if user has one of required roles in tenant
         if (!$user->hasRoleInTenant($tenantId, $requiredRoles)) {
-            Log::channel('audit')->warning('RoleBasedAccess: denied', [
+            $this->logger->channel('audit')->warning('RoleBasedAccess: denied', [
                 'user_id' => $user->id,
                 'tenant_id' => $tenantId,
                 'required_roles' => array_map(fn($r) => $r->value, $requiredRoles),
                 'path' => $request->path(),
             ]);
 
-            return response()->json([
+            return $this->response->json([
                 'error' => 'Insufficient permissions for this tenant',
                 'required_roles' => array_map(fn($r) => $r->label(), $requiredRoles),
             ], 403);

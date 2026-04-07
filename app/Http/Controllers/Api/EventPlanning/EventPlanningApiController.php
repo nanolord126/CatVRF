@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Api\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class EventPlanningApiController extends Model
+final class EventPlanningApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly AIEventPlannerConstructor $aiConstructor,
-            private readonly EventPlanningService $planningService
-        ) {}
+            private readonly EventPlanningService $planningService,
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Generate an AI event plan for the user.
          * POST /api/event-planning/generate-plan
@@ -30,7 +31,7 @@ final class EventPlanningApiController extends Model
                     'is_b2b' => ['nullable', 'boolean'],
                 ]);
                 // 2. Audit Entry (Canon 2026: Mandatory audit trace)
-                Log::channel('audit')->info('[API] Plan generation requested', [
+                $this->logger->channel('audit')->info('[API] Plan generation requested', [
                     'correlation_id' => $correlationId,
                     'user_id' => $request->user()?->id ?? 'anonymous',
                     'params' => $validated,
@@ -44,7 +45,7 @@ final class EventPlanningApiController extends Model
                     correlationId: $correlationId
                 );
                 // 4. Return Structuring (Layer 8: Responder)
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $plan,
@@ -55,13 +56,20 @@ final class EventPlanningApiController extends Model
                     ]
                 ], 200);
             } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
                 // 5. Error Handling (Canon 2026: Strict trace log)
-                Log::channel('audit')->error('[API] Plan generation failed', [
+                $this->logger->channel('audit')->error('[API] Plan generation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'An error occurred during AI plan generation. Please check our budget limits.',
                     'correlation_id' => $correlationId,
@@ -83,7 +91,7 @@ final class EventPlanningApiController extends Model
                     'budget' => ['required', 'integer'],
                     'planner_id' => ['required', 'exists:event_planners,id'],
                 ]);
-                 Log::channel('audit')->info('[API] Creating project from AI plan', [
+                 $this->logger->channel('audit')->info('[API] Creating project from AI plan', [
                     'correlation_id' => $correlationId,
                     'data' => $validated,
                 ]);
@@ -96,18 +104,25 @@ final class EventPlanningApiController extends Model
                     plannerId: (int)$validated['planner_id'],
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'project_uuid' => $project->uuid,
                     'message' => 'Project initialized successfully from AI plan.',
                 ], 201);
             } catch (Exception $e) {
-                Log::channel('audit')->error('[API] Project initialization failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('[API] Project initialization failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,

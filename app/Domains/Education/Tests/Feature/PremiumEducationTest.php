@@ -2,14 +2,16 @@
 
 namespace App\Domains\Education\Tests\Feature;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PremiumEducationTest extends Model
+use Psr\Log\LoggerInterface;
+use Tests\TestCase;
+
+final class PremiumEducationTest extends TestCase
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         private User $user;
@@ -49,7 +51,7 @@ final class PremiumEducationTest extends Model
          */
         public function test_b2c_direct_enrollment_with_ai_path(): void
         {
-            Log::info('Test B2C: Direct enrollment started');
+            $this->logger->info('Test B2C: Direct enrollment started');
 
             $service = app(EducationManagementService::class);
             $enrollment = $service->enrollUserDirectly($this->user, $this->course, $this->correlationId);
@@ -74,7 +76,7 @@ final class PremiumEducationTest extends Model
          */
         public function test_b2b_corporate_slot_consumption(): void
         {
-            Log::info('Test B2B: Slot consumption started');
+            $this->logger->info('Test B2B: Slot consumption started');
 
             // 1. Создание B2B контракта (3 слота)
             $contract = CorporateContract::factory()->create([

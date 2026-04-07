@@ -2,17 +2,20 @@
 
 namespace App\Domains\Common\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class UserTasteProfileService extends Model
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class UserTasteProfileService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private TasteMLService $mlService,
-        ) {}
+
+    public function __construct(private TasteMLService $mlService,
+        private \Illuminate\Contracts\Cache\Repository $cache,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Получить или создать профиль вкусов пользователя
@@ -38,10 +41,11 @@ final class UserTasteProfileService extends Model
                     ]
                 );
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get or create taste profile', [
+                $this->logger->error('Failed to get or create taste profile', [
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 throw $e;
@@ -64,17 +68,17 @@ final class UserTasteProfileService extends Model
 
                 // Обновить timestamp последнего взаимодействия
                 $profile->update([
-                    'last_interaction_at' => now(),
+                    'last_interaction_at' => Carbon::now(),
                     'interaction_count' => ($profile->interaction_count ?? 0) + 1,
                 ]);
 
-                Log::channel('audit')->info('User taste profile updated', [
+                $this->logger->info('User taste profile updated', [
                     'user_id' => $userId,
                     'interaction_type' => $interactionType,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to update taste profile from interaction', [
+                $this->logger->error('Failed to update taste profile from interaction', [
                     'user_id' => $userId,
                     'interaction_type' => $interactionType,
                     'error' => $e->getMessage(),
@@ -90,7 +94,7 @@ final class UserTasteProfileService extends Model
         {
             $cacheKey = "taste:explicit:{$tenantId}:{$userId}";
 
-            return Cache::remember($cacheKey, 86400, function () use ($userId, $tenantId) {
+            return $this->cache->remember($cacheKey, 86400, function () use ($userId, $tenantId) {
                 $profile = UserTasteProfile::where([
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
@@ -107,7 +111,7 @@ final class UserTasteProfileService extends Model
         {
             $cacheKey = "taste:implicit:{$tenantId}:{$userId}";
 
-            return Cache::remember($cacheKey, 86400, function () use ($userId, $tenantId) {
+            return $this->cache->remember($cacheKey, 86400, function () use ($userId, $tenantId) {
                 $profile = UserTasteProfile::where([
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
@@ -128,7 +132,8 @@ final class UserTasteProfileService extends Model
         ): void
         {
             try {
-                DB::transaction(function () use ($userId, $tenantId, $sizes, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($userId, $tenantId, $sizes, $correlationId) {
                     $profile = $this->getOrCreateProfile($userId, $tenantId);
 
                     $profile->update([
@@ -138,14 +143,14 @@ final class UserTasteProfileService extends Model
 
                     $this->invalidateCache($userId, $tenantId);
 
-                    Log::channel('audit')->info('User size profile set', [
+                    $this->logger->info('User size profile set', [
                         'user_id' => $userId,
                         'sizes' => array_keys($sizes),
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to set size profile', [
+                $this->logger->error('Failed to set size profile', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -166,7 +171,7 @@ final class UserTasteProfileService extends Model
         ): void
         {
             try {
-                DB::transaction(function () use ($userId, $tenantId, $preferences, $correlationId) {
+                $this->db->transaction(function () use ($userId, $tenantId, $preferences, $correlationId) {
                     $profile = $this->getOrCreateProfile($userId, $tenantId);
 
                     $profile->update([
@@ -176,14 +181,14 @@ final class UserTasteProfileService extends Model
 
                     $this->invalidateCache($userId, $tenantId);
 
-                    Log::channel('audit')->info('User explicit preferences set', [
+                    $this->logger->info('User explicit preferences set', [
                         'user_id' => $userId,
                         'preferences_keys' => array_keys($preferences),
                         'correlation_id' => $correlationId,
                     ]);
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to set explicit preferences', [
+                $this->logger->error('Failed to set explicit preferences', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -204,13 +209,15 @@ final class UserTasteProfileService extends Model
 
                 $this->invalidateCache($userId, $tenantId);
 
-                Log::channel('audit')->info('Personalization disabled for user', [
+                $this->logger->info('Personalization disabled for user', [
                     'user_id' => $userId,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to disable personalization', [
+                $this->logger->error('Failed to disable personalization', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }
@@ -226,13 +233,15 @@ final class UserTasteProfileService extends Model
 
                 $this->invalidateCache($userId, $tenantId);
 
-                Log::channel('audit')->info('Personalization enabled for user', [
+                $this->logger->info('Personalization enabled for user', [
                     'user_id' => $userId,
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to enable personalization', [
+                $this->logger->error('Failed to enable personalization', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
             }
         }
@@ -255,9 +264,9 @@ final class UserTasteProfileService extends Model
          */
         public function invalidateCache(int $userId, int $tenantId): void
         {
-            Cache::forget("taste:explicit:{$tenantId}:{$userId}");
-            Cache::forget("taste:implicit:{$tenantId}:{$userId}");
-            Cache::forget("taste:profile:{$tenantId}:{$userId}");
+            $this->cache->forget("taste:explicit:{$tenantId}:{$userId}");
+            $this->cache->forget("taste:implicit:{$tenantId}:{$userId}");
+            $this->cache->forget("taste:profile:{$tenantId}:{$userId}");
         }
 
         /**

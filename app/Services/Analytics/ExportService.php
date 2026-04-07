@@ -2,14 +2,19 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ExportService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class ExportService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 3600;
         private const EXPORTS_DIR = 'exports';
 
@@ -31,7 +36,7 @@ final class ExportService extends Model
                 'correlation_id' => $correlationId,
             ];
 
-            Log::channel('audit')->info('CSV export created', [
+            $this->logger->channel('audit')->info('CSV export created', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'size' => $result['size_bytes'],
@@ -76,7 +81,7 @@ final class ExportService extends Model
                 'correlation_id' => $correlationId,
             ];
 
-            Log::channel('audit')->info('JSON export created', [
+            $this->logger->channel('audit')->info('JSON export created', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'size' => $result['size_bytes'],
@@ -111,7 +116,7 @@ final class ExportService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "exports:history:{$tenantId}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -140,7 +145,7 @@ final class ExportService extends Model
                 ],
             ];
 
-            Cache::put($cacheKey, $history, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $history, self::CACHE_TTL);
 
             return array_slice($history, 0, $limit);
         }

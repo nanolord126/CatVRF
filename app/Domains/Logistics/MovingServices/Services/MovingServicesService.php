@@ -1,21 +1,63 @@
 <?php declare(strict_types=1);
 
+/**
+ * MovingServicesService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/movingservicesservice
+ */
+
+
 namespace App\Domains\Logistics\MovingServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MovingServicesService extends Model
+
+
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class MovingServicesService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createOrder(int $companyId,$moveDate,$durationHours,$fromAddress,$toAddress,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("moving:order:".auth()->id(),5))throw new \RuntimeException("Too many",429);RateLimiter::hit("moving:order:".auth()->id(),3600);
-    return DB::transaction(function()use($companyId,$moveDate,$durationHours,$fromAddress,$toAddress,$correlationId){$c=MovingCompany::findOrFail($companyId);$total=(int)($c->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'moving_order','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$o=MovingOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'company_id'=>$companyId,'customer_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','move_date'=>$moveDate,'duration_hours'=>$durationHours,'from_address'=>$fromAddress,'to_address'=>$toAddress,'tags'=>['moving'=>true]]);Log::channel('audit')->info('Moving order created',['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});
+
+    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,) {}
+    public function createOrder(int $companyId,$moveDate,$durationHours,$fromAddress,$toAddress,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();if($this->rateLimiter->tooManyAttempts("moving:order:".$this->guard->id(),5))throw new \RuntimeException("Too many",429);$this->rateLimiter->hit("moving:order:".$this->guard->id(),3600);
+    return $this->db->transaction(function() use ($companyId, $moveDate, $durationHours, $fromAddress, $toAddress, $correlationId) {$this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'moving_order', amount: 0, correlationId: $correlationId ?? '');if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$o=MovingOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'company_id'=>$companyId,'customer_id'=>$this->guard->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','move_date'=>$moveDate,'duration_hours'=>$durationHours,'from_address'=>$fromAddress,'to_address'=>$toAddress,'tags'=>['moving'=>true]]);$this->logger->info('Moving order created',['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});
     }
-    public function completeOrder(int $orderId,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=MovingOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks,'moving_payout',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Moving order completed',['order_id'=>$o->id]);return $o;});}
-    public function cancelOrder(int $orderId,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($orderId,$correlationId){$o=MovingOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed')$this->wallet->credit(tenant()->id,$o->total_kopecks,'moving_refund',['correlation_id'=>$correlationId,'order_id'=>$o->id]);Log::channel('audit')->info('Moving order cancelled',['order_id'=>$o->id]);return $o;});}
+    public function completeOrder(int $orderId,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=MovingOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks,\App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,$correlationId, null, null, ['correlation_id'=>$correlationId,\App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ['order_id'=>$o->id]);return $o;});}
+    public function cancelOrder(int $orderId,string $correlationId=""):MovingOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=MovingOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed')$this->wallet->credit(tenant()->id,$o->total_kopecks,\App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,$correlationId, null, null, ['correlation_id'=>$correlationId,\App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, ['order_id'=>$o->id]);return $o;});}
     public function getOrder(int $orderId):MovingOrder{return MovingOrder::findOrFail($orderId);}
     public function getUserOrders(int $customerId){return MovingOrder::where('customer_id',$customerId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

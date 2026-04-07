@@ -1,21 +1,188 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\BeautyServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BeautyServicesService extends Model
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Beauty\BeautyServices\Models\BeautyService;
+use App\Domains\Beauty\BeautyServices\Models\BeautyStudio;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Collection;
+use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
+
+/**
+ * BeautyServicesService — сервис управления записями на услуги красоты.
+ *
+ * Все суммы в копейках. Без статических фасадов.
+ * Идентификатор клиента и tenant передаются явно через параметры.
+ */
+final readonly class BeautyServicesService
 {
-    use HasFactory;
+    private const PLATFORM_COMMISSION = 0.14;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createAppointment(int $studioId,$serviceType,$durationMinutes,$appointmentDate,string $correlationId=""):BeautyService{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("beauty:appt:".auth()->id(),18))throw new \RuntimeException("Too many",429);RateLimiter::hit("beauty:appt:".auth()->id(),3600);
-    return DB::transaction(function()use($studioId,$serviceType,$durationMinutes,$appointmentDate,$correlationId){$s=BeautyStudio::findOrFail($studioId);$total=(int)($s->price_kopecks_per_minute*$durationMinutes);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'beauty_service','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$a=BeautyService::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'studio_id'=>$studioId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','service_type'=>$serviceType,'duration_minutes'=>$durationMinutes,'appointment_date'=>$appointmentDate,'tags'=>['beauty'=>true]]);Log::channel('audit')->info('Beauty service appointment created',['appointment_id'=>$a->id,'correlation_id'=>$correlationId]);return $a;});
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $walletService,
+        private LoggerInterface $auditLogger,
+        private \Illuminate\Database\DatabaseManager $db,
+        private Guard $guard,
+    ) {}
+
+    /**
+     * Создаёт запись на услугу.
+     *
+     * @throws \RuntimeException При превышении лимита или блокировке фрода.
+     */
+    public function createAppointment(
+        int    $studioId,
+        string $serviceType,
+        int    $durationMinutes,
+        string $appointmentDate,
+        int    $clientId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BeautyService {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        $fraudCheck = $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'beauty_appointment', amount: 0, correlationId: $correlationId ?? '');
+
+        if (($fraudCheck['decision'] ?? '') === 'block') {
+            throw new \RuntimeException('Операция заблокирована службой безопасности.', 403);
+        }
+
+        return $this->db->transaction(function () use (
+            $studioId, $serviceType, $durationMinutes,
+            $appointmentDate, $clientId, $tenantId, $correlationId,
+        ): BeautyService {
+            $studio = BeautyStudio::withoutGlobalScopes()->findOrFail($studioId);
+
+            $total   = $studio->calculatePrice($durationMinutes);
+            $payout  = (int) ($total * (1 - self::PLATFORM_COMMISSION));
+
+            $appointment = BeautyService::create([
+                'uuid'             => Uuid::uuid4()->toString(),
+                'tenant_id'        => $tenantId,
+                'studio_id'        => $studioId,
+                'client_id'        => $clientId,
+                'correlation_id'   => $correlationId,
+                'status'           => 'pending_payment',
+                'total_kopecks'    => $total,
+                'payout_kopecks'   => $payout,
+                'payment_status'   => 'pending',
+                'service_type'     => $serviceType,
+                'duration_minutes' => $durationMinutes,
+                'appointment_date' => $appointmentDate,
+                'tags'             => ['beauty' => true],
+            ]);
+
+            $this->auditLogger->info('Beauty appointment created.', [
+                'appointment_id' => $appointment->id,
+                'correlation_id' => $correlationId,
+                'total_kopecks'  => $total,
+            ]);
+
+            return $appointment;
+        });
     }
-    public function completeAppointment(int $appointmentId,string $correlationId=""):BeautyService{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($appointmentId,$correlationId){$a=BeautyService::findOrFail($appointmentId);if($a->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$a->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$a->payout_kopecks,'beauty_payout',['correlation_id'=>$correlationId,'appointment_id'=>$a->id]);Log::channel('audit')->info('Beauty service appointment completed',['appointment_id'=>$a->id]);return $a;});}
-    public function cancelAppointment(int $appointmentId,string $correlationId=""):BeautyService{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($appointmentId,$correlationId){$a=BeautyService::findOrFail($appointmentId);if($a->status==='completed')throw new \RuntimeException("Cannot cancel",400);$a->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($a->payment_status==='completed')$this->wallet->credit(tenant()->id,$a->total_kopecks,'beauty_refund',['correlation_id'=>$correlationId,'appointment_id'=>$a->id]);Log::channel('audit')->info('Beauty service appointment cancelled',['appointment_id'=>$a->id]);return $a;});}
-    public function getAppointment(int $appointmentId):BeautyService{return BeautyService::findOrFail($appointmentId);}
-    public function getUserAppointments(int $clientId){return BeautyService::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершает услугу и начисляет выплату в кошелёк тенанта.
+     *
+     * @throws \RuntimeException Если услуга не оплачена.
+     */
+    public function completeAppointment(
+        int    $appointmentId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BeautyService {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($appointmentId, $tenantId, $correlationId): BeautyService {
+            $appointment = BeautyService::withoutGlobalScopes()->findOrFail($appointmentId);
+
+            if (! $appointment->isPaid()) {
+                throw new \RuntimeException('Услуга не оплачена — завершение невозможно.', 400);
+            }
+
+            $appointment->update(['status' => 'completed', 'correlation_id' => $correlationId]);
+
+            $this->walletService->credit(
+                $tenantId,
+                $appointment->payout_kopecks,
+                \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,
+                $correlationId,
+                null,
+                null,
+                [
+                    'appointment_id' => $appointment->id,
+                    'correlation_id' => $correlationId,
+                ],
+            );
+
+            return $appointment;
+        });
+    }
+
+    /**
+     * Отменяет запись и при необходимости выполняет возврат.
+     *
+     * @throws \RuntimeException Если запись уже завершена.
+     */
+    public function cancelAppointment(
+        int    $appointmentId,
+        string $tenantId,
+        string $correlationId = '',
+    ): BeautyService {
+        $correlationId = $correlationId !== '' ? $correlationId : Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($appointmentId, $tenantId, $correlationId): BeautyService {
+            $appointment = BeautyService::withoutGlobalScopes()->findOrFail($appointmentId);
+
+            if (! $appointment->isCancellable()) {
+                throw new \RuntimeException('Запись уже завершена — отмена невозможна.', 400);
+            }
+
+            $appointment->update([
+                'status'         => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($appointment->isPaid()) {
+                $this->walletService->credit(
+                    $tenantId,
+                    $appointment->total_kopecks,
+                    \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    $correlationId,
+                    null,
+                    null,
+                    [
+                        'appointment_id' => $appointment->id,
+                        'correlation_id' => $correlationId,
+                    ],
+                );
+            }
+
+            return $appointment;
+        });
+    }
+
+    /**
+     * Возвращает историю записей клиента (последние 10).
+     *
+     * @return Collection<int, BeautyService>
+     */
+    public function getClientAppointments(int $clientId): Collection
+    {
+        return BeautyService::withoutGlobalScopes()
+            ->where('client_id', $clientId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
 }
+

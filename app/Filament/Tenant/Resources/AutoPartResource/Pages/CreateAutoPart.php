@@ -1,15 +1,34 @@
 <?php declare(strict_types=1);
 
+/**
+ * CreateAutoPart — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/createautopart
+ * @see https://catvrf.ru/docs/createautopart
+ * @see https://catvrf.ru/docs/createautopart
+ * @see https://catvrf.ru/docs/createautopart
+ * @see https://catvrf.ru/docs/createautopart
+ */
+
+
 namespace App\Filament\Tenant\Resources\AutoPartResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateAutoPart extends Model
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateAutoPart extends CreateRecord
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoPartResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -24,9 +43,32 @@ final class CreateAutoPart extends Model
         protected function afterCreate(): void
         {
             activity()
-                ->performedBy(auth()->user())
+                ->performedBy($this->guard->user())
                 ->on($this->record)
                 ->withProperty('correlation_id', $this->record->correlation_id)
                 ->log('Auto part added to STO inventory');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

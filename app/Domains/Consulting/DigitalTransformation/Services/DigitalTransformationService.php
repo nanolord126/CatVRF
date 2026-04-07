@@ -2,20 +2,153 @@
 
 namespace App\Domains\Consulting\DigitalTransformation\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Consulting\DigitalTransformation\Models\TransformationInitiative;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class DigitalTransformationService extends Model
+final readonly class DigitalTransformationService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createInitiative(int $consultantId,$initiativeType,$hoursSpent,$dueDate,string $correlationId=""):TransformationInitiative{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("digit:init:".auth()->id(),11))throw new \RuntimeException("Too many",429);RateLimiter::hit("digit:init:".auth()->id(),3600);
-    return DB::transaction(function()use($consultantId,$initiativeType,$hoursSpent,$dueDate,$correlationId){$c=TransformationConsultant::findOrFail($consultantId);$total=(int)($c->price_kopecks_per_hour*$hoursSpent);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'digit','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$i=TransformationInitiative::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'consultant_id'=>$consultantId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','initiative_type'=>$initiativeType,'hours_spent'=>$hoursSpent,'due_date'=>$dueDate,'tags'=>['digit'=>true]]);Log::channel('audit')->info('Transformation initiative created',['initiative_id'=>$i->id,'correlation_id'=>$correlationId]);return $i;});
+    public function createProject(
+        int $providerId,
+        string $serviceType,
+        string $correlationId = '',
+    ): TransformationInitiative {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+        $rateLimiterKey = 'digital_transformation:create:' . ($this->guard->id() ?? 0);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimiterKey, 15)) {
+            throw new \RuntimeException('Too many requests', 429);
+        }
+
+        $this->rateLimiter->hit($rateLimiterKey, 3600);
+
+        return $this->db->transaction(function () use ($providerId, $serviceType, $correlationId): TransformationInitiative {
+            $fraudResult = $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'digital_transformation_create',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                throw new \RuntimeException('Blocked by security', 403);
+            }
+
+            $project = TransformationInitiative::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'provider_id' => $providerId,
+                'client_id' => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => 0,
+                'payout_kopecks' => 0,
+                'payment_status' => 'pending',
+                'service_type' => $serviceType,
+                'tags' => ['digitaltransformation' => true],
+            ]);
+
+            $this->logger->info('DigitalTransformationService: project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeInitiative(int $initiativeId,string $correlationId=""):TransformationInitiative{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($initiativeId,$correlationId){$i=TransformationInitiative::findOrFail($initiativeId);if($i->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$i->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$i->payout_kopecks,'digit_payout',['correlation_id'=>$correlationId,'initiative_id'=>$i->id]);Log::channel('audit')->info('Transformation initiative completed',['initiative_id'=>$i->id]);return $i;});}
-    public function cancelInitiative(int $initiativeId,string $correlationId=""):TransformationInitiative{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($initiativeId,$correlationId){$i=TransformationInitiative::findOrFail($initiativeId);if($i->status==='completed')throw new \RuntimeException("Cannot cancel",400);$i->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($i->payment_status==='completed')$this->wallet->credit(tenant()->id,$i->total_kopecks,'digit_refund',['correlation_id'=>$correlationId,'initiative_id'=>$i->id]);Log::channel('audit')->info('Transformation initiative cancelled',['initiative_id'=>$i->id]);return $i;});}
-    public function getInitiative(int $initiativeId):TransformationInitiative{return TransformationInitiative::findOrFail($initiativeId);}
-    public function getUserInitiatives(int $clientId){return TransformationInitiative::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): TransformationInitiative
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): TransformationInitiative {
+            $project = TransformationInitiative::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'consulting_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('DigitalTransformationService: project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): TransformationInitiative
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId): TransformationInitiative {
+            $project = TransformationInitiative::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel a completed project', 400);
+            }
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($project->payment_status === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'consulting_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('DigitalTransformationService: project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): TransformationInitiative
+    {
+        return TransformationInitiative::findOrFail($projectId);
+    }
+
+    public function getUserProjects(int $clientId): Collection
+    {
+        return TransformationInitiative::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
 }

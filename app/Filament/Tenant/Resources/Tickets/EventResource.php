@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EventResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\RichEditor, Components\DateTimePicker, Components\Toggle, Components\TagsInput, Components\Hidden, Components\FileUpload, Components\Repeater, Components\Grid};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\Filter, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction, ActionGroup};
@@ -20,6 +15,10 @@ final class EventResource extends Model
 
     final class EventResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = Event::class;
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
         protected static ?string $navigationGroup = 'Events & Entertainment';
@@ -315,7 +314,6 @@ final class EventResource extends Model
                 BadgeColumn::make('event_type')
                     ->label('Тип')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'concert' => 'Концерт',
                         'theater' => 'Театр',
                         'cinema' => 'Кино',
                         'sports' => 'Спорт',
@@ -326,7 +324,6 @@ final class EventResource extends Model
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'concert' => 'purple',
                         'theater' => 'blue',
                         'sports' => 'red',
                         'festival' => 'pink',
@@ -446,9 +443,9 @@ final class EventResource extends Model
                         ->visible(fn ($record) => !$record->is_verified)
                         ->action(function ($record) {
                             $record->update(['is_verified' => true]);
-                            Log::channel('audit')->info('Event verified', [
+                            $this->logger->info('Event verified', [
                                 'event_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -461,9 +458,9 @@ final class EventResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Event featured', [
+                            $this->logger->info('Event featured', [
                                 'event_id' => $record->id,
-                                'user_id' => auth()->id(),
+                                'user_id' => $this->guard->id(),
                                 'correlation_id' => $record->correlation_id,
                             ]);
                         })
@@ -475,9 +472,9 @@ final class EventResource extends Model
                     DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Event bulk deleted', [
+                                $this->logger->info('Event bulk deleted', [
                                     'event_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -490,9 +487,9 @@ final class EventResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Event activated', [
+                                $this->logger->info('Event activated', [
                                     'event_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -507,9 +504,9 @@ final class EventResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_verified' => true]);
-                                Log::channel('audit')->info('Event bulk verified', [
+                                $this->logger->info('Event bulk verified', [
                                     'event_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

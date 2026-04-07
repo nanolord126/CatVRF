@@ -2,22 +2,22 @@
 
 namespace App\Domains\Veterinary\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class VeterinaryService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class VeterinaryService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
-         * @param FraudControlService $fraudControl
+         * @param FraudControlService $fraud
          * @param string $correlationId
          */
-        public function __construct(
-            private FraudControlService $fraudControl,
-            private string $correlationId = ''
-        ) {
+        private readonly string $correlationId;
+
+        public function __construct(private FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
         }
 
         /**
@@ -35,16 +35,16 @@ final class VeterinaryService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('Attempting to register new pet', [
+            $this->logger->info('Attempting to register new pet', [
                 'owner_id' => $ownerId,
                 'name' => $data['name'] ?? 'Unknown',
                 'correlation_id' => $correlationId
             ]);
 
             // 1. Policy/Fraud Check
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $ownerId, $correlationId) {
+            return $this->db->transaction(function () use ($data, $ownerId, $correlationId) {
                 $pet = Pet::create([
                     'tenant_id' => tenant()->id ?? 1,
                     'owner_id' => $ownerId,
@@ -58,7 +58,7 @@ final class VeterinaryService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Pet successfully registered', [
+                $this->logger->info('Pet successfully registered', [
                     'pet_id' => $pet->id,
                     'pet_uuid' => $pet->uuid,
                     'correlation_id' => $correlationId
@@ -90,7 +90,7 @@ final class VeterinaryService extends Model
         {
             $correlationId = $this->getCorrelationId();
 
-            Log::channel('audit')->info('Initiating veterinary appointment creation', [
+            $this->logger->info('Initiating veterinary appointment creation', [
                 'client_id' => $data['client_id'],
                 'clinic_id' => $data['clinic_id'],
                 'is_b2b' => $isB2B,
@@ -98,9 +98,9 @@ final class VeterinaryService extends Model
             ]);
 
             // 1. Mandatory Pre-check
-            $this->fraudControl->check();
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data, $isB2B, $correlationId) {
+            return $this->db->transaction(function () use ($data, $isB2B, $correlationId) {
 
                 // Logic: B2B usually allows bulk or credit line appointments
                 // B2C requires immediate hold or prepayment (WalletService integration would be here)
@@ -124,7 +124,7 @@ final class VeterinaryService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Veterinary appointment created', [
+                $this->logger->info('Veterinary appointment created', [
                     'appointment_id' => $appointment->id,
                     'appointment_uuid' => $appointment->uuid,
                     'correlation_id' => $correlationId
@@ -141,12 +141,12 @@ final class VeterinaryService extends Model
         {
             $clinic = VeterinaryClinic::findOrFail($clinicId);
 
-            $avg = DB::table('reviews')
+            $avg = $this->db->table('reviews')
                 ->where('reviewable_type', VeterinaryClinic::class)
                 ->where('reviewable_id', $clinicId)
                 ->avg('rating') ?: 0;
 
-            $count = DB::table('reviews')
+            $count = $this->db->table('reviews')
                 ->where('reviewable_type', VeterinaryClinic::class)
                 ->where('reviewable_id', $clinicId)
                 ->count();

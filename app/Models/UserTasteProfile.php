@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class UserTasteProfile extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use BelongsToTenant;
 
         protected $table = 'user_taste_profiles';
 
@@ -195,156 +196,17 @@ final class UserTasteProfile extends Model
             $calculatedAt = $this->calculated_at ?? $this->created_at;
             return $calculatedAt->diffInHours(now()) > 24;
         }
-    }
-
-        // ========== HELPER METHODS ==========
-
-        /**
-         * Этот профиль «готов» для рекомендаций?
-         * Минимум 10 взаимодействий и data quality > 0.6
-         */
-        public function isReadyForRecommendations(): bool
-        {
-            return $this->getTotalInteractions() >= 10
-                && $this->getDataQualityScore() >= 0.6
-                && $this->allow_personalization;
-        }
-
-        /**
-         * Этот профиль новый (холодный старт)?
-         */
-        public function isColdStart(): bool
-        {
-            return $this->getTotalInteractions() < 5;
-        }
-
-        /**
-         * Нужен ли пересчёт embeddings?
-         */
-        public function needsRecalculation(): bool
-        {
-            $calculatedAt = $this->calculated_at ?? $this->created_at;
-            return $calculatedAt->diffInHours(now()) > 24;
-        }
-            'favorite_brands' => 'json',
-            'color_preferences' => 'json',
-            'recent_interactions' => 'json',
-            'confidence_score' => 'float',
-            'recommendation_ctr' => 'float',
-            'personalization_enabled' => 'boolean',
-            'last_analyzed_at' => 'datetime',
-            'last_model_update_at' => 'datetime',
-        ];
-
-        // ============ Relations ============
-
-        public function user(): BelongsTo
-        {
-            return $this->belongsTo(User::class);
-        }
 
         // ============ Global Scopes ============
 
         protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                $query->where('user_taste_profiles.tenant_id', tenant()->id);
+                if (tenancy()->initialized) {
+                    $query->where('user_taste_profiles.tenant_id', tenant()->id);
+                }
             });
         }
 
         // ============ Accessors & Mutators ============
-
-        public function getImplicitScoresAttribute(?array $value): array
-        {
-            return $value ?? [];
-        }
-
-        public function getExplicitPreferencesAttribute(?array $value): array
-        {
-            return $value ?? [];
-        }
-
-        public function getSizeProfileAttribute(?array $value): array
-        {
-            return $value ?? [];
-        }
-
-        public function getFavoriteBrandsAttribute(?array $value): array
-        {
-            return $value ?? [];
-        }
-
-        public function getColorPreferencesAttribute(?array $value): array
-        {
-            return $value ?? [];
-        }
-
-        // ============ Methods ============
-
-        /**
-         * Получить embedding пользователя (если есть)
-         */
-        public function getEmbedding(): ?array
-        {
-            return $this->embedding;
-        }
-
-        /**
-         * Получить оценку по категории (0-1)
-         */
-        public function getScoreForCategory(string $category): float
-        {
-            return $this->implicit_scores[$category] ?? 0.0;
-        }
-
-        /**
-         * Получить топ-категории (отсортированы по оценке)
-         */
-        public function getTopCategories(int $limit = 10): array
-        {
-            $scores = $this->implicit_scores ?? [];
-
-            \arsort($scores);
-
-            return \array_slice($scores, 0, $limit, true);
-        }
-
-        /**
-         * Обновить статистику рекомендаций
-         */
-        public function recordRecommendationView(bool $clicked = false): void
-        {
-            $this->increment('recommendation_views');
-
-            if ($clicked) {
-                $this->increment('recommendation_clicks');
-            }
-
-            // Пересчитать CTR
-            if ($this->recommendation_views > 0) {
-                $this->recommendation_ctr = (float)$this->recommendation_clicks / $this->recommendation_views;
-                $this->save();
-            }
-        }
-
-        /**
-         * Получить статус анализа
-         */
-        public function isAnalyzed(): bool
-        {
-            return $this->analysis_status === 'processed';
-        }
-
-        /**
-         * Получить качество профиля (confidence score)
-         */
-        public function getProfileQuality(): string
-        {
-            return match (true) {
-                $this->confidence_score < 0.3 => 'low',
-                $this->confidence_score < 0.6 => 'medium',
-                $this->confidence_score < 0.85 => 'high',
-                default => 'excellent',
-            };
-        }
 }

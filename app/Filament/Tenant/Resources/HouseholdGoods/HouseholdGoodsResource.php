@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\HouseholdGoods;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class HouseholdGoodsResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Select, RichEditor, FileUpload, Toggle, TagsInput, Hidden, Grid};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Forms\Form;
     use Filament\Resources\Resource;
     use Filament\Tables;
@@ -23,6 +18,10 @@ final class HouseholdGoodsResource extends Model
 
     final class HouseholdGoodsResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = \App\Domains\HouseholdGoods\Models\HouseholdGoods::class;
         protected static ?string $navigationIcon = 'heroicon-o-home-modern';
         protected static ?string $navigationGroup = 'HouseholdGoods';
@@ -304,7 +303,6 @@ final class HouseholdGoodsResource extends Model
                 BadgeColumn::make('category')
                     ->label('Категория')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'kitchen' => 'Кухня',
                         'bedroom' => 'Спальня',
                         'bathroom' => 'Ванная',
                         'living_room' => 'Гостиная',
@@ -324,14 +322,12 @@ final class HouseholdGoodsResource extends Model
                 BadgeColumn::make('stock_status')
                     ->label('Запас')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'in_stock' => 'В наличии',
                         'low_stock' => 'Мало',
                         'out_of_stock' => 'Нет',
                         'on_order' => 'В заказе',
                         default => $state,
                     })
                     ->color(fn ($state) => match($state) {
-                        'in_stock' => 'success',
                         'low_stock' => 'warning',
                         'out_of_stock' => 'danger',
                         'on_order' => 'info',
@@ -409,9 +405,9 @@ final class HouseholdGoodsResource extends Model
                     DeleteBulkAction::make()
                         ->action(function ($records) {
                             $records->each(function ($record) {
-                                Log::channel('audit')->info('Household good bulk deleted', [
+                                $this->logger->info('Household good bulk deleted', [
                                     'good_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });
@@ -424,7 +420,7 @@ final class HouseholdGoodsResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Household good activated', [
+                                $this->logger->info('Household good activated', [
                                     'good_id' => $record->id,
                                     'correlation_id' => $record->correlation_id,
                                 ]);

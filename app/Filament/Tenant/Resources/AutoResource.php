@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoResource extends Model
+final class AutoResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +105,15 @@ final class AutoResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAuto::route('/'),
-                'create' => Pages\\CreateAuto::route('/create'),
-                'edit' => Pages\\EditAuto::route('/{record}/edit'),
-                'view' => Pages\\ViewAuto::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAuto::route('/'),
-                'create' => Pages\\CreateAuto::route('/create'),
-                'edit' => Pages\\EditAuto::route('/{record}/edit'),
-                'view' => Pages\\ViewAuto::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAuto::route('/'),
-                'create' => Pages\\CreateAuto::route('/create'),
-                'edit' => Pages\\EditAuto::route('/{record}/edit'),
-                'view' => Pages\\ViewAuto::route('/{record}'),
+                'index' => Pages\ListAuto::route('/'),
+                'create' => Pages\CreateAuto::route('/create'),
+                'edit' => Pages\EditAuto::route('/{record}/edit'),
+                'view' => Pages\ViewAuto::route('/{record}'),
             ];
         }
 }

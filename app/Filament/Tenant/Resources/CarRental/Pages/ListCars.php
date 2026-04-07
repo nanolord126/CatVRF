@@ -1,15 +1,63 @@
 <?php declare(strict_types=1);
 
+/**
+ * ListCars — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ */
+
+
+/**
+ * ListCars — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ * @see https://catvrf.ru/docs/listcars
+ */
+
+
 namespace App\Filament\Tenant\Resources\CarRental\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Pages\ListRecords;
 
-final class ListCars extends Model
+final class ListCars extends ListRecords
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = CarResource::class;
 
         /**

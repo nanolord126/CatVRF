@@ -2,17 +2,15 @@
 
 namespace App\Domains\Medical\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MedicalDoctorController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class MedicalDoctorController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -29,13 +27,13 @@ final class MedicalDoctorController extends Model
 
                 $doctors = $query->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $doctors,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch doctors'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch doctors'], 500);
             }
         }
 
@@ -44,13 +42,13 @@ final class MedicalDoctorController extends Model
             try {
                 $doctor = MedicalDoctor::with(['clinic', 'reviews'])->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $doctor,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Doctor not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Doctor not found'], 404);
             }
         }
 
@@ -60,28 +58,28 @@ final class MedicalDoctorController extends Model
                 $doctor = MedicalDoctor::findOrFail($id);
                 $reviews = $doctor->reviews()->where('status', 'approved')->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Not found'], 404);
             }
         }
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $this->authorize('create', MedicalDoctor::class);
 
                 $doctor = MedicalDoctor::create([
-                    'tenant_id' => auth()->user()->tenant_id,
+                    'tenant_id' => $request->user()->tenant_id,
                     'clinic_id' => $request->input('clinic_id'),
-                    'user_id' => auth()->user()->id,
+                    'user_id' => $request->user()->id,
                     'full_name' => $request->input('full_name'),
                     'specialization' => $request->input('specialization'),
                     'experience_years' => $request->input('experience_years', 0),
@@ -92,38 +90,38 @@ final class MedicalDoctorController extends Model
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Doctor created', ['doctor_id' => $doctor->id]);
+                $this->logger->info('Doctor created', ['doctor_id' => $doctor->id]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $doctor,
                     'correlation_id' => $request->header('X-Correlation-ID'),
                 ], 201);
             } catch (Throwable $e) {
-                Log::error('Failed to create doctor', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'error' => 'Failed to create doctor'], 500);
+                $this->logger->error('Failed to create doctor', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to create doctor'], 500);
             }
         }
 
         public function myProfile(): JsonResponse
         {
             try {
-                $doctor = MedicalDoctor::where('user_id', auth()->user()->id)->first();
+                $doctor = MedicalDoctor::where('user_id', $request->user()->id)->first();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $doctor,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Doctor not found'], 404);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Doctor not found'], 404);
             }
         }
 
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $doctor = MedicalDoctor::findOrFail($id);
@@ -136,11 +134,11 @@ final class MedicalDoctorController extends Model
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Doctor updated', ['doctor_id' => $doctor->id]);
+                $this->logger->info('Doctor updated', ['doctor_id' => $doctor->id]);
 
-                return response()->json(['success' => true, 'data' => $doctor]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $doctor]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Update failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Update failed'], 500);
             }
         }
 
@@ -152,11 +150,11 @@ final class MedicalDoctorController extends Model
 
                 $doctor->update(['is_active' => false]);
 
-                Log::channel('audit')->info('Doctor deactivated', ['doctor_id' => $doctor->id]);
+                $this->logger->info('Doctor deactivated', ['doctor_id' => $doctor->id]);
 
-                return response()->json(['success' => true]);
+                return new \Illuminate\Http\JsonResponse(['success' => true]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Delete failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Delete failed'], 500);
             }
         }
 
@@ -165,13 +163,13 @@ final class MedicalDoctorController extends Model
             try {
                 $doctors = MedicalDoctor::paginate(50);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $doctors,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Failed to fetch doctors'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Failed to fetch doctors'], 500);
             }
         }
 
@@ -192,13 +190,13 @@ final class MedicalDoctorController extends Model
                     ];
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json(['success' => false, 'error' => 'Analytics failed'], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'error' => 'Analytics failed'], 500);
             }
         }
 }

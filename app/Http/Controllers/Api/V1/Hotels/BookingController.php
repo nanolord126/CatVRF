@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1\Hotels;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class BookingController extends Model
+final class BookingController extends Controller
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly FraudControlService $fraudService,
             private readonly WalletService $walletService,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * POST /api/v1/hotels/bookings
          * Создать бронирование отеля.
@@ -25,7 +31,7 @@ final class BookingController extends Model
             $correlationId = $request->getCorrelationId();
             $tenantId = $request->getTenantId();
             try {
-                return DB::transaction(function () use ($request, $correlationId, $tenantId) {
+                return $this->db->transaction(function () use ($request, $correlationId, $tenantId) {
                     // 1. Рассчитать сумму бронирования
                     $nights = $request->integer('nights');
                     $pricePerNight = $request->integer('price_per_night');
@@ -35,16 +41,16 @@ final class BookingController extends Model
                     $fraudResult = $this->fraudService->scoreOperation([
                         'type' => 'hotel_booking',
                         'amount' => $totalAmount,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'ip_address' => $request->ip(),
                         'correlation_id' => $correlationId,
                     ]);
                     if ($fraudResult['decision'] === 'block') {
-                        Log::channel('fraud_alert')->warning('Hotel booking blocked', [
+                        $this->logger->channel('fraud_alert')->warning('Hotel booking blocked', [
                             'correlation_id' => $correlationId,
                             'amount' => $totalAmount,
                         ]);
-                        return response()->json([
+                        return $this->response->json([
                             'success' => false,
                             'message' => 'Booking blocked by fraud check',
                             'correlation_id' => $correlationId,
@@ -55,7 +61,7 @@ final class BookingController extends Model
                         'tenant_id' => $tenantId,
                         'hotel_id' => $request->integer('hotel_id'),
                         'room_type_id' => $request->integer('room_type_id'),
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'check_in_date' => $request->input('check_in_date'),
                         'check_out_date' => $request->input('check_out_date'),
                         'nights' => $nights,
@@ -68,21 +74,21 @@ final class BookingController extends Model
                     ]);
                     // 4. Hold депозита (30% от суммы)
                     $this->walletService->holdAmount(
-                        wallet_id: auth()->user()->wallet_id ?? 1,
+                        wallet_id: $this->guard->user()->wallet_id ?? 1,
                         amount: $depositAmount,
                         reason: 'Hotel deposit for booking ' . $booking->id,
                         correlation_id: $correlationId,
                     );
                     // 5. Логирование
-                    Log::channel('audit')->info('Hotel booking created', [
+                    $this->logger->channel('audit')->info('Hotel booking created', [
                         'correlation_id' => $correlationId,
                         'booking_id' => $booking->id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $this->guard->id(),
                         'total' => $totalAmount,
                         'deposit' => $depositAmount,
                         'nights' => $nights,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Booking created successfully',
                         'correlation_id' => $correlationId,
@@ -97,11 +103,18 @@ final class BookingController extends Model
                     ], 201);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Hotel booking creation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Hotel booking creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Booking creation failed',
                     'correlation_id' => $correlationId,
@@ -116,7 +129,7 @@ final class BookingController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($booking, $correlationId) {
+                return $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->update([
                         'status' => 'checked_in',
                         'checked_in_at' => now(),
@@ -125,27 +138,34 @@ final class BookingController extends Model
                     // Захватить оставшуюся сумму (100% - 30% депозит)
                     $remainingAmount = $booking->total_price - $booking->deposit_amount;
                     $this->walletService->holdAmount(
-                        wallet_id: auth()->user()->wallet_id ?? 1,
+                        wallet_id: $this->guard->user()->wallet_id ?? 1,
                         amount: $remainingAmount,
                         reason: 'Hotel final charge for booking ' . $booking->id,
                         correlation_id: $correlationId,
                     );
-                    Log::channel('audit')->info('Hotel check-in completed', [
+                    $this->logger->channel('audit')->info('Hotel check-in completed', [
                         'correlation_id' => $correlationId,
                         'booking_id' => $booking->id,
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Check-in successful',
                         'correlation_id' => $correlationId,
                     ], 200);
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Check-in failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Check-in failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Check-in failed',
                     'correlation_id' => $correlationId,
@@ -160,7 +180,7 @@ final class BookingController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($booking, $correlationId) {
+                return $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->update([
                         'status' => 'completed',
                         'checked_out_at' => now(),
@@ -173,41 +193,30 @@ final class BookingController extends Model
                         $refundAmount = $daysRefund * $booking->price_per_night;
                         // Вернуть деньги за неиспользованные дни
                         $this->walletService->credit(
-                            wallet_id: auth()->user()->wallet_id ?? 1,
+                            wallet_id: $this->guard->user()->wallet_id ?? 1,
                             amount: $refundAmount,
                             reason: 'Early checkout refund for booking ' . $booking->id,
                             correlation_id: $correlationId,
                         );
-                        Log::channel('audit')->info('Early checkout processed', [
+                        $this->logger->channel('audit')->info('Early checkout processed', [
                             'correlation_id' => $correlationId,
                             'booking_id' => $booking->id,
                             'refund_amount' => $refundAmount,
                         ]);
                     }
-                    // Расписать выплату отелю на 4 дня
-                    // В реальном приложении - создать scheduled payout
-                    Log::channel('audit')->info('Hotel checkout completed', [
-                        'correlation_id' => $correlationId,
-                        'booking_id' => $booking->id,
-                        'payout_scheduled_for' => now()->addDays(4)->format('Y-m-d'),
-                    ]);
-                    return response()->json([
+
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Check-out successful',
                         'correlation_id' => $correlationId,
-                        'data' => [
-                            'id' => $booking->id,
-                            'status' => 'completed',
-                            'payout_scheduled' => now()->addDays(4)->format('Y-m-d'),
-                        ],
-                    ], 200);
+                    ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Check-out failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('error')->error('Check-out failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Check-out failed',
                     'correlation_id' => $correlationId,
@@ -222,7 +231,7 @@ final class BookingController extends Model
         {
             $correlationId = $request->getCorrelationId();
             try {
-                return DB::transaction(function () use ($booking, $correlationId) {
+                return $this->db->transaction(function () use ($booking, $correlationId) {
                     // Проверить время до check-in
                     $daysUntilCheckIn = now()->diffInDays($booking->check_in_date);
                     // Политика: <7 дней = нет возврата, >=7 дней = полный возврат
@@ -230,7 +239,7 @@ final class BookingController extends Model
                         // Полный возврат
                         $refundAmount = $booking->total_price;
                         $this->walletService->credit(
-                            wallet_id: auth()->user()->wallet_id ?? 1,
+                            wallet_id: $this->guard->user()->wallet_id ?? 1,
                             amount: $refundAmount,
                             reason: 'Hotel booking cancellation refund',
                             correlation_id: $correlationId,
@@ -242,31 +251,23 @@ final class BookingController extends Model
                     $booking->update([
                         'status' => 'cancelled',
                         'cancelled_at' => now(),
-                        'correlation_id' => $correlationId,
-                    ]);
-                    Log::channel('audit')->info('Hotel booking cancelled', [
-                        'correlation_id' => $correlationId,
-                        'booking_id' => $booking->id,
-                        'days_until_checkin' => $daysUntilCheckIn,
                         'refund_amount' => $refundAmount,
+                        'correlation_id' => $correlationId,
                     ]);
-                    return response()->json([
+
+                    return $this->response->json([
                         'success' => true,
                         'message' => 'Booking cancelled',
+                        'refund_amount' => $refundAmount,
                         'correlation_id' => $correlationId,
-                        'data' => [
-                            'id' => $booking->id,
-                            'refund' => $refundAmount,
-                            'policy' => $daysUntilCheckIn >= 7 ? 'Full refund' : 'No refund',
-                        ],
-                    ], 200);
+                    ]);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Booking cancellation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->channel('error')->error('Cancellation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Cancellation failed',
                     'correlation_id' => $correlationId,

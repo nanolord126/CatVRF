@@ -10,7 +10,7 @@ use Maatwebsite\Excel\Facades\Excel;
 final readonly class ImportService
 {
     public function __construct(
-        private FraudControlService $fraudControlService,
+        private FraudControlService $fraud,
         private RateLimiterService $rateLimiterService,
     ) {}
 
@@ -84,11 +84,10 @@ final readonly class ImportService
         $validator = Validator::make($row, $this->getRules($type));
 
         if ($validator->fails()) {
-            throw new \Exception($validator->errors()->first());
+            throw new \InvalidArgumentException($validator->errors()->first());
         }
 
         return match ($type) {
-            'products' => $this->importProduct($row, $tenantId),
             'services' => $this->importService($row, $tenantId),
             'users' => $this->importUser($row, $tenantId),
             default => $row,

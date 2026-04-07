@@ -8,10 +8,10 @@ use App\Notifications\BaseMailableNotification;
 /**
  * Booking Confirmed Notification - бронирование подтверждено
  */
-class BookingConfirmedNotification extends BaseMailableNotification
+final class BookingConfirmedNotification extends BaseMailableNotification
 {
-    protected string $type = 'hotels.booking.confirmed';
-    protected string $template = 'emails.hotels.booking_confirmed';
+    private string $type = 'hotels.booking.confirmed';
+    private string $template = 'emails.hotels.booking_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
@@ -35,9 +35,9 @@ class BookingConfirmedNotification extends BaseMailableNotification
 /**
  * Check-in Reminder - напоминание перед заселением
  */
-class CheckInReminderNotification extends BaseInAppNotification
+final class CheckInReminderNotification extends BaseInAppNotification
 {
-    protected string $type = 'hotels.check_in.reminder';
+    private string $type = 'hotels.check_in.reminder';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
@@ -54,10 +54,10 @@ class CheckInReminderNotification extends BaseInAppNotification
 /**
  * Payout Processed - выплата отправлена (для отелей)
  */
-class PayoutProcessedNotification extends BaseMailableNotification
+final class PayoutProcessedNotification extends BaseMailableNotification
 {
-    protected string $type = 'hotels.payout.processed';
-    protected string $template = 'emails.hotels.payout_processed';
+    private string $type = 'hotels.payout.processed';
+    private string $template = 'emails.hotels.payout_processed';
 
     public function __construct(int $userId, int $tenantId, array $payoutData)
     {
@@ -69,9 +69,9 @@ class PayoutProcessedNotification extends BaseMailableNotification
 /**
  * Review Request - просьба оставить отзыв
  */
-class ReviewRequestNotification extends BaseInAppNotification
+final class ReviewRequestNotification extends BaseInAppNotification
 {
-    protected string $type = 'hotels.review_request';
+    private string $type = 'hotels.review_request';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {

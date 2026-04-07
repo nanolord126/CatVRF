@@ -1,24 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIWellnessPlanner extends Model
+
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
+
+final readonly class AIWellnessPlanner
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly \App\Services\AI\AIConstructorService $aiConstructor,
-            private readonly \App\Services\RecommendationService $recommendation,
-            private readonly \App\Domains\Beauty\Wellness\Models\WellnessCenter $center,
-        ) {}
+        private \App\Services\AI\AIConstructorService $aiConstructor,
+        private \App\Services\RecommendationService $recommendation,
+        private \Illuminate\Database\DatabaseManager $db,
+        private LoggerInterface $logger,
+    ) {}
 
         /**
          * Generate a personalized wellness program based on client data and specialist expertise.
-         * @throws \Exception
+         * @throws \RuntimeException
          */
         public function generateProgram(
             int $client_id,
@@ -29,7 +31,7 @@ final class AIWellnessPlanner extends Model
             $correlationId = (string) Str::uuid();
 
             // 1. Audit Init
-            Log::channel('recommend')->info('AI Wellness Planner Generation Init', [
+            $this->logger->info('AI Wellness Planner Generation Init', [
                 'client_id' => $client_id,
                 'specialist_id' => $specialist_id,
                 'correlation_id' => $correlationId,
@@ -55,24 +57,24 @@ final class AIWellnessPlanner extends Model
             ];
 
             // 5. DB Transaction (Mutations)
-            return DB::transaction(function () use ($client_id, $specialist_id, $programData, $medical_notes, $correlationId) {
+            return $this->db->transaction(function () use ($client_id, $specialist_id, $programData, $medical_notes, $correlationId) {
                 $program = WellnessProgram::create([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => tenant()->id,
                     'center_id' => $this->center->id,
                     'client_id' => $client_id,
                     'specialist_id' => $specialist_id,
-                    'name' => "Personalized AI Wellness Plan - " . now()->format('Y-m-d'),
+                    'name' => "Personalized AI Wellness Plan - " . Carbon::now()->format('Y-m-d'),
                     'program_data' => $programData,
                     'medical_restrictions' => $medical_notes,
                     'health_goal' => implode(', ', $programData['goals']),
-                    'start_at' => now(),
-                    'end_at' => now()->addMonths(3), // Standard 3 month plan
+                    'start_at' => Carbon::now(),
+                    'end_at' => Carbon::now()->addMonths(3), // Standard 3 month plan
                     'correlation_id' => $correlationId,
                 ]);
 
                 // 6. Audit Exit
-                Log::channel('recommend')->info('AI Wellness Plan Finalized', [
+                $this->logger->info('AI Wellness Plan Finalized', [
                     'program_uuid' => $program->uuid,
                     'correlation_id' => $correlationId,
                     'score' => $programData['ai_score'],

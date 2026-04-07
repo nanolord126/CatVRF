@@ -2,15 +2,8 @@
 
 namespace App\Filament\Tenant\Resources\Sports;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SportEquipmentResource extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor, Components\FileUpload};
+use Psr\Log\LoggerInterface;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -20,6 +13,10 @@ final class SportEquipmentResource extends Model
 
     final class SportEquipmentResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = SportEquipment::class;
         protected static ?string $navigationIcon = 'heroicon-m-heart';
         protected static ?string $navigationGroup = 'Sports';
@@ -196,7 +193,6 @@ final class SportEquipmentResource extends Model
                 BadgeColumn::make('sport_type')
                     ->label('Вид спорта')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'football' => '⚽ Футбол',
                         'basketball' => '🏀 Баскетбол',
                         'tennis' => '🎾 Теннис',
                         'volleyball' => '🏐 Волейбол',
@@ -207,7 +203,6 @@ final class SportEquipmentResource extends Model
                         default => 'Прочее',
                     })
                     ->color(fn ($state) => match($state) {
-                        'football' => 'blue',
                         'basketball' => 'orange',
                         'tennis' => 'green',
                         'volleyball' => 'yellow',
@@ -312,7 +307,7 @@ final class SportEquipmentResource extends Model
                         ->visible(fn ($record) => !$record->is_featured)
                         ->action(function ($record) {
                             $record->update(['is_featured' => true]);
-                            Log::channel('audit')->info('Sport equipment featured', ['equipment_id' => $record->id, 'correlation_id' => $record->correlation_id]);
+                            $this->logger->info('Sport equipment featured', ['equipment_id' => $record->id, 'correlation_id' => $record->correlation_id]);
                         })
                         ->successNotification(),
                 ]),
@@ -328,7 +323,7 @@ final class SportEquipmentResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Sport equipment bulk activated', ['equipment_id' => $record->id, 'correlation_id' => $record->correlation_id]);
+                                $this->logger->info('Sport equipment bulk activated', ['equipment_id' => $record->id, 'correlation_id' => $record->correlation_id]);
                             });
                         })
                         ->deselectRecordsAfterCompletion(),

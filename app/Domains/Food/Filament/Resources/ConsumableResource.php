@@ -2,14 +2,11 @@
 
 namespace App\Domains\Food\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ConsumableResource extends Model
+final class ConsumableResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = FoodConsumable::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-beaker';
@@ -57,10 +54,10 @@ final class ConsumableResource extends Model
                         ->sortable(),
                     TextColumn::make('unit')
                         ->label('Единица'),
-                    TextColumn::make('current_stock')
+                    TextColumn::make('current_stock')->badge()
                         ->label('Остаток')
                         ->sortable(),
-                    BadgeColumn::make('current_stock')
+                    TextColumn::make('current_stock')->badge()
                         ->label('Статус')
                         ->getStateUsing(function (FoodConsumable $record): string {
                             return $record->current_stock < $record->min_stock_threshold ? 'Мало' : 'Ок';

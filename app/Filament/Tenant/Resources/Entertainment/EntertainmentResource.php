@@ -2,6 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Entertainment;
 
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
 use App\Models\Entertainment;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -24,6 +28,10 @@ use Illuminate\Support\Str;
 
 final class EntertainmentResource extends Resource
 {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
     protected static ?string $model = Entertainment::class;
     protected static ?string $navigationIcon = 'heroicon-o-video-camera';
     protected static ?string $navigationGroup = 'Вертикали';
@@ -104,7 +112,7 @@ final class EntertainmentResource extends Resource
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['correlation_id'] = Str::uuid()->toString();
-        Log::channel('audit')->info('Entertainment create/update',['user'=>auth()->id(),'correlation_id'=>$data['correlation_id']]);
+        $this->logger->info('Entertainment create/update',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
         return $data;
     }
 

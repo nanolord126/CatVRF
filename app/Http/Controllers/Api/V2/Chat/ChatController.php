@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api\V2\Chat;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ChatController extends Model
+final class ChatController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly RealtimeChatService $chat
-        ) {
+            private readonly RealtimeChatService $chat,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Realtime Chat
              // Только авторизованные пользователи
              // 500 сообщений/час (anti-spam)
@@ -31,26 +34,26 @@ final class ChatController extends Model
                     'content' => 'required|string|max:5000',
                 ]);
                 $message = $this->chat->createMessage(
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     tenantId: filament()->getTenant()->id,
                     roomId: $validated['room_id'],
                     content: $validated['content'],
                     correlationId: $correlationId
                 );
-                Log::channel('audit')->info('Chat message sent', [
+                $this->logger->channel('audit')->info('Chat message sent', [
                     'correlation_id' => $correlationId,
                     'room_id' => $validated['room_id'],
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'message' => $message,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to send chat message', [
+                $this->logger->channel('audit')->error('Failed to send chat message', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to send message',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -68,17 +71,17 @@ final class ChatController extends Model
                 ]);
                 $limit = $validated['limit'] ?? 50;
                 $messages = $this->chat->getRoomMessages($roomId, $limit);
-                return response()->json([
+                return $this->response->json([
                     'messages' => $messages,
                     'count' => $messages->count(),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to get messages', [
+                $this->logger->channel('audit')->error('Failed to get messages', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to get messages',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -94,19 +97,19 @@ final class ChatController extends Model
                 $this->chat->deleteMessage(
                     roomId: $roomId,
                     messageId: $messageId,
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to delete message', [
+                $this->logger->channel('audit')->error('Failed to delete message', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to delete message',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -126,19 +129,19 @@ final class ChatController extends Model
                     roomId: $roomId,
                     messageId: $messageId,
                     content: $validated['content'],
-                    userId: auth()->id(),
+                    userId: $this->guard->id(),
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'message' => $message,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to edit message', [
+                $this->logger->channel('audit')->error('Failed to edit message', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to edit message',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -162,16 +165,16 @@ final class ChatController extends Model
                     memberIds: $validated['members'] ?? [],
                     correlationId: $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'room' => $room,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create room', [
+                $this->logger->channel('audit')->error('Failed to create room', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Failed to create room',
                     'correlation_id' => $correlationId,
                 ], 500);

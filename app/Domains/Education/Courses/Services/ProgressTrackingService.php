@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Courses\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ProgressTrackingService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class ProgressTrackingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function trackLessonWatch(
             int $enrollmentId,
@@ -21,27 +21,19 @@ final class ProgressTrackingService extends Model
             string $correlationId = '',
         ): LessonProgress {
 
-
             try {
-                Log::channel('audit')->info('Tracking lesson watch time', [
+                $this->logger->info('Tracking lesson watch time', [
                     'enrollment_id' => $enrollmentId,
                     'lesson_id' => $lessonId,
                     'watch_time' => $watchTimeSeconds,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $watchTimeSeconds, $correlationId) {
+                $progress = $this->db->transaction(function () use ($enrollmentId, $lessonId, $watchTimeSeconds, $correlationId) {
                     $progress = LessonProgress::firstOrCreate([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'enrollment_id' => $enrollmentId,
                         'lesson_id' => $lessonId,
                     ]);
@@ -53,21 +45,21 @@ final class ProgressTrackingService extends Model
 
                     // Update enrollment total watch time
                     Enrollment::findOrFail($enrollmentId)->update([
-                        'total_watch_time_seconds' => DB::raw("total_watch_time_seconds + {$watchTimeSeconds}"),
-                        'last_accessed_at' => now(),
+                        'total_watch_time_seconds' => $this->db->raw("total_watch_time_seconds + {$watchTimeSeconds}"),
+                        'last_accessed_at' => Carbon::now(),
                     ]);
 
                     return $progress;
                 });
 
-                Log::channel('audit')->info('Lesson watch time tracked', [
+                $this->logger->info('Lesson watch time tracked', [
                     'progress_id' => $progress->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $progress;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to track lesson watch time', [
+                $this->logger->error('Failed to track lesson watch time', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -81,31 +73,23 @@ final class ProgressTrackingService extends Model
             string $correlationId = '',
         ): LessonProgress {
 
-
             try {
-                Log::channel('audit')->info('Marking lesson as complete', [
+                $this->logger->info('Marking lesson as complete', [
                     'enrollment_id' => $enrollmentId,
                     'lesson_id' => $lessonId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
+                $progress = $this->db->transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
                     $progress = LessonProgress::where('enrollment_id', $enrollmentId)
                         ->where('lesson_id', $lessonId)
                         ->firstOrFail();
 
                     $progress->update([
                         'is_completed' => true,
-                        'completed_at' => now(),
+                        'completed_at' => Carbon::now(),
                         'completion_percent' => 100,
                     ]);
 
@@ -124,14 +108,14 @@ final class ProgressTrackingService extends Model
                     return $progress;
                 });
 
-                Log::channel('audit')->info('Lesson marked as complete', [
+                $this->logger->info('Lesson marked as complete', [
                     'progress_id' => $progress->id,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $progress;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to mark lesson as complete', [
+                $this->logger->error('Failed to mark lesson as complete', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -142,9 +126,8 @@ final class ProgressTrackingService extends Model
         public function getEnrollmentProgress(int $enrollmentId, string $correlationId = ''): array
         {
 
-
             try {
-                Log::channel('audit')->info('Getting enrollment progress', [
+                $this->logger->info('Getting enrollment progress', [
                     'enrollment_id' => $enrollmentId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -164,7 +147,7 @@ final class ProgressTrackingService extends Model
                     'status' => $enrollment->status,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to get enrollment progress', [
+                $this->logger->error('Failed to get enrollment progress', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

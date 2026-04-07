@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\Courses\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class B2BCourseStorefront extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'b2b_course_storefronts';
@@ -40,7 +41,7 @@ final class B2BCourseStorefront extends Model
 
         protected static function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', auth()->user()?->tenant_id ?? null));
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', (function_exists('tenant') && tenant()) ? tenant()->id : null));
         }
 
         public function b2bOrders(): HasMany
@@ -86,7 +87,7 @@ final class B2BCourseStorefront extends Model
 
         protected static function booted(): void
         {
-            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', auth()->user()?->tenant_id ?? null));
+            static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', (function_exists('tenant') && tenant()) ? tenant()->id : null));
         }
 
         public function storefront(): BelongsTo

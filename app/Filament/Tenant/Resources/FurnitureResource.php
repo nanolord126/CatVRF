@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class FurnitureResource extends Model
+final class FurnitureResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Furniture::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sofa';
@@ -108,22 +105,15 @@ final class FurnitureResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListFurniture::route('/'),
-                'create' => Pages\\CreateFurniture::route('/create'),
-                'edit' => Pages\\EditFurniture::route('/{record}/edit'),
-                'view' => Pages\\ViewFurniture::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListFurniture::route('/'),
-                'create' => Pages\\CreateFurniture::route('/create'),
-                'edit' => Pages\\EditFurniture::route('/{record}/edit'),
-                'view' => Pages\\ViewFurniture::route('/{record}'),
+                'index' => Pages\ListFurniture::route('/'),
+                'create' => Pages\CreateFurniture::route('/create'),
+                'edit' => Pages\EditFurniture::route('/{record}/edit'),
+                'view' => Pages\ViewFurniture::route('/{record}'),
             ];
         }
 }

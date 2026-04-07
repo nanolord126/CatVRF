@@ -2,37 +2,29 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class BookingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly BookingService $bookingService,
+
+    public function __construct(private readonly BookingService $bookingService,
             private readonly TicketingService $ticketingService,
-            private readonly FraudControlService $fraudControlService,) {}
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function store(): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -42,35 +34,35 @@ final class BookingController extends Model
             try {
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($correlationId) {
+                $this->db->transaction(function () use ($correlationId) {
                     $booking = $this->bookingService->createBooking(
-                        request('venue_id'),
-                        request('event_schedule_id'),
-                        auth()->id(),
-                        request('number_of_seats'),
+                        $request->input('venue_id'),
+                        $request->input('event_schedule_id'),
+                        $request->user()?->id,
+                        $request->input('number_of_seats'),
                         $correlationId,
                     );
 
                     $this->ticketingService->generateTickets($booking, $correlationId);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to create booking', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                $this->logger->error('Failed to create booking', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
             }
         }
 
         public function myBookings(): JsonResponse
         {
             try {
-                $bookings = Booking::where('customer_id', auth()->id())
+                $bookings = Booking::where('customer_id', $request->user()?->id)
                     ->with('venue', 'eventSchedule')
                     ->paginate(20);
 
-                return response()->json(['success' => true, 'data' => $bookings, 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $bookings, 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -80,30 +72,23 @@ final class BookingController extends Model
                 $booking = Booking::findOrFail($id);
                 $this->authorize('view', $booking);
 
-                return response()->json(['success' => true, 'data' => $booking->load('venue', 'eventSchedule', 'tickets'), 'correlation_id' => Str::uuid()]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $booking->load('venue', 'eventSchedule', 'tickets'), 'correlation_id' => Str::uuid()]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -114,14 +99,14 @@ final class BookingController extends Model
                 $booking = Booking::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($booking, $correlationId) {
+                $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->update(['correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Booking updated', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Booking updated', ['booking_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -133,14 +118,14 @@ final class BookingController extends Model
 
                 $this->authorize('cancel', $booking);
 
-                DB::transaction(function () use ($booking, $correlationId) {
-                    $this->bookingService->cancelBooking($booking, request('reason'), $correlationId);
+                $this->db->transaction(function () use ($booking, $correlationId) {
+                    $this->bookingService->cancelBooking($booking, $request->input('reason'), $correlationId);
                     $this->ticketingService->refundTickets($booking, $correlationId);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -150,14 +135,14 @@ final class BookingController extends Model
                 $booking = Booking::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($booking, $correlationId) {
+                $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->update(['status' => 'confirmed', 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Booking confirmed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Booking confirmed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 
@@ -167,14 +152,14 @@ final class BookingController extends Model
                 $booking = Booking::findOrFail($id);
                 $correlationId = Str::uuid()->toString();
 
-                DB::transaction(function () use ($booking, $correlationId) {
+                $this->db->transaction(function () use ($booking, $correlationId) {
                     $booking->update(['status' => 'completed', 'correlation_id' => $correlationId]);
-                    Log::channel('audit')->info('Booking completed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                    $this->logger->info('Booking completed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
                 });
 
-                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
             } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
             }
         }
 }

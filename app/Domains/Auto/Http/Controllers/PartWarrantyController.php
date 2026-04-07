@@ -2,16 +2,15 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PartWarrantyController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PartWarrantyController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly WarrantyService $warrantyService
+            private readonly WarrantyService $warrantyService, private readonly LoggerInterface $logger
         ) {}
 
         public function index(Request $request): JsonResponse
@@ -27,18 +26,18 @@ final class PartWarrantyController extends Model
                     ->orderBy('created_at', 'desc')
                     ->paginate(20);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $warranties,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Part warranty index failed', [
+                $this->logger->error('Part warranty index failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve part warranties',
                     'correlation_id' => $correlationId,
@@ -63,23 +62,23 @@ final class PartWarrantyController extends Model
             try {
                 $warranty = $this->warrantyService->createPartWarranty($validated);
 
-                Log::channel('audit')->info('Part warranty created', [
+                $this->logger->info('Part warranty created', [
                     'correlation_id' => $correlationId,
                     'warranty_id' => $warranty->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $warranty->load(['part', 'client']),
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Part warranty creation failed', [
+                $this->logger->error('Part warranty creation failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create part warranty',
                     'correlation_id' => $correlationId,
@@ -89,7 +88,7 @@ final class PartWarrantyController extends Model
 
         public function show(PartWarranty $warranty): JsonResponse
         {
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'success' => true,
                 'data' => $warranty->load(['part', 'client', 'order', 'replacementPart']),
             ]);
@@ -111,23 +110,23 @@ final class PartWarrantyController extends Model
                     $validated['notes'] ?? null
                 );
 
-                Log::channel('audit')->info('Part warranty claim submitted', [
+                $this->logger->info('Part warranty claim submitted', [
                     'correlation_id' => $correlationId,
                     'warranty_id' => $warranty->id,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['part', 'client']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Part warranty claim failed', [
+                $this->logger->error('Part warranty claim failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -151,18 +150,18 @@ final class PartWarrantyController extends Model
                     $validated['notes'] ?? null
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['part', 'client', 'replacementPart']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Part warranty approval failed', [
+                $this->logger->error('Part warranty approval failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to approve warranty claim',
                     'correlation_id' => $correlationId,
@@ -184,18 +183,18 @@ final class PartWarrantyController extends Model
                     $validated['notes']
                 );
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $updatedWarranty->fresh(['part', 'client']),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Part warranty rejection failed', [
+                $this->logger->error('Part warranty rejection failed', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to reject warranty claim',
                     'correlation_id' => $correlationId,

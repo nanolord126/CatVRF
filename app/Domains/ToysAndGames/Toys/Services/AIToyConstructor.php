@@ -2,14 +2,16 @@
 
 namespace App\Domains\ToysAndGames\Toys\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIToyConstructor extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class AIToyConstructor
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Generate a Recommended Toy Bundle based on Age, Interests, and Budget.
          * Heuristics:
@@ -19,11 +21,12 @@ final class AIToyConstructor extends Model
          */
         public function constructRecommendedOffer(ToyAIRequestDto $dto): array
         {
-            Log::channel('audit')->info('AI Toy & Game Constructor Invoked', [
+            $this->logger->info('AI Toy & Game Constructor Invoked', [
                 'user_id' => $dto->userId,
                 'age_months' => $dto->ageMonths,
                 'interests' => $dto->interests,
-                'budget' => $dto->budgetLimit
+                'budget' => $dto->budgetLimit,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             // 1. Resolve Age Group match
@@ -92,9 +95,10 @@ final class AIToyConstructor extends Model
                 'message' => $this->generateAIText($dto, $scoredToys->count())
             ];
 
-            Log::channel('audit')->info('AI Toy Construction Complete', [
+            $this->logger->info('AI Toy Construction Complete', [
                 'cid' => $roadmap['cid'],
-                'matches' => count($scoredToys)
+                'matches' => count($scoredToys),
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return $roadmap;

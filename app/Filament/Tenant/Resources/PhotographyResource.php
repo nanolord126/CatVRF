@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PhotographyResource extends Model
+final class PhotographyResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BPhotoOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,22 +103,15 @@ final class PhotographyResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPhotography::route('/'),
-                'create' => Pages\\CreatePhotography::route('/create'),
-                'edit' => Pages\\EditPhotography::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotography::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPhotography::route('/'),
-                'create' => Pages\\CreatePhotography::route('/create'),
-                'edit' => Pages\\EditPhotography::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotography::route('/{record}'),
+                'index' => Pages\ListPhotography::route('/'),
+                'create' => Pages\CreatePhotography::route('/create'),
+                'edit' => Pages\EditPhotography::route('/{record}/edit'),
+                'view' => Pages\ViewPhotography::route('/{record}'),
             ];
         }
 }

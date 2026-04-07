@@ -2,18 +2,26 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Logistics\Models\Courier;
+use App\Domains\Logistics\Models\DeliveryOrder;
+use App\Services\Security\RateLimiterService;
+use Exception;
 
-final class CourierService extends Model
+
+use Illuminate\Support\Str;
+use Throwable;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class CourierService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FraudControlService $fraudControl,
+            private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly DatabaseManager $db,
+    ) {}
 
         /**
          * Регистрирует курьера в системе.
@@ -33,23 +41,23 @@ final class CourierService extends Model
 
             try {
                 // Фрод-проверка
-                $this->fraudControl->check('courier_register', [
+                $this->fraud->check('courier_register', [
                     'tenant_id' => $tenantId,
                     'phone' => $data['phone'] ?? '',
                 ], $correlationId);
 
                 // Rate limiting
                 if (!$this->rateLimiter->allowTenant($tenantId, 'courier:register', 50, 3600)) {
-                    throw new Exception('Rate limit exceeded for courier registration', 429);
+                    throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(message: 'Rate limit exceeded for courier registration');
                 }
 
-                Log::channel('audit')->info('Courier registration started', [
+                $this->logger->channel('audit')->info('Courier registration started', [
                     'tenant_id' => $tenantId,
                     'name' => $data['name'] ?? '',
                     'correlation_id' => $correlationId,
                 ]);
 
-                $result = DB::transaction(function () use ($tenantId, $data, $correlationId) {
+                $result = $this->db->transaction(function () use ($tenantId, $data, $correlationId) {
                     $courier = Courier::create([
                         'tenant_id' => $tenantId,
                         'uuid' => Str::uuid()->toString(),
@@ -64,7 +72,7 @@ final class CourierService extends Model
                         'tags' => ['courier:new', 'source:register'],
                     ]);
 
-                    Log::channel('audit')->info('Courier registered', [
+                    $this->logger->channel('audit')->info('Courier registered', [
                         'tenant_id' => $tenantId,
                         'courier_id' => $courier->id,
                         'correlation_id' => $correlationId,
@@ -78,7 +86,7 @@ final class CourierService extends Model
 
                 return $result;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Courier registration failed', [
+                $this->logger->channel('audit')->error('Courier registration failed', [
                     'tenant_id' => $tenantId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -110,7 +118,7 @@ final class CourierService extends Model
                     'last_updated' => $courier->last_location_at?->toIso8601String() ?? now()->toIso8601String(),
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Courier location request failed', [
+                $this->logger->channel('audit')->error('Courier location request failed', [
                     'courier_id' => $courierId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -139,18 +147,18 @@ final class CourierService extends Model
 
             try {
                 // Фрод-проверка
-                $this->fraudControl->check('delivery_assign', [
+                $this->fraud->check('delivery_assign', [
                     'courier_id' => $courierId,
                     'delivery_order_id' => $deliveryOrderId,
                 ], $correlationId);
 
-                Log::channel('audit')->info('Delivery assignment started', [
+                $this->logger->channel('audit')->info('Delivery assignment started', [
                     'courier_id' => $courierId,
                     'delivery_order_id' => $deliveryOrderId,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $result = DB::transaction(function () use ($courierId, $deliveryOrderId, $correlationId) {
+                $result = $this->db->transaction(function () use ($courierId, $deliveryOrderId, $correlationId) {
                     $delivery = DeliveryOrder::findOrFail($deliveryOrderId);
                     $delivery->update([
                         'courier_id' => $courierId,
@@ -158,7 +166,7 @@ final class CourierService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Delivery assigned', [
+                    $this->logger->channel('audit')->info('Delivery assigned', [
                         'delivery_order_id' => $deliveryOrderId,
                         'courier_id' => $courierId,
                         'correlation_id' => $correlationId,
@@ -173,7 +181,7 @@ final class CourierService extends Model
 
                 return $result;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Delivery assignment failed', [
+                $this->logger->channel('audit')->error('Delivery assignment failed', [
                     'courier_id' => $courierId,
                     'delivery_order_id' => $deliveryOrderId,
                     'error' => $e->getMessage(),
@@ -205,19 +213,19 @@ final class CourierService extends Model
 
             try {
                 // Фрод-проверка
-                $this->fraudControl->check('delivery_complete', [
+                $this->fraud->check('delivery_complete', [
                     'courier_id' => $courierId,
                     'rating' => $ratingScore,
                 ], $correlationId);
 
-                Log::channel('audit')->info('Delivery completion started', [
+                $this->logger->channel('audit')->info('Delivery completion started', [
                     'courier_id' => $courierId,
                     'delivery_order_id' => $deliveryOrderId,
                     'rating' => $ratingScore,
                     'correlation_id' => $correlationId,
                 ]);
 
-                DB::transaction(function () use ($courierId, $deliveryOrderId, $ratingScore, $correlationId) {
+                $this->db->transaction(function () use ($courierId, $deliveryOrderId, $ratingScore, $correlationId) {
                     $delivery = DeliveryOrder::findOrFail($deliveryOrderId);
                     $delivery->update([
                         'status' => 'completed',
@@ -234,7 +242,7 @@ final class CourierService extends Model
                         'completed_deliveries' => $courier->completed_deliveries + 1,
                     ]);
 
-                    Log::channel('audit')->info('Delivery completed', [
+                    $this->logger->channel('audit')->info('Delivery completed', [
                         'delivery_order_id' => $deliveryOrderId,
                         'courier_id' => $courierId,
                         'courier_new_rating' => $newRating,
@@ -244,7 +252,7 @@ final class CourierService extends Model
 
                 return true;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Delivery completion failed', [
+                $this->logger->channel('audit')->error('Delivery completion failed', [
                     'courier_id' => $courierId,
                     'delivery_order_id' => $deliveryOrderId,
                     'error' => $e->getMessage(),

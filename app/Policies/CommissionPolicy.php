@@ -2,14 +2,15 @@
 
 namespace App\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
+use Psr\Log\LoggerInterface;
 final class CommissionPolicy extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use HandlesAuthorization;
 
         /**
@@ -20,7 +21,7 @@ final class CommissionPolicy extends Model
         {
             // CANON 2026: Strict tenant scoping check
             if (isset($commission->tenant_id) && $user->tenant_id !== $commission->tenant_id && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'model_tenant_id' => $commission->tenant_id,
@@ -34,7 +35,7 @@ final class CommissionPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized commission view attempt', [
+                $this->logger->warning('Unauthorized commission view attempt', [
                     'user_id' => $user->id,
                     'tenant_id' => $user->tenant_id,
                     'commission_tenant_id' => $commission->tenant_id,
@@ -99,7 +100,7 @@ final class CommissionPolicy extends Model
             ) || $user->hasRole('admin');
 
             if (!$allowed) {
-                Log::warning('Unauthorized commission audit view attempt', [
+                $this->logger->warning('Unauthorized commission audit view attempt', [
                     'user_id' => $user->id,
                 ]);
             }
@@ -133,7 +134,7 @@ final class CommissionPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -146,7 +147,7 @@ final class CommissionPolicy extends Model
             );
 
             if (!$allowed) {
-                Log::warning('Unauthorized commission update attempt', [
+                $this->logger->warning('Unauthorized commission update attempt', [
                     'user_id' => $user->id,
                     'commission_id' => $commission->id,
                 ]);
@@ -164,7 +165,7 @@ final class CommissionPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -185,7 +186,7 @@ final class CommissionPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);
@@ -204,7 +205,7 @@ final class CommissionPolicy extends Model
             // CANON 2026 FRAUD: Predict/check operation before mutating
             $fraudScore = 0; // fraud check at service layer
             if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                $this->logger->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                     'user_id' => $user->id,
                     'score' => $fraudScore
                 ]);

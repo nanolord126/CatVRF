@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Art;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ArtGalleryResource extends Model
+final class ArtGalleryResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ArtGallery::class;
 
         protected static ?string $navigationGroup = 'Art Vertical';

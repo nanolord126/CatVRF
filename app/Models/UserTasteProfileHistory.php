@@ -2,21 +2,22 @@
 
 namespace App\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class UserTasteProfileHistory extends Model
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use BelongsToTenant;
+    use HasFactory, TenantScoped;
 
         protected $table = 'user_taste_profile_history';
 
         public $timestamps = false;
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'user_id',
             'tenant_id',
             'taste_profile_id',

@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class RitualPreOrder extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'ritual_pre_orders';
@@ -43,12 +42,12 @@ final class RitualPreOrder extends Model
         /**
          * Booted method for global scoping and data protection.
          */
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             // Изоляция данных на уровне базы (Tenant Scoping)
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()->id) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
 
@@ -61,7 +60,7 @@ final class RitualPreOrder extends Model
                     $model->correlation_id = (string) Str::uuid();
                 }
                 if (empty($model->tenant_id) && function_exists('tenant')) {
-                    $model->tenant_id = (int) tenant('id');
+                    $model->tenant_id = (int) tenant()->id;
                 }
             });
         }

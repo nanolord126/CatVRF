@@ -2,14 +2,19 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoRepairOrderResource extends Model
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Resource;
+
+final class AutoRepairOrderResource extends Resource
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoRepairOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
@@ -267,7 +272,6 @@ final class AutoRepairOrderResource extends Model
                             'danger' => 'cancelled',
                         ])
                         ->formatStateUsing(fn ($state) => match ($state) {
-                            'pending' => 'Ожидание',
                             'in_progress' => 'В работе',
                             'completed' => 'Завершен',
                             'cancelled' => 'Отменен',
@@ -346,17 +350,17 @@ final class AutoRepairOrderResource extends Model
                         Tables\Actions\EditAction::make(),
                         Tables\Actions\DeleteAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoRepairOrder deleted', [
+                                $this->logger->info('AutoRepairOrder deleted', [
                                     'resource' => 'AutoRepairOrder',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
                         Tables\Actions\RestoreAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoRepairOrder restored', [
+                                $this->logger->info('AutoRepairOrder restored', [
                                     'resource' => 'AutoRepairOrder',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
@@ -367,10 +371,10 @@ final class AutoRepairOrderResource extends Model
                             ->visible(fn (Model $record) => $record->status !== 'completed' && $record->status !== 'cancelled')
                             ->action(function (Model $record) {
                                 $record->update(['status' => 'completed', 'completed_at' => now()]);
-                                Log::channel('audit')->info('AutoRepairOrder completed', [
+                                $this->logger->info('AutoRepairOrder completed', [
                                     'resource' => 'AutoRepairOrder',
                                     'resource_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             }),
@@ -382,10 +386,10 @@ final class AutoRepairOrderResource extends Model
                             ->visible(fn (Model $record) => !in_array($record->status, ['completed', 'cancelled']))
                             ->action(function (Model $record) {
                                 $record->update(['status' => 'cancelled']);
-                                Log::channel('audit')->info('AutoRepairOrder cancelled', [
+                                $this->logger->info('AutoRepairOrder cancelled', [
                                     'resource' => 'AutoRepairOrder',
                                     'resource_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             }),
@@ -395,9 +399,9 @@ final class AutoRepairOrderResource extends Model
                     Tables\Actions\BulkActionGroup::make([
                         Tables\Actions\DeleteBulkAction::make()
                             ->after(function () {
-                                Log::channel('audit')->info('AutoRepairOrders bulk deleted', [
+                                $this->logger->info('AutoRepairOrders bulk deleted', [
                                     'resource' => 'AutoRepairOrder',
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => Str::uuid(),
                                 ]);
                             }),
@@ -408,10 +412,10 @@ final class AutoRepairOrderResource extends Model
                             ->action(function (Collection $records) {
                                 foreach ($records as $record) {
                                     $record->update(['status' => 'completed', 'completed_at' => now()]);
-                                    Log::channel('audit')->info('AutoRepairOrder bulk completed', [
+                                    $this->logger->info('AutoRepairOrder bulk completed', [
                                         'resource' => 'AutoRepairOrder',
                                         'resource_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }
@@ -424,10 +428,10 @@ final class AutoRepairOrderResource extends Model
                             ->action(function (Collection $records) {
                                 foreach ($records as $record) {
                                     $record->update(['status' => 'cancelled']);
-                                    Log::channel('audit')->info('AutoRepairOrder bulk cancelled', [
+                                    $this->logger->info('AutoRepairOrder bulk cancelled', [
                                         'resource' => 'AutoRepairOrder',
                                         'resource_id' => $record->id,
-                                        'user_id' => auth()->id(),
+                                        'user_id' => $this->guard->id(),
                                         'correlation_id' => $record->correlation_id,
                                     ]);
                                 }

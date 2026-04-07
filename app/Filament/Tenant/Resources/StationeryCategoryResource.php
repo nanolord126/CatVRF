@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StationeryCategoryResource extends Model
+final class StationeryCategoryResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StationeryCategory::class;
         protected static ?string $navigationIcon = 'heroicon-o-tag';
         protected static ?string $navigationGroup = 'Stationery Hub';
@@ -77,22 +74,15 @@ final class StationeryCategoryResource extends Model
                 ])->columns(2),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStationeryCategory::route('/'),
-                'create' => Pages\\CreateStationeryCategory::route('/create'),
-                'edit' => Pages\\EditStationeryCategory::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryCategory::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStationeryCategory::route('/'),
-                'create' => Pages\\CreateStationeryCategory::route('/create'),
-                'edit' => Pages\\EditStationeryCategory::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryCategory::route('/{record}'),
+                'index' => Pages\ListStationeryCategory::route('/'),
+                'create' => Pages\CreateStationeryCategory::route('/create'),
+                'edit' => Pages\EditStationeryCategory::route('/{record}/edit'),
+                'view' => Pages\ViewStationeryCategory::route('/{record}'),
             ];
         }
 }

@@ -1,21 +1,71 @@
 <?php declare(strict_types=1);
 
+/**
+ * MasterAvailabilityChanged — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ * @see https://catvrf.ru/docs/masteravailabilitychanged
+ */
+
+
 namespace App\Events;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class MasterAvailabilityChanged extends Model
+final class MasterAvailabilityChanged
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
 
         public function __construct(
-            public readonly int $masterId,
-            public readonly string $vertical,
-            public readonly string $correlationId,
-            public readonly array $changedSlots = [],
+            private readonly int $masterId,
+            private readonly string $vertical,
+            private readonly string $correlationId,
+            private array $changedSlots = [],
         ) {}
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

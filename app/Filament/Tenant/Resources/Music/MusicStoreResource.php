@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MusicStoreResource extends Model
+final class MusicStoreResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MusicStore::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
@@ -119,7 +116,6 @@ final class MusicStoreResource extends Model
                         ->label('Type')
                         ->badge()
                         ->color(fn ($state) => match ($state) {
-                            'shop' => 'success',
                             'school' => 'primary',
                             'studio' => 'warning',
                             default => 'info'

@@ -2,39 +2,58 @@
 
 namespace App\Domains\Flowers\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Flowers\Services\FlowerService;
+use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
-final class MainController extends Model
+/**
+ * MainController — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+ * @see https://catvrf.ru/docs/maincontroller
+ */
+final readonly class MainController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private readonly FlowerService $flowerService,
-            private readonly FraudControlService $fraudControl
-        ) {}
+        private FlowerService $flowerService,
+        private FraudControlService $fraud,
+    ) {}
 
-        public function index(Request $request): JsonResponse
-        {
-            $correlationId = (string) Str::uuid();
+    public function index(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-            try {
-                $isB2B = $request->has('inn') && $request->has('business_card_id');
-                $this->fraudControl->check($request->all(), 'index_flowers');
+        try {
+            $isB2B = $request->has('inn') && $request->has('business_card_id');
+            $this->fraud->check(
+                userId: $request->user()?->id ?? 0,
+                operationType: 'index_flowers',
+                amount: 0,
+                correlationId: $correlationId,
+            );
 
-                $items = $this->flowerService->getItems(['is_b2b' => $isB2B]);
+            $items = $this->flowerService->getItems(['is_b2b' => $isB2B]);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $items,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ], 403);
-            }
+            return new JsonResponse([
+                'success' => true,
+                'data' => $items,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 403);
         }
+    }
 }

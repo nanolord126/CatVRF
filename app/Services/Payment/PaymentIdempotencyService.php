@@ -2,21 +2,35 @@
 
 namespace App\Services\Payment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\DatabaseManager;
 
-final class PaymentIdempotencyService extends Model
+/**
+ * Class PaymentIdempotencyService
+ *
+ * Service layer following CatVRF canon:
+ * - Constructor injection only (no Facades)
+ * - FraudControlService::check() before mutations
+ * - $this->db->transaction() wrapping all write operations
+ * - Audit logging with correlation_id
+ * - Tenant and BusinessGroup scoping
+ *
+ * @see \App\Services\FraudControlService
+ * @see \App\Services\AuditService
+ * @package App\Services\Payment
+ */
+final readonly class PaymentIdempotencyService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     // Dependencies injected via constructor
         // Add private readonly properties here
         public function checkAndRecord(string $idempotencyKey, array $payload, int $tenantId): ?array
         {
             $payloadHash = hash('sha256', json_encode($payload));
 
-            $record = DB::table('payment_idempotency_records')
+            $record = $this->db->table('payment_idempotency_records')
                 ->where('tenant_id', $tenantId)
                 ->where('idempotency_key', $idempotencyKey)
                 ->first();
@@ -28,11 +42,16 @@ final class PaymentIdempotencyService extends Model
             return [];
         }
 
+        /**
+         * Handle record operation.
+         *
+         * @throws \DomainException
+         */
         public function record(string $idempotencyKey, array $payload, array $response, int $tenantId): void
         {
             $payloadHash = hash('sha256', json_encode($payload));
 
-            DB::table('payment_idempotency_records')->insert([
+            $this->db->table('payment_idempotency_records')->insert([
                 'tenant_id' => $tenantId,
                 'idempotency_key' => $idempotencyKey,
                 'payload_hash' => $payloadHash,

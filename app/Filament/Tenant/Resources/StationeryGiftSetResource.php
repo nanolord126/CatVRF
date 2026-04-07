@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class StationeryGiftSetResource extends Model
+final class StationeryGiftSetResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = StationeryGiftSet::class;
         protected static ?string $navigationIcon = 'heroicon-o-gift';
         protected static ?string $navigationGroup = 'Stationery Hub';
@@ -102,22 +99,15 @@ final class StationeryGiftSetResource extends Model
                 ])->columns(2),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListStationeryGiftSet::route('/'),
-                'create' => Pages\\CreateStationeryGiftSet::route('/create'),
-                'edit' => Pages\\EditStationeryGiftSet::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryGiftSet::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListStationeryGiftSet::route('/'),
-                'create' => Pages\\CreateStationeryGiftSet::route('/create'),
-                'edit' => Pages\\EditStationeryGiftSet::route('/{record}/edit'),
-                'view' => Pages\\ViewStationeryGiftSet::route('/{record}'),
+                'index' => Pages\ListStationeryGiftSet::route('/'),
+                'create' => Pages\CreateStationeryGiftSet::route('/create'),
+                'edit' => Pages\EditStationeryGiftSet::route('/{record}/edit'),
+                'view' => Pages\ViewStationeryGiftSet::route('/{record}'),
             ];
         }
 }

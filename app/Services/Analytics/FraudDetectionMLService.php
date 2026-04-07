@@ -2,14 +2,22 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
 
-final class FraudDetectionMLService extends Model
+
+
+
+final readonly class FraudDetectionMLService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 3600; // 1 час
         private const ANOMALY_THRESHOLD = 0.75; // 75% confidence = мошенничество
         private const MIN_SAMPLES = 20; // Минимум примеров для обучения
@@ -50,7 +58,7 @@ final class FraudDetectionMLService extends Model
                 // Определяем решение
                 $isBlocked = $score >= self::ANOMALY_THRESHOLD;
 
-                Log::channel('audit')->info('Payment fraud score calculated', [
+                $this->logger->channel('audit')->info('Payment fraud score calculated', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                     'score' => round($score, 3),
@@ -68,7 +76,7 @@ final class FraudDetectionMLService extends Model
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Fraud detection failed', [
+                $this->logger->channel('analytics_errors')->error('Fraud detection failed', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()
@@ -135,7 +143,6 @@ final class FraudDetectionMLService extends Model
                 'day_of_week' => (int)$now->format('w'),
 
                 // Признаки сумм (8)
-                'amount' => $amount,
                 'amount_vs_avg_30d' => $avgAmount30Day > 0 ? $amount / $avgAmount30Day : 1.0,
                 'amount_vs_avg_7d' => $avgAmount7Day > 0 ? $amount / $avgAmount7Day : 1.0,
                 'sum_1_day' => $sum1Day,
@@ -149,7 +156,7 @@ final class FraudDetectionMLService extends Model
                 'ip_changes_7d' => $this->getIpChanges($userId, $last7Days),
                 'new_device' => $this->isNewDevice($userId, $deviceFingerprint) ? 1 : 0,
                 'new_ip' => $this->isNewIp($userId, $ipAddress) ? 1 : 0,
-                'account_age_days' => (int)$userHistory['account_age_days'] ?? 0,
+                'account_age_days' => (int) ($userHistory['account_age_days'] ?? 0),
                 'device_trust_score' => $this->getDeviceTrustScore($userId, $deviceFingerprint),
 
                 // Признаки история (8)
@@ -244,10 +251,10 @@ final class FraudDetectionMLService extends Model
          */
         private function getUserPaymentHistory(int $userId): array
         {
-            return Cache::remember("user_payment_history:{$userId}", self::CACHE_TTL, function () use ($userId) {
+            return $this->cache->remember("user_payment_history:{$userId}", self::CACHE_TTL, function () use ($userId) {
                 $last30Days = now()->subDays(30)->startOfDay();
 
-                $payments = DB::table('balance_transactions')
+                $payments = $this->db->table('balance_transactions')
                     ->where('user_id', $userId)
                     ->where('created_at', '>=', $last30Days)
                     ->get();
@@ -262,56 +269,56 @@ final class FraudDetectionMLService extends Model
                     'lifetime_value' => $payments->sum('amount') ?? 0,
                     'total_payments' => $payments->count(),
                     'account_age_days' => now()->diffInDays($this->getUserCreatedAt($userId)),
-                    'chargeback_count_ever' => DB::table('chargebacks')->where('user_id', $userId)->count(),
+                    'chargeback_count_ever' => $this->db->table('chargebacks')->where('user_id', $userId)->count(),
                     'avg_days_between_payments' => $this->calculateAvgDaysBetweenPayments($userId),
                 ];
             });
         }
 
-        private function getPaymentCount(int $userId, \Carbon\Carbon $since): int
+        private function getPaymentCount(int $userId, Carbon $since): int
         {
-            return DB::table('balance_transactions')
+            return $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->count();
         }
 
-        private function getPaymentSum(int $userId, \Carbon\Carbon $since): float
+        private function getPaymentSum(int $userId, Carbon $since): float
         {
-            return (float)(DB::table('balance_transactions')
+            return (float)($this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->sum('amount') ?? 0);
         }
 
-        private function getMaxPaymentAmount(int $userId, \Carbon\Carbon $since): float
+        private function getMaxPaymentAmount(int $userId, Carbon $since): float
         {
-            return (float)(DB::table('balance_transactions')
+            return (float)($this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->max('amount') ?? 0);
         }
 
-        private function getMinPaymentAmount(int $userId, \Carbon\Carbon $since): float
+        private function getMinPaymentAmount(int $userId, Carbon $since): float
         {
-            return (float)(DB::table('balance_transactions')
+            return (float)($this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->min('amount') ?? 0);
         }
 
-        private function getDeviceChanges(int $userId, \Carbon\Carbon $since): int
+        private function getDeviceChanges(int $userId, Carbon $since): int
         {
-            return DB::table('balance_transactions')
+            return $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->distinct('device_fingerprint')
                 ->count('device_fingerprint');
         }
 
-        private function getIpChanges(int $userId, \Carbon\Carbon $since): int
+        private function getIpChanges(int $userId, Carbon $since): int
         {
-            return DB::table('balance_transactions')
+            return $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('created_at', '>=', $since)
                 ->distinct('ip_address')
@@ -320,7 +327,7 @@ final class FraudDetectionMLService extends Model
 
         private function isNewDevice(int $userId, string $deviceFingerprint): bool
         {
-            return !DB::table('balance_transactions')
+            return !$this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('device_fingerprint', $deviceFingerprint)
                 ->exists();
@@ -328,7 +335,7 @@ final class FraudDetectionMLService extends Model
 
         private function isNewIp(int $userId, string $ipAddress): bool
         {
-            return !DB::table('balance_transactions')
+            return !$this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('ip_address', $ipAddress)
                 ->exists();
@@ -336,13 +343,13 @@ final class FraudDetectionMLService extends Model
 
         private function getDeviceTrustScore(int $userId, string $deviceFingerprint): float
         {
-            $successfulPayments = DB::table('balance_transactions')
+            $successfulPayments = $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('device_fingerprint', $deviceFingerprint)
                 ->where('status', 'completed')
                 ->count();
 
-            $totalPayments = DB::table('balance_transactions')
+            $totalPayments = $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->where('device_fingerprint', $deviceFingerprint)
                 ->count();
@@ -354,16 +361,18 @@ final class FraudDetectionMLService extends Model
             return min(1.0, $successfulPayments / $totalPayments);
         }
 
-        private function getUserCreatedAt(int $userId): \Carbon\Carbon
+        private function getUserCreatedAt(int $userId): Carbon
         {
-            return DB::table('users')
+            $createdAt = $this->db->table('users')
                 ->where('id', $userId)
-                ->value('created_at') ?? now();
+                ->value('created_at');
+
+            return $createdAt !== null ? Carbon::parse((string) $createdAt) : now();
         }
 
         private function calculateAvgDaysBetweenPayments(int $userId): int
         {
-            $payments = DB::table('balance_transactions')
+            $payments = $this->db->table('balance_transactions')
                 ->where('user_id', $userId)
                 ->orderBy('created_at')
                 ->pluck('created_at')

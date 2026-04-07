@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class AutoPartsResource extends Model
+final class AutoPartsResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
@@ -61,31 +58,15 @@ final class AutoPartsResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoParts::route('/'),
-                'create' => Pages\\CreateAutoParts::route('/create'),
-                'edit' => Pages\\EditAutoParts::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoParts::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListAutoParts::route('/'),
-                'create' => Pages\\CreateAutoParts::route('/create'),
-                'edit' => Pages\\EditAutoParts::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoParts::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListAutoParts::route('/'),
-                'create' => Pages\\CreateAutoParts::route('/create'),
-                'edit' => Pages\\EditAutoParts::route('/{record}/edit'),
-                'view' => Pages\\ViewAutoParts::route('/{record}'),
+                'index' => Pages\ListAutoParts::route('/'),
+                'create' => Pages\CreateAutoParts::route('/create'),
+                'edit' => Pages\EditAutoParts::route('/{record}/edit'),
+                'view' => Pages\ViewAutoParts::route('/{record}'),
             ];
         }
 }

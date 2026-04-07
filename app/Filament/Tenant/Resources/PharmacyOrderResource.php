@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PharmacyOrderResource extends Model
+final class PharmacyOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PharmacyOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-beaker';
@@ -108,22 +103,15 @@ final class PharmacyOrderResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPharmacyOrder::route('/'),
-                'create' => Pages\\CreatePharmacyOrder::route('/create'),
-                'edit' => Pages\\EditPharmacyOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewPharmacyOrder::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPharmacyOrder::route('/'),
-                'create' => Pages\\CreatePharmacyOrder::route('/create'),
-                'edit' => Pages\\EditPharmacyOrder::route('/{record}/edit'),
-                'view' => Pages\\ViewPharmacyOrder::route('/{record}'),
+                'index' => Pages\ListPharmacyOrder::route('/'),
+                'create' => Pages\CreatePharmacyOrder::route('/create'),
+                'edit' => Pages\EditPharmacyOrder::route('/{record}/edit'),
+                'view' => Pages\ViewPharmacyOrder::route('/{record}'),
             ];
         }
 }

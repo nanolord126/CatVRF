@@ -2,14 +2,15 @@
 
 namespace App\Domains\Medical\Psychology\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class PsychologicalService extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     protected $table = 'psy_services';
 
         protected $fillable = [
@@ -31,18 +32,18 @@ final class PsychologicalService extends Model
             'tags' => 'json',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function (Builder $builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
 
             static::creating(function (self $model) {
                 $model->uuid = (string) Str::uuid();
-                $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
-                $model->tenant_id = auth()->user()->tenant_id ?? 0;
+                $model->correlation_id = (string) Str::uuid();
+                $model->tenant_id = tenant()->id ?? 0;
             });
         }
 

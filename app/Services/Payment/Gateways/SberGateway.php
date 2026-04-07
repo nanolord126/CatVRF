@@ -27,6 +27,7 @@ final class SberGateway implements PaymentGatewayInterface
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
     ) {}
 
     /**
@@ -49,7 +50,7 @@ final class SberGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Sber: Payment initialization started', [
+        $this->logger->channel('audit')->info('Sber: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -70,15 +71,15 @@ final class SberGateway implements PaymentGatewayInterface
         ]);
 
         if (!$response->successful()) {
-            Log::channel('audit')->error('Sber: Payment init failed', [
+            $this->logger->channel('audit')->error('Sber: Payment init failed', [
                 'correlation_id' => $correlationId,
                 'status' => $response->status(),
             ]);
 
-            throw new \Exception("Sber init failed: {$response->status()}");
+            throw new \RuntimeException("Sber init failed: {$response->status()}");
         }
 
-        Log::channel('audit')->info('Sber: Payment init succeeded', [
+        $this->logger->channel('audit')->info('Sber: Payment init succeeded', [
             'correlation_id' => $correlationId,
             'order_id' => $response->json()['orderId'] ?? null,
         ]);
@@ -108,7 +109,7 @@ final class SberGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Sber: Payment capture started', [
+        $this->logger->channel('audit')->info('Sber: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -126,18 +127,18 @@ final class SberGateway implements PaymentGatewayInterface
             ]);
 
             if (!$response->successful()) {
-                throw new \Exception("HTTP {$response->status()}");
+                throw new \RuntimeException("HTTP {$response->status()}");
             }
 
             $success = ($response->json()['errorCode'] ?? '') === '0';
 
             if ($success) {
-                Log::channel('audit')->info('Sber: Payment capture succeeded', [
+                $this->logger->channel('audit')->info('Sber: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);
             } else {
-                Log::channel('audit')->warning('Sber: Payment capture returned error', [
+                $this->logger->channel('audit')->warning('Sber: Payment capture returned error', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'error_code' => $response->json()['errorCode'] ?? 'unknown',
@@ -146,7 +147,7 @@ final class SberGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Sber: Payment capture exception', [
+            $this->logger->channel('audit')->error('Sber: Payment capture exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -179,7 +180,7 @@ final class SberGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Sber: Payment refund initiated', [
+        $this->logger->channel('audit')->info('Sber: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -197,13 +198,13 @@ final class SberGateway implements PaymentGatewayInterface
             ]);
 
             if (!$response->successful()) {
-                throw new \Exception("HTTP {$response->status()}");
+                throw new \RuntimeException("HTTP {$response->status()}");
             }
 
             $success = ($response->json()['errorCode'] ?? '') === '0';
 
             if ($success) {
-                Log::channel('audit')->info('Sber: Payment refund succeeded', [
+                $this->logger->channel('audit')->info('Sber: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -212,7 +213,7 @@ final class SberGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Sber: Payment refund exception', [
+            $this->logger->channel('audit')->error('Sber: Payment refund exception', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'refund_amount' => $amount,
@@ -260,7 +261,7 @@ final class SberGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        Log::channel('audit')->info('Sber: Payout initiated', [
+        $this->logger->channel('audit')->info('Sber: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -288,7 +289,7 @@ final class SberGateway implements PaymentGatewayInterface
     {
         $correlationId = $payload['correlation_id'] ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Sber: Webhook received', [
+        $this->logger->channel('audit')->info('Sber: Webhook received', [
             'correlation_id' => $correlationId,
             'order_id' => $payload['orderNumber'] ?? null,
             'order_status' => $payload['orderStatus'] ?? null,
@@ -328,7 +329,7 @@ final class SberGateway implements PaymentGatewayInterface
     {
         $correlationId ??= $transaction->correlation_id ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Sber: Fiscalization started', [
+        $this->logger->channel('audit')->info('Sber: Fiscalization started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -354,7 +355,7 @@ final class SberGateway implements PaymentGatewayInterface
             $success = ($response->json()['errorCode'] ?? '') === '0';
 
             if ($success) {
-                Log::channel('audit')->info('Sber: Fiscalization succeeded', [
+                $this->logger->channel('audit')->info('Sber: Fiscalization succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);
@@ -362,7 +363,7 @@ final class SberGateway implements PaymentGatewayInterface
 
             return $success;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Sber: Fiscalization failed', [
+            $this->logger->channel('audit')->error('Sber: Fiscalization failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),

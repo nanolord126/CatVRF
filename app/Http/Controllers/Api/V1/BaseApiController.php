@@ -2,34 +2,41 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BaseApiController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
+final class BaseApiController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Получить correlation_id из запроса.
          */
         protected function getCorrelationId(): string
         {
-            return request()->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            return $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
         }
         /**
          * Получить tenant_id из текущего юзера.
          */
         protected function getTenantId(): int
         {
-            return auth()->user()?->tenant_id ?? filament()->getTenant()?->id ?? 1;
+            return $this->guard->user()?->tenant_id ?? filament()->getTenant()?->id ?? 1;
         }
         /**
          * Успешный ответ (200 OK).
          */
         protected function success(array $data = [], string $message = 'Success'): \Illuminate\Http\JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'message' => $message,
                 'correlation_id' => $this->getCorrelationId(),
@@ -41,7 +48,7 @@ final class BaseApiController extends Model
          */
         protected function validationError(array $errors, string $message = 'Validation failed'): \Illuminate\Http\JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => $message,
                 'correlation_id' => $this->getCorrelationId(),
@@ -53,7 +60,7 @@ final class BaseApiController extends Model
          */
         protected function forbidden(string $message = 'Forbidden'): \Illuminate\Http\JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => $message,
                 'correlation_id' => $this->getCorrelationId(),
@@ -64,7 +71,7 @@ final class BaseApiController extends Model
          */
         protected function notFound(string $message = 'Not found'): \Illuminate\Http\JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => $message,
                 'correlation_id' => $this->getCorrelationId(),
@@ -75,7 +82,7 @@ final class BaseApiController extends Model
          */
         protected function serverError(string $message = 'Server error'): \Illuminate\Http\JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => $message,
                 'correlation_id' => $this->getCorrelationId(),

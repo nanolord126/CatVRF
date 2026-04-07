@@ -2,19 +2,18 @@
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use App\Filament\Tenant\Resources\Beauty\ServiceResource\Pages;
-use App\Services\FraudControlService;
+use App\Domains\Beauty\Domain\Enums\ServiceCategory;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautySalon;
+use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyService;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Modules\Beauty\Models\Service;
 
 /**
  * КАНОН 2026: Service Resource (Layer 7)
@@ -26,34 +25,35 @@ use Modules\Beauty\Models\Service;
  */
 final class ServiceResource extends Resource
 {
-    protected static ?string $model = Service::class;
+    protected static ?string $model = BeautyService::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-    protected static ?string $navigationGroup = 'Beauty & Wellness';
-    protected static ?string $navigationLabel = 'Услуги';
-    protected static ?string $modelLabel = 'услугу';
-    protected static ?string $pluralModelLabel = 'услуги';
+    protected static ?string $navigationIcon   = 'heroicon-o-sparkles';
+    protected static ?string $navigationGroup  = 'Beauty';
+    protected static ?string $navigationLabel  = 'Услуги';
+    protected static ?string $modelLabel       = 'Услуга';
+    protected static ?string $pluralModelLabel = 'Услуги';
+    protected static ?int    $navigationSort   = 30;
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('Основная информация')
                 ->schema([
-                    Forms\Components\Select::make('salon_id')
-                        ->relationship('salon', 'name', fn(Builder $query) => $query->where('tenant_id', tenant('id')))
+                    Select::make('salon_id')
+                        ->label('Салон')
+                        ->options(fn () => BeautySalon::query()->where('tenant_id', filament()->getTenant()?->id)->where('is_active', true)->pluck('name', 'id'))
                         ->required()
-                        ->label('Салон'),
-                    Forms\Components\Select::make('master_id')
-                        ->relationship('master', 'full_name', fn(Builder $query) => $query->where('tenant_id', tenant('id')))
-                        ->required()
-                        ->label('Мастер'),
-                    Forms\Components\TextInput::make('name')
+                        ->searchable()
+                        ->columnSpan(2),
+                    TextInput::make('name')
                         ->required()
                         ->maxLength(255)
                         ->label('Название услуги'),
-                    Forms\Components\TextInput::make('category')
+                    Select::make('category')
+                        ->label('Категория')
+                        ->options(fn () => collect(ServiceCategory::cases())->mapWithKeys(fn (ServiceCategory $c) => [$c->value => $c->label()]))
                         ->required()
-                        ->label('Категория'),
+                        ->searchable(),
                 ])->columns(2),
 
             Forms\Components\Section::make('Детали и цена')
@@ -89,9 +89,9 @@ final class ServiceResource extends Resource
                         ->default(true),
                 ]),
 
-            Forms\Components\Hidden::make('uuid')->default(fn () => (string) Str::uuid())->dehydrated(),
-            Forms\Components\Hidden::make('tenant_id')->default(fn () => tenant('id')),
-            Forms\Components\Hidden::make('correlation_id')->default(fn () => (string) Str::uuid()),
+            Forms\Components\Hidden::make('uuid')->default(fn () => Str::uuid()->toString())->dehydrated(),
+            Forms\Components\Hidden::make('tenant_id')->default(fn () => filament()->getTenant()?->id),
+            Forms\Components\Hidden::make('correlation_id')->default(fn () => Str::uuid()->toString()),
         ]);
     }
 
@@ -109,40 +109,24 @@ final class ServiceResource extends Resource
         ])
         ->filters([
             Tables\Filters\SelectFilter::make('salon_id')
-                ->relationship('salon', 'name', fn(Builder $query) => $query->where('tenant_id', tenant('id')))
+                ->options(fn () => BeautySalon::query()->where('tenant_id', filament()->getTenant()?->id)->pluck('name', 'id'))
                 ->label('Салон'),
-            Tables\Filters\SelectFilter::make('master_id')
-                ->relationship('master', 'full_name', fn(Builder $query) => $query->where('tenant_id', tenant('id')))
-                ->label('Мастер'),
         ])
         ->actions([
             Tables\Actions\EditAction::make(),
-            Tables\Actions\DeleteAction::make()->action(function ($record) {
-                DB::transaction(function () use ($record) {
-                    $correlationId = (string) Str::uuid();
-                    app(FraudControlService::class)->check(Auth::id(), 'delete-service', $record->price, $correlationId);
-                    Log::channel('audit')->info('Service deleted', ['record_id' => $record->id, 'tenant_id' => tenant('id'), 'correlation_id' => $correlationId]);
-                    $record->delete();
-                });
-            }),
+            Tables\Actions\DeleteAction::make(),
         ])
         ->bulkActions([
             Tables\Actions\BulkActionGroup::make([
-                Tables\Actions\DeleteBulkAction::make()->action(function ($records) {
-                    DB::transaction(function () use ($records) {
-                        $correlationId = (string) Str::uuid();
-                        app(FraudControlService::class)->check(Auth::id(), 'bulk-delete-services', 0, $correlationId);
-                        Log::channel('audit')->info('Services bulk deleted', ['record_ids' => $records->pluck('id')->toArray(), 'tenant_id' => tenant('id'), 'correlation_id' => $correlationId]);
-                        $records->each->delete();
-                    });
-                }),
+                Tables\Actions\DeleteBulkAction::make(),
             ]),
         ]);
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+        return parent::getEloquentQuery()
+            ->where('tenant_id', filament()->getTenant()?->id);
     }
 
     public static function getPages(): array

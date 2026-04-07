@@ -2,24 +2,20 @@
 
 namespace App\Http\Controllers\Api\V2\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class ReportingController extends Model
+final class ReportingController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    id}/schedule (updateSchedule)
-     * - DELETE /api/v2/reporting/{id} (deleteSchedule)
-     * - GET /api/v2/reporting/generate (generateReport)
-     */
-    final class ReportingController extends Controller
-    {
-        public function __construct(
+    public function __construct(
             private readonly ReportingService $reportingService,
             private readonly ExportService $exportService,
-        ) {
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
             // PRODUCTION-READY 2026 CANON: Middleware для Reporting
              // Только авторизованные
              // 50 запросов/час (тяжелые операции экспорта)
@@ -40,19 +36,26 @@ final class ReportingController extends Model
                     'recipients.*' => 'email',
                 ]);
                 $schedule = $this->reportingService->scheduleReport(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     reportType: $validated['report_type'],
                     frequency: $validated['frequency'],
                     recipients: $validated['recipients'],
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $schedule,
                     'correlation_id' => (string)$correlationId,
                 ], 201);
             } catch (\Exception $e) {
-                \Log::error('Schedule report error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Schedule report error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -66,16 +69,23 @@ final class ReportingController extends Model
             $correlationId = Str::uuid()->toString();
             try {
                 $schedules = $this->reportingService->getScheduledReports(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $schedules,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Get scheduled reports error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Get scheduled reports error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -95,17 +105,24 @@ final class ReportingController extends Model
                 ]);
                 $schedule = $this->reportingService->updateReportSchedule(
                     reportId: $reportId,
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     updates: $validated,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'data' => $schedule,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Update report schedule error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Update report schedule error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -120,16 +137,23 @@ final class ReportingController extends Model
             try {
                 $this->reportingService->deleteReportSchedule(
                     reportId: $reportId,
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     context: ['correlation_id' => (string)$correlationId],
                 );
-                return response()->json([
+                return $this->response->json([
                     'message' => 'Report schedule deleted',
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Delete report schedule error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Delete report schedule error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);
@@ -148,7 +172,7 @@ final class ReportingController extends Model
                     'export_format' => 'nullable|in:json,csv,excel,pdf',
                 ]);
                 $report = $this->reportingService->generateReport(
-                    tenantId: auth()->user()->tenant_id,
+                    tenantId: $this->guard->user()->tenant_id,
                     reportType: $validated['report_type'],
                     dateRange: $validated['date_range'] ?? '30_days',
                     context: ['correlation_id' => (string)$correlationId],
@@ -160,19 +184,26 @@ final class ReportingController extends Model
                         $validated['report_type'],
                         ['correlation_id' => (string)$correlationId],
                     );
-                    return response()->json([
+                    return $this->response->json([
                         'data' => $report,
                         'export' => $export,
                         'correlation_id' => (string)$correlationId,
                     ]);
                 }
-                return response()->json([
+                return $this->response->json([
                     'data' => $report,
                     'correlation_id' => (string)$correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Generate report error', ['exception' => $e]);
-                return response()->json([
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->error('Generate report error', ['exception' => $e]);
+                return $this->response->json([
                     'error' => $e->getMessage(),
                     'correlation_id' => (string)$correlationId,
                 ], 500);

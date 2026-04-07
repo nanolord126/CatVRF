@@ -2,21 +2,34 @@
 
 namespace App\Services\Consulting;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ConsultingAIAdvisorService extends Model
+use Illuminate\Http\Request;
+use App\Models\Consulting\ConsultingFirm;
+use App\Models\Consulting\ConsultingProject;
+use App\Services\FraudControlService;
+
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class ConsultingAIAdvisorService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @param string $correlationId Unified audit trace.
          */
         public function __construct(
-            private string $correlationId = '',
-        ) {
-            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        private readonly Request $request,
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {}
+
+        private function correlationId(): string
+        {
+            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         }
 
         /**
@@ -24,12 +37,12 @@ final class ConsultingAIAdvisorService extends Model
          */
         public function generateStrategy(int $clientId, array $goals): array
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'consulting_generate_strategy', $this->request->ip());
 
-            Log::channel('audit')->info('AI Business Strategy Generation', [
+            $this->logger->channel('audit')->info('AI Business Strategy Generation', [
                 'client_id' => $clientId,
                 'goals' => $goals,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             // Simulated AI Strategic Output
@@ -47,7 +60,7 @@ final class ConsultingAIAdvisorService extends Model
                 'vision_statement' => "Empowering business growth via innovation",
                 'tactical_steps' => $tactics,
                 'generated_at' => now()->toIso8601String(),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ];
         }
 
@@ -56,12 +69,12 @@ final class ConsultingAIAdvisorService extends Model
          */
         public function analyzeBusinessGap(int $firmId, array $metrics): array
         {
-            FraudControlService::check();
+            $this->fraud->check($this->guard->id(), 'consulting_gap_analysis', $this->request->ip());
 
-            Log::channel('audit')->info('AI Gap Analysis', [
+            $this->logger->channel('audit')->info('AI Gap Analysis', [
                 'firm_id' => $firmId,
                 'metrics_count' => count($metrics),
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             $gaps = [];
@@ -88,10 +101,10 @@ final class ConsultingAIAdvisorService extends Model
          */
         public function predictConsultingBudget(int $clientId, int $daysAhead = 90): int
         {
-            Log::channel('audit')->info('AI Budget Forecast Predictor', [
+            $this->logger->channel('audit')->info('AI Budget Forecast Predictor', [
                 'client_id' => $clientId,
                 'horizon' => $daysAhead,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             $historicalSpend = ConsultingProject::where('client_id', $clientId)->sum('spent_budget');
@@ -120,10 +133,10 @@ final class ConsultingAIAdvisorService extends Model
          */
         public function logAiIntervention(string $type, array $payload): void
         {
-            Log::channel('audit')->info('AI Intervention Recorded', [
+            $this->logger->channel('audit')->info('AI Intervention Recorded', [
                 'type' => $type,
                 'payload' => $payload,
-                'correlation_id' => $this->correlationId,
+                'correlation_id' => $this->correlationId(),
             ]);
 
             // Potentially save to a technical audit table

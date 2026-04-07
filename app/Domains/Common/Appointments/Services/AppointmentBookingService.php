@@ -2,17 +2,17 @@
 
 namespace App\Domains\Common\Appointments\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AppointmentBookingService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class AppointmentBookingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private readonly string $correlationId;
 
-        public function __construct(string $correlationId = null)
+        public function __construct(string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard)
         {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -22,7 +22,7 @@ final class AppointmentBookingService extends Model
          */
         public function createAppointment(array $data): Appointment
         {
-            Log::channel('audit')->info('Attempting to create appointment', [
+            $this->logger->info('Attempting to create appointment', [
                 'correlation_id' => $this->correlationId,
                 'client_id' => $data['client_id'] ?? null,
                 'bookable_type' => $data['bookable_type'] ?? null,
@@ -31,13 +31,9 @@ final class AppointmentBookingService extends Model
             ]);
 
             // 1. Проверка на фрод
-            FraudControlService::check([
-                'operation' => 'appointment_booking',
-                'client_id' => $data['client_id'],
-                'correlation_id' => $this->correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'appointment_booking', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($data) {
+            return $this->db->transaction(function () use ($data) {
                 // 2. Проверка пересечений (Overlap detection)
                 $start = Carbon::parse($data['datetime_start']);
                 $end = Carbon::parse($data['datetime_end']);
@@ -55,7 +51,7 @@ final class AppointmentBookingService extends Model
                     })->exists();
 
                 if ($overlap) {
-                    Log::channel('audit')->warning('Appointment overlap detected', [
+                    $this->logger->warning('Appointment overlap detected', [
                         'correlation_id' => $this->correlationId,
                         'bookable_id' => $data['bookable_id'],
                     ]);
@@ -65,12 +61,12 @@ final class AppointmentBookingService extends Model
                 // 3. Создание записи
                 $appointment = Appointment::create(array_merge($data, [
                     'correlation_id' => $this->correlationId,
-                    'tenant_id' => function_exists('tenant') ? tenant('id') : ($data['tenant_id'] ?? 1),
+                    'tenant_id' => function_exists('tenant') ? tenant()->id : ($data['tenant_id'] ?? 1),
                     'status' => 'pending',
                     'payment_status' => 'unpaid',
                 ]));
 
-                Log::channel('audit')->info('Appointment created successfully', [
+                $this->logger->info('Appointment created successfully', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -84,7 +80,7 @@ final class AppointmentBookingService extends Model
          */
         public function confirmAppointment(int $id): bool
         {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $appointment = Appointment::findOrFail($id);
 
                 if ($appointment->status !== 'pending') {
@@ -96,7 +92,7 @@ final class AppointmentBookingService extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Appointment confirmed', [
+                $this->logger->info('Appointment confirmed', [
                     'appointment_id' => $id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -110,7 +106,7 @@ final class AppointmentBookingService extends Model
          */
         public function completeAppointment(int $id): bool
         {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $appointment = Appointment::findOrFail($id);
 
                 if ($appointment->status === 'cancelled' || $appointment->status === 'completed') {
@@ -125,7 +121,7 @@ final class AppointmentBookingService extends Model
                 // Здесь в будущем можно вызвать InventoryManagementService::deduct()
                 // для списания расходников на основе типа услуги.
 
-                Log::channel('audit')->info('Appointment completed', [
+                $this->logger->info('Appointment completed', [
                     'appointment_id' => $id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -139,7 +135,7 @@ final class AppointmentBookingService extends Model
          */
         public function cancelAppointment(int $id, string $reason = ''): bool
         {
-            return DB::transaction(function () use ($id, $reason) {
+            return $this->db->transaction(function () use ($id, $reason) {
                 $appointment = Appointment::findOrFail($id);
 
                 if ($appointment->status === 'completed') {
@@ -152,7 +148,7 @@ final class AppointmentBookingService extends Model
                     'correlation_id' => $this->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Appointment cancelled', [
+                $this->logger->info('Appointment cancelled', [
                     'appointment_id' => $id,
                     'reason' => $reason,
                     'correlation_id' => $this->correlationId,

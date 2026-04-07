@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api\Tickets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class TicketAIApiController extends Model
+final class TicketAIApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
         public function __construct(
-            private readonly TicketAIService $aiService
-        ) {}
+            private readonly TicketAIService $aiService,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Получение персональных рекомендаций эвентов.
          */
@@ -23,14 +26,14 @@ final class TicketAIApiController extends Model
         {
             $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
             try {
-                $userId = auth()->id() ?? 1;
+                $userId = $this->guard->id() ?? 1;
                 $context = [
                     'lat' => $request->query('lat'),
                     'lon' => $request->query('lon'),
                     'correlation_id' => $correlationId
                 ];
                 $events = $this->aiService->suggestEventsForUser($userId, $context);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => [
@@ -45,11 +48,11 @@ final class TicketAIApiController extends Model
                     ]
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI suggestion API failure', [
+                $this->logger->channel('audit')->error('AI suggestion API failure', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => 'Ошибка при получении рекомендаций'
@@ -66,18 +69,18 @@ final class TicketAIApiController extends Model
                 // Проверка прав (Бизнес / Тенант)
                 $this->authorize('view_forecast', \App\Domains\Tickets\Models\Event::class);
                 $prediction = $this->aiService->predictEventDemand($eventId);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $prediction
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('recommend')->error('Forecast API failure', [
+                $this->logger->channel('recommend')->error('Forecast API failure', [
                     'event_id' => $eventId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => 'Не удалось получить прогноз спроса'
@@ -98,13 +101,13 @@ final class TicketAIApiController extends Model
                     'is_standing_only' => 'boolean'
                 ]);
                 $result = $this->aiService->designSeatMapLayout($requirements);
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'correlation_id' => $correlationId,
                     'data' => $result['layout']
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage()

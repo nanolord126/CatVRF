@@ -2,20 +2,18 @@
 
 namespace App\Domains\Taxi\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TaxiFraudMLService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class TaxiFraudMLService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с инъекцией (по канону).
          */
-        public function __construct(
-            private readonly \App\Services\ML\FraudMLService $coreML,
-        ) {}
+        public function __construct(private readonly \App\Services\ML\FraudMLService $coreML,
+        private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         /**
          * Комплексная проверка перед созданием/принятием поездки.
@@ -29,12 +27,12 @@ final class TaxiFraudMLService extends Model
                 'user_id' => $passengerId,
                 'operation_type' => 'taxi_ride_request',
                 'amount' => $params['price'] ?? 0,
-                'ip' => request()->ip(),
-                'device' => request()->header('User-Agent')
+                'ip' => $this->request->ip(),
+                'device' => $this->request->header('User-Agent')
             ]);
 
             if ($mlScore > 0.85) { // Критический порог фрода
-                Log::channel('fraud_alert')->warning('Taxi Fraud Detected: Critical High Score', [
+                $this->logger->warning('Taxi Fraud Detected: Critical High Score', [
                     'user_id' => $passengerId,
                     'score' => $mlScore,
                     'correlation_id' => $correlationId
@@ -49,7 +47,7 @@ final class TaxiFraudMLService extends Model
                 ->count();
 
             if ($recentRides > 3) {
-                Log::channel('fraud_alert')->error('Taxi Fraud: Spam Ride Requests', [
+                $this->logger->error('Taxi Fraud: Spam Ride Requests', [
                     'user_id' => $passengerId,
                     'rides_count' => $recentRides,
                     'correlation_id' => $correlationId
@@ -60,7 +58,7 @@ final class TaxiFraudMLService extends Model
             // 3. Расстояние (если pickup и dropoff слишком близко или слишком далеко)
             $distance = $params['estimated_distance'] ?? 0;
             if ($distance < 0.1 || $distance > 500.0) {
-                Log::channel('fraud_alert')->info('Taxi Security: Suspicious Distance', [
+                $this->logger->info('Taxi Security: Suspicious Distance', [
                     'user_id' => $passengerId,
                     'distance' => $distance,
                     'correlation_id' => $correlationId
@@ -83,9 +81,10 @@ final class TaxiFraudMLService extends Model
                 return false;
             }
 
-            Log::channel('audit')->info('Driver session verified via ML', [
+            $this->logger->info('Driver session verified via ML', [
                 'driver_id' => $driverId,
-                'license' => $driver->license_number
+                'license' => $driver->license_number,
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
 
             return true;

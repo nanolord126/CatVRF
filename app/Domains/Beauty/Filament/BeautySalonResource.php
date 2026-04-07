@@ -1,110 +1,67 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Beauty\Models\BeautySalon;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Table;
 
-final class BeautySalonResource extends Model
+final class BeautySalonResource extends Resource
 {
-    use HasFactory;
+    protected static ?string $model = BeautySalon::class;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Section, TextInput, Textarea, Toggle};
-    use Filament\Tables\Columns\{TextColumn, BooleanColumn};
-    use Filament\Tables\Actions\{Action, DeleteAction, EditAction, ViewAction};
-    use Filament\Tables\Filters\{Filter, TrashedFilter};
+    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
-    /**
-     * Filament Resource для салонов красоты.
-     * Production 2026.
-     */
-    final class BeautySalonResource extends Resource
+    protected static ?string $navigationLabel = 'Салоны красоты';
+
+    protected static ?string $pluralModelLabel = 'Салоны красоты';
+
+    public static function form(Form $form): Form
     {
-        protected static ?string $model = BeautySalon::class;
+        return $form->schema([
+            TextInput::make('name')->label('Название')->required(),
+            TextInput::make('address')->label('Адрес')->required(),
+            TextInput::make('lat')->label('Широта')->numeric(),
+            TextInput::make('lon')->label('Долгота')->numeric(),
+            Toggle::make('is_active')->label('Активен'),
+        ]);
+    }
 
-        protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-
-        protected static ?string $navigationLabel = 'Салоны красоты';
-
-        protected static ?string $pluralModelLabel = 'Салоны красоты';
-
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Section::make('Основное')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Название салона')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('address')
-                            ->label('Адрес')
-                            ->maxLength(255),
-                        TextInput::make('phone')
-                            ->label('Телефон')
-                            ->tel()
-                            ->maxLength(20),
-                        TextInput::make('email')
-                            ->label('Email')
-                            ->email()
-                            ->maxLength(255),
-                        Textarea::make('description')
-                            ->label('Описание')
-                            ->rows(3),
-                    ])
-                    ->columns(2),
-                Section::make('Статус')
-                    ->schema([
-                        Toggle::make('is_verified')
-                            ->label('Верифицирован'),
-                    ])
-                    ->columns(1),
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->label('Название')->searchable(),
+                TextColumn::make('address')->label('Адрес'),
+                IconColumn::make('is_active')->label('Активен')->boolean(),
+                TextColumn::make('created_at')->label('Создан')->dateTime(),
+            ])
+            ->filters([
+                TrashedFilter::make(),
+            ])
+            ->actions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
-        }
+    }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('name')
-                        ->label('Название')
-                        ->searchable()
-                        ->sortable(),
-                    TextColumn::make('address')
-                        ->label('Адрес')
-                        ->searchable(),
-                    TextColumn::make('rating')
-                        ->label('Рейтинг')
-                        ->sortable(),
-                    BooleanColumn::make('is_verified')
-                        ->label('Верифицирован'),
-                ])
-                ->filters([
-                    TrashedFilter::make(),
-                ])
-                ->actions([
-                    ViewAction::make(),
-                    EditAction::make(),
-                    DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    // Bulk actions here
-                ]);
-        }
-
-        public static function getRelations(): array
-        {
-            return [];
-        }
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => ListRecords::class,
-                'create' => CreateRecord::class,
-                'edit' => EditRecord::class,
-                'view' => ViewRecord::class,
-            ];
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Beauty\Filament\Pages\ListBeautySalons::route('/'),
+        ];
+    }
 }

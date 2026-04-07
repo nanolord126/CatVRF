@@ -2,24 +2,58 @@
 
 namespace App\Listeners\Octane;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FlushCacheListener extends Model
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+/**
+ * Class FlushCacheListener
+ *
+ * Event listener handling domain event side effects.
+ * Runs asynchronously via queue when ShouldQueue is implemented.
+ * All listeners maintain correlation_id chain.
+ *
+ * @package App\Listeners\Octane
+ */
+final class FlushCacheListener
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Handle handle operation.
+     *
+     * @throws \DomainException
+     */
     public function handle(RequestHandled $event): void
         {
             // Flush non-persistent caches to avoid memory leaks
-            if (config('octane.flush_views', false)) {
+            if ($this->config->get('octane.flush_views', false)) {
                 view()->flushViewsCache();
             }
 
             // Reset stateful services
-            if (config('octane.isolation', false)) {
+            if ($this->config->get('octane.isolation', false)) {
                 app('cache')->flush();
             }
         }
+
+    /**
+     * Get the string representation of this object.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return static::class . '::' . ($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     *
+     * @return bool
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

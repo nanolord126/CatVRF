@@ -2,14 +2,13 @@
 
 namespace App\Domains\Electronics\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class ElectronicsInventoryAuditJob extends Model
+
+use Psr\Log\LoggerInterface;
+final class ElectronicsInventoryAuditJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
@@ -20,8 +19,7 @@ final class ElectronicsInventoryAuditJob extends Model
          */
         public function __construct(
             private readonly int $tenantId,
-            private readonly string $correlationId = '',
-        ) {}
+            private string $correlationId = '', private readonly LoggerInterface $logger) {}
 
         /**
          * Execute the job.
@@ -32,7 +30,7 @@ final class ElectronicsInventoryAuditJob extends Model
         ): void {
             $correlationId = $this->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('LAYER-8: Electronics Inventory Audit JOB START', [
+            $this->logger->info('LAYER-8: Electronics Inventory Audit JOB START', [
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $correlationId,
             ]);
@@ -43,7 +41,7 @@ final class ElectronicsInventoryAuditJob extends Model
                     ->orWhere('availability_status', 'out_of_stock')
                     ->get();
 
-                Log::info('LAYER-8: Found gadgets for reorder check', [
+                $this->logger->info('LAYER-8: Found gadgets for reorder check', [
                     'count' => $lowStockItems->count(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -52,12 +50,12 @@ final class ElectronicsInventoryAuditJob extends Model
                 foreach ($lowStockItems as $product) {
                     $forecast = $demandForecast->forecastForItem(
                         $product->id,
-                        now(),
-                        now()->addDays(30)
+                        Carbon::now(),
+                        Carbon::now()->addDays(30)
                     );
 
                     if ($forecast['predicted_demand'] > 50) {
-                        Log::channel('audit')->warning('LAYER-8: HIGH DEMAND GADGET ALERT', [
+                        $this->logger->warning('LAYER-8: HIGH DEMAND GADGET ALERT', [
                             'sku' => $product->sku,
                             'forecast' => $forecast['predicted_demand'],
                             'correlation_id' => $correlationId,
@@ -68,13 +66,13 @@ final class ElectronicsInventoryAuditJob extends Model
                     }
                 }
 
-                Log::channel('audit')->info('LAYER-8: Electronics Inventory Audit JOB COMPLETE', [
+                $this->logger->info('LAYER-8: Electronics Inventory Audit JOB COMPLETE', [
                     'tenant_id' => $this->tenantId,
                     'correlation_id' => $correlationId,
                 ]);
 
-            } catch (Exception $e) {
-                Log::channel('audit')->error('LAYER-8: Electronics Inventory Audit JOB FAILED', [
+            } catch (\Throwable $e) {
+                $this->logger->error('LAYER-8: Electronics Inventory Audit JOB FAILED', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

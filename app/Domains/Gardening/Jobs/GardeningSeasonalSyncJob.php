@@ -1,15 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+declare(strict_types=1);
 
 namespace App\Domains\Gardening\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class GardeningSeasonalSyncJob extends Model
+
+
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+final class GardeningSeasonalSyncJob
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private readonly string $correlationId;
@@ -19,7 +22,7 @@ final class GardeningSeasonalSyncJob extends Model
          */
         public function __construct(
             private readonly int $tenantId,
-            ?string $correlationId = null
+            ?string $correlationId = null,
         ) {
             $this->correlationId = $correlationId ?? (string) Str::uuid();
         }
@@ -27,12 +30,13 @@ final class GardeningSeasonalSyncJob extends Model
         /**
          * Execute the job logic across all relevant plant entities.
          */
-        public function handle(): void
+        public function handle(LoggerInterface $logger): void
         {
-            Log::channel('audit')->info('SeasonalSyncJob STARTED', [
+            $logger->info('SeasonalSyncJob STARTED', [
                 'tenant_id' => $this->tenantId,
                 'cid' => $this->correlationId,
                 'time' => Carbon::now()->toDateTimeString(),
+                'correlation_id' => $this->correlationId,
             ]);
 
             try {
@@ -45,7 +49,7 @@ final class GardeningSeasonalSyncJob extends Model
                     ->get();
 
                 if ($plants->isEmpty()) {
-                    Log::channel('audit')->info('SeasonalSync: No plants found.', ['tid' => $this->tenantId]);
+                    $logger->info('SeasonalSync: No plants found.', ['tid' => $this->tenantId]);
                     return;
                 }
 
@@ -91,20 +95,22 @@ final class GardeningSeasonalSyncJob extends Model
                     $countActive++;
                 }
 
-                Log::channel('audit')->info('SeasonalSyncJob COMPLETED SUCCESSFULLY', [
+                $logger->info('SeasonalSyncJob COMPLETED SUCCESSFULLY', [
                     'tenant_id' => $this->tenantId,
                     'cid' => $this->correlationId,
                     'processed' => $countActive,
                     'modified' => $countUpdated,
-                    'execution_time' => microtime(true) - LARAVEL_START // If LARAVEL_START available
+                    'execution_time' => defined('LARAVEL_START') ? microtime(true) - LARAVEL_START : 0,
+                    'correlation_id' => $this->correlationId,
                 ]);
 
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('SeasonalSyncJob FAILED CRITICALLY', [
+                $logger->error('SeasonalSyncJob FAILED CRITICALLY', [
                     'tenant_id' => $this->tenantId,
                     'cid' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $this->correlationId,
                 ]);
 
                 $this->fail($e);

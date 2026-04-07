@@ -2,17 +2,17 @@
 
 namespace App\Domains\Education\Courses\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class CertificateService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class CertificateService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function issueCertificate(
             Enrollment $enrollment,
@@ -20,38 +20,30 @@ final class CertificateService extends Model
             string $correlationId = '',
         ): Certificate {
 
-
             try {
-                Log::channel('audit')->info('Issuing certificate', [
+                $this->logger->info('Issuing certificate', [
                     'enrollment_id' => $enrollment->id,
                     'student_name' => $studentName,
                     'correlation_id' => $correlationId,
                 ]);
 
                 if ($enrollment->progress_percent < 100) {
-                    throw new \Exception('Student must complete 100% of course to receive certificate');
+                    throw new \RuntimeException('Student must complete 100% of course to receive certificate');
                 }
 
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $certificate = DB::transaction(function () use ($enrollment, $studentName, $correlationId) {
+                $certificate = $this->db->transaction(function () use ($enrollment, $studentName, $correlationId) {
                     $verificationCode = strtoupper(Str::random(12));
-                    $certificateNumber = 'CERT-' . now()->format('Y') . '-' . Str::random(8);
+                    $certificateNumber = 'CERT-' . Carbon::now()->format('Y') . '-' . Str::random(8);
 
                     $certificate = Certificate::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'enrollment_id' => $enrollment->id,
                         'course_id' => $enrollment->course_id,
                         'student_id' => $enrollment->student_id,
                         'certificate_number' => $certificateNumber,
-                        'issued_at' => now(),
+                        'issued_at' => Carbon::now(),
                         'verification_code' => $verificationCode,
                         'student_name' => $studentName,
                         'achievement_description' => "Successfully completed {$enrollment->course->title}",
@@ -63,7 +55,7 @@ final class CertificateService extends Model
                     return $certificate;
                 });
 
-                Log::channel('audit')->info('Certificate issued successfully', [
+                $this->logger->info('Certificate issued successfully', [
                     'certificate_id' => $certificate->id,
                     'certificate_number' => $certificate->certificate_number,
                     'correlation_id' => $correlationId,
@@ -71,7 +63,7 @@ final class CertificateService extends Model
 
                 return $certificate;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to issue certificate', [
+                $this->logger->error('Failed to issue certificate', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -82,7 +74,7 @@ final class CertificateService extends Model
         public function verifyCertificate(string $verificationCode, string $correlationId = ''): ?Certificate
         {
             try {
-                Log::channel('audit')->info('Verifying certificate', [
+                $this->logger->info('Verifying certificate', [
                     'verification_code' => $verificationCode,
                     'correlation_id' => $correlationId,
                 ]);
@@ -90,14 +82,14 @@ final class CertificateService extends Model
                 $certificate = Certificate::where('verification_code', $verificationCode)
                     ->first();
 
-                Log::channel('audit')->info('Certificate verification result', [
+                $this->logger->info('Certificate verification result', [
                     'found' => $certificate ? true : false,
                     'correlation_id' => $correlationId,
                 ]);
 
                 return $certificate;
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to verify certificate', [
+                $this->logger->error('Failed to verify certificate', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);

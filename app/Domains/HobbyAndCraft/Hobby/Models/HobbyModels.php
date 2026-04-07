@@ -2,6 +2,7 @@
 
 namespace App\Domains\HobbyAndCraft\Hobby\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,25 +10,24 @@ final class HobbyDomainTrait extends Model
 {
     use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public static function bootHobbyDomainTrait(): void
         {
             static::creating(function (Model $model) {
                 if (!$model->uuid) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (!$model->correlation_id && request()) {
-                    $model->correlation_id = request()->header('X-Correlation-ID') ?: (string) Str::uuid();
+                if (empty($model->correlation_id)) {
+                    $model->correlation_id = (string) Str::uuid();
                 }
-                if (!$model->tenant_id && auth()->check()) {
-                    // Assuming existence of current tenant global helper/context
-                    $model->tenant_id = auth()->user()->tenant_id ?? 1;
+                if (!$model->tenant_id && function_exists('tenant') && tenant()) {
+                    $model->tenant_id = tenant()->id;
                 }
             });
 
             static::addGlobalScope('hobby_tenant_scope', function ($builder) {
-                if (auth()->check()) {
-                    $builder->where('tenant_id', auth()->user()->tenant_id ?? 1);
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
                 }
             });
         }

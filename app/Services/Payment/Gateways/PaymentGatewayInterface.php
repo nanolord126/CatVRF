@@ -1,89 +1,74 @@
 <?php declare(strict_types=1);
 
+/**
+ *  — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ */
+
+
 namespace App\Services\Payment\Gateways;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\PaymentTransaction;
 
-final class PaymentGatewayInterface extends Model
+interface PaymentGatewayInterface
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-         * Инициирует платёж (с холдом или без).
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function initPayment(array $data): array;
+     * Инициирует платёж (с холдом или без).
+     */
+    public function initPayment(array $data): array;
 
-        /**
-         * Возвращает статус платежа у провайдера.
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function getStatus(string $providerPaymentId): array;
+    /**
+     * Возвращает статус платежа у провайдера.
+     */
+    public function getStatus(string $providerPaymentId): array;
 
-        /**
-         * Подтверждает холд (Capture).
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function capture(PaymentTransaction $transaction): bool;
+    /**
+     * Подтверждает холд (Capture).
+     */
+    public function capture(PaymentTransaction $transaction): bool;
 
-        /**
-         * Возврат средств.
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function refund(PaymentTransaction $transaction, int $amount): bool;
+    /**
+     * Возврат средств.
+     */
+    public function refund(PaymentTransaction $transaction, int $amount): bool;
 
-        /**
-         * Массовая выплата (payout). Для B2B-выплат бизнесу.
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function createPayout(array $data): array;
+    /**
+     * Массовая выплата (payout). Для B2B-выплат бизнесу.
+     */
+    public function createPayout(array $data): array;
 
-        /**
-         * Обработка webhook от провайдера. Возвращает распознанный статус.
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function handleWebhook(array $payload): array;
+    /**
+     * Обработка webhook от провайдера. Возвращает распознанный статус.
+     */
+    public function handleWebhook(array $payload): array;
 
-        /**
-         * ОФД-фискализация (54-ФЗ). Вызывается только после captured.
-         */
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \Exception
-         */
-        public function fiscalize(PaymentTransaction $transaction): bool;
+    /**
+     * ОФД-фискализация (54-ФЗ). Вызывается только после captured.
+     */
+    public function fiscalize(PaymentTransaction $transaction): bool;
 }

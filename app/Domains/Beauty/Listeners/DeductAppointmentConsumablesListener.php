@@ -1,68 +1,87 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductAppointmentConsumablesListener extends Model
+use Psr\Log\LoggerInterface;
+use App\Domains\Beauty\Domain\Services\ConsumableDeductionServiceInterface;
+use App\Domains\Beauty\Events\AppointmentCompleted;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+final class DeductAppointmentConsumablesListener implements ShouldQueue
 {
-    use HasFactory;
+    use InteractsWithQueue;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    /**
+     * Очередь для обработки — изолированная от основного потока.
+     */
+    public string $queue = 'beauty_consumables';
+
+    /**
+     * Количество попыток перед сдачей в failedJobs.
+     */
+    public int $tries = 3;
+
+    /**
+     * Задержка между повторными попытками (секунды).
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [10, 30, 60];
+
+    public function __construct(
+        private ConsumableDeductionServiceInterface $deductionService,
+        private LoggerInterface $logger,
+    ) {}
+
+    /**
+     * Обработать событие — списать расходники после завершения визита.
+     */
     public function handle(AppointmentCompleted $event): void
-        {
-            try {
-                DB::transaction(function () use ($event) {
-                    $appointment = $event->appointment;
-                    $correlationId = $event->correlationId;
+    {
+        $this->logger->info('Beauty: начало списания расходников', [
+            'appointment_id' => $event->appointmentId,
+            'service_id'     => $event->serviceId,
+            'correlation_id' => $event->correlationId,
+        ]);
 
-                    // Получить услугу с расходниками
-                    $service = $appointment->service;
-                    if (!$service->consumables_json) {
-                        return;
-                    }
+        try {
+            $this->deductionService->deductForAppointment(
+                appointmentId: $event->appointmentId,
+                serviceId: $event->serviceId,
+                correlationId: $event->correlationId,
+            );
 
-                    foreach ($service->consumables_json as $consumable) {
-                        $product = \App\Domains\Beauty\Models\BeautyProduct::query()
-                            ->where('id', $consumable['product_id'] ?? null)
-                            ->firstOrFail();
+            $this->logger->info('Beauty: расходники списаны', [
+                'appointment_id' => $event->appointmentId,
+                'service_id'     => $event->serviceId,
+                'correlation_id' => $event->correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Beauty: ошибка списания расходников', [
+                'appointment_id' => $event->appointmentId,
+                'service_id'     => $event->serviceId,
+                'correlation_id' => $event->correlationId,
+                'error'          => $e->getMessage(),
+                'trace'          => $e->getTraceAsString(),
+            ]);
 
-                        // Списать расходник
-                        $qty = (int) ($consumable['quantity'] ?? 1);
-                        $product->decrement('current_stock', $qty);
-
-                        // Записать в journal
-                        BeautyConsumable::create([
-                            'tenant_id' => $appointment->tenant_id,
-                            'appointment_id' => $appointment->id,
-                            'product_id' => $product->id,
-                            'quantity_used' => $qty,
-                            'correlation_id' => $correlationId,
-                        ]);
-
-                        // Логирование
-                        Log::channel('audit')->info('Consumable deducted', [
-                            'appointment_id' => $appointment->id,
-                            'product_id' => $product->id,
-                            'quantity' => $qty,
-                            'correlation_id' => $correlationId,
-                        ]);
-
-                        // Проверить, не упал ли ниже минимума
-                        if ($product->current_stock < $product->min_stock_threshold) {
-                            event(new \App\Domains\Beauty\Events\LowStockReached($product, $correlationId));
-                        }
-                    }
-                });
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('DeductAppointmentConsumablesListener failed', [
-                    'appointment_id' => $event->appointment->id,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $event->correlationId,
-                ]);
-
-                throw $e;
-            }
+            $this->fail($e);
         }
+    }
+
+    /**
+     * Обработать окончательный сбой (после всех попыток).
+     */
+    public function failed(AppointmentCompleted $event, \Throwable $exception): void
+    {
+        $this->logger->critical('Beauty: списание расходников провалилось (все попытки)', [
+            'appointment_id' => $event->appointmentId,
+            'service_id'     => $event->serviceId,
+            'correlation_id' => $event->correlationId,
+            'error'          => $exception->getMessage(),
+        ]);
+    }
 }

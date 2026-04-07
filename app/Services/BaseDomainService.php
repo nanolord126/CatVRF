@@ -2,31 +2,40 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BaseDomainService extends Model
+
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final readonly class BaseDomainService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * @var string
          */
-        protected readonly string $correlationId;
+        private string $correlationId;
 
         /**
          * @var \App\Services\FraudControlService
          */
-        protected readonly FraudControlService $fraudControl;
+        private FraudControlService $fraud;
 
         /**
          * Base constructor injecting core dependencies.
          */
-        public function __construct(FraudControlService $fraudControl)
+        public function __construct(
+        private readonly Request $request,FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+    )
         {
             $this->fraudControl = $fraudControl;
-            $this->correlationId = request()->header('X-Correlation-ID') ?? (string) Str::uuid();
+            $this->correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
         }
 
         /**
@@ -34,25 +43,25 @@ final class BaseDomainService extends Model
          */
         protected function executeTransaction(callable $operation, string $actionName, int $amount = 0): mixed
         {
-            $userId = auth()->id() ?? 0;
+            $userId = $this->guard->id() ?? 0;
 
-            $this->fraudControl->check(
+            $this->fraud->check(
                 $userId,
                 $actionName,
                 $amount,
-                request()->ip(),
-                request()->header('User-Agent'),
+                $this->request->ip(),
+                $this->request->header('User-Agent'),
                 $this->correlationId
             );
 
-            Log::channel('audit')->info("Service: $actionName started", [
+            $this->logger->channel('audit')->info("Service: $actionName started", [
                 'correlation_id' => $this->correlationId,
-                'user_id' => auth()->id(),
-                'tenant_id' => auth()->user()?->tenant_id,
+                'user_id' => $this->guard->id(),
+                'tenant_id' => $this->guard->user()?->tenant_id,
             ]);
 
             try {
-                return DB::transaction(function () use ($operation, $actionName) {
+                return $this->db->transaction(function () use ($operation, $actionName) {
                     $result = $operation($this->correlationId);
 
                     if ($result === null) {
@@ -62,7 +71,7 @@ final class BaseDomainService extends Model
                     return $result;
                 });
             } catch (\Throwable $e) {
-                Log::channel('audit')->error("Service: $actionName failed", [
+                $this->logger->channel('audit')->error("Service: $actionName failed", [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -70,7 +79,7 @@ final class BaseDomainService extends Model
 
                 throw $e;
             } finally {
-                Log::channel('audit')->info("Service: $actionName completed", [
+                $this->logger->channel('audit')->info("Service: $actionName completed", [
                     'correlation_id' => $this->correlationId,
                 ]);
             }

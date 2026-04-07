@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @mixin IdeHelperNotification
  */
-class Notification extends Model
+final class Notification extends Model
 {
     use SoftDeletes;
 

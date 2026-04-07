@@ -2,14 +2,15 @@
 
 namespace App\Domains\Medical\MedicalHealthcare\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class B2BMedicalHealthcareStorefront extends Model
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasFactory;
+
     use SoftDeletes;
 
         protected $table = 'b2b_medical_healthcare_storefronts';
@@ -38,11 +39,11 @@ final class B2BMedicalHealthcareStorefront extends Model
             'wholesale_discount' => 'decimal:2',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::addGlobalScope('tenant', function ($query) {
-                if (auth()->check() && auth()->user()->tenant_id) {
-                    $query->where('tenant_id', auth()->user()->tenant_id);
+                if (function_exists('tenant') && tenant() && tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
@@ -51,4 +52,27 @@ final class B2BMedicalHealthcareStorefront extends Model
         {
             return $this->hasMany('App\Domains\Medical\MedicalHealthcare\Models\B2BMedicalHealthcareOrder');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

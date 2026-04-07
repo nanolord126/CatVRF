@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class OpenApiController extends Model
+final class OpenApiController extends Controller
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ResponseFactory $responseFactory,
+        private readonly ResponseFactory $response,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Возвращает OpenAPI 3.0 спецификацию.
          */
         public function specification(): JsonResponse
         {
-            return response()->json([
+            return $this->response->json([
                 'openapi' => '3.0.0',
                 'info' => [
                     'title' => 'CatVRF Marketplace API',
@@ -378,7 +381,7 @@ final class OpenApiController extends Model
                     ['key' => 'correlation_id', 'value' => ''],
                 ],
             ];
-            return response()
+            return $this->responseFactory
                 ->json($collection)
                 ->header('Content-Disposition', 'attachment; filename="CatVRF-Marketplace-API.postman_collection.json"');
         }

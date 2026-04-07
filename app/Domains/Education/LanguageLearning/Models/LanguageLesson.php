@@ -2,14 +2,15 @@
 
 namespace App\Domains\Education\LanguageLearning\Models;
 
+use Carbon\Carbon;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class LanguageLesson extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'language_lessons';
 
         protected $fillable = [
@@ -34,12 +35,12 @@ final class LanguageLesson extends Model
         {
             static::creating(function (self $model) {
                 $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (int) (tenant('id') ?? 1);
+                $model->tenant_id = $model->tenant_id ?? (int) (tenant()->id ?? 1);
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (tenant()->id) {
+                    $query->where('tenant_id', tenant()->id);
                 }
             });
         }
@@ -60,6 +61,6 @@ final class LanguageLesson extends Model
         public function isNowAttribute(): bool
         {
             $end = $this->scheduled_at->addMinutes($this->duration_minutes);
-            return now()->between($this->scheduled_at, $end) && $this->status === 'active';
+            return Carbon::now()->between($this->scheduled_at, $end) && $this->status === 'active';
         }
 }

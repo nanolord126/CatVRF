@@ -1,15 +1,38 @@
 <?php declare(strict_types=1);
 
+/**
+ * AutoServiceOrderPolicy — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/autoserviceorderpolicy
+ */
+
+
 namespace App\Domains\Auto\Policies;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AutoServiceOrderPolicy extends Model
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+
+
+use App\Services\FraudControlService;
+final class AutoServiceOrderPolicy
 {
-    use HasFactory;
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
+
     // Dependencies injected via constructor
         // Add private readonly properties here
         public function viewAny(User $user): bool
@@ -24,6 +47,8 @@ final class AutoServiceOrderPolicy extends Model
 
         public function create(User $user): bool
         {
+        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+
             return $user->isVerified();
         }
 
@@ -38,11 +63,17 @@ final class AutoServiceOrderPolicy extends Model
             }
 
             // Отмену можно сделать только в течение 24 часов до начала
-            $hoursUntilStart = $order->appointment_datetime->diffInHours(now(), false);
+            $hoursUntilStart = $order->appointment_datetime->diffInHours(Carbon::now(), false);
             if ($hoursUntilStart < -24) {
                 return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
             }
 
             return $this->response->allow();
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
 }

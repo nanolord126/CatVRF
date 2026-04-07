@@ -2,14 +2,20 @@
 
 namespace App\Services\Performance;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MemoryProfilingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final class MemoryProfilingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     private static array $snapshots = [];
         private static array $profileData = [];
 
@@ -37,7 +43,7 @@ final class MemoryProfilingService extends Model
 
             self::$snapshots[$label] = $snapshot;
 
-            Log::channel('performance')->debug('Memory snapshot taken', $snapshot);
+            $this->logger->channel('performance')->debug('Memory snapshot taken', array_merge($snapshot, ['correlation_id' => $this->request?->header('X-Correlation-ID') ?? '']));
 
             return $snapshot;
         }
@@ -100,10 +106,11 @@ final class MemoryProfilingService extends Model
                 'memory_change_percent' => $comparison['memory_diff_percent'] ?? 0,
             ];
 
-            Log::channel('performance')->info('Code profiling completed', [
+            $this->logger->channel('performance')->info('Code profiling completed', [
                 'label' => $label,
                 'duration_ms' => self::$profileData[$label]['duration_ms'],
                 'memory_change' => self::$profileData[$label]['memory_change'],
+                'correlation_id' => $this->request?->header('X-Correlation-ID') ?? '',
             ]);
 
             return $result;

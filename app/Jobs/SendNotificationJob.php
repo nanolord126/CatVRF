@@ -9,7 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+
 
 /**
  * SendNotificationJob - асинхронная отправка уведомлений через Queue
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Повторы: максимум 3 попытки с задержкой 5 минут
  */
-class SendNotificationJob implements ShouldQueue
+final class SendNotificationJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -31,17 +32,17 @@ class SendNotificationJob implements ShouldQueue
     /**
      * ID уведомления
      */
-    protected int $notificationId;
+    private int $notificationId;
 
     /**
      * Correlation ID для трейсинга
      */
-    protected string $correlationId;
+    private string $correlationId;
 
     /**
      * Tenant ID
      */
-    protected int $tenantId;
+    private int $tenantId;
 
     /**
      * Максимум попыток отправки
@@ -61,7 +62,9 @@ class SendNotificationJob implements ShouldQueue
     /**
      * Конструктор
      */
-    public function __construct(int $notificationId, string $correlationId, int $tenantId)
+    public function __construct(int $notificationId, string $correlationId, int $tenantId,
+        private readonly LogManager $logger,
+    )
     {
         $this->notificationId = $notificationId;
         $this->correlationId = $correlationId;
@@ -87,7 +90,7 @@ class SendNotificationJob implements ShouldQueue
 
             // Проверить статус (может уже быть отправлено)
             if ($notification->status !== 'pending') {
-                Log::info('Notification already processed', [
+                $this->logger->info('Notification already processed', [
                     'notification_id' => $this->notificationId,
                     'status' => $notification->status,
                 ]);
@@ -104,7 +107,7 @@ class SendNotificationJob implements ShouldQueue
                     $this->sendToChannel($notification, $user, $channel);
                 } catch (\Exception $e) {
                     $failedChannels[$channel] = $e->getMessage();
-                    Log::warning("Failed to send to $channel", [
+                    $this->logger->warning("Failed to send to $channel", [
                         'notification_id' => $this->notificationId,
                         'error' => $e->getMessage(),
                     ]);
@@ -115,7 +118,7 @@ class SendNotificationJob implements ShouldQueue
             if (empty($failedChannels) || count($failedChannels) < count($notification->channels)) {
                 $notification->markAsSent();
 
-                Log::channel('audit')->info('Notification sent successfully', [
+                $this->logger->channel('audit')->info('Notification sent successfully', [
                     'notification_id' => $this->notificationId,
                     'user_id' => $user->id,
                     'channels' => $notification->channels,
@@ -123,11 +126,11 @@ class SendNotificationJob implements ShouldQueue
                 ]);
             } else {
                 // Все каналы неудачны - переход на retry
-                throw new \Exception('All channels failed: ' . json_encode($failedChannels));
+                throw new \RuntimeException('All channels failed: ' . json_encode($failedChannels));
             }
 
         } catch (\Exception $e) {
-            Log::warning('SendNotificationJob failed', [
+            $this->logger->warning('SendNotificationJob failed', [
                 'notification_id' => $this->notificationId,
                 'attempt' => $this->attempts(),
                 'max_tries' => $this->tries,
@@ -150,7 +153,7 @@ class SendNotificationJob implements ShouldQueue
     protected function sendToChannel(NotificationModel $notification, User $user, string $channel): void
     {
         match($channel) {
-            'mail' => app('App\Services\EmailService')->sendNotification(
+            'email' => app('App\Services\EmailService')->sendNotification(
                 $notification,
                 $user,
                 $this->correlationId
@@ -167,7 +170,7 @@ class SendNotificationJob implements ShouldQueue
             ),
             'database' => null, // Already saved
             'web' => null, // Handle via broadcaster
-            default => throw new \Exception("Unknown channel: $channel"),
+            default => throw new \InvalidArgumentException("Unknown channel: $channel"),
         };
     }
 
@@ -182,7 +185,7 @@ class SendNotificationJob implements ShouldQueue
                 $notification->markAsFailed($exception->getMessage());
             }
 
-            Log::channel('notifications')->error('Notification delivery failed after retries', [
+            $this->logger->channel('notifications')->error('Notification delivery failed after retries', [
                 'notification_id' => $this->notificationId,
                 'attempts' => $this->attempts(),
                 'error' => $exception->getMessage(),
@@ -190,7 +193,7 @@ class SendNotificationJob implements ShouldQueue
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to handle notification failure', [
+            $this->logger->error('Failed to handle notification failure', [
                 'error' => $e->getMessage(),
             ]);
         }

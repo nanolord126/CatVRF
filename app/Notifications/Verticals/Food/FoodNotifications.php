@@ -9,10 +9,10 @@ use App\Notifications\BaseSmsNotification;
 /**
  * Order Confirmed Notification - заказ подтверждён рестораном
  */
-class OrderConfirmedNotification extends BaseSmsNotification
+final class OrderConfirmedNotification extends BaseSmsNotification
 {
-    protected string $type = 'food.order.confirmed';
-    protected string $template = 'sms.food.confirmed';
+    private string $type = 'food.order.confirmed';
+    private string $template = 'sms.food.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -30,9 +30,9 @@ class OrderConfirmedNotification extends BaseSmsNotification
 /**
  * Order Ready Notification - заказ готов к выдаче/доставке
  */
-class OrderReadyNotification extends BaseInAppNotification
+final class OrderReadyNotification extends BaseInAppNotification
 {
-    protected string $type = 'food.order.ready';
+    private string $type = 'food.order.ready';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -49,9 +49,9 @@ class OrderReadyNotification extends BaseInAppNotification
 /**
  * Order Delivering Notification - заказ в пути
  */
-class OrderDeliveringNotification extends BaseInAppNotification
+final class OrderDeliveringNotification extends BaseInAppNotification
 {
-    protected string $type = 'food.order.delivering';
+    private string $type = 'food.order.delivering';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -67,10 +67,10 @@ class OrderDeliveringNotification extends BaseInAppNotification
 /**
  * Order Delivered Notification - заказ доставлен
  */
-class OrderDeliveredNotification extends BaseMailableNotification
+final class OrderDeliveredNotification extends BaseMailableNotification
 {
-    protected string $type = 'food.order.delivered';
-    protected string $template = 'emails.food.order_delivered';
+    private string $type = 'food.order.delivered';
+    private string $template = 'emails.food.order_delivered';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -92,10 +92,10 @@ class OrderDeliveredNotification extends BaseMailableNotification
 /**
  * Order Cancelled Notification - заказ отменён
  */
-class OrderCancelledNotification extends BaseMailableNotification
+final class OrderCancelledNotification extends BaseMailableNotification
 {
-    protected string $type = 'food.order.cancelled';
-    protected string $template = 'emails.food.order_cancelled';
+    private string $type = 'food.order.cancelled';
+    private string $template = 'emails.food.order_cancelled';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -117,9 +117,9 @@ class OrderCancelledNotification extends BaseMailableNotification
 /**
  * Rating Request - попросить оценку блюда
  */
-class RatingRequestNotification extends BaseInAppNotification
+final class RatingRequestNotification extends BaseInAppNotification
 {
-    protected string $type = 'food.rating_request';
+    private string $type = 'food.rating_request';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -136,10 +136,10 @@ class RatingRequestNotification extends BaseInAppNotification
 /**
  * Special Offer - спецпредложение от ресторана
  */
-class SpecialOfferNotification extends BaseMailableNotification
+final class SpecialOfferNotification extends BaseMailableNotification
 {
-    protected string $type = 'food.special_offer';
-    protected string $template = 'emails.food.special_offer';
+    private string $type = 'food.special_offer';
+    private string $template = 'emails.food.special_offer';
 
     public function __construct(int $userId, int $tenantId, array $offerData)
     {

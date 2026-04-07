@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class GardenProductResource extends Model
+final class GardenProductResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = GardenProduct::class;
         protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
         protected static ?string $navigationGroup = 'Greenery & Outdoor';
@@ -126,22 +123,15 @@ final class GardenProductResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListGardenProduct::route('/'),
-                'create' => Pages\\CreateGardenProduct::route('/create'),
-                'edit' => Pages\\EditGardenProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewGardenProduct::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListGardenProduct::route('/'),
-                'create' => Pages\\CreateGardenProduct::route('/create'),
-                'edit' => Pages\\EditGardenProduct::route('/{record}/edit'),
-                'view' => Pages\\ViewGardenProduct::route('/{record}'),
+                'index' => Pages\ListGardenProduct::route('/'),
+                'create' => Pages\CreateGardenProduct::route('/create'),
+                'edit' => Pages\EditGardenProduct::route('/{record}/edit'),
+                'view' => Pages\ViewGardenProduct::route('/{record}'),
             ];
         }
 }

@@ -2,14 +2,13 @@
 
 namespace App\Filament\Widgets;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Order;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget;
 
-final class RealtimeRecentOrdersWidget extends Model
+final class RealtimeRecentOrdersWidget extends TableWidget
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?int $sort = 3;
         protected int | string | array $columnSpan = 'full';
 
@@ -44,7 +43,6 @@ final class RealtimeRecentOrdersWidget extends Model
                     Tables\Columns\BadgeColumn::make('status')
                         ->label('Статус')
                         ->color(fn(string $state): string => match ($state) {
-                            'pending' => 'warning',
                             'confirmed' => 'info',
                             'processing' => 'primary',
                             'completed' => 'success',

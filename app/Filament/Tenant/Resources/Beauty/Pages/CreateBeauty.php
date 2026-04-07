@@ -1,13 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\BeautyResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
+/**
+ * CreateBeauty — Filament Page (Layer 9).
+ *
+ * Tenant-scoped salon creation with transaction + audit logging.
+ * No constructor injection — services resolved via app().
+ *
+ * @package App\Filament\Tenant\Resources\Beauty\Pages
+ */
 final class CreateBeauty extends CreateRecord
 {
     protected static string $resource = BeautyResource::class;
@@ -16,17 +26,17 @@ final class CreateBeauty extends CreateRecord
     {
         $correlationId = Str::uuid()->toString();
 
-        DB::transaction(function () use (&$data, $correlationId) {
+        app(DatabaseManager::class)->transaction(function () use (&$data, $correlationId): void {
             $data['correlation_id'] = $correlationId;
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['uuid'] = Str::uuid()->toString();
-            $data['is_verified'] = false;
+            $data['tenant_id']      = filament()->getTenant()?->id;
+            $data['uuid']           = Str::uuid()->toString();
+            $data['is_verified']    = false;
 
-            Log::channel('audit')->info('Beauty salon creation form submitted', [
+            app(LoggerInterface::class)->info('Beauty salon creation form submitted', [
                 'correlation_id' => $correlationId,
-                'tenant_id' => $data['tenant_id'],
-                'user_id' => auth()->id(),
-                'salon_name' => $data['name'] ?? null,
+                'tenant_id'      => $data['tenant_id'],
+                'user_id'        => filament()->auth()->id(),
+                'salon_name'     => $data['name'] ?? null,
             ]);
         });
 
@@ -35,13 +45,13 @@ final class CreateBeauty extends CreateRecord
 
     protected function afterCreate(): void
     {
-        Log::channel('audit')->info('Beauty salon created successfully', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
+        app(LoggerInterface::class)->info('Beauty salon created successfully', [
+            'record_id'      => $this->record->id,
+            'uuid'           => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
+            'user_id'        => filament()->auth()->id(),
+            'tenant_id'      => filament()->getTenant()?->id,
+            'timestamp'      => now()->toIso8601String(),
         ]);
     }
 

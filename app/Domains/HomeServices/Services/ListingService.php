@@ -2,16 +2,17 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class ListingService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final readonly class ListingService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createListing(
             int $contractorId,
@@ -23,19 +24,11 @@ final class ListingService extends Model
             string $correlationId
         ): ServiceListing {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
                     $listing = ServiceListing::create([
-                        'tenant_id' => tenant('id'),
+                        'tenant_id' => tenant()->id,
                         'contractor_id' => $contractorId,
                         'category_id' => $categoryId,
                         'name' => $name,
@@ -46,7 +39,7 @@ final class ListingService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    \Log::channel('audit')->info('Service listing created', [
+                    $this->logger->info('Service listing created', [
                         'listing_id' => $listing->id,
                         'contractor_id' => $contractorId,
                         'correlation_id' => $correlationId,
@@ -55,7 +48,7 @@ final class ListingService extends Model
                     return $listing;
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create listing', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to create listing', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }
@@ -63,22 +56,14 @@ final class ListingService extends Model
         public function updateListing(ServiceListing $listing, array $data, string $correlationId): ServiceListing
         {
 
-
             try {
-                            $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-                DB::transaction(function () use ($listing, $data, $correlationId) {
+                            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->db->transaction(function () use ($listing, $data, $correlationId) {
                     $listing->update($data + ['correlation_id' => $correlationId]);
                     return $listing;
                 });
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update listing', ['error' => $e->getMessage()]);
+                $this->logger->error('Failed to update listing', ['error' => $e->getMessage()]);
                 throw $e;
             }
         }

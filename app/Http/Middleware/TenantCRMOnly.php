@@ -5,10 +5,17 @@ namespace App\Http\Middleware;
 use App\Enums\Role;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+
 
 final class TenantCRMOnly
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly ResponseFactory $response,
+    ) {}
+
     /**
      * Only business users (owner/manager/employee/accountant) can access CRM
      * Rejects customers and unauthenticated users
@@ -19,18 +26,18 @@ final class TenantCRMOnly
 
         // Not authenticated
         if (!$user) {
-            return response()->json(['error' => 'Unauthenticated'], 401);
+            return $this->response->json(['error' => 'Unauthenticated'], 401);
         }
 
         // Customer users cannot access CRM
         if ($user->role === Role::Customer) {
-            Log::channel('audit')->warning('Customer attempted CRM access', [
+            $this->logger->channel('audit')->warning('Customer attempted CRM access', [
                 'user_id' => $user->id,
                 'ip' => $request->ip(),
                 'path' => $request->path(),
             ]);
 
-            return response()->json(['error' => 'Access denied: CRM not available for customers'], 403);
+            return $this->response->json(['error' => 'Access denied: CRM not available for customers'], 403);
         }
 
         // Platform admins always have access
@@ -44,13 +51,13 @@ final class TenantCRMOnly
             ->exists();
 
         if (!$hasTenantAccess) {
-            Log::channel('audit')->warning('User without tenant access attempted CRM', [
+            $this->logger->channel('audit')->warning('User without tenant access attempted CRM', [
                 'user_id' => $user->id,
                 'role' => $user->role->value,
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json(['error' => 'No active tenant assignment'], 403);
+            return $this->response->json(['error' => 'No active tenant assignment'], 403);
         }
 
         return $next($request);

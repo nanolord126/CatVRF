@@ -2,14 +2,11 @@
 
 namespace App\Domains\Sports\Fitness\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MembershipResource extends Model
+final class MembershipResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = Membership::class;
         protected static ?string $navigationIcon = 'heroicon-o-credit-card';
         protected static ?string $navigationLabel = 'Членства';
@@ -82,6 +79,6 @@ final class MembershipResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()?->id);
         }
 }

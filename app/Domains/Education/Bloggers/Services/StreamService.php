@@ -2,18 +2,22 @@
 
 namespace App\Domains\Education\Bloggers\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class StreamService extends Model
+
+
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Cache\RateLimiter;
+use Psr\Log\LoggerInterface;
+use Illuminate\Config\Repository as ConfigRepository;
+
+final readonly class StreamService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControl,
+
+    public function __construct(private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly ConfigRepository $config, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         /**
          * Создать запланированный стрим
@@ -29,18 +33,14 @@ final class StreamService extends Model
             $correlationId = $correlationId ?: (string) Str::uuid();
 
             // Rate limiting
-            if (! $this->rateLimiter->allow('stream:create:' . $bloggerId, config('bloggers.rate_limit.create_stream'))) {
+            if (! $this->rateLimiter->allow('stream:create:' . $bloggerId, $this->config->get('bloggers.rate_limit.create_stream'))) {
                 throw new \RuntimeException('Rate limit exceeded for creating streams');
             }
 
             // Fraud check
-            $this->fraudControl->check([
-                'operation_type' => 'stream_create',
-                'user_id' => $bloggerId,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'stream_create', amount: 0, correlationId: $correlationId ?? '');
 
-            return DB::transaction(function () use ($bloggerId, $title, $description, $scheduledAt, $settings, $correlationId) {
+            return $this->db->transaction(function () use ($bloggerId, $title, $description, $scheduledAt, $settings, $correlationId) {
                 // Генерируем уникальный room_id и broadcast_key
                 $roomId = 'stream_' . Str::random(16);
                 $broadcastKey = Str::random(32);
@@ -72,7 +72,7 @@ final class StreamService extends Model
                 ]);
 
                 // Audit log
-                Log::channel('audit')->info('Stream created', [
+                $this->logger->info('Stream created', [
                     'stream_id' => $stream->id,
                     'blogger_id' => $bloggerId,
                     'title' => $title,
@@ -98,15 +98,15 @@ final class StreamService extends Model
                 throw new \RuntimeException('Only scheduled streams can be started');
             }
 
-            return DB::transaction(function () use ($stream, $correlationId) {
+            return $this->db->transaction(function () use ($stream, $correlationId) {
                 $stream->update([
                     'status' => 'live',
-                    'started_at' => now(),
+                    'started_at' => Carbon::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
                 // Audit log
-                Log::channel('audit')->info('Stream started', [
+                $this->logger->info('Stream started', [
                     'stream_id' => $stream->id,
                     'blogger_id' => $stream->blogger_id,
                     'correlation_id' => $correlationId,
@@ -131,18 +131,18 @@ final class StreamService extends Model
                 throw new \RuntimeException('Only live streams can be ended');
             }
 
-            return DB::transaction(function () use ($stream, $correlationId) {
-                $durationSeconds = $stream->started_at ? now()->diffInSeconds($stream->started_at) : 0;
+            return $this->db->transaction(function () use ($stream, $correlationId) {
+                $durationSeconds = $stream->started_at ? Carbon::now()->diffInSeconds($stream->started_at) : 0;
 
                 $stream->update([
                     'status' => 'ended',
-                    'ended_at' => now(),
+                    'ended_at' => Carbon::now(),
                     'duration_seconds' => $durationSeconds,
                     'correlation_id' => $correlationId,
                 ]);
 
                 // Audit log
-                Log::channel('audit')->info('Stream ended', [
+                $this->logger->info('Stream ended', [
                     'stream_id' => $stream->id,
                     'duration_seconds' => $durationSeconds,
                     'peak_viewers' => $stream->peak_viewers,

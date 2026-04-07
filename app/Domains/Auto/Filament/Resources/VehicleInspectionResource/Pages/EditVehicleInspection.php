@@ -1,15 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * EditVehicleInspection — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/editvehicleinspection
+ */
+
+
 namespace App\Domains\Auto\Filament\Resources\VehicleInspectionResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditVehicleInspection extends Model
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditVehicleInspection extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = VehicleInspectionResource::class;
 
         protected function getHeaderActions(): array
@@ -17,7 +35,7 @@ final class EditVehicleInspection extends Model
             return [
                 Actions\DeleteAction::make()
                     ->after(function () {
-                        Log::channel('audit')->info('VehicleInspection deleted', [
+                        $this->logger->info('VehicleInspection deleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'inspection_id' => $this->record->id,
                         ]);
@@ -27,10 +45,26 @@ final class EditVehicleInspection extends Model
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('VehicleInspection updated', [
+            $this->logger->info('VehicleInspection updated', [
                 'correlation_id' => $this->record->correlation_id,
                 'inspection_id' => $this->record->id,
                 'status' => $this->record->status,
             ]);
         }
+
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
+    /**
+     * Maximum number of retry attempts for operations.
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
+     * Default cache TTL in seconds.
+     */
+    private const CACHE_TTL = 3600;
+
 }

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Common\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-final class MLRecalculateUserTastesJob extends Model
+
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+final class MLRecalculateUserTastesJob
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithQueue;
         use Queueable;
@@ -22,15 +23,14 @@ final class MLRecalculateUserTastesJob extends Model
         public string $queue = 'default';
 
         public function __construct(
-            private readonly TasteMLService $mlService,
-        ) {}
+            private readonly TasteMLService $mlService, private readonly Request $request, private readonly LoggerInterface $logger) {}
 
         public function handle(): void
         {
             try {
                 $correlationId = Str::uuid()->toString();
 
-                Log::channel('audit')->info('MLRecalculateUserTastesJob started', [
+                $this->logger->info('MLRecalculateUserTastesJob started', [
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -64,7 +64,7 @@ final class MLRecalculateUserTastesJob extends Model
                     } catch (\Throwable $e) {
                         $failed++;
 
-                        Log::channel('audit')->error('Failed to recalculate single user taste', [
+                        $this->logger->error('Failed to recalculate single user taste', [
                             'user_id' => $profile->user_id,
                             'error' => $e->getMessage(),
                             'correlation_id' => $correlationId,
@@ -73,7 +73,7 @@ final class MLRecalculateUserTastesJob extends Model
 
                     // Каждые 100 профилей выводим статус
                     if ($processed % 100 === 0) {
-                        Log::channel('audit')->info('MLRecalculateUserTastesJob progress', [
+                        $this->logger->info('MLRecalculateUserTastesJob progress', [
                             'processed' => $processed,
                             'successful' => $successful,
                             'failed' => $failed,
@@ -83,17 +83,18 @@ final class MLRecalculateUserTastesJob extends Model
                 }
 
                 // 3. Итоговый отчёт
-                Log::channel('audit')->info('MLRecalculateUserTastesJob completed', [
+                $this->logger->info('MLRecalculateUserTastesJob completed', [
                     'processed' => $processed,
                     'successful' => $successful,
                     'failed' => $failed,
-                    'execution_time' => now()->diffInSeconds(now()),
+                    'execution_time' => Carbon::now()->diffInSeconds(Carbon::now()),
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('MLRecalculateUserTastesJob failed', [
+                $this->logger->error('MLRecalculateUserTastesJob failed', [
                     'error' => $e->getMessage(),
                     'exception' => $e->getTraceAsString(),
+                    'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
                 throw $e;
@@ -105,9 +106,10 @@ final class MLRecalculateUserTastesJob extends Model
          */
         public function failed(\Throwable $exception): void
         {
-            Log::channel('audit')->critical('MLRecalculateUserTastesJob failed permanently', [
+            $this->logger->critical('MLRecalculateUserTastesJob failed permanently', [
                 'exception' => $exception->getMessage(),
                 'trace' => $exception->getTraceAsString(),
+                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
             ]);
         }
 }

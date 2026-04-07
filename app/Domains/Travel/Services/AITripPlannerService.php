@@ -2,25 +2,21 @@
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AITripPlannerService extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AITripPlannerService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private RecommendationService $recommendation,
+
+    public function __construct(private RecommendationService $recommendation,
             private AIAgentFramework $agent,
-        ) {}
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Построить персональный план путешествия на базе AI.
          */
         public function generateTripPlan(int $userId, array $preferences, string $correlationId): array
         {
-            Log::channel('audit')->info('AI trip planning started', [
+            $this->logger->info('AI trip planning started', [
                 'user_id' => $userId,
                 'preferences' => $preferences,
                 'correlation_id' => $correlationId
@@ -57,7 +53,7 @@ final class AITripPlannerService extends Model
 
                 $this->savePlan($userId, $result);
 
-                Log::channel('audit')->info('AI trip planning successfully completed', [
+                $this->logger->info('AI trip planning successfully completed', [
                     'user_id' => $userId,
                     'plan_id' => $result['plan_id'],
                     'correlation_id' => $correlationId
@@ -65,7 +61,7 @@ final class AITripPlannerService extends Model
 
                 return $result;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('AI trip planning failed', [
+                $this->logger->error('AI trip planning failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -105,7 +101,7 @@ final class AITripPlannerService extends Model
         private function savePlan(int $userId, array $plan): void
         {
             // КАНОН: Сохранение в User AI Designs (Слой 5)
-            \Illuminate\Support\Facades\DB::table('user_ai_designs')->insert([
+            $this->db->table('user_ai_designs')->insert([
                 'user_id' => $userId,
                 'vertical' => 'travel',
                 'design_data' => json_encode($plan),

@@ -2,20 +2,30 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class SearchService extends Model
+use Illuminate\Http\Request;
+use App\Services\Security\RateLimiterService;
+use Exception;
+use Illuminate\Support\Collection;
+
+
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class SearchService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
+        private readonly Request $request,
             private RecommendationService $recommendationService,
-            private FraudControlService $fraudControlService,
+            private FraudControlService $fraud,
             private RateLimiterService $rateLimiterService,
             private SearchRankingService $rankingService,
-        ) {}
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
         /**
          * Выполняет поиск с ранжированием и защитой от фрода.
@@ -36,17 +46,18 @@ final class SearchService extends Model
             int $perPage = 20,
         ): array {
             try {
-                Log::channel('audit')->info('Search executed', [
+                $this->logger->channel('audit')->info('Search executed', [
                     'query' => $query,
                     'user_id' => $userId,
                     'filters' => count($filters),
                     'page' => $page,
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 $cacheKey = "search:{$query}:user:{$userId}:page:{$page}:v1";
 
                 // Проверяем кэш
-                $cached = Cache::get($cacheKey);
+                $cached = $this->cache->get($cacheKey);
                 if ($cached) {
                     return $cached;
                 }
@@ -82,14 +93,22 @@ final class SearchService extends Model
                 ];
 
                 // Кэшируем на 1 час
-                Cache::put($cacheKey, $response, now()->addHour());
+                $this->cache->put($cacheKey, $response, now()->addHour());
 
                 return $response;
             } catch (Exception $e) {
-                Log::channel('audit')->error('Search failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Search failed', [
                     'query' => $query,
                     'error' => $e->getMessage(),
-                ]);
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
 
                 throw $e;
             }
@@ -121,12 +140,13 @@ final class SearchService extends Model
         public function boostProductFromWishlist(int $productId, int $boostPoints = 10): void
         {
             $key = "search:product:{$productId}:boost";
-            $current = (int) Cache::get($key, 0);
-            Cache::put($key, $current + $boostPoints, now()->addDays(30));
+            $current = (int) $this->cache->get($key, 0);
+            $this->cache->put($key, $current + $boostPoints, now()->addDays(30));
 
-            Log::channel('audit')->info('Product boost applied', [
+            $this->logger->channel('audit')->info('Product boost applied', [
                 'product_id' => $productId,
                 'boost_points' => $boostPoints,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 
@@ -141,12 +161,13 @@ final class SearchService extends Model
         public function demoteProductFromWishlist(int $productId, int $penaltyPoints = 5): void
         {
             $key = "search:product:{$productId}:penalty";
-            $current = (int) Cache::get($key, 0);
-            Cache::put($key, $current + $penaltyPoints, now()->addDays(30));
+            $current = (int) $this->cache->get($key, 0);
+            $this->cache->put($key, $current + $penaltyPoints, now()->addDays(30));
 
-            Log::channel('audit')->info('Product demotion applied', [
+            $this->logger->channel('audit')->info('Product demotion applied', [
                 'product_id' => $productId,
                 'penalty_points' => $penaltyPoints,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 }

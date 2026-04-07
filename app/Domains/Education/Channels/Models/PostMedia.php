@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 final class PostMedia extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'post_media';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'post_id',
             'tenant_id',
             'type',
@@ -35,6 +36,22 @@ final class PostMedia extends Model
             'duration_seconds' => 'integer',
             'sort_order'       => 'integer',
         ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->uuid) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 
         public function post(): BelongsTo
         {

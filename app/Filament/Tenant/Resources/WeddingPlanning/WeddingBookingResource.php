@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\WeddingPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class WeddingBookingResource extends Model
+final class WeddingBookingResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = WeddingBooking::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-book-open';
@@ -131,7 +128,6 @@ final class WeddingBookingResource extends Model
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'gray',
                         'reserved' => 'info',
                         'paid_full' => 'success',
                         'cancelled' => 'danger',
@@ -148,7 +144,6 @@ final class WeddingBookingResource extends Model
                 Tables\Columns\TextColumn::make('payment_status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'fully_paid' => 'success',
                         'deposit_paid' => 'warning',
                         'not_paid' => 'danger',
                         default => 'gray',

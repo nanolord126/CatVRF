@@ -1,21 +1,195 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Babysitting\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\HomeServices\Babysitting\Models\BabysittingSession;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class BabysittingService extends Model
+/**
+ * BabysittingService — управление сессиями бэбиситтинга.
+ *
+ * Бронирование нянь, расчёт стоимости по часам, завершение и отмена.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ */
+final readonly class BabysittingService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService       $wallet,
+        private DatabaseManager     $db,
+        private LoggerInterface     $logger,
+        private Guard               $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createSession(int $sitterId,$sessionDate,$durationHours,$kidsAges,string $correlationId=""):BabysittingSession{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("babysitting:book:".auth()->id(),20))throw new \RuntimeException("Too many",429);RateLimiter::hit("babysitting:book:".auth()->id(),3600);
-    return DB::transaction(function()use($sitterId,$sessionDate,$durationHours,$kidsAges,$correlationId){$s=Babysitter::findOrFail($sitterId);$total=(int)($s->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'babysitting','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$b=BabysittingSession->create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'sitter_id'=>$sitterId,'parent_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','session_date'=>$sessionDate,'duration_hours'=>$durationHours,'kids_ages'=>$kidsAges,'tags'=>['babysitting'=>true]]);Log::channel('audit')->info('Babysitting session booked',['session_id'=>$b->id,'correlation_id'=>$correlationId]);return $b;});
+    /**
+     * Забронировать сессию бэбиситтинга.
+     */
+    public function createSession(
+        int    $sitterId,
+        string $sessionDate,
+        int    $durationHours,
+        array  $kidsAges,
+        string $correlationId = '',
+    ): BabysittingSession {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sitterId, $sessionDate, $durationHours, $kidsAges, $correlationId): BabysittingSession {
+            $this->fraud->check(
+                userId: $this->guard->id() ?? 0,
+                operationType: 'babysitting',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $ratePerHourKopecks = 80000;
+            $total = $ratePerHourKopecks * $durationHours;
+
+            $session = BabysittingSession::create([
+                'uuid'           => (string) Str::uuid(),
+                'tenant_id'      => tenant()->id,
+                'sitter_id'      => $sitterId,
+                'parent_id'      => $this->guard->id() ?? 0,
+                'correlation_id' => $correlationId,
+                'status'         => 'pending_payment',
+                'total_kopecks'  => $total,
+                'payout_kopecks' => $total - (int) ($total * 0.14),
+                'payment_status' => 'pending',
+                'session_date'   => $sessionDate,
+                'duration_hours' => $durationHours,
+                'kids_ages'      => $kidsAges,
+                'tags'           => ['babysitting' => true],
+            ]);
+
+            $this->logger->info('Babysitting session booked', [
+                'session_id'     => $session->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session;
+        });
     }
-    public function completeSession(int $sessionId,string $correlationId=""):BabysittingSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$b=BabysittingSession->findOrFail($sessionId);if($b->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$b->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$b->payout_kopecks,'babysitting_payout',['correlation_id'=>$correlationId,'session_id'=>$b->id]);Log::channel('audit')->info('Babysitting session completed',['session_id'=>$b->id]);return $b;});}
-    public function cancelSession(int $sessionId,string $correlationId=""):BabysittingSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$b=BabysittingSession->findOrFail($sessionId);if($b->status==='completed')throw new \RuntimeException("Cannot cancel",400);$b->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($b->payment_status==='completed')$this->wallet->credit(tenant()->id,$b->total_kopecks,'babysitting_refund',['correlation_id'=>$correlationId,'session_id'=>$b->id]);Log::channel('audit')->info('Babysitting session cancelled',['session_id'=>$b->id]);return $b;});}
-    public function getSession(int $sessionId):BabysittingSession{return BabysittingSession->findOrFail($sessionId);}
-    public function getUserSessions(int $parentId){return BabysittingSession->where('parent_id',$parentId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершить сессию и выплатить няне.
+     */
+    public function completeSession(int $sessionId, string $correlationId = ''): BabysittingSession
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $correlationId): BabysittingSession {
+            $session = BabysittingSession::findOrFail($sessionId);
+
+            if ($session->payment_status !== 'completed') {
+                throw new \RuntimeException('Not paid', 400);
+            }
+
+            $session->update([
+                'status'         => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: tenant()->id,
+                amount: $session->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['session_id' => $session->id],
+            );
+
+            $this->logger->info('Babysitting session completed', [
+                'session_id'     => $session->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session;
+        });
+    }
+
+    /**
+     * Отменить сессию и вернуть средства.
+     */
+    public function cancelSession(int $sessionId, string $correlationId = ''): BabysittingSession
+    {
+        $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $correlationId): BabysittingSession {
+            $session = BabysittingSession::findOrFail($sessionId);
+
+            if ($session->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed session', 400);
+            }
+
+            $wasPaid = $session->payment_status === 'completed';
+
+            $session->update([
+                'status'         => 'cancelled',
+                'payment_status' => $wasPaid ? 'refunded' : $session->payment_status,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($wasPaid) {
+                $this->wallet->credit(
+                    walletId: tenant()->id,
+                    amount: $session->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['session_id' => $session->id],
+                );
+            }
+
+            $this->logger->info('Babysitting session cancelled', [
+                'session_id'     => $session->id,
+                'refunded'       => $wasPaid,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session;
+        });
+    }
+
+    /**
+     * Получить сессию по ID.
+     */
+    public function getSession(int $sessionId): BabysittingSession
+    {
+        return BabysittingSession::findOrFail($sessionId);
+    }
+
+    /**
+     * Получить последние сессии родителя.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, BabysittingSession>
+     */
+    public function getUserSessions(int $parentId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return BabysittingSession::where('parent_id', $parentId)
+            ->orderByDesc('created_at')
+            ->take($limit)
+            ->get();
+    }
+
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /** @return array<string, mixed> */
+    public function toDebugArray(): array
+    {
+        return [
+            'class'     => static::class,
+            'timestamp' => Carbon::now()->toIso8601String(),
+        ];
+    }
 }

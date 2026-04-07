@@ -2,18 +2,33 @@
 
 namespace App\Services\AI\Constructors;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Services\RecommendationService;
 
-final class InteriorConstructor extends Model
+/**
+ * Class InteriorConstructor
+ *
+ * Component of the CatVRF platform.
+ * Follows strict coding standards:
+ * - final class (no inheritance unless required)
+ * - private readonly properties
+ * - Constructor injection only
+ * - correlation_id in all operations
+ *
+ * @package App\Services\AI\Constructors
+ */
+final readonly class InteriorConstructor extends BaseConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(private readonly RecommendationService $recommendationService)
         {
-        }
 
+    }
+
+        /**
+         * Handle build operation.
+         *
+         * @throws \DomainException
+         */
         public function build(User $user, array $inputParams, ?array $imageAnalysis): array
         {
             $tasteProfile = $this->getTasteProfile($user);

@@ -2,24 +2,21 @@
 
 namespace App\Domains\Travel\Listeners;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class DeductTransportationCommissionListener extends Model
+use Psr\Log\LoggerInterface;
+final class DeductTransportationCommissionListener
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use InteractsWithQueue;
+use App\Services\FraudControlService;
 
-        public function __construct(
-            public string $queue = 'travel',
-        ) {}
+        public function __construct(public string $queue = 'travel',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function handle(FlightBooked|TransportationBooked $event): void
         {
             try {
-                DB::transaction(function () use ($event) {
+                $this->db->transaction(function () use ($event) {
                     $item = $event->flight ?? $event->transportation;
                     $itemType = $event instanceof FlightBooked ? 'flight' : 'transportation';
 
@@ -50,7 +47,7 @@ final class DeductTransportationCommissionListener extends Model
                         'correlation_id' => $event->correlationId,
                     ]);
 
-                    Log::channel('audit')->info("Travel {$itemType} commission deducted", [
+                    $this->logger->info("Travel {$itemType} commission deducted", [
                         'item_id' => $item->id,
                         'item_type' => $itemType,
                         'agency_id' => $item->agency_id,
@@ -61,7 +58,7 @@ final class DeductTransportationCommissionListener extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error("Travel {$itemType} commission deduction failed", [
+                $this->logger->error("Travel {$itemType} commission deduction failed", [
                     'item_id' => $event->flight->id ?? $event->transportation->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

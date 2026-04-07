@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class CoursesResource extends Model
+final class CoursesResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = B2BCoursesOrder::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-collection';
@@ -108,31 +105,15 @@ final class CoursesResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCourses::route('/'),
-                'create' => Pages\\CreateCourses::route('/create'),
-                'edit' => Pages\\EditCourses::route('/{record}/edit'),
-                'view' => Pages\\ViewCourses::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListCourses::route('/'),
-                'create' => Pages\\CreateCourses::route('/create'),
-                'edit' => Pages\\EditCourses::route('/{record}/edit'),
-                'view' => Pages\\ViewCourses::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListCourses::route('/'),
-                'create' => Pages\\CreateCourses::route('/create'),
-                'edit' => Pages\\EditCourses::route('/{record}/edit'),
-                'view' => Pages\\ViewCourses::route('/{record}'),
+                'index' => Pages\ListCourses::route('/'),
+                'create' => Pages\CreateCourses::route('/create'),
+                'edit' => Pages\EditCourses::route('/{record}/edit'),
+                'view' => Pages\ViewCourses::route('/{record}'),
             ];
         }
 }

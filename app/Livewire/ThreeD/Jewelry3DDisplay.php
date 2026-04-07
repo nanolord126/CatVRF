@@ -6,13 +6,13 @@ use Livewire\Component;
 
 final class Jewelry3DDisplay extends Component
 {
-    public int $jewelryId;
-    public array $jewelryData = [];
-    public float $rotationX = 0;
-    public float $rotationY = 0;
-    public float $zoom = 1.0;
-    public string $selectedMaterial = 'gold';
-    public string $selectedSize = 'medium';
+    private int $jewelryId;
+    private array $jewelryData = [];
+    private float $rotationX = 0;
+    private float $rotationY = 0;
+    private float $zoom = 1.0;
+    private string $selectedMaterial = 'gold';
+    private string $selectedSize = 'medium';
 
     public function mount(int $jewelryId): void
     {
@@ -36,7 +36,6 @@ final class Jewelry3DDisplay extends Component
     public function rotate(string $direction): void
     {
         match ($direction) {
-            'left' => $this->rotationY -= 30,
             'right' => $this->rotationY += 30,
             'up' => $this->rotationX += 30,
             'down' => $this->rotationX -= 30,

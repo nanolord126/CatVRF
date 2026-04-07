@@ -2,14 +2,11 @@
 
 namespace App\Domains\Auto\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Tests\TestCase;
 
-final class AutoVerticalSystemTest extends Model
+final class AutoVerticalSystemTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         /**

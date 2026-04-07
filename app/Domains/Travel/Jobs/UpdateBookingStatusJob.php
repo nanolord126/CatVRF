@@ -2,40 +2,40 @@
 
 namespace App\Domains\Travel\Jobs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class UpdateBookingStatusJob extends Model
+use Psr\Log\LoggerInterface;
+use App\Domains\Travel\Models\TravelBooking;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Throwable;
+use App\Services\FraudControlService;
+
+final class UpdateBookingStatusJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         public int $tries = 3;
         public int $maxExceptions = 3;
 
-        public function __construct(
-            public ?int $bookingId = null,
-            public ?string $newStatus = null,
-            public ?string $correlationId = null,
-
-        ) {}
+        public function __construct(public ?int $bookingId = null,
+            private ?string $newStatus = null,
+            private readonly ?string $correlationId = null,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function handle(): void
         {
             try {
-                DB::transaction(function () {
+                $this->db->transaction(function () {
                     $booking = TravelBooking::findOrFail($this->bookingId);
 
                     $booking->update([
                         'status' => $this->newStatus,
                     ]);
 
-                    Log::channel('audit')->info('Travel booking status updated', [
+                    $this->logger->info('Travel booking status updated', [
                         'booking_id' => $this->bookingId,
                         'booking_number' => $booking->booking_number,
                         'new_status' => $this->newStatus,
@@ -44,7 +44,7 @@ final class UpdateBookingStatusJob extends Model
                     ]);
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Travel booking status update failed', [
+                $this->logger->error('Travel booking status update failed', [
                     'booking_id' => $this->bookingId,
                     'new_status' => $this->newStatus,
                     'error' => $e->getMessage(),

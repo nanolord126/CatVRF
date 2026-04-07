@@ -2,19 +2,29 @@
 
 namespace App\Livewire\Analytics\Components;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
-final class ErrorBoundaryComponent extends Model
+/**
+ * Class ErrorBoundaryComponent
+ *
+ * Livewire component for user cabinet.
+ * Personal cabinets use Livewire 3 + Alpine.js + Tailwind 4.
+ * Not Filament — Filament is for admin/tenant/B2B panels only.
+ *
+ * @package App\Livewire\Analytics\Components
+ */
+final class ErrorBoundaryComponent extends Component
 {
-    use HasFactory;
+    private bool $hasError = false;
+        private string $errorMessage = '';
+        private string $errorCode = '';
+        private string $correlationId = '';
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public bool $hasError = false;
-        public string $errorMessage = '';
-        public string $errorCode = '';
-        public string $correlationId = '';
-
+        /**
+         * Handle setError operation.
+         *
+         * @throws \DomainException
+         */
         public function setError(string $message, string $code = 'ERROR', string $correlationId = ''): void
         {
             $this->hasError = true;
@@ -23,6 +33,11 @@ final class ErrorBoundaryComponent extends Model
             $this->correlationId = $correlationId;
         }
 
+        /**
+         * Handle clearError operation.
+         *
+         * @throws \DomainException
+         */
         public function clearError(): void
         {
             $this->hasError = false;

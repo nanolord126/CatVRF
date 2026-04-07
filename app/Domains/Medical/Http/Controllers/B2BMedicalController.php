@@ -2,24 +2,22 @@
 
 namespace App\Domains\Medical\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class B2BMedicalController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class B2BMedicalController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function storefronts(): JsonResponse
         {
             $storefronts = B2BMedicalStorefront::where('tenant_id', tenant()->id)
                 ->paginate(15);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $storefronts->items(),
                 'pagination' => [
                     'total' => $storefronts->total(),
@@ -32,7 +30,7 @@ final class B2BMedicalController extends Model
         public function createStorefront(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $validated = $request->validate([
@@ -43,32 +41,33 @@ final class B2BMedicalController extends Model
                     'min_order_amount' => 'numeric|min:1000',
                 ]);
 
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $storefront = B2BMedicalStorefront::create([
                         'tenant_id' => tenant()->id,
                         'correlation_id' => $correlationId,
                         ...$validated,
                     ]);
 
-                    Log::channel('audit')->info('B2B Medical storefront created', [
+                    $this->logger->info('B2B Medical storefront created', [
                         'storefront_id' => $storefront->id,
                         'correlation_id' => $correlationId,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'data' => $storefront,
                         'message' => 'Витрина создана',
                         'correlation_id' => $correlationId,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Medical storefront creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Medical storefront creation failed', [
                     'error' => $e->getMessage(),
-                    'user_id' => auth()->id(),
+                    'user_id' => $request->user()?->id,
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка создания витрины',
                     'error' => $e->getMessage(),
                 ], 500);
@@ -78,7 +77,7 @@ final class B2BMedicalController extends Model
         public function createOrder(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $validated = $request->validate([
@@ -88,28 +87,29 @@ final class B2BMedicalController extends Model
                     'items.*.quantity' => 'required|integer|min:1',
                 ]);
 
-                return DB::transaction(function () use ($validated, $correlationId) {
+                return $this->db->transaction(function () use ($validated, $correlationId) {
                     $storefront = B2BMedicalStorefront::findOrFail($validated['storefront_id']);
                     $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                    Log::channel('audit')->info('B2B Medical order created', [
+                    $this->logger->info('B2B Medical order created', [
                         'storefront_id' => $storefront->id,
                         'correlation_id' => $correlationId,
                         'commission' => $commission,
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ создан',
                         'correlation_id' => $correlationId,
                         'commission' => $commission,
                     ], 201);
                 });
-            } catch (\Exception $e) {
-                Log::channel('audit')->error('Medical order creation failed', [
+            } catch (\Throwable $e) {
+                $this->logger->error('Medical order creation failed', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка создания заказа',
                 ], 500);
             }
@@ -121,7 +121,7 @@ final class B2BMedicalController extends Model
                 ->latest()
                 ->paginate(10);
 
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'data' => $orders->items(),
                 'pagination' => [
                     'total' => $orders->total(),
@@ -133,22 +133,23 @@ final class B2BMedicalController extends Model
         public function approveOrder(int $id): JsonResponse
         {
             try {
-                return DB::transaction(function () use ($id) {
+                return $this->db->transaction(function () use ($id) {
                     $order = B2BMedicalStorefront::findOrFail($id);
                     $order->update(['status' => 'approved']);
 
-                    Log::channel('audit')->info('Medical order approved', [
+                    $this->logger->info('Medical order approved', [
                         'order_id' => $id,
-                        'user_id' => auth()->id(),
+                        'user_id' => $request->user()?->id,
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ одобрен',
                         'data' => $order,
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка одобрения',
                 ], 500);
             }
@@ -161,24 +162,25 @@ final class B2BMedicalController extends Model
                     'reason' => 'required|string|max:500',
                 ]);
 
-                return DB::transaction(function () use ($id, $validated) {
+                return $this->db->transaction(function () use ($id, $validated) {
                     $order = B2BMedicalStorefront::findOrFail($id);
                     $order->update([
                         'status' => 'rejected',
                         'rejection_reason' => $validated['reason'],
                     ]);
 
-                    Log::channel('audit')->info('Medical order rejected', [
+                    $this->logger->info('Medical order rejected', [
                         'order_id' => $id,
                         'reason' => $validated['reason'],
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Заказ отклонён',
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка отклонения',
                 ], 500);
             }
@@ -187,22 +189,23 @@ final class B2BMedicalController extends Model
         public function verifyInn(int $id): JsonResponse
         {
             try {
-                return DB::transaction(function () use ($id) {
+                return $this->db->transaction(function () use ($id) {
                     $storefront = B2BMedicalStorefront::findOrFail($id);
                     $storefront->update(['is_verified' => true]);
 
-                    Log::channel('audit')->info('Medical storefront verified', [
+                    $this->logger->info('Medical storefront verified', [
                         'storefront_id' => $id,
-                        'admin_id' => auth()->id(),
+                        'admin_id' => $request->user()?->id,
+                        'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                     ]);
 
-                    return response()->json([
+                    return new \Illuminate\Http\JsonResponse([
                         'message' => 'Витрина верифицирована',
                         'data' => $storefront,
                     ]);
                 });
-            } catch (\Exception $e) {
-                return response()->json([
+            } catch (\Throwable $e) {
+                return new \Illuminate\Http\JsonResponse([
                     'message' => 'Ошибка верификации',
                 ], 500);
             }

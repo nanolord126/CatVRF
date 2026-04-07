@@ -2,14 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MedicalDoctorResource extends Model
+final class MedicalDoctorResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = \App\Domains\Medical\Models\Doctor::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-plus';
@@ -61,22 +58,15 @@ final class MedicalDoctorResource extends Model
                     ->columnSpanFull(),
             ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListMedicalDoctor::route('/'),
-                'create' => Pages\\CreateMedicalDoctor::route('/create'),
-                'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListMedicalDoctor::route('/'),
-                'create' => Pages\\CreateMedicalDoctor::route('/create'),
-                'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
-                'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
+                'index' => Pages\ListMedicalDoctor::route('/'),
+                'create' => Pages\CreateMedicalDoctor::route('/create'),
+                'edit' => Pages\EditMedicalDoctor::route('/{record}/edit'),
+                'view' => Pages\ViewMedicalDoctor::route('/{record}'),
             ];
         }
 }

@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Commission Service
@@ -27,6 +30,11 @@ use Illuminate\Support\Facades\Log;
  */
 final class CommissionService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     /**
      * Calculate commission for transaction
      *
@@ -89,7 +97,8 @@ final class CommissionService
         string $correlationId,
         array $context = []
     ): int {
-        return DB::transaction(function () use (
+        $this->fraud->check(new \stdClass());
+        return $this->db->transaction(function () use (
             $tenantId,
             $vertical,
             $amount,
@@ -100,14 +109,14 @@ final class CommissionService
             $context
         ) {
             // Check idempotency
-            $existing = DB::table('commission_records')
+            $existing = $this->db->table('commission_records')
                 ->where('operation_type', $operationType)
                 ->where('operation_id', $operationId)
                 ->where('tenant_id', $tenantId)
                 ->first();
 
             if ($existing) {
-                throw new \Exception(
+                throw new \RuntimeException(
                     "Commission already recorded for {$operationType}:{$operationId}. Record ID: {$existing->id}"
                 );
             }
@@ -116,7 +125,7 @@ final class CommissionService
             $payoutScheduledFor = self::getPayoutSchedule($vertical);
 
             // Insert commission record
-            $id = DB::table('commission_records')->insertGetId([
+            $id = $this->db->table('commission_records')->insertGetId([
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'amount' => $amount,
@@ -143,7 +152,7 @@ final class CommissionService
                 );
             }
 
-            Log::channel('audit')->info('Commission recorded', [
+            $this->logger->channel('audit')->info('Commission recorded', [
                 'correlation_id' => $correlationId,
                 'commission_id' => $id,
                 'tenant_id' => $tenantId,
@@ -173,7 +182,7 @@ final class CommissionService
         ?string $vertical = null,
         string $period = 'month'
     ): array {
-        $query = DB::table('commission_records')
+        $query = $this->db->table('commission_records')
             ->where('tenant_id', $tenantId);
 
         if ($vertical) {
@@ -182,7 +191,6 @@ final class CommissionService
 
         // Filter by period
         match ($period) {
-            'day' => $query->where('recorded_at', '>=', now()->subDay()),
             'week' => $query->where('recorded_at', '>=', now()->subWeek()),
             'month' => $query->where('recorded_at', '>=', now()->subMonth()),
             default => null,
@@ -215,7 +223,6 @@ final class CommissionService
     private static function getBaseRate(string $vertical): float
     {
         return match ($vertical) {
-            'beauty' => 14.0,
             'food' => 14.0,
             'hotels' => 14.0,
             'auto' => 15.0,
@@ -269,7 +276,6 @@ final class CommissionService
     private static function getPayoutSchedule(string $vertical): ?\DateTime
     {
         return match ($vertical) {
-            'hotels' => now()->addDays(4), // 4-day payout
             'tickets' => now()->addDays(7), // 7-day payout
             'food' => now()->addDays(7), // 7-day payout
             'beauty' => now()->addDays(7), // 7-day payout
@@ -287,15 +293,15 @@ final class CommissionService
      */
     public static function markAsPaid(int $commissionId, string $correlationId): bool
     {
-        return DB::transaction(function () use ($commissionId, $correlationId) {
-            DB::table('commission_records')
+        return $this->db->transaction(function () use ($commissionId, $correlationId) {
+            $this->db->table('commission_records')
                 ->where('id', $commissionId)
                 ->update([
                     'status' => 'paid',
                     'paid_at' => now(),
                 ]);
 
-            Log::channel('audit')->info('Commission marked as paid', [
+            $this->logger->channel('audit')->info('Commission marked as paid', [
                 'correlation_id' => $correlationId,
                 'commission_id' => $commissionId,
             ]);
@@ -313,7 +319,7 @@ final class CommissionService
      */
     public static function getPendingCommissions(int $tenantId, ?string $vertical = null): array
     {
-        $query = DB::table('commission_records')
+        $query = $this->db->table('commission_records')
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->where('payout_scheduled_for', '<=', now());

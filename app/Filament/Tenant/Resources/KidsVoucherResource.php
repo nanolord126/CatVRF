@@ -2,14 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class KidsVoucherResource extends Model
+final class KidsVoucherResource extends Resource
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = KidsVoucher::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -128,23 +126,15 @@ final class KidsVoucherResource extends Model
                                 ]),
                         ])->columnSpan(['lg' => 1]),
                 ])->columns(3);
+    }
 
-        public static function getPages(): array
+    public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListKidsVoucher::route('/'),
-                'create' => Pages\\CreateKidsVoucher::route('/create'),
-                'edit' => Pages\\EditKidsVoucher::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsVoucher::route('/{record}'),
-            ];
-
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListKidsVoucher::route('/'),
-                'create' => Pages\\CreateKidsVoucher::route('/create'),
-                'edit' => Pages\\EditKidsVoucher::route('/{record}/edit'),
-                'view' => Pages\\ViewKidsVoucher::route('/{record}'),
+                'index' => Pages\ListKidsVoucher::route('/'),
+                'create' => Pages\CreateKidsVoucher::route('/create'),
+                'edit' => Pages\EditKidsVoucher::route('/{record}/edit'),
+                'view' => Pages\ViewKidsVoucher::route('/{record}'),
             ];
         }
 }

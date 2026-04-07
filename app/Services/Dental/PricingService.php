@@ -2,19 +2,26 @@
 
 namespace App\Services\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PricingService extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Models\Dental\DentalService as DentalModel;
+use Illuminate\Log\LogManager;
+
+final readonly class PricingService
 {
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-            private string $correlation_id = ''
-        ) {
-            $this->correlation_id = empty($correlation_id) ? (string) Str::uuid() : $correlation_id;
-        }
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
 
         /**
          * Calculate total price for a collection of dental services.
@@ -91,9 +98,9 @@ final class PricingService extends Model
          */
         public function logPriceCalculation(int $finalPrice, array $details): void
         {
-            Log::channel('audit')->info('Dental price calculated', array_merge($details, [
+            $this->logger->channel('audit')->info('Dental price calculated', array_merge($details, [
                 'final_price' => $finalPrice,
-                'correlation_id' => $this->correlation_id,
+                'correlation_id' => $this->correlationId(),
             ]));
         }
 }

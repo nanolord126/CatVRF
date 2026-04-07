@@ -2,42 +2,40 @@
 
 namespace App\Domains\Pet\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetReviewController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class PetReviewController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function store(Request $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
 
                 $review = PetReview::create([
                     ...$request->validated(),
                     'tenant_id' => tenant()->id,
-                    'reviewer_id' => auth()->id(),
+                    'reviewer_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                     'status' => 'pending',
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::error('Failed to create review', ['error' => $e->getMessage()]);
-                return response()->json([
+                $this->logger->error('Failed to create review', ['error' => $e->getMessage()]);
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create review',
                     'correlation_id' => Str::uuid(),
@@ -48,7 +46,7 @@ final class PetReviewController extends Model
         public function update(Request $request, $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $review = PetReview::findOrFail($id);
@@ -59,13 +57,13 @@ final class PetReviewController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update review',
                     'correlation_id' => Str::uuid(),
@@ -76,7 +74,7 @@ final class PetReviewController extends Model
         public function destroy($id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $review = PetReview::findOrFail($id);
@@ -85,13 +83,13 @@ final class PetReviewController extends Model
 
                 $review->delete();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Review deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete review',
                     'correlation_id' => Str::uuid(),
@@ -111,13 +109,13 @@ final class PetReviewController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to approve review',
                     'correlation_id' => Str::uuid(),
@@ -137,13 +135,13 @@ final class PetReviewController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $review,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to reject review',
                     'correlation_id' => Str::uuid(),
@@ -159,13 +157,13 @@ final class PetReviewController extends Model
                     ->with(['reviewer', 'vet'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reviews',
                     'correlation_id' => Str::uuid(),
@@ -181,13 +179,13 @@ final class PetReviewController extends Model
                     ->with(['reviewer', 'appointment'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reviews',
                     'correlation_id' => Str::uuid(),
@@ -198,18 +196,18 @@ final class PetReviewController extends Model
         public function myReviews(): JsonResponse
         {
             try {
-                $reviews = PetReview::where('reviewer_id', auth()->id())
+                $reviews = PetReview::where('reviewer_id', $request->user()?->id)
                     ->where('tenant_id', tenant()->id)
                     ->with(['clinic', 'vet'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $reviews,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to retrieve reviews',
                     'correlation_id' => Str::uuid(),

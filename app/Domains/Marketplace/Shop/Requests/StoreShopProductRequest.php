@@ -1,25 +1,41 @@
 <?php declare(strict_types=1);
 
+/**
+ * StoreShopProductRequest — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/storeshopproductrequest
+ */
+
+
 namespace App\Domains\Marketplace\Shop\Requests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class StoreShopProductRequest extends Model
+use Illuminate\Contracts\Auth\Guard;
+final class StoreShopProductRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function authorize(): bool
         {
-            return auth()->user()->hasRole(['business_owner', 'manager']);
+            return $this->guard->user()->hasRole(['business_owner', 'manager']);
         }
 
         public function rules(): array
         {
             return [
                 'name' => ['required', 'string', 'max:255'],
-                'sku' => ['required', 'string', 'unique:shop_products,sku,NULL,id,tenant_id,' . auth()->user()->tenant_id],
+                'sku' => ['required', 'string', 'unique:shop_products,sku,NULL,id,tenant_id,' . $this->guard->user()->tenant_id],
                 'category' => ['required', 'string', 'in:clothes,shoes,kids,etc'],
                 'price' => ['required', 'integer', 'min:0'], // В копейках
                 'attributes' => ['nullable', 'array'],
@@ -32,4 +48,27 @@ final class StoreShopProductRequest extends Model
                 'sku.unique' => 'Товар с таким SKU уже существует в вашем магазине.',
             ];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

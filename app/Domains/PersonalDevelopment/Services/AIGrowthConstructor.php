@@ -2,20 +2,19 @@
 
 namespace App\Domains\PersonalDevelopment\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIGrowthConstructor extends Model
+use Psr\Log\LoggerInterface;
+final readonly class AIGrowthConstructor
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Конструктор с зависимостями.
          */
+        private readonly string $correlationId;
+
         public function __construct(
-            private \App\Services\RecommendationService $recommendationService,
-            private string $correlationId = ''
+            private readonly \App\Services\RecommendationService $recommendationService,
+            string $correlationId = '', private readonly LoggerInterface $logger
         ) {
             $this->correlationId = $this->correlationId ?: (string) Str::uuid();
         }
@@ -29,7 +28,7 @@ final class AIGrowthConstructor extends Model
          */
         public function generateRoadmap(int $userId, array $goals): array
         {
-            Log::channel('audit')->info('AI Growth Constructor: Starting roadmap generation', [
+            $this->logger->info('AI Growth Constructor: Starting roadmap generation', [
                 'user_id' => $userId,
                 'goals' => $goals,
                 'correlation_id' => $this->correlationId,
@@ -56,7 +55,7 @@ final class AIGrowthConstructor extends Model
             ];
 
             // 4. Логирование и кэширование (Redis)
-            Log::channel('audit')->info('AI Growth Constructor: Roadmap generated successfully', [
+            $this->logger->info('AI Growth Constructor: Roadmap generated successfully', [
                 'user_id' => $userId,
                 'correlation_id' => $this->correlationId,
             ]);

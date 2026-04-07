@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
+
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Inventory Service
@@ -20,6 +23,11 @@ use Illuminate\Support\Facades\Log;
  */
 final class InventoryService
 {
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
+
     /**
      * Decrease inventory (consumable deduction)
      * Used when service is completed or product is sold
@@ -41,29 +49,30 @@ final class InventoryService
         int $sourceId,
         string $correlationId
     ): bool {
-        return DB::transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
-            $item = DB::table('inventory_items')
+        $this->fraud->check(new \stdClass());
+        return $this->db->transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
+            $item = $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
 
             if (!$item) {
-                throw new \Exception("Inventory item not found: {$inventoryItemId}");
+                throw new \RuntimeException("Inventory item not found: {$inventoryItemId}");
             }
 
             if ($item->current_stock < $quantity) {
-                throw new \Exception(
+                throw new \RuntimeException(
                     "Insufficient inventory: {$item->current_stock} < {$quantity} required. Item: {$inventoryItemId}"
                 );
             }
 
             // Deduct from inventory
-            DB::table('inventory_items')
+            $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->decrement('current_stock', $quantity);
 
             // Log movement
-            DB::table('stock_movements')->insert([
+            $this->db->table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'out',
                 'quantity' => -$quantity,
@@ -74,7 +83,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Inventory decreased', [
+            $this->logger->channel('audit')->info('Inventory decreased', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'quantity' => $quantity,
@@ -104,23 +113,23 @@ final class InventoryService
         string $sourceType = 'manual',
         string $correlationId = ''
     ): bool {
-        return DB::transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $correlationId) {
-            $item = DB::table('inventory_items')
+        return $this->db->transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $correlationId) {
+            $item = $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
 
             if (!$item) {
-                throw new \Exception("Inventory item not found: {$inventoryItemId}");
+                throw new \RuntimeException("Inventory item not found: {$inventoryItemId}");
             }
 
             // Add to inventory
-            DB::table('inventory_items')
+            $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->increment('current_stock', $quantity);
 
             // Log movement
-            DB::table('stock_movements')->insert([
+            $this->db->table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'in',
                 'quantity' => $quantity,
@@ -131,7 +140,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Inventory increased', [
+            $this->logger->channel('audit')->info('Inventory increased', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'quantity' => $quantity,
@@ -152,7 +161,7 @@ final class InventoryService
      */
     public static function checkAvailability(int $inventoryItemId, int $requiredQuantity): bool
     {
-        $item = DB::table('inventory_items')
+        $item = $this->db->table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -171,7 +180,7 @@ final class InventoryService
      */
     public static function getInventoryLevel(int $inventoryItemId): int
     {
-        $item = DB::table('inventory_items')
+        $item = $this->db->table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -186,7 +195,7 @@ final class InventoryService
      */
     public static function isLow(int $inventoryItemId): bool
     {
-        $item = DB::table('inventory_items')
+        $item = $this->db->table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -214,26 +223,26 @@ final class InventoryService
         int $userId,
         string $correlationId
     ): bool {
-        return DB::transaction(function () use ($inventoryItemId, $newQuantity, $reason, $userId, $correlationId) {
-            $item = DB::table('inventory_items')
+        return $this->db->transaction(function () use ($inventoryItemId, $newQuantity, $reason, $userId, $correlationId) {
+            $item = $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
 
             if (!$item) {
-                throw new \Exception("Inventory item not found: {$inventoryItemId}");
+                throw new \RuntimeException("Inventory item not found: {$inventoryItemId}");
             }
 
             $oldQuantity = $item->current_stock;
             $delta = $newQuantity - $oldQuantity;
 
             // Update inventory
-            DB::table('inventory_items')
+            $this->db->table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->update(['current_stock' => $newQuantity]);
 
             // Log adjustment
-            DB::table('stock_movements')->insert([
+            $this->db->table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'adjust',
                 'quantity' => $delta,
@@ -244,7 +253,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Inventory adjusted', [
+            $this->logger->channel('audit')->info('Inventory adjusted', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'old_quantity' => $oldQuantity,
@@ -266,7 +275,7 @@ final class InventoryService
      */
     public static function getLowStockItems(int $tenantId): array
     {
-        return DB::table('inventory_items')
+        return $this->db->table('inventory_items')
             ->where('tenant_id', $tenantId)
             ->whereRaw('current_stock <= min_stock_threshold')
             ->get()
@@ -282,11 +291,111 @@ final class InventoryService
      */
     public static function getMovementHistory(int $inventoryItemId, int $limit = 50): array
     {
-        return DB::table('stock_movements')
+        return $this->db->table('stock_movements')
             ->where('inventory_item_id', $inventoryItemId)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
             ->toArray();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Instance methods for Cart / Reservation integration
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Получить доступное количество товара (quantity - reserved).
+     */
+    public function getAvailableStock(int $productId): int
+    {
+        $item = $this->db->table('inventory_items')
+            ->where('product_id', $productId)
+            ->first();
+
+        if (!$item) {
+            return 0;
+        }
+
+        $reserved = $this->db->table('cart_items')
+            ->join('carts', 'cart_items.cart_id', '=', 'carts.id')
+            ->where('cart_items.product_id', $productId)
+            ->where('carts.status', 'active')
+            ->where('carts.reserved_until', '>', now())
+            ->sum('cart_items.quantity');
+
+        return max(0, (int) $item->current_stock - (int) $reserved);
+    }
+
+    /**
+     * Зарезервировать товар в корзине (мягкий резерв).
+     */
+    public function reserve(int $productId, int $quantity, string $sourceType, int $sourceId): void
+    {
+        $this->db->table('stock_movements')->insert([
+            'inventory_item_id' => $this->getItemIdByProduct($productId),
+            'type'              => 'reserve',
+            'quantity'          => -$quantity,
+            'reason'            => 'cart_reserve',
+            'source_type'       => $sourceType,
+            'source_id'         => $sourceId,
+            'correlation_id'    => \Illuminate\Support\Str::uuid()->toString(),
+            'created_at'        => now(),
+        ]);
+    }
+
+    /**
+     * Освободить резерв (истечение корзины, удаление позиции).
+     */
+    public function releaseReserve(int $productId, int $quantity, string $sourceType, int $sourceId): void
+    {
+        $this->db->table('stock_movements')->insert([
+            'inventory_item_id' => $this->getItemIdByProduct($productId),
+            'type'              => 'release',
+            'quantity'          => $quantity,
+            'reason'            => 'cart_reserve_release',
+            'source_type'       => $sourceType,
+            'source_id'         => $sourceId,
+            'correlation_id'    => \Illuminate\Support\Str::uuid()->toString(),
+            'created_at'        => now(),
+        ]);
+    }
+
+    /**
+     * Долгосрочный резерв для B2B-заказов (TTL = 7 дней).
+     * Возвращает ID резерва в stock_movements.
+     */
+    public function reserveForB2B(
+        int    $productId,
+        int    $warehouseId,
+        int    $quantity,
+        int    $orderId,
+        string $correlationId,
+    ): int {
+        $available = $this->getAvailableStock($productId);
+
+        if ($available < $quantity) {
+            throw new \DomainException(
+                "Insufficient stock for product #{$productId}: available={$available}, required={$quantity}"
+            );
+        }
+
+        return (int) $this->db->table('stock_movements')->insertGetId([
+            'inventory_item_id' => $this->getItemIdByProduct($productId),
+            'type'              => 'reserve',
+            'quantity'          => -$quantity,
+            'reason'            => 'b2b_order_reserve',
+            'source_type'       => 'b2b_order',
+            'source_id'         => $orderId,
+            'correlation_id'    => $correlationId,
+            'created_at'        => now(),
+            'expires_at'        => now()->addDays(7),
+        ]);
+    }
+
+    private function getItemIdByProduct(int $productId): ?int
+    {
+        return $this->db->table('inventory_items')
+            ->where('product_id', $productId)
+            ->value('id');
     }
 }

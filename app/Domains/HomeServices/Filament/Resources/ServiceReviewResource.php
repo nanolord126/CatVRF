@@ -2,14 +2,11 @@
 
 namespace App\Domains\HomeServices\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class ServiceReviewResource extends Model
+final class ServiceReviewResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = ServiceReview::class;
         protected static ?string $navigationIcon = 'heroicon-o-star';
         protected static ?string $navigationLabel = 'Отзывы';
@@ -72,6 +69,6 @@ final class ServiceReviewResource extends Model
 
         public static function getEloquentQuery(): Builder
         {
-            return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
+            return parent::getEloquentQuery()->where('tenant_id', tenant()->id);
         }
 }

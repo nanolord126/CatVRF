@@ -2,14 +2,9 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class PhotoSessionResource extends Model
+final class PhotoSessionResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = PhotoSession::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-sparkles';
@@ -108,22 +103,15 @@ final class PhotoSessionResource extends Model
                         ]),
                 ]);
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\\ListPhotoSession::route('/'),
-                'create' => Pages\\CreatePhotoSession::route('/create'),
-                'edit' => Pages\\EditPhotoSession::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotoSession::route('/{record}'),
-            ];
+        }
 
         public static function getPages(): array
         {
             return [
-                'index' => Pages\\ListPhotoSession::route('/'),
-                'create' => Pages\\CreatePhotoSession::route('/create'),
-                'edit' => Pages\\EditPhotoSession::route('/{record}/edit'),
-                'view' => Pages\\ViewPhotoSession::route('/{record}'),
+                'index' => Pages\ListPhotoSession::route('/'),
+                'create' => Pages\CreatePhotoSession::route('/create'),
+                'edit' => Pages\EditPhotoSession::route('/{record}/edit'),
+                'view' => Pages\ViewPhotoSession::route('/{record}'),
             ];
         }
 }

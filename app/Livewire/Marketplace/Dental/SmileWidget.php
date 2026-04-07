@@ -2,19 +2,22 @@
 
 namespace App\Livewire\Marketplace\Dental;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
 
-final class SmileWidget extends Model
+final class SmileWidget extends Component
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use WithFileUploads;
 
-        public $photo;
-        public ?array $analysis = null;
-        public bool $isAnalyzing = false;
+        private $photo;
+        private ?array $analysis = null;
+        private bool $isAnalyzing = false;
 
         public function analyze(): void
         {
@@ -32,7 +35,7 @@ final class SmileWidget extends Model
 
                 $this->analysis = $service->analyzeAndRecommend(
                     $this->photo,
-                    auth()->id() ?? 0
+                    $this->guard->id() ?? 0
                 );
 
                 $this->dispatch('notify', [
@@ -40,7 +43,7 @@ final class SmileWidget extends Model
                     'message' => 'AI анализ завершен!',
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Smile Widget AI Analysis failed', ['error' => $e->getMessage()]);
+                $this->logger->channel('audit')->error('Smile Widget AI Analysis failed', ['error' => $e->getMessage()]);
                 $this->addError('photo', 'Ошибка анализа фото. Попробуйте еще раз.');
             } finally {
                 $this->isAnalyzing = false;

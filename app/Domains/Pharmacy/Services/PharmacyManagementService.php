@@ -2,17 +2,19 @@
 
 namespace App\Domains\Pharmacy\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PharmacyManagementService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class PharmacyManagementService
 {
-    use HasFactory;
+
+    private readonly string $correlationId;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly string $correlationId = ''
-        ) {
+
+    public function __construct(private readonly \App\Services\FraudControlService $fraud,
+            string $correlationId = '',
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
             if (empty($this->correlationId)) {
                 $this->correlationId = (string) Str::uuid();
             }
@@ -23,13 +25,13 @@ final class PharmacyManagementService extends Model
          */
         public function createOrder(int $userId, int $pharmacyId, array $items): PharmacyOrder
         {
-            Log::channel('audit')->info('Pharmacy order initiation', [
+            $this->logger->info('Pharmacy order initiation', [
                 'user_id' => $userId,
                 'pharmacy_id' => $pharmacyId,
                 'correlation_id' => $this->correlationId
             ]);
 
-            return DB::transaction(function () use ($userId, $pharmacyId, $items) {
+            return $this->db->transaction(function () use ($userId, $pharmacyId, $items) {
                 $totalAmount = 0;
                 $itemsToCreate = [];
 
@@ -60,12 +62,7 @@ final class PharmacyManagementService extends Model
                 }
 
                 // 4. Fraud Check
-                FraudControlService::check([
-                    'type' => 'pharmacy_order',
-                    'user_id' => $userId,
-                    'amount' => $totalAmount,
-                    'correlation_id' => $this->correlationId
-                ]);
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'pharmacy_order', amount: 0, correlationId: $correlationId ?? '');
 
                 // 5. Создание заказа
                 $order = PharmacyOrder::create([

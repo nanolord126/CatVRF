@@ -2,14 +2,24 @@
 
 namespace App\Services\EventPlanning;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\EventPlanning\EventBooking;
+use App\Models\EventPlanning\EventPackage;
+use App\Models\EventPlanning\EventProject;
 
-final class BookingService extends Model
+
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+
+final readonly class BookingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Create a formal booking for an event with financial oversight.
          * Includes: Prepayment logic, B2B multipliers, and idempotency.
@@ -19,13 +29,15 @@ final class BookingService extends Model
             $correlationId = $correlationId ?? (string) Str::uuid();
 
             // 1. Audit Start
-            Log::channel('audit')->info('[EventBooking] Booking Creation Initiated', [
+            $this->logger->channel('audit')->info('[EventBooking] Booking Creation Initiated', [
                 'correlation_id' => $correlationId,
                 'event_id' => $data['event_id'],
                 'total_amount' => $data['total_amount'] ?? 0,
             ]);
 
-            return DB::transaction(function () use ($data, $correlationId) {
+            $this->fraud->check(new \stdClass());
+
+            return $this->db->transaction(function () use ($data, $correlationId) {
                 // 2. Fetch dependencies
                 $event = EventProject::findOrFail($data['event_id']);
                 $package = isset($data['package_id']) ? EventPackage::findOrFail($data['package_id']) : null;
@@ -49,7 +61,7 @@ final class BookingService extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('[EventBooking] Booking Created Successfully', [
+                $this->logger->channel('audit')->info('[EventBooking] Booking Created Successfully', [
                     'booking_uuid' => $booking->uuid,
                     'correlation_id' => $correlationId,
                     'prepayment_required' => $prepaymentAmount,
@@ -64,7 +76,7 @@ final class BookingService extends Model
          */
         public function processPayment(int $bookingId, int $amount, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingId, $amount, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $amount, $correlationId) {
                 $booking = EventBooking::lockForUpdate()->findOrFail($bookingId);
 
                 $newStatus = ($amount >= $booking->total_amount) ? 'paid' : 'partial';
@@ -83,7 +95,7 @@ final class BookingService extends Model
                      $booking->event->update(['status' => 'confirmed']);
                 }
 
-                Log::channel('audit')->info('[EventBooking] Payment Processed', [
+                $this->logger->channel('audit')->info('[EventBooking] Payment Processed', [
                     'booking_uuid' => $booking->uuid,
                     'new_status' => $newStatus,
                     'correlation_id' => $correlationId,
@@ -98,7 +110,7 @@ final class BookingService extends Model
          */
         public function cancelBooking(int $bookingId, string $correlationId): bool
         {
-            return DB::transaction(function () use ($bookingId, $correlationId) {
+            return $this->db->transaction(function () use ($bookingId, $correlationId) {
                 $booking = EventBooking::findOrFail($bookingId);
                 $eventDate = $booking->event->event_date;
 
@@ -111,7 +123,7 @@ final class BookingService extends Model
 
                 $booking->event->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->warning('[EventBooking] Booking Cancelled', [
+                $this->logger->channel('audit')->warning('[EventBooking] Booking Cancelled', [
                     'uuid' => $booking->uuid,
                     'is_refundable' => $canRefund,
                     'correlation_id' => $correlationId,

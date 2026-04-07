@@ -2,30 +2,59 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditFashionProduct extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\FashionProductResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class EditFashionProduct
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditFashionProduct extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = FashionProductResource::class;
 
-    final class EditFashionProduct extends EditRecord
+    protected function getHeaderActions(): array
     {
-        protected static string $resource = FashionProductResource::class;
+        return [
+            ViewAction::make(),
+            DeleteAction::make()->requiresConfirmation()
+                ->modalHeading('Удалить товар?')
+                ->modalDescription('Товар будет безвозвратно удалён из каталога.')
+                ->modalSubmitActionLabel('Да, удалить'),
+        ];
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit FashionProduct';
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('FashionProduct updated', [
+            'product_id'     => $this->record->id,
+            'name'           => $this->record->name,
+            'status'         => $this->record->status,
+            'price_b2c'      => $this->record->price_b2c,
+            'stock_quantity' => $this->record->stock_quantity,
+            'tenant_id'      => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+        ]);
+    }
 }

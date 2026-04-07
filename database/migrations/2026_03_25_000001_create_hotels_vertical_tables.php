@@ -22,7 +22,7 @@ return new class extends Migration
                 $table->string('name')->comment('Название отеля');
                 $table->text('description')->nullable()->comment('Описание сервиса');
                 $table->string('address')->comment('Фактический адрес');
-                $table->point('geo_point')->nullable()->comment('Координаты для карты');
+                $table->geometry('geo_point')->nullable()->comment('Координаты для карты');
                 $table->integer('stars')->default(0)->comment('Количество звезд (0-5)');
                 $table->boolean('is_active')->default(true)->index();
                 $table->jsonb('schedule_json')->nullable()->comment('Правила заезда/выезда');
@@ -140,3 +140,5 @@ return new class extends Migration
         Schema::dropIfExists('hotels');
     }
 };
+
+

@@ -2,14 +2,20 @@
 
 namespace App\Services\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
-final class SegmentationService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class SegmentationService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL = 86400;  // 24 hours
 
         /**
@@ -36,7 +42,7 @@ final class SegmentationService extends Model
                 $segments = $segments->merge($this->segmentByLocation($tenantId, $correlationId));
             }
 
-            Log::channel('analytics')->info('Customer segmentation completed', [
+            $this->logger->channel('analytics')->info('Customer segmentation completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'segments_count' => $segments->count(),
@@ -52,7 +58,7 @@ final class SegmentationService extends Model
             $correlationId = $correlationId ?: Str::uuid()->toString();
             $cacheKey = "segments:by_value:{$tenantId}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return collect($cached);
             }
@@ -84,9 +90,9 @@ final class SegmentationService extends Model
                 ],
             ];
 
-            Cache::put($cacheKey, $segments, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $segments, self::CACHE_TTL);
 
-            Log::channel('analytics')->info('Value segmentation completed', [
+            $this->logger->channel('analytics')->info('Value segmentation completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'segments_count' => count($segments),
@@ -102,7 +108,7 @@ final class SegmentationService extends Model
             $correlationId = $correlationId ?: Str::uuid()->toString();
             $cacheKey = "segments:by_behavior:{$tenantId}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return collect($cached);
             }
@@ -134,9 +140,9 @@ final class SegmentationService extends Model
                 ],
             ];
 
-            Cache::put($cacheKey, $segments, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $segments, self::CACHE_TTL);
 
-            Log::channel('analytics')->info('Behavior segmentation completed', [
+            $this->logger->channel('analytics')->info('Behavior segmentation completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'segments_count' => count($segments),
@@ -156,7 +162,7 @@ final class SegmentationService extends Model
             $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
             $cacheKey = "segments:metrics:{$tenantId}:{$segment}";
 
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 return $cached;
             }
@@ -174,7 +180,7 @@ final class SegmentationService extends Model
                 'correlation_id' => $correlationId,
             ];
 
-            Cache::put($cacheKey, $metrics, self::CACHE_TTL);
+            $this->cache->put($cacheKey, $metrics, self::CACHE_TTL);
 
             return $metrics;
         }
@@ -215,7 +221,7 @@ final class SegmentationService extends Model
                 ],
             ];
 
-            Log::channel('analytics')->info('Segment comparison completed', [
+            $this->logger->channel('analytics')->info('Segment comparison completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'segment_1' => $segment1,

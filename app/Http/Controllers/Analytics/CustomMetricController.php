@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers\Analytics;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class CustomMetricController extends Model
+final class CustomMetricController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
             private readonly CustomMetricService $customMetricService,
-        ) {
-        }
+            private readonly LogManager $logger,
+            private readonly CacheManager $cache,
+            private readonly Guard $guard,
+            private readonly ResponseFactory $response,
+    ) {
+
+    }
         /**
          * GET /api/analytics/heatmaps/custom/geo
          *
@@ -41,17 +47,17 @@ final class CustomMetricController extends Model
                 ]);
                 // Rate limiting
                 $tenant = filament()->getTenant();
-                $tenantId = $tenant?->id ?? auth()->id() ?? 0;
+                $tenantId = $tenant?->id ?? $this->guard->id() ?? 0;
                 $rateLimitKey = "ratelimit:custom:geo:{$tenantId}:{$validated['metric']}";
-                $count = Cache::increment($rateLimitKey, 1, 60);
+                $count = $this->cache->increment($rateLimitKey, 1, 60);
                 if ($count > 100) {
-                    Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('Rate limit exceeded', [
                         'correlation_id' => $correlationId,
                         'tenant_id' => $tenantId,
                         'endpoint' => '/custom/geo',
                         'metric' => $validated['metric'],
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Rate limit exceeded',
                         'correlation_id' => $correlationId,
                     ], 429)
@@ -66,33 +72,40 @@ final class CustomMetricController extends Model
                     $validated['metric'],
                     $validated['aggregation'] ?? 'daily'
                 );
-                Log::channel('audit')->info('Geo custom metric API called', [
+                $this->logger->channel('audit')->info('Geo custom metric API called', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'vertical' => $validated['vertical'],
                     'metric' => $validated['metric'],
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $result,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (ValidationException $e) {
-                Log::channel('error')->warning('Geo custom metric validation failed', [
+                $this->logger->channel('error')->warning('Geo custom metric validation failed', [
                     'correlation_id' => $correlationId,
                     'errors' => $e->errors(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('Geo custom metric API error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('Geo custom metric API error', [
                     'correlation_id' => $correlationId,
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId,
                 ], 500);
@@ -127,18 +140,18 @@ final class CustomMetricController extends Model
                 ]);
                 // Rate limiting
                 $tenant = filament()->getTenant();
-                $tenantId = $tenant?->id ?? auth()->id() ?? 0;
+                $tenantId = $tenant?->id ?? $this->guard->id() ?? 0;
                 $urlHash = md5($validated['page_url']);
                 $rateLimitKey = "ratelimit:custom:click:{$tenantId}:{$validated['metric']}:{$urlHash}";
-                $count = Cache::increment($rateLimitKey, 1, 60);
+                $count = $this->cache->increment($rateLimitKey, 1, 60);
                 if ($count > 100) {
-                    Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                    $this->logger->channel('fraud_alert')->warning('Rate limit exceeded', [
                         'correlation_id' => $correlationId,
                         'tenant_id' => $tenantId,
                         'endpoint' => '/custom/click',
                         'metric' => $validated['metric'],
                     ]);
-                    return response()->json([
+                    return $this->response->json([
                         'error' => 'Rate limit exceeded',
                         'correlation_id' => $correlationId,
                     ], 429)
@@ -154,34 +167,41 @@ final class CustomMetricController extends Model
                     $validated['metric'],
                     $validated['aggregation'] ?? 'daily'
                 );
-                Log::channel('audit')->info('Click custom metric API called', [
+                $this->logger->channel('audit')->info('Click custom metric API called', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'vertical' => $validated['vertical'],
                     'metric' => $validated['metric'],
                     'page_url' => $validated['page_url'],
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'data' => $result,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (ValidationException $e) {
-                Log::channel('error')->warning('Click custom metric validation failed', [
+                $this->logger->channel('error')->warning('Click custom metric validation failed', [
                     'correlation_id' => $correlationId,
                     'errors' => $e->errors(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Validation failed',
                     'messages' => $e->errors(),
                     'correlation_id' => $correlationId,
                 ], 422);
             } catch (\Exception $e) {
-                Log::channel('error')->error('Click custom metric API error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('error')->error('Click custom metric API error', [
                     'correlation_id' => $correlationId,
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'error' => 'Internal server error',
                     'correlation_id' => $correlationId,
                 ], 500);

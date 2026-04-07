@@ -2,37 +2,31 @@
 
 namespace App\Http\Requests\Music;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class MusicReviewRequest extends Model
+
+use Illuminate\Http\Request;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class MusicReviewRequest extends FormRequest
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
          * Determine if the user is authorized to make this request.
          */
         public function authorize(): bool
         {
             // Fraud check for reviews
-            $fraudCheck = FraudControlService::check([
-                'user_id' => auth()->id(),
-                'ip' => $this->ip(),
-                'action' => 'review_submission',
-                'tenant_id' => tenant()->id,
-            ]);
-
-            if (!$fraudCheck->isAllowed()) {
-                Log::channel('fraud_alert')->warning('Blocked review submission attempt', [
-                    'user_id' => auth()->id(),
-                    'ip' => $this->ip(),
-                    'reason' => $fraudCheck->reason(),
-                ]);
-                return false;
-            }
-
-            return auth()->check();
+            app(\App\Services\FraudControlService::class)->check(
+                userId: (int) $this->guard->id(),
+                operationType: 'review_submission',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
+return $this->guard->check();
         }
 
         /**

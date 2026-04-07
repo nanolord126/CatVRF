@@ -2,19 +2,14 @@
 
 namespace App\Events\Stream;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class AnswerSent extends Model
+final class AnswerSent
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Dispatchable;
         use InteractsWithSockets;
         use SerializesModels;
 
-        public string $correlationId;
+        private string $correlationId;
 
         public function __construct(
             public int $streamId,
@@ -43,4 +38,27 @@ final class AnswerSent extends Model
                 'timestamp' => now()->toIso8601String(),
             ];
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

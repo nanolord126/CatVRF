@@ -2,17 +2,15 @@
 
 namespace App\Domains\Medical\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TestOrderService extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+final readonly class TestOrderService
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
         public function createTestOrder(
             int $tenantId,
@@ -21,28 +19,21 @@ final class TestOrderService extends Model
             int $clinicId,
             array $tests,
             float $totalAmount,
-            ?string $correlationId = null,
-        ): MedicalTestOrder {
+            ?string $correlationId = null
+    ): MedicalTestOrder {
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use (
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use (
                     $tenantId,
                     $appointmentId,
                     $patientId,
                     $clinicId,
                     $tests,
                     $totalAmount,
-                    $correlationId,
-                ) {
+                    $correlationId
+    ) {
                     $testOrder = MedicalTestOrder::create([
                         'tenant_id' => $tenantId,
                         'appointment_id' => $appointmentId,
@@ -60,7 +51,7 @@ final class TestOrderService extends Model
 
                     TestOrderCreated::dispatch($testOrder, $correlationId);
 
-                    Log::channel('audit')->info('Medical test order created', [
+                    $this->logger->info('Medical test order created', [
                         'test_order_id' => $testOrder->id,
                         'patient_id' => $patientId,
                         'clinic_id' => $clinicId,
@@ -72,7 +63,7 @@ final class TestOrderService extends Model
                     return $testOrder;
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create test order', [
+                $this->logger->error('Failed to create test order', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -83,20 +74,13 @@ final class TestOrderService extends Model
         public function completeTestOrder(
             MedicalTestOrder $testOrder,
             array $results,
-            ?string $correlationId = null,
-        ): MedicalTestOrder {
+            ?string $correlationId = null
+    ): MedicalTestOrder {
             $correlationId ??= Str::uuid()->toString();
 
             try {
-                $this->fraudControlService->check(
-                    auth()->id() ?? 0,
-                    __CLASS__ . '::' . __FUNCTION__,
-                    0,
-                    request()->ip(),
-                    null,
-                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-                );
-    DB::transaction(function () use ($testOrder, $results, $correlationId) {
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    $this->db->transaction(function () use ($testOrder, $results, $correlationId) {
                     $testOrder->update([
                         'status' => 'completed',
                         'completed_at' => now(),
@@ -104,7 +88,7 @@ final class TestOrderService extends Model
                         'correlation_id' => $correlationId,
                     ]);
 
-                    Log::channel('audit')->info('Medical test order completed', [
+                    $this->logger->info('Medical test order completed', [
                         'test_order_id' => $testOrder->id,
                         'patient_id' => $testOrder->patient_id,
                         'correlation_id' => $correlationId,
@@ -113,7 +97,7 @@ final class TestOrderService extends Model
                     return $testOrder;
                 });
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to complete test order', [
+                $this->logger->error('Failed to complete test order', [
                     'test_order_id' => $testOrder->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,

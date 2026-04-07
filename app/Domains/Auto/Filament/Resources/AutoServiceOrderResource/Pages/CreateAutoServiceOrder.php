@@ -2,14 +2,18 @@
 
 namespace App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CreateAutoServiceOrder extends Model
+
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+use Filament\Resources\Pages\CreateRecord;
+
+final class CreateAutoServiceOrder extends CreateRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = AutoServiceOrderResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -19,12 +23,7 @@ final class CreateAutoServiceOrder extends Model
             $data['status'] = 'pending';
 
             // Fraud check перед созданием
-            $fraudCheck = FraudControlService::check([
-                'operation' => 'create_auto_service_order',
-                'tenant_id' => filament()->getTenant()->id,
-                'user_id' => auth()->id(),
-                'data' => $data,
-            ]);
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'create_auto_service_order', amount: 0, correlationId: $correlationId ?? '');
 
             if (!$fraudCheck['allowed']) {
                 $this->notification->make()
@@ -36,10 +35,10 @@ final class CreateAutoServiceOrder extends Model
                 $this->halt();
             }
 
-            Log::channel('audit')->info('Creating auto service order', [
+            $this->logger->info('Creating auto service order', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => filament()->getTenant()->id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
                 'data' => $data,
             ]);
 
@@ -48,14 +47,14 @@ final class CreateAutoServiceOrder extends Model
 
         protected function afterCreate(): void
         {
-            DB::transaction(function () {
+            $this->db->transaction(function () {
                 // Событие создания заказа-наряда
                 event(new AutoServiceOrderCreated(
                     $this->record,
                     $this->record->correlation_id
                 ));
 
-                Log::channel('audit')->info('Auto service order created successfully', [
+                $this->logger->info('Auto service order created successfully', [
                     'correlation_id' => $this->record->correlation_id,
                     'order_id' => $this->record->id,
                     'service_type' => $this->record->service_type,

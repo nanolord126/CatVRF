@@ -2,17 +2,15 @@
 
 namespace App\Domains\Education\Courses\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class CourseController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class CourseController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
         public function index(): JsonResponse
         {
@@ -21,16 +19,17 @@ final class CourseController extends Model
                     ->with(['instructorEarnings', 'reviews'])
                     ->paginate(15);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $courses,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to list courses', [
+                $this->logger->error('Failed to list courses', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list courses',
                 ], 500);
@@ -43,16 +42,17 @@ final class CourseController extends Model
                 $course = Course::with(['lessons', 'reviews', 'instructorEarnings'])
                     ->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $course,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to show course', [
+                $this->logger->error('Failed to show course', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Course not found',
                 ], 404);
@@ -61,22 +61,15 @@ final class CourseController extends Model
 
         public function store(): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -86,7 +79,7 @@ final class CourseController extends Model
             try {
                 $this->authorize('create', Course::class);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'title' => 'required|string|max:255',
                     'description' => 'required|string',
                     'category' => 'required|string',
@@ -99,8 +92,8 @@ final class CourseController extends Model
                 $correlationId = Str::uuid()->toString();
 
                 $course = Course::create([
-                    'tenant_id' => tenant('id'),
-                    'instructor_id' => auth()->id(),
+                    'tenant_id' => tenant()->id,
+                    'instructor_id' => $request->user()?->id,
                     'title' => $validated['title'],
                     'description' => $validated['description'],
                     'category' => $validated['category'],
@@ -113,21 +106,22 @@ final class CourseController extends Model
                     'correlation_id' => $correlationId,
                 ]);
 
-                \Log::channel('audit')->info('Course created', [
+                $this->logger->info('Course created', [
                     'course_id' => $course->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $course,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to create course', [
+                $this->logger->error('Failed to create course', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create course',
                 ], 500);
@@ -136,22 +130,15 @@ final class CourseController extends Model
 
         public function update(int $id): JsonResponse
         {
-            $fraudResult = $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                'operation',
-                0,
-                request()->ip(),
-                request()->header('X-Device-Fingerprint'),
-                $correlationId,
-            );
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'operation', amount: 0, correlationId: $correlationId ?? '');
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                $this->logger->warning('Operation blocked by fraud control', [
                     'correlation_id' => $correlationId,
-                    'user_id'        => auth()->id(),
+                    'user_id'        => $request->user()?->id,
                     'score'          => $fraudResult['score'],
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success'        => false,
                     'error'          => 'Операция заблокирована.',
                     'correlation_id' => $correlationId,
@@ -162,7 +149,7 @@ final class CourseController extends Model
                 $course = Course::findOrFail($id);
                 $this->authorize('update', $course);
 
-                $validated = request()->validate([
+                $validated = $request->validate([
                     'title' => 'sometimes|string|max:255',
                     'description' => 'sometimes|string',
                     'status' => 'sometimes|in:draft,published,archived',
@@ -173,21 +160,22 @@ final class CourseController extends Model
                 $correlationId = Str::uuid()->toString();
                 $course->update($validated + ['correlation_id' => $correlationId]);
 
-                \Log::channel('audit')->info('Course updated', [
+                $this->logger->info('Course updated', [
                     'course_id' => $course->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $course,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to update course', [
+                $this->logger->error('Failed to update course', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update course',
                 ], 500);
@@ -203,21 +191,22 @@ final class CourseController extends Model
                 $correlationId = Str::uuid()->toString();
                 $course->delete();
 
-                \Log::channel('audit')->info('Course deleted', [
+                $this->logger->info('Course deleted', [
                     'course_id' => $id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'message' => 'Course deleted',
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to delete course', [
+                $this->logger->error('Failed to delete course', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete course',
                 ], 500);
@@ -229,16 +218,17 @@ final class CourseController extends Model
             try {
                 $categories = CourseCategory::where('is_active', true)->get();
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $categories,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to fetch categories', [
+                $this->logger->error('Failed to fetch categories', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to fetch categories',
                 ], 500);
@@ -260,16 +250,17 @@ final class CourseController extends Model
                     'total_reviews' => $course->reviews()->count(),
                 ];
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $analytics,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::channel('audit')->error('Failed to fetch analytics', [
+                $this->logger->error('Failed to fetch analytics', [
                     'error' => $e->getMessage(),
+                    'correlation_id' => $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
                 ]);
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to fetch analytics',
                 ], 500);

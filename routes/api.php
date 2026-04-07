@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use App\Domains\Advertising\Presentation\Http\Controllers\AdController;
 
 /**
  * CatVRF API Routes — Production Ready 2026
@@ -30,6 +32,38 @@ Route::middleware([
     // ===== API V1 PRODUCTION ROUTES =====
     // All routes defined in routes/api-v1.php with tenant + auth middleware
     require base_path('routes/api-v1.php');
+
+    // ===== TAXI B2C (passenger) =====
+    Route::prefix('api/v1/b2c/taxi')
+        ->middleware(['auth:sanctum'])
+        ->group(function () {
+            Route::post('rides/request', \App\Http\Controllers\Api\V1\B2C\Taxi\RideController::class)
+                ->name('b2c.taxi.rides.request');
+            Route::get('rides/{rideId}', \App\Http\Controllers\Api\V1\B2C\Taxi\TrackRideController::class)
+                ->name('b2c.taxi.rides.track');
+        });
+
+    // ===== HOTELS B2C (guest) =====
+    Route::prefix('api/v1/b2c/hotels')
+        ->middleware(['auth:sanctum'])
+        ->group(function () {
+            Route::get('search', [\App\Domains\Hotels\Presentation\Http\Controllers\HotelController::class, 'search'])
+                ->name('b2c.hotels.search');
+            Route::post('book', [\App\Domains\Hotels\Presentation\Http\Controllers\HotelController::class, 'book'])
+                ->name('b2c.hotels.book');
+        });
+
+    // ===== TAXI B2B (driver app) =====
+    Route::prefix('api/v1/b2b/taxi')
+        ->middleware(['auth:sanctum'])
+        ->group(function () {
+            Route::post('rides/{rideId}/accept', [\App\Http\Controllers\Api\V1\B2B\Taxi\DriverRideController::class, 'accept'])
+                ->name('b2b.taxi.rides.accept');
+            Route::post('rides/{rideId}/start', [\App\Http\Controllers\Api\V1\B2B\Taxi\DriverRideController::class, 'start'])
+                ->name('b2b.taxi.rides.start');
+            Route::post('rides/{rideId}/finish', [\App\Http\Controllers\Api\V1\B2B\Taxi\DriverRideController::class, 'finish'])
+                ->name('b2b.taxi.rides.finish');
+        });
 
 // ===== LEGACY API V1 - Authenticated (Backward Compatibility) =====
 Route::prefix('v1')
@@ -208,6 +242,8 @@ require __DIR__ . '/toys_kids.api.php';
 // Music & Instruments
 require __DIR__ . '/music.api.php';
 
+// ... existing code ...
+
 // Analytics routes (heatmaps, comparisons, custom metrics)
 require __DIR__ . '/analytics.api.php';
 
@@ -223,5 +259,15 @@ Route::prefix('docs')->group(function () {
 
 // ─── Channels (посты, подписки, реакции) ─────────────────────────────────────
 require __DIR__ . '/channels.api.php';
+
+// API route for showing advertisements
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+    Route::get('/ad', [AdController::class, 'show']);
+    Route::post('/analytics/track', [AnalyticsController::class, 'track']);
+});
 
 }); // END: Global middleware group

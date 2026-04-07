@@ -2,14 +2,21 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class RealtimeService extends Model
+
+use Illuminate\Support\Str;
+use Illuminate\Log\LogManager;
+use Illuminate\Cache\CacheManager;
+
+final readonly class RealtimeService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LogManager $logger,
+        private readonly CacheManager $cache,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    private const PRESENCE_TTL_SECONDS = 3600;
+
     /**
          * Track user presence
          * @param int $userId
@@ -23,15 +30,21 @@ final class RealtimeService extends Model
 
             try {
                 $key = "presence:tenant.{$tenantId}:user.{$userId}";
+                $indexKey = "presence:index:tenant.{$tenantId}";
                 $payload = array_merge($data, [
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'online_at' => now()->toIso8601String(),
+                    'correlation_id' => $correlationId,
                 ]);
 
-                cache()->put($key, $payload, 3600); // 1 hour TTL
+                $this->cache->put($key, $payload, self::PRESENCE_TTL_SECONDS);
 
-                Log::channel('audit')->info('User presence tracked', [
+                $index = $this->cache->get($indexKey, []);
+                $index[$userId] = $key;
+                $this->cache->put($indexKey, $index, self::PRESENCE_TTL_SECONDS);
+
+                $this->logger->channel('audit')->info('User presence tracked', [
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -39,7 +52,7 @@ final class RealtimeService extends Model
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Failed to track presence', [
+                $this->logger->channel('audit')->error('Failed to track presence', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -55,12 +68,18 @@ final class RealtimeService extends Model
          */
         public function getOnlineUsers(int $tenantId): array
         {
-            $pattern = "presence:tenant.{$tenantId}:user.*";
-            $keys = cache()->getMultiple(
-                glob(storage_path("cache/{$pattern}"))
-            );
+            $indexKey = "presence:index:tenant.{$tenantId}";
+            $index = $this->cache->get($indexKey, []);
+            $users = [];
 
-            return array_filter($keys);
+            foreach ($index as $userId => $cacheKey) {
+                $presence = $this->cache->get($cacheKey);
+                if (is_array($presence)) {
+                    $users[(int) $userId] = $presence;
+                }
+            }
+
+            return $users;
         }
 
         /**
@@ -81,14 +100,14 @@ final class RealtimeService extends Model
                 // In production: use Pusher/Ably/Laravel Echo
                 // For now: store in cache for testing
                 $key = "broadcast:{$channel}:{$event}";
-                cache()->put($key, [
+                $this->cache->put($key, [
                     'event' => $event,
                     'data' => $data,
                     'correlation_id' => $correlationId,
-                    'timestamp' => now(),
-                ], 300); // 5 minute TTL
+                    'timestamp' => now()->toIso8601String(),
+                ], 300);
 
-                Log::channel('audit')->info('Broadcast sent', [
+                $this->logger->channel('audit')->info('Broadcast sent', [
                     'channel' => $channel,
                     'event' => $event,
                     'correlation_id' => $correlationId,
@@ -96,7 +115,7 @@ final class RealtimeService extends Model
 
                 return true;
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Broadcast failed', [
+                $this->logger->channel('audit')->error('Broadcast failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
@@ -114,9 +133,9 @@ final class RealtimeService extends Model
         public function subscribe(int $userId, string $channel): bool
         {
             $key = "subscription:user.{$userId}:{$channel}";
-            cache()->put($key, true, 3600);
+            $this->cache->put($key, true, self::PRESENCE_TTL_SECONDS);
 
-            Log::channel('audit')->info('User subscribed to channel', [
+            $this->logger->channel('audit')->info('User subscribed to channel', [
                 'user_id' => $userId,
                 'channel' => $channel,
             ]);
@@ -133,9 +152,9 @@ final class RealtimeService extends Model
         public function unsubscribe(int $userId, string $channel): bool
         {
             $key = "subscription:user.{$userId}:{$channel}";
-            cache()->forget($key);
+            $this->cache->forget($key);
 
-            Log::channel('audit')->info('User unsubscribed from channel', [
+            $this->logger->channel('audit')->info('User unsubscribed from channel', [
                 'user_id' => $userId,
                 'channel' => $channel,
             ]);

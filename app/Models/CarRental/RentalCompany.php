@@ -2,15 +2,22 @@
 
 namespace App\Models\CarRental;
 
+
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class RentalCompany extends Model
 {
-    use HasFactory;
+    public function __construct(
+        private readonly ConfigRepository $config,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'rental_companies';
 
@@ -46,14 +53,14 @@ final class RentalCompany extends Model
         {
             // 1. Force Tenant Scoping via global scope
             static::addGlobalScope('tenant', function (Builder $builder) {
-                $tenantId = tenant()->id ?? config('multitenancy.default_tenant_id');
+                $tenantId = tenant()->id ?? $this->config->get('multitenancy.default_tenant_id');
                 if ($tenantId) {
                     $builder->where('tenant_id', $tenantId);
                 }
             });
 
             // 2. Automatic UUID generation and correlation assignment
-            static::creating(function (Model $model) {
+            static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }

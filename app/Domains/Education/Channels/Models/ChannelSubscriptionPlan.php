@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 final class ChannelSubscriptionPlan extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected $table = 'channel_subscription_plans';
 
         protected $fillable = [
+        'uuid',
+        'correlation_id',
             'slug',
             'name',
             'price_kopecks',
@@ -57,5 +58,21 @@ final class ChannelSubscriptionPlan extends Model
         public function getPriceRublesAttribute(): float
         {
             return $this->price_kopecks / 100;
-        }
+        }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
+
 }

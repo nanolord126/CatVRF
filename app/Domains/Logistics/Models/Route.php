@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Route extends Model
 {
     use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use SoftDeletes;
 
         protected $table = 'logistics_routes';
@@ -53,14 +52,14 @@ final class Route extends Model
             'correlation_id' => 'string',
         ];
 
-        protected static function booted(): void
+        protected static function booted_disabled(): void
         {
             static::creating(function (self $model) {
                 if (empty($model->uuid)) {
                     $model->uuid = (string) Str::uuid();
                 }
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant('id')) {
-                    $model->tenant_id = (int) tenant('id');
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()?->id) {
+                    $model->tenant_id = (int) tenant()?->id;
                 }
                 if (empty($model->status)) {
                     $model->status = 'proposed';
@@ -68,8 +67,8 @@ final class Route extends Model
             });
 
             static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
+                if (function_exists('tenant') && tenant()?->id) {
+                    $query->where('tenant_id', tenant()?->id);
                 }
             });
         }
@@ -140,7 +139,6 @@ final class Route extends Model
         public function getStatusLabel(): string
         {
             return match($this->status) {
-                'proposed' => 'Предложенный',
                 'active' => 'В процессе',
                 'completed' => 'Завершенный',
                 'deviations' => 'С отклонениями',
@@ -151,7 +149,6 @@ final class Route extends Model
         public function getStatusColor(): string
         {
             return match($this->status) {
-                'proposed' => 'gray',
                 'active' => 'blue',
                 'completed' => 'success',
                 'deviations' => 'warning',

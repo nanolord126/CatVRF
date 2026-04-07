@@ -2,30 +2,58 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditDentalClinic extends Model
+use Psr\Log\LoggerInterface;
+use App\Filament\Tenant\Resources\DentalClinicResource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Class EditDentalClinic
+ *
+ * Filament admin panel component.
+ * Tenant-scoped: all data filtered by current tenant.
+ * Follows CatVRF 9-layer architecture (Layer 9: Filament).
+ *
+ * @package App\Filament\Tenant\Resources\Pages
+ */
+final class EditDentalClinic extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    ViewAction, DeleteAction};
+    protected static string $resource = DentalClinicResource::class;
 
-    final class EditDentalClinic extends EditRecord
+    protected function getHeaderActions(): array
     {
-        protected static string $resource = DentalClinicResource::class;
+        return [
+            ViewAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalHeading('Удалить клинику?')
+                ->modalDescription('Удаление клиники удалит всех связанных врачей, услуги и записи. Действие необратимо.')
+                ->modalSubmitActionLabel('Да, удалить'),
+        ];
+    }
 
-        public function getTitle(): string
-        {
-            return 'Edit DentalClinic';
-        }
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                ViewAction::make(),
-                DeleteAction::make(),
-            ];
-        }
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->info('DentalClinic updated', [
+            'clinic_id'      => $this->record->id,
+            'name'           => $this->record->name,
+            'is_premium'     => $this->record->is_premium,
+            'tenant_id'      => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+        ]);
+    }
 }

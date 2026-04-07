@@ -2,14 +2,11 @@
 
 namespace App\Domains\Luxury\Tests;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Tests\TestCase;
 
-final class ConciergeVipBookingTest extends Model
+final class ConciergeVipBookingTest extends TestCase
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use RefreshDatabase;
 
         private string $correlationId;

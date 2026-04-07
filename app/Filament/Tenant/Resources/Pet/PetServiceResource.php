@@ -2,15 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Pet;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class PetServiceResource extends Model
-{
-    use HasFactory;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    Form, Components\Section, Components\TextInput, Components\Select, Components\Toggle, Components\TagsInput, Components\Hidden, Components\RichEditor};
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
     use Filament\Tables\Actions\{Action, EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction};
@@ -20,6 +15,10 @@ final class PetServiceResource extends Model
 
     final class PetServiceResource extends Resource
     {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
         protected static ?string $model = PetService::class;
         protected static ?string $navigationIcon = 'heroicon-m-heart';
         protected static ?string $navigationGroup = 'Pet & Veterinary';
@@ -131,7 +130,6 @@ final class PetServiceResource extends Model
                 BadgeColumn::make('service_type')
                     ->label('Тип')
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'grooming' => 'Груминг',
                         'vaccination' => 'Вакцинация',
                         'surgery' => 'Хирургия',
                         'consultation' => 'Консультация',
@@ -141,7 +139,6 @@ final class PetServiceResource extends Model
                         default => 'Прочее',
                     })
                     ->color(fn ($state) => match($state) {
-                        'grooming' => 'blue',
                         'vaccination' => 'success',
                         'surgery' => 'danger',
                         'consultation' => 'info',
@@ -218,9 +215,9 @@ final class PetServiceResource extends Model
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
-                                Log::channel('audit')->info('Pet service bulk activated', [
+                                $this->logger->info('Pet service bulk activated', [
                                     'service_id' => $record->id,
-                                    'user_id' => auth()->id(),
+                                    'user_id' => $this->guard->id(),
                                     'correlation_id' => $record->correlation_id,
                                 ]);
                             });

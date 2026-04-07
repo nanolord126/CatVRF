@@ -157,3 +157,5 @@ return new class extends Migration
         Schema::dropIfExists('auto_catalog_brands');
     }
 };
+
+

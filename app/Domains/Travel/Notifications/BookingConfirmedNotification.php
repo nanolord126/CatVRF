@@ -2,19 +2,18 @@
 
 namespace App\Domains\Travel\Notifications;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class BookingConfirmedNotification extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Notifications\Notification;
+
+final class BookingConfirmedNotification extends Notification
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     use Queueable;
 
         public function __construct(
             private readonly Booking $booking,
-            private readonly string $correlationId
+            private readonly string $correlationId, private readonly LoggerInterface $logger
         ) {}
 
         /**
@@ -30,7 +29,7 @@ final class BookingConfirmedNotification extends Model
          */
         public function toMail(object $notifiable): MailMessage
         {
-            Log::channel('audit')->info('Sending booking confirmation email', [
+            $this->logger->info('Sending booking confirmation email', [
                 'booking_id' => $this->booking->id,
                 'user_id' => $notifiable->id,
                 'correlation_id' => $this->correlationId

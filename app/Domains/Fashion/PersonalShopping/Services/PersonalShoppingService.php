@@ -2,20 +2,189 @@
 
 namespace App\Domains\Fashion\PersonalShopping\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\Fashion\PersonalShopping\Models\ShoppingSession;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class PersonalShoppingService extends Model
+final readonly class PersonalShoppingService
 {
-    use HasFactory;
+    private const COMMISSION_RATE = 0.14;
+    private const RATE_LIMIT_KEY = 'shopping:session:';
+    private const RATE_LIMIT_MAX = 15;
+    private const RATE_LIMIT_DECAY = 3600;
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createSession(int $shopperId,$sessionDate,$durationHours,$itemsPurchased,string $correlationId=""):ShoppingSession{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("pshopping:session:".auth()->id(),12))throw new \RuntimeException("Too many",429);RateLimiter::hit("pshopping:session:".auth()->id(),3600);
-    return DB::transaction(function()use($shopperId,$sessionDate,$durationHours,$itemsPurchased,$correlationId){$s=PersonalShopper::findOrFail($shopperId);$total=(int)($s->price_kopecks_per_hour*$durationHours);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'personal_shopping','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$ss=ShoppingSession->create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'shopper_id'=>$shopperId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','session_date'=>$sessionDate,'duration_hours'=>$durationHours,'items_purchased'=>$itemsPurchased,'tags'=>['personal_shopping'=>true]]);Log::channel('audit')->info('Personal shopping session created',['session_id'=>$ss->id,'correlation_id'=>$correlationId]);return $ss;});
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private AuditService $audit,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+    ) {}
+
+    /**
+     * Создать сессию персонального шопинга.
+     */
+    public function createSession(
+        int $shopperId,
+        int $durationHours,
+        int $priceKopecks,
+        string $correlationId = '',
+    ): ShoppingSession {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $userId = (int) $this->guard->id();
+
+        $this->fraud->check(
+            userId: $userId,
+            operationType: 'personal_shopping',
+            amount: $priceKopecks,
+            correlationId: $correlationId,
+        );
+
+        return $this->db->transaction(function () use ($shopperId, $durationHours, $priceKopecks, $correlationId, $userId): ShoppingSession {
+            $payoutKopecks = $priceKopecks - (int) ($priceKopecks * self::COMMISSION_RATE);
+
+            $session = ShoppingSession::create([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => tenant()->id,
+                'shopper_id' => $shopperId,
+                'client_id' => $userId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $priceKopecks,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'duration_hours' => $durationHours,
+                'items_purchased' => [],
+                'tags' => ['personal_shopping' => true],
+            ]);
+
+            $this->audit->log(
+                action: 'shopping_session_created',
+                subjectType: ShoppingSession::class,
+                subjectId: $session->id,
+                old: [],
+                new: $session->toArray(),
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Personal shopping session created', [
+                'session_id' => $session->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $session;
+        });
     }
-    public function completeSession(int $sessionId,string $correlationId=""):ShoppingSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$s=ShoppingSession->findOrFail($sessionId);if($s->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$s->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$s->payout_kopecks,'pshopping_payout',['correlation_id'=>$correlationId,'session_id'=>$s->id]);Log::channel('audit')->info('Personal shopping session completed',['session_id'=>$s->id]);return $s;});}
-    public function cancelSession(int $sessionId,string $correlationId=""):ShoppingSession{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($sessionId,$correlationId){$s=ShoppingSession->findOrFail($sessionId);if($s->status==='completed')throw new \RuntimeException("Cannot cancel",400);$s->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($s->payment_status==='completed')$this->wallet->credit(tenant()->id,$s->total_kopecks,'pshopping_refund',['correlation_id'=>$correlationId,'session_id'=>$s->id]);Log::channel('audit')->info('Personal shopping session cancelled',['session_id'=>$s->id]);return $s;});}
-    public function getSession(int $sessionId):ShoppingSession{return ShoppingSession->findOrFail($sessionId);}
-    public function getUserSessions(int $clientId){return ShoppingSession->where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Завершить сессию и выплатить шопперу.
+     */
+    public function completeSession(int $sessionId, array $itemsPurchased = [], string $correlationId = ''): ShoppingSession
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $itemsPurchased, $correlationId): ShoppingSession {
+            $session = ShoppingSession::findOrFail($sessionId);
+
+            if ($session->payment_status !== 'completed') {
+                throw new \RuntimeException('Session payment not completed', 400);
+            }
+
+            $session->update([
+                'status' => 'completed',
+                'items_purchased' => $itemsPurchased,
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: $session->tenant_id,
+                amount: $session->payout_kopecks,
+                type: BalanceTransactionType::PAYOUT,
+                correlationId: $correlationId,
+                metadata: ['session_id' => $session->id],
+            );
+
+            $this->audit->log(
+                action: 'shopping_session_completed',
+                subjectType: ShoppingSession::class,
+                subjectId: $session->id,
+                old: ['status' => 'pending_payment'],
+                new: ['status' => 'completed', 'items_count' => count($itemsPurchased)],
+                correlationId: $correlationId,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Отменить сессию и вернуть оплату.
+     */
+    public function cancelSession(int $sessionId, string $correlationId = ''): ShoppingSession
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($sessionId, $correlationId): ShoppingSession {
+            $session = ShoppingSession::findOrFail($sessionId);
+
+            if ($session->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed session', 400);
+            }
+
+            $previousStatus = $session->payment_status;
+
+            $session->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: $session->tenant_id,
+                    amount: $session->total_kopecks,
+                    type: BalanceTransactionType::REFUND,
+                    correlationId: $correlationId,
+                    metadata: ['session_id' => $session->id],
+                );
+            }
+
+            $this->audit->log(
+                action: 'shopping_session_cancelled',
+                subjectType: ShoppingSession::class,
+                subjectId: $session->id,
+                old: ['status' => $previousStatus],
+                new: ['status' => 'cancelled'],
+                correlationId: $correlationId,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Получить сессию по идентификатору.
+     */
+    public function getSession(int $sessionId): ShoppingSession
+    {
+        return ShoppingSession::findOrFail($sessionId);
+    }
+
+    /**
+     * Получить список сессий клиента.
+     */
+    public function getUserSessions(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return ShoppingSession::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 }

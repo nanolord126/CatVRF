@@ -2,14 +2,16 @@
 
 namespace App\Domains\HobbyAndCraft\Hobby\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class AIHobbyConstructor extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class AIHobbyConstructor
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Generate custom Craft Kit suggestions for user.
          * Rule: Level matching (Beginner -> Easy Kits, Advanced -> Complex Projects).
@@ -18,10 +20,11 @@ final class AIHobbyConstructor extends Model
         {
             $cid = $dto->correlationId ?: (string) Str::uuid();
 
-            Log::channel('audit')->info('AI Hobby Matching Started', [
+            $this->logger->info('AI Hobby Matching Started', [
                 'skill' => $dto->skillLevel,
                 'budget' => $dto->budgetCents,
-                'cid' => $cid
+                'cid' => $cid,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             // 1. Fetch Kits matching Skill Level + Budget

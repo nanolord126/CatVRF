@@ -1,15 +1,33 @@
 <?php declare(strict_types=1);
 
+/**
+ * LanguagePricingService — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/languagepricingservice
+ */
+
+
 namespace App\Domains\Education\LanguageLearning\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class LanguagePricingService extends Model
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+
+final readonly class LanguagePricingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly LoggerInterface $logger) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Расчет стоимости курса с учетом B2B/B2C и сезонных скидок.
          */
@@ -32,10 +50,11 @@ final class LanguagePricingService extends Model
                 $price = (int)($price * 0.90);
             }
 
-            Log::channel('audit')->info('Language pricing calculated', [
+            $this->logger->info('Language pricing calculated', [
                 'base' => $basePrice,
                 'final' => $price,
                 'type' => $clientType,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
 
             return $price;

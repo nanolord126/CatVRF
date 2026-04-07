@@ -2,14 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\BeverageItemResource\Pages;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EditBeverageItem extends Model
+
+
+use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Auth\Guard;
+use Filament\Resources\Pages\EditRecord;
+
+final class EditBeverageItem extends EditRecord
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static string $resource = BeverageItemResource::class;
 
         protected function getHeaderActions(): array
@@ -22,17 +30,17 @@ final class EditBeverageItem extends Model
 
         protected function mutateFormDataBeforeSave(array $data): array
         {
-            $data['correlation_id'] = request()->header('X-Correlation-ID', (string) Str::uuid());
+            $data['correlation_id'] = $this->request->header('X-Correlation-ID', (string) Str::uuid());
             return $data;
         }
 
         protected function afterSave(): void
         {
-            Log::channel('audit')->info('Beverage Catalog Item Modified', [
+            $this->logger->info('Beverage Catalog Item Modified', [
                 'item_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => auth()->id(),
+                'user_id' => $this->guard->id(),
             ]);
         }
 
@@ -40,4 +48,27 @@ final class EditBeverageItem extends Model
         {
             return $this->getResource()::getUrl('index');
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }

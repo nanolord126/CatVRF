@@ -1,21 +1,186 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\ConstructionAndRepair\ArchitectureServices\Services;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Domains\ConstructionAndRepair\ArchitectureServices\Models\ArchitectureProject;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Carbon;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 
-final class ArchitectureServicesService extends Model
+final readonly class ArchitectureServicesService
 {
-    use HasFactory;
+    public function __construct(
+        private FraudControlService $fraud,
+        private WalletService $wallet,
+        private DatabaseManager $db,
+        private LoggerInterface $logger,
+        private Guard $guard,
+        private RateLimiter $rateLimiter,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet) {}
-    public function createProject(int $architectId,$projectType,$buildingSqm,$dueDate,string $correlationId=""):ArchitectureProject{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("arch:project:".auth()->id(),4))throw new \RuntimeException("Too many",429);RateLimiter::hit("arch:project:".auth()->id(),3600);
-    return DB::transaction(function()use($architectId,$projectType,$buildingSqm,$dueDate,$correlationId){$a=Architect::findOrFail($architectId);$total=(int)($a->price_kopecks_per_sqm*$buildingSqm);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'architecture','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$p=ArchitectureProject::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'architect_id'=>$architectId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','project_type'=>$projectType,'building_sqm'=>$buildingSqm,'due_date'=>$dueDate,'tags'=>['architecture'=>true]]);Log::channel('audit')->info('Architecture project created',['project_id'=>$p->id,'correlation_id'=>$correlationId]);return $p;});
+    public function createProject(
+        int $architectId,
+        string $projectType,
+        int $buildingSqm,
+        string $dueDate,
+        string $correlationId = '',
+    ): ArchitectureProject {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $guardId = $this->guard->id() ?? 0;
+
+        if ($this->rateLimiter->tooManyAttempts('arch:project:' . $guardId, 4)) {
+            throw new \RuntimeException('Too many attempts', 429);
+        }
+        $this->rateLimiter->hit('arch:project:' . $guardId, 3600);
+
+        return $this->db->transaction(function () use ($architectId, $projectType, $buildingSqm, $dueDate, $correlationId, $guardId) {
+            $this->fraud->check(
+                userId: $guardId,
+                operationType: 'architecture',
+                amount: 0,
+                correlationId: $correlationId,
+            );
+
+            $total = $buildingSqm * 300_00;
+            $payoutKopecks = $total - (int) ($total * 0.14);
+
+            $project = ArchitectureProject::create([
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => tenant()->id,
+                'architect_id' => $architectId,
+                'client_id' => $guardId,
+                'correlation_id' => $correlationId,
+                'status' => 'pending_payment',
+                'total_kopecks' => $total,
+                'payout_kopecks' => $payoutKopecks,
+                'payment_status' => 'pending',
+                'project_type' => $projectType,
+                'building_sqm' => $buildingSqm,
+                'due_date' => $dueDate,
+                'tags' => ['architecture' => true],
+            ]);
+
+            $this->logger->info('Architecture project created', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
     }
-    public function completeProject(int $projectId,string $correlationId=""):ArchitectureProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=ArchitectureProject::findOrFail($projectId);if($p->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$p->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$p->payout_kopecks,'arch_payout',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Architecture project completed',['project_id'=>$p->id]);return $p;});}
-    public function cancelProject(int $projectId,string $correlationId=""):ArchitectureProject{$correlationId=$correlationId?:(string)Str::uuid();return DB::transaction(function()use($projectId,$correlationId){$p=ArchitectureProject::findOrFail($projectId);if($p->status==='completed')throw new \RuntimeException("Cannot cancel",400);$p->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($p->payment_status==='completed')$this->wallet->credit(tenant()->id,$p->total_kopecks,'arch_refund',['correlation_id'=>$correlationId,'project_id'=>$p->id]);Log::channel('audit')->info('Architecture project cancelled',['project_id'=>$p->id]);return $p;});}
-    public function getProject(int $projectId):ArchitectureProject{return ArchitectureProject::findOrFail($projectId);}
-    public function getUserProjects(int $clientId){return ArchitectureProject::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    public function completeProject(int $projectId, string $correlationId = ''): ArchitectureProject
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId) {
+            $project = ArchitectureProject::findOrFail($projectId);
+
+            if ($project->payment_status !== 'completed') {
+                throw new \RuntimeException('Payment not completed', 400);
+            }
+
+            $project->update([
+                'status' => 'completed',
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->wallet->credit(
+                walletId: (int) tenant()->id,
+                amount: $project->payout_kopecks,
+                reason: 'architecture_payout',
+                correlationId: $correlationId,
+            );
+
+            $this->logger->info('Architecture project completed', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function cancelProject(int $projectId, string $correlationId = ''): ArchitectureProject
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        return $this->db->transaction(function () use ($projectId, $correlationId) {
+            $project = ArchitectureProject::findOrFail($projectId);
+
+            if ($project->status === 'completed') {
+                throw new \RuntimeException('Cannot cancel completed project', 400);
+            }
+
+            $previousPaymentStatus = $project->payment_status;
+
+            $project->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($previousPaymentStatus === 'completed') {
+                $this->wallet->credit(
+                    walletId: (int) tenant()->id,
+                    amount: $project->total_kopecks,
+                    reason: 'architecture_refund',
+                    correlationId: $correlationId,
+                );
+            }
+
+            $this->logger->info('Architecture project cancelled', [
+                'project_id' => $project->id,
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant()->id,
+            ]);
+
+            return $project;
+        });
+    }
+
+    public function getProject(int $projectId): ArchitectureProject
+    {
+        return ArchitectureProject::findOrFail($projectId);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, ArchitectureProject>
+     */
+    public function getUserProjects(int $clientId): \Illuminate\Database\Eloquent\Collection
+    {
+        return ArchitectureProject::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+    }
+
+    private const VERSION = '1.0.0';
+
+    private const MAX_RETRIES = 3;
+
+    private const CACHE_TTL = 3600;
+
+    private function getComponentIdentifier(): string
+    {
+        return static::class . '@' . self::VERSION;
+    }
+
+    private function handleError(\Throwable $exception, int $attempt = 1): bool
+    {
+        if ($attempt >= self::MAX_RETRIES) {
+            return false;
+        }
+
+        return true;
+    }
 }

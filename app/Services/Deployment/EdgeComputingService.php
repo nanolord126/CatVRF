@@ -2,14 +2,20 @@
 
 namespace App\Services\Deployment;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class EdgeComputingService extends Model
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+
+
+
+final readonly class EdgeComputingService
 {
-    use HasFactory;
+    public function __construct(
+        private readonly Request $request,
+        private readonly LogManager $logger,
+    ) {}
 
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Поддерживаемые edge-провайдеры
          */
@@ -44,7 +50,7 @@ final class EdgeComputingService extends Model
                 'config' => $config,
             ];
 
-            Log::channel('deployment')->info('Edge function deployed', $deployment);
+            $this->logger->channel('deployment')->info('Edge function deployed', $deployment);
 
             return $deployment;
         }
@@ -58,8 +64,9 @@ final class EdgeComputingService extends Model
          */
         public static function registerRequestTransformer(string $pattern, callable $handler): void
         {
-            Log::channel('deployment')->debug('Request transformer registered', [
+            $this->logger->channel('deployment')->debug('Request transformer registered', [
                 'pattern' => $pattern,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 
@@ -72,8 +79,9 @@ final class EdgeComputingService extends Model
          */
         public static function registerResponseTransformer(string $pattern, callable $handler): void
         {
-            Log::channel('deployment')->debug('Response transformer registered', [
+            $this->logger->channel('deployment')->debug('Response transformer registered', [
                 'pattern' => $pattern,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
             ]);
         }
 

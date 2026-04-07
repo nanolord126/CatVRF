@@ -2,34 +2,45 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class FarmDirectOrderController extends Model
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Auth\Guard;
+
+final class FarmDirectOrderController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     public function __construct(
+        private readonly Request $request,
             private readonly FarmDirectService $service,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+            private readonly FraudControlService $fraud,
+            private readonly LogManager $logger,
+            private readonly Guard $guard,
+    ) {}
         public function index(): JsonResponse
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
-                Log::channel('audit')->info('FarmDirect orders list', [
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
+                $this->logger->channel('audit')->info('FarmDirect orders list', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $this->guard->id(),
                 ]);
                 $orders = FarmOrder::where('tenant_id', $tenantId)
                     ->with(['product', 'farm'])
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('FarmDirect orders list error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('FarmDirect orders list error', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -40,9 +51,9 @@ final class FarmDirectOrderController extends Model
         {
             try {
                 $correlationId = Str::uuid()->toString();
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);
-                Log::channel('audit')->info('FarmDirect order viewed', [
+                $this->logger->channel('audit')->info('FarmDirect order viewed', [
                     'order_id' => $id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -51,7 +62,14 @@ final class FarmDirectOrderController extends Model
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
                 return $this->errorResponse('Order not found', 404);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('FarmDirect order show error', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('FarmDirect order show error', [
                     'error' => $e->getMessage(),
                 ]);
                 return $this->errorResponse('Failed to fetch order', 500);
@@ -60,10 +78,10 @@ final class FarmDirectOrderController extends Model
         public function store(StoreOrderRequest $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check($this->guard->id() ?? 0, 'farmdirect_order_store', 0, $request->ip(), null, $correlationId);
             try {
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
-                $clientId = auth()->id() ?? 0;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
+                $clientId = $this->guard->id() ?? 0;
                 $order = $this->service->createOrder(
                     productId: $request->integer('product_id'),
                     clientId: $clientId,
@@ -72,7 +90,7 @@ final class FarmDirectOrderController extends Model
                     tenantId: $tenantId,
                     correlationId: $correlationId,
                 );
-                Log::channel('audit')->info('FarmDirect order created', [
+                $this->logger->channel('audit')->info('FarmDirect order created', [
                     'order_id' => $order->id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -80,7 +98,14 @@ final class FarmDirectOrderController extends Model
                 ]);
                 return $this->successResponse($order, 'Order created successfully', 201);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('FarmDirect order creation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('FarmDirect order creation failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId ?? 'unknown',
                 ]);
@@ -90,15 +115,15 @@ final class FarmDirectOrderController extends Model
         public function update(int $id, UpdateOrderRequest $request): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_update', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check($this->guard->id() ?? 0, 'farmdirect_order_update', 0, $request->ip(), null, $correlationId);
             try {
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);
                 if ($order->status !== 'pending') {
                     return $this->errorResponse('Can only update pending orders', 400);
                 }
                 $order->update($request->validated());
-                Log::channel('audit')->info('FarmDirect order updated', [
+                $this->logger->channel('audit')->info('FarmDirect order updated', [
                     'order_id' => $id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -107,7 +132,14 @@ final class FarmDirectOrderController extends Model
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
                 return $this->errorResponse('Order not found', 404);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('FarmDirect order update failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('FarmDirect order update failed', [
                     'error' => $e->getMessage(),
                 ]);
                 return $this->errorResponse('Failed to update order', 500);
@@ -116,15 +148,15 @@ final class FarmDirectOrderController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_destroy', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check($this->guard->id() ?? 0, 'farmdirect_order_destroy', 0, $this->request->ip(), null, $correlationId);
             try {
-                $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
+                $tenantId = $this->guard->user()?->tenant_id ?? tenant()->id;
                 $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);
                 if ($order->status !== 'pending') {
                     return $this->errorResponse('Can only delete pending orders', 400);
                 }
                 $order->delete();
-                Log::channel('audit')->info('FarmDirect order deleted', [
+                $this->logger->channel('audit')->info('FarmDirect order deleted', [
                     'order_id' => $id,
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
@@ -133,7 +165,14 @@ final class FarmDirectOrderController extends Model
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
                 return $this->errorResponse('Order not found', 404);
             } catch (\Exception $e) {
-                Log::channel('audit')->error('FarmDirect order deletion failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('FarmDirect order deletion failed', [
                     'error' => $e->getMessage(),
                 ]);
                 return $this->errorResponse('Failed to delete order', 500);

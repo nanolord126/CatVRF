@@ -2,18 +2,16 @@
 
 namespace App\Domains\Travel\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-final class TravelTransportationController extends Model
+use Psr\Log\LoggerInterface;
+use App\Http\Controllers\Controller;
+
+final class TravelTransportationController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
-    public function __construct(
-            private readonly TransportationService $transportationService,
-            private readonly FraudControlService $fraudControlService,
-        ) {}
+
+    public function __construct(private readonly TransportationService $transportationService,
+            private readonly FraudControlService $fraud,
+        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         public function index(Request $request): JsonResponse
         {
@@ -32,7 +30,7 @@ final class TravelTransportationController extends Model
 
                 $transportation = $query->paginate($per_page, ['*'], 'page', $page);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $transportation->items(),
                     'pagination' => [
@@ -41,7 +39,7 @@ final class TravelTransportationController extends Model
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to list transportation',
                     'correlation_id' => Str::uuid(),
@@ -54,13 +52,13 @@ final class TravelTransportationController extends Model
             try {
                 $transportation = TravelTransportation::where('tenant_id', tenant()->id)->findOrFail($id);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $transportation,
                     'correlation_id' => Str::uuid(),
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Transportation not found',
                     'correlation_id' => Str::uuid(),
@@ -71,7 +69,7 @@ final class TravelTransportationController extends Model
         public function store(Request $request): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'transport_store', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'transport_store', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $request->validate([
@@ -86,7 +84,7 @@ final class TravelTransportationController extends Model
                 ]);
 
                 $validated = $request->all();
-                $transportation = DB::transaction(function () use ($validated, $correlationId) {
+                $transportation = $this->db->transaction(function () use ($validated, $correlationId) {
                     return TravelTransportation::create([
                         'tenant_id' => tenant()->id,
                         'type' => ($validated['type'] ?? null),
@@ -106,19 +104,19 @@ final class TravelTransportationController extends Model
                     ]);
                 });
 
-                Log::channel('audit')->info('Transportation created', [
+                $this->logger->info('Transportation created', [
                     'transportation_id' => $transportation->id,
                     'type' => $transportation->type,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $transportation,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to create transportation',
                     'correlation_id' => $correlationId,
@@ -129,7 +127,7 @@ final class TravelTransportationController extends Model
         public function update(Request $request, int $id): JsonResponse
         {
             $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-            $this->fraudControlService->check(auth()->id() ?? 0, 'transport_update', 0, $request->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'transport_update', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $transportation = TravelTransportation::where('tenant_id', tenant()->id)->findOrFail($id);
@@ -137,7 +135,7 @@ final class TravelTransportationController extends Model
                 $this->authorize('update', $transportation);
 
                 $validated = $request->all();
-                $transportation = DB::transaction(function () use ($validated, $transportation, $correlationId) {
+                $transportation = $this->db->transaction(function () use ($validated, $transportation, $correlationId) {
                     $transportation->update([
                         'price' => ($validated['price'] ?? $transportation->price),
                         'status' => ($validated['status'] ?? $transportation->status),
@@ -148,13 +146,13 @@ final class TravelTransportationController extends Model
                     return $transportation;
                 });
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'data' => $transportation,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to update transportation',
                     'correlation_id' => $correlationId,
@@ -165,28 +163,28 @@ final class TravelTransportationController extends Model
         public function destroy(int $id): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
-            $this->fraudControlService->check(auth()->id() ?? 0, 'transport_destroy', 0, request()->ip(), null, $correlationId);
+            $this->fraud->check(userId: $request->user()?->id ?? 0, operationType: 'transport_destroy', amount: 0, correlationId: $correlationId ?? '');
 
             try {
                 $transportation = TravelTransportation::where('tenant_id', tenant()->id)->findOrFail($id);
 
                 $this->authorize('delete', $transportation);
 
-                DB::transaction(function () use ($transportation) {
+                $this->db->transaction(function () use ($transportation) {
                     $transportation->delete();
                 });
 
-                Log::channel('audit')->info('Transportation deleted', [
+                $this->logger->info('Transportation deleted', [
                     'transportation_id' => $transportation->id,
                     'correlation_id' => $correlationId,
                 ]);
 
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => true,
                     'correlation_id' => $correlationId,
                 ]);
             } catch (Throwable $e) {
-                return response()->json([
+                return new \Illuminate\Http\JsonResponse([
                     'success' => false,
                     'message' => 'Failed to delete transportation',
                     'correlation_id' => $correlationId,

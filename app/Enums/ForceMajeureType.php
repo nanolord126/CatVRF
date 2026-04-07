@@ -1,15 +1,67 @@
 <?php declare(strict_types=1);
 
+/**
+ *  — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ */
+
+
+/**
+ *  — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @package CatVRF
+ * @version 2026.1
+ * @author CatVRF Team
+ * @license Proprietary
+
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ * @see https://catvrf.ru/docs/component
+ */
+
+
 namespace App\Enums;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-final class ForceMajeureType extends Model
-{
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+enum ForceMajeureType: string {
+
     case NATURAL_DISASTER = 'natural_disaster'; // Стихийные бедствия
         case UTILITY_FAILURE = 'utility_failure';   // Аварии ЖКХ (свет, вода в салоне)
         case STAFF_ILLNESS = 'staff_illness';       // Болезнь мастера (со справкой)

@@ -2,19 +2,24 @@
 
 namespace App\Jobs\Auto;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
 
-final class SurgeRecalculationJob extends Model
+final class SurgeRecalculationJob implements ShouldQueue
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
         private string $correlationId;
 
-        public function __construct()
+        public function __construct(
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+    )
         {
             $this->correlationId = Str::uuid()->toString();
             $this->onQueue('high');
@@ -33,7 +38,7 @@ final class SurgeRecalculationJob extends Model
         public function handle(SurgePricingService $surgePricingService): void
         {
             try {
-                DB::transaction(function () use ($surgePricingService) {
+                $this->db->transaction(function () use ($surgePricingService) {
                     $zones = $surgePricingService->getActiveSurgeZones();
 
                     foreach ($zones as $zone) {
@@ -49,7 +54,7 @@ final class SurgeRecalculationJob extends Model
                                 $this->correlationId
                             );
 
-                            Log::channel('audit')->info('Surge multiplier updated', [
+                            $this->logger->channel('audit')->info('Surge multiplier updated', [
                                 'correlation_id' => $this->correlationId,
                                 'zone_id' => $zone->id,
                                 'old_multiplier' => $zone->surge_multiplier,
@@ -59,7 +64,14 @@ final class SurgeRecalculationJob extends Model
                     }
                 });
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Surge recalculation failed', [
+                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    'exception' => $e::class,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'correlation_id' => request()->header('X-Correlation-ID'),
+                ]);
+
+                $this->logger->channel('audit')->error('Surge recalculation failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),

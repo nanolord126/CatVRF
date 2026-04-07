@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\Legal;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
-final class LegalApiController extends Model
+final class LegalApiController extends Controller
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     /**
          * Constructor injection for services.
          */
@@ -17,7 +16,9 @@ final class LegalApiController extends Model
             private readonly ConsultationService $consultationService,
             private readonly ContractService $contractService,
             private readonly AILegalAdvisorConstructor $aiAdvisor,
-        ) {}
+            private readonly LogManager $logger,
+            private readonly ResponseFactory $response,
+    ) {}
         /**
          * Get AI Recommendations based on user requirements.
          * Endpoint: GET /api/v1/legal/recommendations
@@ -32,7 +33,7 @@ final class LegalApiController extends Model
                 'is_urgent' => 'nullable|boolean',
             ]);
             try {
-                Log::channel('audit')->info('Legal API: AI recommendations requested', [
+                $this->logger->channel('audit')->info('Legal API: AI recommendations requested', [
                     'user_id' => $request->user()?->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -43,14 +44,14 @@ final class LegalApiController extends Model
                     $request->get('region', 'Москва'),
                     $correlationId
                 );
-                return response()->json($result);
+                return $this->response->json($result);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Legal API Error: AI Advisor failed', [
+                $this->logger->channel('audit')->error('Legal API Error: AI Advisor failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка AI-конструктора.',
                     'correlation_id' => $correlationId,
@@ -82,7 +83,7 @@ final class LegalApiController extends Model
                     (bool) $request->get('is_urgent', false),
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'consultation_uuid' => $consultation->uuid,
                     'price_cents' => $consultation->price,
@@ -90,11 +91,11 @@ final class LegalApiController extends Model
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Legal API Error: Booking failed', [
+                $this->logger->channel('audit')->error('Legal API Error: Booking failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Не удалось забронировать консультацию.',
                     'error_type' => class_basename($e),
@@ -126,18 +127,18 @@ final class LegalApiController extends Model
                     $consultation,
                     $correlationId
                 );
-                return response()->json([
+                return $this->response->json([
                     'success' => true,
                     'contract_uuid' => $contract->uuid,
                     'status' => $contract->status,
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('Legal API Error: Drafting failed', [
+                $this->logger->channel('audit')->error('Legal API Error: Drafting failed', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                return response()->json([
+                return $this->response->json([
                     'success' => false,
                     'message' => 'Ошибка при подготовке черновика договора.',
                     'correlation_id' => $correlationId,
@@ -162,6 +163,6 @@ final class LegalApiController extends Model
                 $query->whereHas('firm', fn($q) => $q->where('city', $request->get('city')));
             }
             $lawyers = $query->paginate(15);
-            return response()->json($lawyers);
+            return $this->response->json($lawyers);
         }
 }

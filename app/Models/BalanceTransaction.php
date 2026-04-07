@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
 
 final class BalanceTransaction extends Model
 {
     protected $table = 'balance_transactions';
 
     protected $fillable = [
+        'uuid',
+        'correlation_id',
         'wallet_id',
         'tenant_id',
         'type',
@@ -72,7 +75,7 @@ final class BalanceTransaction extends Model
     protected static function booted(): void
     {
         parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
+        static::addGlobalScope('tenant_id', function (Builder $query) {
             if (function_exists('tenant') && tenant('id')) {
                 $query->where('tenant_id', tenant('id'));
             }

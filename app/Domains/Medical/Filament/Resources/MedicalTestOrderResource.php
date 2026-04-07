@@ -2,14 +2,11 @@
 
 namespace App\Domains\Medical\Filament\Resources;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Resources\Resource;
 
-final class MedicalTestOrderResource extends Model
+final class MedicalTestOrderResource extends Resource
 {
-    use HasFactory;
-
-    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+
     protected static ?string $model = MedicalTestOrder::class;
 
         protected static ?string $navigationGroup = 'Medical';
@@ -32,8 +29,31 @@ final class MedicalTestOrderResource extends Model
                 TextColumn::make('clinic.name'),
                 TextColumn::make('total_amount')->numeric()->sortable(),
                 TextColumn::make('commission_amount')->numeric()->sortable(),
-                BadgeColumn::make('status'),
+                TextColumn::make('status')->badge(),
                 TextColumn::make('ordered_at')->sortable(),
             ])->filters([])->actions([])->bulkActions([]);
         }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return static::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => static::class,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 }
