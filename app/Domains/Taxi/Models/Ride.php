@@ -5,29 +5,31 @@ namespace App\Domains\Taxi\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Tenant;
 use App\Models\BusinessGroup;
+use App\Models\User;
 
-final class Driver extends Model
+final class Ride extends Model
 {
-    protected $table = "taxi_drivers";
+    protected $table = "taxi_rides";
 
     protected $fillable = [
-        "tenant_id", "business_group_id", "uuid", "correlation_id", 
-        "first_name", "last_name", "license_number", "phone_number",
-        "rating", "is_active", "is_available", "current_lat", "current_lon", "documents", "metadata"
+        "tenant_id", "business_group_id", "uuid", "correlation_id",
+        "driver_id", "customer_id", "pickup_lat", "pickup_lon", "pickup_address",
+        "dropoff_lat", "dropoff_lon", "dropoff_address", "status", "price", "distance_km",
+        "route_details", "metadata"
     ];
 
     protected $casts = [
-        "documents" => "json",
+        "route_details" => "json",
         "metadata" => "json",
-        "is_active" => "boolean",
-        "is_available" => "boolean",
-        "rating" => "decimal:2",
-        "current_lat" => "decimal:8",
-        "current_lon" => "decimal:8"
+        "price" => "decimal:2",
+        "pickup_lat" => "decimal:8",
+        "pickup_lon" => "decimal:8",
+        "dropoff_lat" => "decimal:8",
+        "dropoff_lon" => "decimal:8",
+        "distance_km" => "decimal:2"
     ];
 
     protected static function booted(): void
@@ -53,13 +55,13 @@ final class Driver extends Model
         return $this->belongsTo(Tenant::class);
     }
 
-    public function businessGroup(): BelongsTo
+    public function driver(): BelongsTo
     {
-        return $this->belongsTo(BusinessGroup::class);
+        return $this->belongsTo(Driver::class);
     }
 
-    public function rides(): HasMany
+    public function customer(): BelongsTo
     {
-        return $this->hasMany(Ride::class);
+        return $this->belongsTo(User::class, "customer_id");
     }
 }
