@@ -4,12 +4,8 @@ namespace App\Domains\Art\Policies;
 
 use App\Models\User;
 use App\Domains\Art\Models\Artist;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ArtistPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

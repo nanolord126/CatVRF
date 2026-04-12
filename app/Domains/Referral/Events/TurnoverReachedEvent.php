@@ -17,8 +17,7 @@ declare(strict_types=1);
  */
 final class TurnoverReachedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     /**
      * Жестко типизированный конструктор транспортного события.
      *

@@ -19,6 +19,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class SecurityEventOccurred implements ShouldBroadcast
 {
+    use Dispatchable, InteractsWithSockets, SerializesModels;
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;

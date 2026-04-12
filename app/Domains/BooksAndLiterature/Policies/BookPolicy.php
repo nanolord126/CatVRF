@@ -4,12 +4,8 @@ namespace App\Domains\BooksAndLiterature\Policies;
 
 use App\Models\User;
 use App\Domains\BooksAndLiterature\Models\Book;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class BookPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

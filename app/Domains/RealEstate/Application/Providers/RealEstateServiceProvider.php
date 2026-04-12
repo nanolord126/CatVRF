@@ -29,9 +29,6 @@ use Psr\Log\LoggerInterface;
 
 final class RealEstateServiceProvider extends ServiceProvider
 {
-    public function __construct(
-        private readonly LoggerInterface $logger) {}
-
     public function register(): void
     {
         // ── Repository bindings ────────────────────────────────────────────────
@@ -80,7 +77,7 @@ final class RealEstateServiceProvider extends ServiceProvider
         foreach ($useCases as $useCase) {
             $this->app->when($useCase)
                 ->needs(LoggerInterface::class)
-                ->give(static fn () => $this->logger->channel('audit'));
+                ->give(static fn ($app) => $app->make('log')->channel('audit'));
         }
 
         // ── LoggerInterface → audit channel для Repository (инфраструктура) ───
@@ -94,7 +91,7 @@ final class RealEstateServiceProvider extends ServiceProvider
         foreach ($repositories as $repo) {
             $this->app->when($repo)
                 ->needs(LoggerInterface::class)
-                ->give(static fn () => $this->logger->channel('audit'));
+                ->give(static fn ($app) => $app->make('log')->channel('audit'));
         }
     }
 

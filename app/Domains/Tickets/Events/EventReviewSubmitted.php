@@ -18,11 +18,14 @@
 
 namespace App\Domains\Tickets\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class EventReviewSubmitted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public EventReview $review,
             private string $correlationId = '') {}

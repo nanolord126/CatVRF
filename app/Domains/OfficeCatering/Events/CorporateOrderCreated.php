@@ -18,11 +18,14 @@
 
 namespace App\Domains\OfficeCatering\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class CorporateOrderCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly int $corporateOrderId,
             private readonly int $tenantId,

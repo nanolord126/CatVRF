@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Food;
 
+
 use App\Services\InventoryManagementService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

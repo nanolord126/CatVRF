@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Kids\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Carbon\Carbon;
 

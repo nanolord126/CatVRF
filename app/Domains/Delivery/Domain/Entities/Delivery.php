@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 namespace App\Domains\Delivery\Domain\Entities;
+use Illuminate\Database\Eloquent\Model;
 
 use App\Domains\Delivery\Domain\Enums\DeliveryStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;

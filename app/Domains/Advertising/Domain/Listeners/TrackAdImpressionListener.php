@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
 use App\Services\AuditService;
@@ -26,7 +28,6 @@ final class TrackAdImpressionListener implements ShouldQueue
     /**
      * The queue connection that should handle the job.
      */
-    public string $queue = 'advertising';
 
     /**
      * Handle the event.

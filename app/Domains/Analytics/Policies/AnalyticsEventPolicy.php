@@ -4,12 +4,8 @@ namespace App\Domains\Analytics\Policies;
 
 use App\Models\User;
 use App\Domains\Analytics\Models\AnalyticsEvent;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class AnalyticsEventPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

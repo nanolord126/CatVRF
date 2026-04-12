@@ -4,12 +4,8 @@ namespace App\Domains\Confectionery\Policies;
 
 use App\Models\User;
 use App\Domains\Confectionery\Models\ConfectioneryShop;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ConfectioneryShopPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

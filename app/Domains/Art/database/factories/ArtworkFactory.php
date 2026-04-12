@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 final class ArtworkFactory extends Factory
 {
-    private $model = Artwork::class;
+    protected $model = Artwork::class;
 
     public function definition(): array
     {

@@ -40,8 +40,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class RideRequested
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly RideId $rideId,
         public readonly int $clientId

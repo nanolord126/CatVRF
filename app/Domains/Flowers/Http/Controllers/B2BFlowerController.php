@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
-final readonly class B2BFlowerController extends Controller
+final class B2BFlowerController extends Controller
 {
     public function __construct(
         private B2BFlowerOrderService $b2bOrderService,

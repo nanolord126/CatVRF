@@ -6,9 +6,10 @@ namespace App\Domains\HomeServices\Http\Controllers;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 
-final readonly class ServiceReviewController extends Controller
+final class ServiceReviewController extends Controller
 {
-
+
+
     public function __construct(private ReviewService $reviewService,
             private readonly FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}

@@ -4,12 +4,8 @@ namespace App\Domains\Veterinary\Policies;
 
 use App\Models\User;
 use App\Domains\Veterinary\Models\VeterinaryAppointment;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class VeterinaryAppointmentPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

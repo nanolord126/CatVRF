@@ -17,8 +17,7 @@ declare(strict_types=1);
  */
 final class ShipmentStatusChangedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly int $shipmentId,
         public readonly ShipmentStatus $oldStatus,

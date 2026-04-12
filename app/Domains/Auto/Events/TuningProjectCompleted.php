@@ -18,13 +18,16 @@
 
 namespace App\Domains\Auto\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 use Psr\Log\LoggerInterface;
 final class TuningProjectCompleted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly TuningProject $project,
             public readonly string $correlationId, public readonly LoggerInterface $logger

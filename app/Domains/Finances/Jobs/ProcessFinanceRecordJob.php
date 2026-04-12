@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Finances\Jobs;
 
+
 use App\Domains\Finances\Models\FinanceRecord;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

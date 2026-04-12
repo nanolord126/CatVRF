@@ -22,9 +22,6 @@ namespace App\Domains\Luxury\Policies;
 use Illuminate\Contracts\Auth\Guard;
 final class VIPBookingPolicy
 {
-
-    use HandlesAuthorization;
-
         public function __construct(
             private readonly FraudControlService $fraud, private readonly Guard $guard
         ) {}

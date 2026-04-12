@@ -22,7 +22,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  */
 final class ApartmentBookingCollection extends ResourceCollection
 {
-    private $collects = ApartmentBookingResource::class;
+    public $collects = ApartmentBookingResource::class;
 
     /**
      * Handle toArray operation.

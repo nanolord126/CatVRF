@@ -32,7 +32,7 @@ use Typesense\Client;
  * @see \App\Services\AuditService
  * @package App\Domains\Analytics\Infrastructure\Providers
  */
-final readonly class AnalyticsServiceProvider extends ServiceProvider
+final class AnalyticsServiceProvider extends ServiceProvider
 {
     /**
      * Handle register operation.

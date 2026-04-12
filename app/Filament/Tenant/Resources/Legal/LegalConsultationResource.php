@@ -3,6 +3,10 @@
 namespace App\Filament\Tenant\Resources\Legal;
 
 use Filament\Resources\Resource;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Filament\Forms;
+use Filament\Tables;
 
 final class LegalConsultationResource extends Resource
 {

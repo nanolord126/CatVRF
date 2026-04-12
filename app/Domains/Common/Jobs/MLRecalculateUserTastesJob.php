@@ -1,6 +1,11 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Common\Jobs;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
 use Carbon\Carbon;
 
@@ -20,7 +25,6 @@ final class MLRecalculateUserTastesJob
 
         public int $timeout = 600; // 10 минут на всё
 
-        public string $queue = 'default';
 
         public function __construct(
             private readonly TasteMLService $mlService, private readonly Request $request, private readonly LoggerInterface $logger) {}

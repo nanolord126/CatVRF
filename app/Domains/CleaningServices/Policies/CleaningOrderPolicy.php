@@ -8,16 +8,11 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Models\User;
 use App\Domains\CleaningServices\Models\CleaningOrder;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class CleaningOrderPolicy
 {
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly Request $request,) {}
-
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

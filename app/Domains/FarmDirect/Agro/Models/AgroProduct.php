@@ -12,7 +12,7 @@ final class AgroProduct extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'agro_products';
 

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 
 
+
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Bus\Queueable;

@@ -4,12 +4,8 @@ namespace App\Domains\Furniture\Policies;
 
 use App\Models\User;
 use App\Domains\Furniture\Models\FurnitureItem;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class FurnitureItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

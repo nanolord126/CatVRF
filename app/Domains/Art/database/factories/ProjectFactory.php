@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 final class ProjectFactory extends Factory
 {
-    private $model = Project::class;
+    protected $model = Project::class;
 
     public function definition(): array
     {

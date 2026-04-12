@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Courses\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,7 +44,7 @@ final class Course extends Model
             'is_published' => 'boolean',
         ];
 
-        public function booted(): void
+        protected static function booted(): void
         {
             static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant()->id ?? 0));
         }

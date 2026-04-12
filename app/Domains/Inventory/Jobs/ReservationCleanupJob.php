@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Inventory\Jobs;
 
+
 use Carbon\Carbon;
 
 use App\Domains\Inventory\Models\Reservation;

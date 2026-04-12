@@ -26,7 +26,7 @@ use Illuminate\Queue\SerializesModels;
 final class PartWarrantyClaimSubmitted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     private string $correlationId;
 
     public function __construct(

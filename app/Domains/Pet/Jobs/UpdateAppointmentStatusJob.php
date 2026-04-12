@@ -1,6 +1,10 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Pet\Jobs;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+
+use Illuminate\Foundation\Bus\Dispatchable;
 
 
 use Psr\Log\LoggerInterface;

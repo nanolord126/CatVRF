@@ -4,12 +4,8 @@ namespace App\Domains\Legal\Policies;
 
 use App\Models\User;
 use App\Domains\Legal\Models\LegalConsultation;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class LegalConsultationPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

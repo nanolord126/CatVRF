@@ -17,6 +17,9 @@
 
 
 namespace App\Domains\Consulting\OptimizationServices\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

@@ -18,11 +18,14 @@
 
 namespace App\Domains\Flowers\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class B2BFlowerOrderPlaced
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly B2BFlowerOrder $order,
             public readonly string $correlationId) {}

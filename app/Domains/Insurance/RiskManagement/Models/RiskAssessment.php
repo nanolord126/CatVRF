@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Insurance\RiskManagement\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
 
 use Carbon\Carbon;
 

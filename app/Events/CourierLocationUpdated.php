@@ -19,7 +19,7 @@ use Illuminate\Queue\SerializesModels;
 final class CourierLocationUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         private readonly int    $courierId,
         private readonly float  $lat,

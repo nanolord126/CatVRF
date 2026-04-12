@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 final class ReviewFactory extends Factory
 {
-    private $model = Review::class;
+    protected $model = Review::class;
 
     public function definition(): array
     {

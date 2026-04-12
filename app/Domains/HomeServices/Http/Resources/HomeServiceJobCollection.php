@@ -24,7 +24,7 @@ final class HomeServiceJobCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = HomeServiceJobResource::class;
+    public $collects = HomeServiceJobResource::class;
 
     /**
      * Трансформация коллекции в массив.

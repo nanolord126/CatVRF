@@ -33,7 +33,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @package App\Domains\CleaningServices\Http\Resources
  */
-final readonly class CleaningOrderResource extends JsonResource
+final class CleaningOrderResource extends JsonResource
 {
     /**
      * Handle toArray operation.

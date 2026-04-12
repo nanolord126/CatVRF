@@ -18,11 +18,14 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class EventCancelled
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public EntertainmentEvent $event,
             public string $correlationId) {}

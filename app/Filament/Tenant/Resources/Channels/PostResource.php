@@ -3,6 +3,10 @@
 namespace App\Filament\Tenant\Resources\Channels;
 
 use Filament\Resources\Resource;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Filament\Forms;
+use Filament\Tables;
 
 final class PostResource extends Resource
 {

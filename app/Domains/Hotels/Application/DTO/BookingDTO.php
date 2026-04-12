@@ -22,7 +22,7 @@ use Carbon\Carbon;
  *
  * @package App\Domains\Hotels\Application\DTO
  */
-final readonly class BookingDTO extends Data
+final class BookingDTO extends Data
 {
     public function __construct(
         private readonly ?string $id,

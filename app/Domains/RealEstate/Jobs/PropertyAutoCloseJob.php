@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Jobs;
 
+
 use App\Domains\RealEstate\Models\Listing;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

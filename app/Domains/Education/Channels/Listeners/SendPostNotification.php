@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Channels\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 
 use Psr\Log\LoggerInterface;
@@ -11,7 +14,6 @@ final class SendPostNotification
 
     use InteractsWithQueue;
 
-        public string $queue = 'notifications';
 
         public int $tries = 3;
 

@@ -27,7 +27,7 @@ final class TaxiRideCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = TaxiRideResource::class;
+    public $collects = TaxiRideResource::class;
 
     /**
      * Трансформация коллекции в массив.

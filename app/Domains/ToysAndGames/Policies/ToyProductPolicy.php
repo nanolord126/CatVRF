@@ -4,12 +4,8 @@ namespace App\Domains\ToysAndGames\Policies;
 
 use App\Models\User;
 use App\Domains\ToysAndGames\Models\ToyProduct;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ToyProductPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

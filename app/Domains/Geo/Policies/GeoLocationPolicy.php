@@ -4,12 +4,8 @@ namespace App\Domains\Geo\Policies;
 
 use App\Models\User;
 use App\Domains\Geo\Models\GeoLocation;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class GeoLocationPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

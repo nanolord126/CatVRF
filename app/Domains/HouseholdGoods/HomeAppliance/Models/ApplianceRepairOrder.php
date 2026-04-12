@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\HouseholdGoods\HomeAppliance\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Illuminate\Contracts\Auth\Guard;

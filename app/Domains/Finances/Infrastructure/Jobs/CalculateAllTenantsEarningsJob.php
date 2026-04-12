@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Finances\Infrastructure\Jobs;
 
+
 use App\Domains\Finances\Application\UseCases\ProcessMonthlyPayoutsUseCase;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;

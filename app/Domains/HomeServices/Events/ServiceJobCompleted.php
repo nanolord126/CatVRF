@@ -18,6 +18,10 @@
 
 namespace App\Domains\HomeServices\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 use Carbon\Carbon;
 
 final class ServiceJobCompleted
@@ -25,8 +29,7 @@ final class ServiceJobCompleted
 
     // Dependencies injected via constructor
         // Add private readonly properties here
-        use Dispatchable, InteractsWithSockets, SerializesModels;
-
+        
         public function __construct(public ServiceJob $job, public string $correlationId) {}
 
     /**

@@ -18,11 +18,14 @@
 
 namespace App\Domains\Logistics\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class ShipmentDelivered
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public Shipment $shipment,
             public string $correlationId) {}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Taxi;
 
+
 use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

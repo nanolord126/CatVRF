@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\RealEstate\Domain\Events\ViewingConfirmed;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,7 +15,6 @@ final class NotifyClientOnViewingConfirmed implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public string $queue = 'notifications';
 
     public int $tries = 3;
 

@@ -4,12 +4,8 @@ namespace App\Domains\CarRental\Policies;
 
 use App\Models\User;
 use App\Domains\CarRental\Models\RentalBooking;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class RentalBookingPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  *
  * CANON 2026 — Layer 8: Resources (B2B namespace).
  */
-final readonly class AnalyticsEventResource extends JsonResource
+final class AnalyticsEventResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

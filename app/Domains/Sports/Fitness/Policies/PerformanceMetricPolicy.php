@@ -24,10 +24,6 @@ final class PerformanceMetricPolicy
 {
     public function __construct(
         private readonly Guard $guard) {}
-
-
-    use HandlesAuthorization;
-
         public function viewAny(User $user): Response
         {
             return $user->$this->guard ? $this->response->allow() : $this->response->deny();

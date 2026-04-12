@@ -17,6 +17,7 @@
 
 
 namespace App\Domains\Fashion\FashionRetail\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;

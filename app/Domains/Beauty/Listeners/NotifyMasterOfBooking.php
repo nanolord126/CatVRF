@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\Beauty\Events\AppointmentBooked;
 use Illuminate\Contracts\Queue\ShouldQueue;

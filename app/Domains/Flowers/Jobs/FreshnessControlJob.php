@@ -17,6 +17,11 @@
 
 
 namespace App\Domains\Flowers\Jobs;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
 use Carbon\Carbon;
 

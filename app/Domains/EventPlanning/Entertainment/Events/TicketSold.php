@@ -18,11 +18,14 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class TicketSold
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public TicketSale $ticket,
             public string $correlationId) {}

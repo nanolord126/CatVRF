@@ -18,6 +18,10 @@
 
 namespace App\Domains\Travel\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class TourBooked
 {
 

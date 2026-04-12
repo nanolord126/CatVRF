@@ -4,12 +4,8 @@ namespace App\Domains\GeoLogistics\Policies;
 
 use App\Models\User;
 use App\Domains\GeoLogistics\Models\LogisticsRoute;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class LogisticsRoutePolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

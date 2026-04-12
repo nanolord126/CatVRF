@@ -25,7 +25,7 @@ use Illuminate\Validation\Factory as ValidationFactory;
  * @see \App\Http\Controllers\BaseApiController
  * @package App\Domains\Analytics\Presentation\Http\Controllers
  */
-final readonly class AnalyticsController extends Controller
+final class AnalyticsController extends Controller
 {
     public function __construct(
         private readonly TrackEventUseCase $trackEventUseCase,

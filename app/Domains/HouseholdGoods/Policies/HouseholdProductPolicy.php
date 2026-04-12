@@ -4,12 +4,8 @@ namespace App\Domains\HouseholdGoods\Policies;
 
 use App\Models\User;
 use App\Domains\HouseholdGoods\Models\HouseholdProduct;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class HouseholdProductPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

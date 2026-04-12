@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Jobs;
+use Illuminate\Queue\InteractsWithQueue;
 
 
 
@@ -8,7 +9,7 @@ namespace App\Domains\ShortTermRentals\Jobs;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\InteractsWithQueue;
 use Illuminate\Bus\Queueable;

@@ -4,12 +4,8 @@ namespace App\Domains\AI\Policies;
 
 use App\Models\User;
 use App\Domains\AI\Models\AIModel;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class AIModelPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

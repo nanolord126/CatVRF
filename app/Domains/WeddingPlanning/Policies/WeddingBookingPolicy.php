@@ -4,12 +4,8 @@ namespace App\Domains\WeddingPlanning\Policies;
 
 use App\Models\User;
 use App\Domains\WeddingPlanning\Models\WeddingBooking;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class WeddingBookingPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

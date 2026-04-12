@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 
 use Psr\Log\LoggerInterface;
@@ -10,15 +13,7 @@ final class DeductTourBookingCommissionListener
     use InteractsWithQueue;
 use App\Services\FraudControlService;
 
-        public function __construct(public string $queue = 'travel',
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
-
-        public function handle(TourBooked $event): void
-        {
-            try {
-                $this->db->transaction(function () use ($event) {
-                    $wallet = $event->booking->agency->owner->wallet;
-
+        public function __construct(
                     if ($wallet === null) {
                         throw new \RuntimeException('Agency owner wallet not found');
                     }

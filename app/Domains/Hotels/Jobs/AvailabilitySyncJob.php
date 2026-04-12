@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Hotels\Jobs;
 
+
 use App\Domains\Hotels\Services\HotelAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;

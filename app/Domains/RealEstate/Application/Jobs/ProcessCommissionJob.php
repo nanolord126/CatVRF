@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\Jobs;
 
+
 use App\Domains\RealEstate\Domain\Repository\ContractRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\ContractId;
 use App\Services\WalletService;
@@ -26,7 +27,6 @@ final class ProcessCommissionJob implements ShouldQueue
 
     public int $backoff = 120;
 
-    public string $queue = 'commissions';
 
     public function __construct(
         private readonly string $contractId,

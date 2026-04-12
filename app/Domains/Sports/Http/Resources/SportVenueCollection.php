@@ -27,7 +27,7 @@ final class SportVenueCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = SportVenueResource::class;
+    public $collects = SportVenueResource::class;
 
     /**
      * Трансформация коллекции в массив.

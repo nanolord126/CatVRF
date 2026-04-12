@@ -4,12 +4,8 @@ namespace App\Domains\Staff\Policies;
 
 use App\Models\User;
 use App\Domains\Staff\Models\StaffMember;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class StaffMemberPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

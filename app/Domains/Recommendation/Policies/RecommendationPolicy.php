@@ -4,12 +4,8 @@ namespace App\Domains\Recommendation\Policies;
 
 use App\Models\User;
 use App\Domains\Recommendation\Models\Recommendation;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class RecommendationPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

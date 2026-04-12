@@ -7,16 +7,11 @@ use Illuminate\Http\Request;
 use App\Domains\Beauty\Models\Appointment;
 use App\Models\User;
 use App\Services\FraudControlService;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class AppointmentPolicy
 {
     public function __construct(
         private readonly Request $request,
     ) {}
-
-    use HandlesAuthorization;
-
     public function view(User $user, Appointment $appointment): bool
     {
         return $user->id === $appointment->user_id

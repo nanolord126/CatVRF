@@ -40,7 +40,7 @@ use Illuminate\Support\Collection;
  *
  * @package App\Domains\Staff\Application\DTO\B2C
  */
-final readonly class StaffPublicProfileDTO extends Data
+final class StaffPublicProfileDTO extends Data
 {
     public function __construct(
         private readonly FullName $fullName,

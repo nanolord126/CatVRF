@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Models\User;
 use Illuminate\Bus\Queueable;

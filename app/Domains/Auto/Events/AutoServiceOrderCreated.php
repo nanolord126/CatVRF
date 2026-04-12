@@ -29,7 +29,7 @@ use Illuminate\Queue\SerializesModels;
 final class AutoServiceOrderCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly AutoServiceOrder $order,
         public readonly string $correlationId

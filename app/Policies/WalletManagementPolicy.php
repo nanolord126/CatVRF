@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class WalletManagementPolicy
@@ -23,9 +24,6 @@ namespace App\Policies;
  */
 final class WalletManagementPolicy extends Model
 {
-
-    use HandlesAuthorization;
-
         /**
          * Handle view operation.
          *

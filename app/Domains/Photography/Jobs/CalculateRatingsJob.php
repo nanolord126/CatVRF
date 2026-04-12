@@ -4,6 +4,7 @@ namespace App\Domains\Photography\Jobs;
 
 
 
+
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;

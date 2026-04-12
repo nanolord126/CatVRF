@@ -15,8 +15,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 
 final class ServiceWarrantyClaimApproved
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     /**
      * Create a new event instance.
      *

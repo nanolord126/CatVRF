@@ -4,12 +4,8 @@ namespace App\Domains\Pharmacy\Policies;
 
 use App\Models\User;
 use App\Domains\Pharmacy\Models\Pharmacy;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class PharmacyPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

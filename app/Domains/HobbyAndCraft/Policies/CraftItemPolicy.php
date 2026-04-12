@@ -4,12 +4,8 @@ namespace App\Domains\HobbyAndCraft\Policies;
 
 use App\Models\User;
 use App\Domains\HobbyAndCraft\Models\CraftItem;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class CraftItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -3,6 +3,7 @@
 namespace App\Domains\Consulting\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Consulting\Models\Consultant;
 use App\Services\AuditService;

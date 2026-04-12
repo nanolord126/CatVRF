@@ -20,9 +20,6 @@ namespace App\Domains\Marketplace\Shop\Policies;
 
 final class ShopProductPolicy
 {
-
-    use HandlesAuthorization;
-
         public function view(User $user, ShopProduct $product): bool
         {
             return $user->tenant_id === $product->tenant_id;

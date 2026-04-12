@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\OpenApi;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class OpenApiSpec

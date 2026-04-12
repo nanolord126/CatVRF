@@ -27,8 +27,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ServiceWarrantyClaimRejected
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly mixed $warranty, // Implemented per canon 2026
         public readonly string $rejectionReason,

@@ -4,12 +4,8 @@ namespace App\Domains\Electronics\Policies;
 
 use App\Models\User;
 use App\Domains\Electronics\Models\ElectronicsProduct;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ElectronicsProductPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

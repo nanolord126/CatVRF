@@ -3,6 +3,7 @@
 namespace App\Domains\Geo\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Geo\Models\GeoLocation;
 use App\Services\AuditService;

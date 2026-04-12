@@ -28,7 +28,7 @@ use Illuminate\Queue\SerializesModels;
 final class InsurancePolicyExpiring implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly VehicleInsurance $insurance,
         public readonly int $daysUntilExpiry,

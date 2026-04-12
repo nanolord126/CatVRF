@@ -9,7 +9,7 @@ final class ConstructionEstimate extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
         protected $table = 'construction_estimates';
 

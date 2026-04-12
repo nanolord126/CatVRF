@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\VeganProducts\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 
 
@@ -24,8 +28,7 @@ namespace App\Domains\VeganProducts\Events;
 final class VeganProductCreatedEvent
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         /**
          * Create a new event instance.
          */

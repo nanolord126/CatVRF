@@ -27,7 +27,7 @@ final class TicketCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = TicketResource::class;
+    public $collects = TicketResource::class;
 
     /**
      * Трансформация коллекции в массив.

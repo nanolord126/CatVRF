@@ -3,14 +3,18 @@
 declare(strict_types=1);
 
 namespace App\Domains\GroceryAndDelivery\Events;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 use Psr\Log\LoggerInterface;
 
 final class OrderCancelledEvent implements ShouldBroadcast
 {
-        use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+        
         public function __construct(
             public GroceryOrder $order,
             public string $reason,

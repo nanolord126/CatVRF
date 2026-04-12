@@ -4,12 +4,8 @@ namespace App\Domains\FarmDirect\Policies;
 
 use App\Models\User;
 use App\Domains\FarmDirect\Models\Farm;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class FarmPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -4,12 +4,8 @@ namespace App\Domains\Referral\Policies;
 
 use App\Models\User;
 use App\Domains\Referral\Models\Referral;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ReferralPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

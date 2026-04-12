@@ -3,6 +3,7 @@
 namespace App\Domains\Art\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artist;
 use App\Services\AuditService;

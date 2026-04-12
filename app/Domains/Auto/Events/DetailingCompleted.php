@@ -28,7 +28,7 @@ use Illuminate\Queue\SerializesModels;
 final class DetailingCompleted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly CarDetailing $detailing,
         public readonly string $correlationId, public readonly LoggerInterface $logger

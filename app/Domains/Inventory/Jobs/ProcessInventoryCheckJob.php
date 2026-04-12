@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Inventory\Jobs;
 
+
 use App\Domains\Inventory\Services\InventoryAuditService;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

@@ -4,12 +4,8 @@ namespace App\Domains\SportsNutrition\Policies;
 
 use App\Models\User;
 use App\Domains\SportsNutrition\Models\SportsNutritionModels;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class SportsNutritionModelsPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

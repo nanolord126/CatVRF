@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Filament\Tenant\Pages;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use App\Domains\VerticalName\Filament\Tenant\VerticalItemResource;
 use Filament\Resources\Pages\EditRecord;

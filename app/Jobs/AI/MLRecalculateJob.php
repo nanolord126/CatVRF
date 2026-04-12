@@ -2,6 +2,7 @@
 
 namespace App\Jobs\AI;
 
+
 use App\Services\FraudMLService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;

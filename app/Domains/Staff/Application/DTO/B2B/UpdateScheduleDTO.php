@@ -40,7 +40,7 @@ use Ramsey\Uuid\UuidInterface;
  *
  * @package App\Domains\Staff\Application\DTO\B2B
  */
-final readonly class UpdateScheduleDTO extends Data
+final class UpdateScheduleDTO extends Data
 {
     public function __construct(
         private readonly StaffId $staffId,

@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 
 use Psr\Log\LoggerInterface;
@@ -9,10 +10,6 @@ final class OrderPolicy extends Model
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-
-    use HandlesAuthorization;
-
         /**
          * Может ли пользователь видеть заказ?
          * Покупатель видит свой заказ, продавец видит заказ своего товара.

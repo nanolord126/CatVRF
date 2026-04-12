@@ -1,0 +1,5 @@
+<script setup>
+import { ref } from 'vue'; import VTabs from '../../UI/VTabs.vue'; import VCard from '../../UI/VCard.vue'; import VBadge from '../../UI/VBadge.vue'; import FinancesDashboard from './FinancesDashboard.vue';
+const activeTab=ref('dashboard'); const tabs=[{key:'dashboard',label:'Дашборд',icon:'📊'},{key:'wallets',label:'Кошельки',icon:'💰'},{key:'reports',label:'Отчёты',icon:'🧾'}];
+</script>
+<template><section class="space-y-4"><header class="flex items-center justify-between"><div><h2 class="text-xl font-bold" style="color:var(--t-text);">Finances Panel</h2><p class="text-sm" style="color:var(--t-text-3);">Финансовые потоки и контроль рисков.</p></div><VBadge text="PRODUCTION" variant="success" size="sm" dot/></header><VTabs v-model="activeTab" :tabs="tabs" variant="segment" size="sm"/><FinancesDashboard v-if="activeTab==='dashboard'"/><VCard v-else-if="activeTab==='wallets'" title="Кошельки"><div class="text-sm" style="color:var(--t-text-2);">Балансы, hold, транзакции.</div></VCard><VCard v-else title="Отчёты"><div class="text-sm" style="color:var(--t-text-2);">P&L, cashflow, payout отчеты.</div></VCard></section></template>

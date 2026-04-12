@@ -3,6 +3,7 @@
 namespace App\Domains\Tickets\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

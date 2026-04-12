@@ -25,7 +25,7 @@ use Ramsey\Uuid\UuidInterface;
  *
  * @package App\Domains\Staff\Application\DTO\B2B
  */
-final readonly class AddStaffMemberDTO extends Data
+final class AddStaffMemberDTO extends Data
 {
     public function __construct(
         private readonly FullName $fullName,

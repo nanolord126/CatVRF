@@ -20,9 +20,6 @@ namespace App\Domains\Sports\Fitness\Policies;
 
 final class FitnessClassPolicy
 {
-
-    use HandlesAuthorization;
-
         public function viewAny(User $user): Response
         {
             return $this->response->allow();

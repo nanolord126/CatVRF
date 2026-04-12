@@ -4,12 +4,8 @@ namespace App\Domains\MeatShops\Policies;
 
 use App\Models\User;
 use App\Domains\MeatShops\Models\MeatBoxSubscription;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class MeatBoxSubscriptionPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

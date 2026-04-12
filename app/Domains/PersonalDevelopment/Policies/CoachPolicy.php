@@ -4,12 +4,8 @@ namespace App\Domains\PersonalDevelopment\Policies;
 
 use App\Models\User;
 use App\Domains\PersonalDevelopment\Models\Coach;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class CoachPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

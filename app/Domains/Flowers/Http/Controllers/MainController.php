@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * @license Proprietary
  * @see https://catvrf.ru/docs/maincontroller
  */
-final readonly class MainController extends Controller
+final class MainController extends Controller
 {
     public function __construct(
         private FlowerService $flowerService,

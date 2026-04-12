@@ -4,12 +4,8 @@ namespace App\Domains\Fitness\Policies;
 
 use App\Models\User;
 use App\Domains\Fitness\Models\Gym;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class GymPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -9,10 +10,6 @@ final class PostPolicy extends Model
     public function __construct(
         private readonly ConfigRepository $config,
     ) {}
-
-
-    use HandlesAuthorization;
-
         /** Видеть пост (публичный или владелец) */
         public function view(?User $user, Post $post): bool
         {

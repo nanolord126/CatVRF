@@ -17,6 +17,7 @@
 
 
 namespace App\Domains\HomeServices\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Carbon\Carbon;
 

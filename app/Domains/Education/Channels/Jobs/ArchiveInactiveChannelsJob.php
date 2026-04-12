@@ -1,6 +1,12 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Channels\Jobs;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
 use Carbon\Carbon;
 

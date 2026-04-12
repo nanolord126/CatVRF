@@ -18,13 +18,16 @@
 
 namespace App\Domains\SportsNutrition\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 use Psr\Log\LoggerInterface;
 final class VapeOrderPaidEvent
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         private int $orderId;
         private string $correlationId;
 

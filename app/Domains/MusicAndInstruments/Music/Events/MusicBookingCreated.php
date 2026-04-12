@@ -18,11 +18,14 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class MusicBookingCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         private string $correlation_id;
 
         /**

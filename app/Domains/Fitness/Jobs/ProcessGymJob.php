@@ -3,6 +3,7 @@
 namespace App\Domains\Fitness\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Fitness\Models\Gym;
 use App\Services\AuditService;

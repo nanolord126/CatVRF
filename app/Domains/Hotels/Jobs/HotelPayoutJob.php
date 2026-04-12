@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Hotels\Jobs;
 
+
 use App\Domains\Hotels\HotelManagement\Models\HotelBooking;
 use App\Services\FraudControlService;
 use App\Services\WalletService;

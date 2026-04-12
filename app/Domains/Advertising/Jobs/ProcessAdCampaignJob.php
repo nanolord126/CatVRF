@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Jobs;
 
+
 use App\Domains\Advertising\Models\AdCampaign;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

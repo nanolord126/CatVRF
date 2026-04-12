@@ -4,12 +4,8 @@ namespace App\Domains\PromoCampaigns\Policies;
 
 use App\Models\User;
 use App\Domains\PromoCampaigns\Models\PromoAuditLog;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class PromoAuditLogPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -4,12 +4,8 @@ namespace App\Domains\Content\Policies;
 
 use App\Models\User;
 use App\Domains\Content\Models\ContentItem;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ContentItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

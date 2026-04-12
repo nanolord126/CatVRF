@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Jobs;
 
+
 use App\Domains\Payment\Enums\PaymentProvider;
 use App\Domains\Payment\Services\PaymentCoordinatorService;
 use Illuminate\Bus\Queueable;

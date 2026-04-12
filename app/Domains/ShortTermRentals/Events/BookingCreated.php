@@ -18,6 +18,9 @@
 
 namespace App\Domains\ShortTermRentals\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
 final class BookingCreated
 {
 

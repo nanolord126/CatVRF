@@ -20,9 +20,6 @@ namespace App\Domains\Pet\Policies;
 
 final class PetPolicy
 {
-
-    use HandlesAuthorization;
-
         public function view(User $user, Pet $pet): bool
         {
             // Доступ имеет владелец тенанта или сотрудник, привязанный к этой записи

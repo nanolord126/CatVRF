@@ -18,11 +18,14 @@
 
 namespace App\Domains\Taxi\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class RideCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly int $rideId,
             private readonly string $driverId,

@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 
 
@@ -12,10 +13,6 @@ final class ProductPolicy extends Model
         private readonly ConfigRepository $config,
         private readonly LoggerInterface $logger,
     ) {}
-
-
-    use HandlesAuthorization;
-
         /**
          * Может ли пользователь видеть товар?
          * Активные товары видны всем, неактивные - только владельцу.

@@ -10,10 +10,6 @@ final class MedicalRecordPolicy
 {
     public function __construct(private readonly \Illuminate\Database\DatabaseManager $db,
         private readonly Request $request, private readonly LoggerInterface $logger) {}
-
-
-    use HandlesAuthorization;
-
         /**
          * Право на просмотр списка медицинских карт.
          * Ограничено по tenant_id и ролями клиники.

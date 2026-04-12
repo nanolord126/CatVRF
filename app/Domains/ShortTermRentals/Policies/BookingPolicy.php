@@ -2,16 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\ShortTermRentals\Policies;
-
-use HandlesAuthorization;
-use Illuminate\Http\Request;
+namespace App\Domains\ShortTermRentals\Policies;use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 
 final class BookingPolicy
 {
-        use HandlesAuthorization;
-
         public function __construct(
             private readonly FraudControlService $fraudService) {}
 

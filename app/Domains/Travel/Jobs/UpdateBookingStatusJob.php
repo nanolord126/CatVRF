@@ -3,6 +3,7 @@
 namespace App\Domains\Travel\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Travel\Models\TravelBooking;
 use Illuminate\Bus\Queueable;

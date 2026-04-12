@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;

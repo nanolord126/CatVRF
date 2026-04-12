@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 namespace App\Domains\Staff\Domain\Entities;
+use Illuminate\Database\Eloquent\Model;
 
 
 use Illuminate\Contracts\Auth\Guard;

@@ -3,6 +3,7 @@
 namespace App\Domains\Legal\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Legal\Models\Lawyer;
 use App\Services\AuditService;

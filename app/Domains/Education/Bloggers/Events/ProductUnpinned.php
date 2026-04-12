@@ -3,13 +3,17 @@
 declare(strict_types=1);
 
 namespace App\Domains\Education\Bloggers\Events;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 final class ProductUnpinned implements ShouldBroadcastNow
 {
-        use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+        
         public function __construct(public readonly \App\Domains\Content\Bloggers\Models\StreamProduct $product) {}
 
         public function broadcastOn(): Channel

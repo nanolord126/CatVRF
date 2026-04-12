@@ -20,9 +20,6 @@ namespace App\Domains\Education\Policies;
 
 final class EnrollmentPolicy
 {
-
-    use HandlesAuthorization;
-
         /**
          * Посмотреть список своих зачислений.
          */

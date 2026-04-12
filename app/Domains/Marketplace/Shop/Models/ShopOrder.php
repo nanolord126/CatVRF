@@ -9,7 +9,7 @@ final class ShopOrder extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
         protected $table = 'shop_orders';
 

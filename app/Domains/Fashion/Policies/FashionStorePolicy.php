@@ -4,8 +4,6 @@ namespace App\Domains\Fashion\Policies;
 
 use App\Domains\Fashion\Models\FashionStore;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 /**
  * Class FashionStorePolicy
  *
@@ -20,8 +18,6 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  */
 final class FashionStorePolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Handle viewAny operation.
      *

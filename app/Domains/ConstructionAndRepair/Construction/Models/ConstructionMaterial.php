@@ -12,7 +12,7 @@ final class ConstructionMaterial extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'const_materials';
 

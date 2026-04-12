@@ -22,7 +22,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  */
 final class FoodOrderCollection extends ResourceCollection
 {
-    private $collects = FoodOrderResource::class;
+    public $collects = FoodOrderResource::class;
 
     /**
      * Handle toArray operation.

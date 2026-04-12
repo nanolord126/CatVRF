@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Channels\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Psr\Log\LoggerInterface;

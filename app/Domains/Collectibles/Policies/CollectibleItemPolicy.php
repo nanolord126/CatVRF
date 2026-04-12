@@ -4,12 +4,8 @@ namespace App\Domains\Collectibles\Policies;
 
 use App\Models\User;
 use App\Domains\Collectibles\Models\CollectibleItem;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class CollectibleItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

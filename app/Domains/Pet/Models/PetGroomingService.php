@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Pet\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -46,7 +47,7 @@ final class PetGroomingService extends Model
 
         protected $hidden = ['correlation_id'];
 
-        public function booted(): void
+        protected static function booted(): void
         {
             static::addGlobalScope('tenant', function ($query) {
                 if (function_exists('tenant') && tenant()) {

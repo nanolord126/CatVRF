@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+
 use App\Services\Inventory\InventoryAuditService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

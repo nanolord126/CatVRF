@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 final class AutoPartCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     /**
      * Create a new event instance.
      */

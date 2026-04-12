@@ -9,7 +9,7 @@ final class SocialMedia extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
         protected $table = 'social_media';
 

@@ -6,6 +6,7 @@ namespace App\Domains\Logistics\Jobs;
 
 
 
+
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use App\Domains\Logistics\Models\Courier;

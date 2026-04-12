@@ -1,12 +1,10 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies\Domains;
+use Illuminate\Database\Eloquent\Model;
 
 final class RestaurantOrderPolicy extends Model
 {
-
-    use HandlesAuthorization;
-
         /**
          * Admins can do anything
          */

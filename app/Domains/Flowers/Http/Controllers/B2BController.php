@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * @license Proprietary
  * @see https://catvrf.ru/docs/b2bcontroller
  */
-final readonly class B2BController extends Controller
+final class B2BController extends Controller
 {
     public function __construct(
         private B2BService $b2bService,

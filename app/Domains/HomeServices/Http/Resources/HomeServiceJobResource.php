@@ -22,7 +22,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @see \App\Services\AuditService
  * @package App\Domains\HomeServices\Http\Resources
  */
-final readonly class HomeServiceJobResource extends JsonResource
+final class HomeServiceJobResource extends JsonResource
 {
     /**
      * Трансформация ресурса в массив.

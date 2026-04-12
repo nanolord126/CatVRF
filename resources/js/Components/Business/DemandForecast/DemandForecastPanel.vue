@@ -1,0 +1,5 @@
+<script setup>
+import { ref } from 'vue'; import VTabs from '../../UI/VTabs.vue'; import VCard from '../../UI/VCard.vue'; import VBadge from '../../UI/VBadge.vue'; import DemandForecastDashboard from './DemandForecastDashboard.vue';
+const activeTab=ref('dashboard'); const tabs=[{key:'dashboard',label:'Дашборд',icon:'📊'},{key:'models',label:'Модели',icon:'🧠'},{key:'alerts',label:'Алерты',icon:'🚨'}];
+</script>
+<template><section class="space-y-4"><header class="flex items-center justify-between"><div><h2 class="text-xl font-bold" style="color:var(--t-text);">DemandForecast Panel</h2><p class="text-sm" style="color:var(--t-text-3);">Прогноз спроса и пополнение.</p></div><VBadge text="PRODUCTION" variant="success" size="sm" dot/></header><VTabs v-model="activeTab" :tabs="tabs" variant="segment" size="sm"/><DemandForecastDashboard v-if="activeTab==='dashboard'"/><VCard v-else-if="activeTab==='models'" title="Модели"><div class="text-sm" style="color:var(--t-text-2);">Точность, дрейф, версии.</div></VCard><VCard v-else title="Алерты"><div class="text-sm" style="color:var(--t-text-2);">Low-stock и риск out-of-stock.</div></VCard></section></template>

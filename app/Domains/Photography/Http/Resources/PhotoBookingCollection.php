@@ -27,7 +27,7 @@ final class PhotoBookingCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = PhotoBookingResource::class;
+    public $collects = PhotoBookingResource::class;
 
     /**
      * Трансформация коллекции в массив.

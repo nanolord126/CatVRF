@@ -35,7 +35,7 @@ use Illuminate\Support\ServiceProvider;
  */
 final class TaxiServiceProvider extends ServiceProvider
 {
-    protected array $bindings = [
+    public array $bindings = [
         // B2C
         RideRepositoryInterface::class => EloquentRideRepository::class,
 

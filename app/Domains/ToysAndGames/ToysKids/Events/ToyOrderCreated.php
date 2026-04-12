@@ -18,11 +18,14 @@
 
 namespace App\Domains\ToysAndGames\ToysKids\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class ToyOrderCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly int $toyOrderId,
             private readonly int $tenantId,

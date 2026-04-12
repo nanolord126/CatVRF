@@ -18,12 +18,15 @@
 
 namespace App\Domains\Freelance\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class ProposalAccepted
 {
 
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly FreelanceProposal $proposal,
             public readonly string $correlationId) {}

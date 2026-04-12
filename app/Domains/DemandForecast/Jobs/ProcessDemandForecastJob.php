@@ -3,6 +3,7 @@
 namespace App\Domains\DemandForecast\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\DemandForecast\Models\DemandForecast;
 use App\Services\AuditService;

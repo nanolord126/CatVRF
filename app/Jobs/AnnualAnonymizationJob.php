@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 
+
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

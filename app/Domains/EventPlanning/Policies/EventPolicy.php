@@ -10,10 +10,6 @@ final class EventPolicy
 {
     public function __construct(
         private readonly LoggerInterface $logger) {}
-
-
-    use HandlesAuthorization;
-
         /**
          * Просмотр списка событий (List/View)
          */

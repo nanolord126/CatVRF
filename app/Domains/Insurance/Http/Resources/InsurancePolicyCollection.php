@@ -19,7 +19,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  */
 final class InsurancePolicyCollection extends ResourceCollection
 {
-    private $collects = InsurancePolicyResource::class;
+    public $collects = InsurancePolicyResource::class;
 
     /**
      * Handle toArray operation.

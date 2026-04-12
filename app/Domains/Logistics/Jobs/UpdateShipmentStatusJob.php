@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Logistics\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Logistics\Models\Shipment;
 use App\Domains\Logistics\Models\ShipmentTracking;

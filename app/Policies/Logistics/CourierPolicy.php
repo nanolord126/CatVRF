@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies\Logistics;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class CourierPolicy
@@ -23,9 +24,6 @@ namespace App\Policies\Logistics;
  */
 final class CourierPolicy extends Model
 {
-
-    use HandlesAuthorization;
-
         /**
          * Handle viewAny operation.
          *

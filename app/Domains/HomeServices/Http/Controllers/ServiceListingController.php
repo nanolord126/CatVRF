@@ -6,9 +6,10 @@ namespace App\Domains\HomeServices\Http\Controllers;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 
-final readonly class ServiceListingController extends Controller
+final class ServiceListingController extends Controller
 {
-
+
+
     public function __construct(
             private readonly ListingService $listingService,
             private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}

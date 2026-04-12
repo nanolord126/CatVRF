@@ -1,0 +1,5 @@
+<script setup>
+import { ref } from 'vue'; import VTabs from '../../UI/VTabs.vue'; import VCard from '../../UI/VCard.vue'; import VBadge from '../../UI/VBadge.vue'; import GeoDashboard from './GeoDashboard.vue';
+const activeTab=ref('dashboard'); const tabs=[{key:'dashboard',label:'Дашборд',icon:'📊'},{key:'maps',label:'Карты',icon:'🗺️'},{key:'clusters',label:'Кластеры',icon:'🧩'}];
+</script>
+<template><section class="space-y-4"><header class="flex items-center justify-between"><div><h2 class="text-xl font-bold" style="color:var(--t-text);">Geo Panel</h2><p class="text-sm" style="color:var(--t-text-3);">Карты, кластеры, гео-аналитика.</p></div><VBadge text="PRODUCTION" variant="success" size="sm" dot /></header><VTabs v-model="activeTab" :tabs="tabs" variant="segment" size="sm"/><GeoDashboard v-if="activeTab==='dashboard'"/><VCard v-else-if="activeTab==='maps'" title="Карты"><div class="text-sm" style="color:var(--t-text-2);">Слои зон, тепловые карты, SLA.</div></VCard><VCard v-else title="Кластеры"><div class="text-sm" style="color:var(--t-text-2);">Гео-сегменты для маркетинга и логистики.</div></VCard></section></template>

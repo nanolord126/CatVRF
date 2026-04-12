@@ -18,11 +18,14 @@
 
 namespace App\Domains\ShortTermRentals\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class StrBookingCompleted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly StrBooking $booking,
             private readonly string $correlationId

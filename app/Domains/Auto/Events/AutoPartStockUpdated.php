@@ -30,7 +30,7 @@ use Illuminate\Queue\SerializesModels;
 final class AutoPartStockUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly AutoPart $autoPart,
         public readonly int $oldStock,

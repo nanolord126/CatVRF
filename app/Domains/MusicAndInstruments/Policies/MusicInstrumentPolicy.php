@@ -4,12 +4,8 @@ namespace App\Domains\MusicAndInstruments\Policies;
 
 use App\Models\User;
 use App\Domains\MusicAndInstruments\Models\MusicInstrument;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class MusicInstrumentPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

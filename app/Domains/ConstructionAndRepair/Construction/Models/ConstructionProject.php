@@ -12,7 +12,7 @@ final class ConstructionProject extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'const_projects';
 

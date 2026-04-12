@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+
 use App\Domains\Logistics\Models\Courier;
 use App\Domains\Logistics\Models\DeliveryOrder;
 use App\Services\Delivery\RouteOptimizationService;

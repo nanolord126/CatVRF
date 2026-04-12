@@ -2,6 +2,10 @@
 
 namespace App\Domains\Consulting\Analytics\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 use Carbon\Carbon;
 
 

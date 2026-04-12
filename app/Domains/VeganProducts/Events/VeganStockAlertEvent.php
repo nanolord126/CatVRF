@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\VeganProducts\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
 
 
 

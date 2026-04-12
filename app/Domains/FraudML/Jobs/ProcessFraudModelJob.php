@@ -3,6 +3,7 @@
 namespace App\Domains\FraudML\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\FraudML\Models\FraudModel;
 use App\Services\AuditService;

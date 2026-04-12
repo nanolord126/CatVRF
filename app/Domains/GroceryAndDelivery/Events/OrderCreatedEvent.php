@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\GroceryAndDelivery\Events;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 use Psr\Log\LoggerInterface;
 
 final class OrderCreatedEvent
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public GroceryOrder $order,
             public string $correlationId, public readonly LoggerInterface $logger) {

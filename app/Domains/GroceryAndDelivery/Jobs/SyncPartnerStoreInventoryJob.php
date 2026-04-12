@@ -2,6 +2,7 @@
 
 namespace App\Domains\GroceryAndDelivery\Jobs;
 
+
 use App\Domains\GroceryAndDelivery\Models\GroceryStore;
 use App\Services\Inventory\InventoryManagementService;
 use Illuminate\Bus\Queueable;

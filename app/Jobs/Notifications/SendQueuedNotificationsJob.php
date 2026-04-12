@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Notifications;
 
+
 use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

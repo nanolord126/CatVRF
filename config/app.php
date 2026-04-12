@@ -192,9 +192,6 @@ return [
         /*
          * Food Service Providers...
          */
-        App\Providers\JetstreamServiceProvider::class,
-        App\Providers\SocialstreamServiceProvider::class,
-        App\Providers\TelescopeServiceProvider::class,
         // App\Domains\Food\Providers\FoodServiceProvider::class,
 
     ],

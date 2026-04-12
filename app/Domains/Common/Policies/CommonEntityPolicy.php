@@ -4,12 +4,8 @@ namespace App\Domains\Common\Policies;
 
 use App\Models\User;
 use App\Domains\Common\Models\CommonEntity;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class CommonEntityPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

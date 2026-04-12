@@ -4,12 +4,8 @@ namespace App\Domains\Advertising\Policies;
 
 use App\Models\User;
 use App\Domains\Advertising\Models\AdCampaign;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class AdCampaignPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

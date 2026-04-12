@@ -4,12 +4,8 @@ namespace App\Domains\Food\Policies;
 
 use App\Models\User;
 use App\Domains\Food\Models\FoodItem;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class FoodItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

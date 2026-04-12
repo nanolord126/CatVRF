@@ -1,0 +1,5 @@
+<script setup>
+import { ref } from 'vue'; import VTabs from '../../UI/VTabs.vue'; import VCard from '../../UI/VCard.vue'; import VBadge from '../../UI/VBadge.vue'; import GardeningDashboard from './GardeningDashboard.vue';
+const activeTab=ref('dashboard'); const tabs=[{key:'dashboard',label:'Дашборд',icon:'📊'},{key:'catalog',label:'Каталог',icon:'🌿'},{key:'season',label:'Сезон',icon:'🗓️'}];
+</script>
+<template><section class="space-y-4"><header class="flex items-center justify-between"><div><h2 class="text-xl font-bold" style="color:var(--t-text);">Gardening Panel</h2><p class="text-sm" style="color:var(--t-text-3);">Садовые товары и сезонные кампании.</p></div><VBadge text="PRODUCTION" variant="success" size="sm" dot/></header><VTabs v-model="activeTab" :tabs="tabs" variant="segment" size="sm"/><GardeningDashboard v-if="activeTab==='dashboard'"/><VCard v-else-if="activeTab==='catalog'" title="Каталог"><div class="text-sm" style="color:var(--t-text-2);">Семена, инструменты, декор.</div></VCard><VCard v-else title="Сезон"><div class="text-sm" style="color:var(--t-text-2);">Пики спроса и прогноз поставок.</div></VCard></section></template>

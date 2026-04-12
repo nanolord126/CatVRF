@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Medical\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Medical\Models\MedicalClinic;
 use Illuminate\Bus\Queueable;

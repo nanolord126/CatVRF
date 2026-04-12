@@ -4,12 +4,8 @@ namespace App\Domains\DemandForecast\Policies;
 
 use App\Models\User;
 use App\Domains\DemandForecast\Models\DemandForecast;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class DemandForecastPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\Listeners;
+use Illuminate\Bus\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\RealEstate\Domain\Events\ContractSigned;
 use App\Domains\RealEstate\Domain\Repository\PropertyRepositoryInterface;
@@ -15,7 +17,6 @@ final class UpdatePropertyStatusOnContractSigned implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public string $queue = 'default';
 
     public int $tries = 5;
 

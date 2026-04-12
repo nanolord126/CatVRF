@@ -37,7 +37,7 @@ use Spatie\LaravelData\Data;
  *
  * @package App\Domains\Hotels\Application\DTO
  */
-final readonly class AddressDTO extends Data
+final class AddressDTO extends Data
 {
     public function __construct(
         private readonly string $country,

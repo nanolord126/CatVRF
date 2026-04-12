@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\GeoLogistics\Infrastructure\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\GeoLogistics\Domain\Models\Shipment;
 use Illuminate\Bus\Queueable;

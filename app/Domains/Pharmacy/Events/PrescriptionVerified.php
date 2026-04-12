@@ -18,11 +18,14 @@
 
 namespace App\Domains\Pharmacy\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class PrescriptionVerified
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly int $prescriptionId,
             private readonly int $tenantId,

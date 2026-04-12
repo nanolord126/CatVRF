@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 namespace App\Domains\VeganProducts\Jobs;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
 use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 use Psr\Log\LoggerInterface;

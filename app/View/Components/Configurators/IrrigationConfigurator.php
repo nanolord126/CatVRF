@@ -18,6 +18,7 @@
 
 
 namespace App\View\Components\Configurators;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class IrrigationConfigurator

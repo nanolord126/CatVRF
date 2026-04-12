@@ -27,7 +27,7 @@ final class AppointmentCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = AppointmentResource::class;
+    public $collects = AppointmentResource::class;
 
     /**
      * Трансформация коллекции в массив.

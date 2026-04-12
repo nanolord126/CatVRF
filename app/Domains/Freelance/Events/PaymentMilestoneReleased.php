@@ -18,12 +18,15 @@
 
 namespace App\Domains\Freelance\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class PaymentMilestoneReleased
 {
 
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly FreelanceContract $contract,
             public readonly float $amount,

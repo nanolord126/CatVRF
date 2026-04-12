@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 final class PortfolioItemFactory extends Factory
 {
-    private $model = PortfolioItem::class;
+    protected $model = PortfolioItem::class;
 
     public function definition(): array
     {

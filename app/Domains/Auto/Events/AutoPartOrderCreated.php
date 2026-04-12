@@ -26,7 +26,7 @@ use Illuminate\Queue\SerializesModels;
 final class AutoPartOrderCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly int $autoPartOrderId,
         public readonly int $tenantId,

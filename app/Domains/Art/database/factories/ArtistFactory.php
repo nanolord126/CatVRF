@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 final class ArtistFactory extends Factory
 {
-    private $model = Artist::class;
+    protected $model = Artist::class;
 
     public function definition(): array
     {

@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 
 use Psr\Log\LoggerInterface;
@@ -9,10 +10,6 @@ final class AppointmentPolicy extends Model
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-
-    use HandlesAuthorization;
-
         /**
          * Может ли пользователь видеть запись?
          * Клиент видит свою запись, мастер видит свою запись, бизнес видит все.

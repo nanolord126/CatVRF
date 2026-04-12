@@ -4,12 +4,8 @@ namespace App\Domains\Insurance\Policies;
 
 use App\Models\User;
 use App\Domains\Insurance\Models\InsuranceCompany;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class InsuranceCompanyPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

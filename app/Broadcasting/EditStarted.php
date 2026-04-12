@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 final class EditStarted implements ShouldBroadcast
 {
+    use Dispatchable, InteractsWithSockets, SerializesModels;
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;

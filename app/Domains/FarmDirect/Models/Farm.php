@@ -17,6 +17,8 @@
 
 
 namespace App\Domains\FarmDirect\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

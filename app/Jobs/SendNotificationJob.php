@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+
 use App\Models\Notification as NotificationModel;
 use App\Models\User;
 use Illuminate\Bus\Queueable;

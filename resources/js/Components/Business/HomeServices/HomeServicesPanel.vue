@@ -1,0 +1,5 @@
+<script setup>
+import { ref } from 'vue'; import VTabs from '../../UI/VTabs.vue'; import VCard from '../../UI/VCard.vue'; import VBadge from '../../UI/VBadge.vue'; import HomeServicesDashboard from './HomeServicesDashboard.vue';
+const activeTab=ref('dashboard'); const tabs=[{key:'dashboard',label:'Дашборд',icon:'📊'},{key:'requests',label:'Заявки',icon:'🧾'},{key:'masters',label:'Мастера',icon:'👷'}];
+</script>
+<template><section class="space-y-4"><header class="flex items-center justify-between"><div><h2 class="text-xl font-bold" style="color:var(--t-text);">HomeServices Panel</h2><p class="text-sm" style="color:var(--t-text-3);">Сервисные заявки для дома.</p></div><VBadge text="PRODUCTION" variant="success" size="sm" dot/></header><VTabs v-model="activeTab" :tabs="tabs" variant="segment" size="sm"/><HomeServicesDashboard v-if="activeTab==='dashboard'"/><VCard v-else-if="activeTab==='requests'" title="Заявки"><div class="text-sm" style="color:var(--t-text-2);">Сантехника, электрика, ремонт.</div></VCard><VCard v-else title="Мастера"><div class="text-sm" style="color:var(--t-text-2);">Рейтинг, доступность, SLA.</div></VCard></section></template>

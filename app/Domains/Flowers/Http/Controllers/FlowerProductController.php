@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
-final readonly class FlowerProductController extends Controller
+final class FlowerProductController extends Controller
 {
     public function __construct(
         private FraudControlService $fraud,

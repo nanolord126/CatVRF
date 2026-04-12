@@ -18,13 +18,16 @@
 
 namespace App\Domains\Auto\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 use Psr\Log\LoggerInterface;
 final class VehicleRentalCompleted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly VehicleRental $rental,
             public readonly int $finalMileage,

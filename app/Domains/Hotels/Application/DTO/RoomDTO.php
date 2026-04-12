@@ -37,7 +37,7 @@ use Spatie\LaravelData\Data;
  *
  * @package App\Domains\Hotels\Application\DTO
  */
-final readonly class RoomDTO extends Data
+final class RoomDTO extends Data
 {
     public function __construct(
         private readonly ?string $id,

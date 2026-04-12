@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Analytics;
 
+
 use App\Services\DemandForecastService;
 use App\Services\RecommendationService;
 use Carbon\Carbon;

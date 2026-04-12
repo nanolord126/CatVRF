@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Tickets\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Services\Tickets\TicketService;
 use Illuminate\Bus\Queueable;

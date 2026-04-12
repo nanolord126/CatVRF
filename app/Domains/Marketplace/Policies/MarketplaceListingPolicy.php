@@ -4,12 +4,8 @@ namespace App\Domains\Marketplace\Policies;
 
 use App\Models\User;
 use App\Domains\Marketplace\Models\MarketplaceListing;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class MarketplaceListingPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

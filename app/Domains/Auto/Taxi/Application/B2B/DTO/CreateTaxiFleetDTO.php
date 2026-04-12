@@ -24,8 +24,6 @@ use Illuminate\Http\Request;
  */
 final readonly class CreateTaxiFleetDTO
 {
-    use StaticCreate;
-
     public function __construct(
         public string $name,
         public int $tenantId,

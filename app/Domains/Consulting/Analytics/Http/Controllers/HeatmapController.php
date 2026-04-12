@@ -8,9 +8,10 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 
-final readonly class HeatmapController extends Controller
+final class HeatmapController extends Controller
 {
-
+
+
     /**
          * Create a new HeatmapController instance.
          *

@@ -10,8 +10,7 @@ use Illuminate\Queue\SerializesModels;
 
 final class AppointmentBooked
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly Appointment $appointment,
         public readonly string $correlationId

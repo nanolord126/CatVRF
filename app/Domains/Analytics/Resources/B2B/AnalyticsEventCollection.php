@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  */
 final class AnalyticsEventCollection extends ResourceCollection
 {
-    public string $collects = AnalyticsEventResource::class;
+    public $collects = AnalyticsEventResource::class;
 
     /**
      * @return array<string, mixed>

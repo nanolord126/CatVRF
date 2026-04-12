@@ -40,8 +40,6 @@ use Illuminate\Http\Request;
  */
 final readonly class CreateDriverDTO
 {
-    use StaticCreate;
-
     public function __construct(
         public string $name,
         public string $licenseNumber,

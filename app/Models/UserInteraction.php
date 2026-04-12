@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class UserInteraction extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
         protected $table = 'user_interactions';
 

@@ -4,12 +4,8 @@ namespace App\Policies\Domains;
 
 use App\Models\InventoryItem;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class InventoryItemPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Admins can do anything
      */

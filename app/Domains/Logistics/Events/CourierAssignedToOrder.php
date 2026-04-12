@@ -18,11 +18,14 @@
 
 namespace App\Domains\Logistics\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class CourierAssignedToOrder
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             private readonly DeliveryOrder $order,
             private readonly Courier $courier,

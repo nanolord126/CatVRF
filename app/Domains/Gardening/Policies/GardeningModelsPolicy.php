@@ -4,12 +4,8 @@ namespace App\Domains\Gardening\Policies;
 
 use App\Models\User;
 use App\Domains\Gardening\Models\GardeningModels;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class GardeningModelsPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -3,6 +3,7 @@
 namespace App\Domains\HouseholdGoods\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\HouseholdGoods\Models\HouseholdProduct;
 use App\Services\AuditService;

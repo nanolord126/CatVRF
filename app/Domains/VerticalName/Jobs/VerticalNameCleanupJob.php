@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Jobs;
 
+
 use App\Domains\VerticalName\Models\VerticalItem;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

@@ -1,0 +1,127 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Domains\Food\Http\Controllers;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+
+final class FoodOrderController extends Controller
+{
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $tenantId = $request->get('tenant_id');
+
+        $items = $this->db->table('food_orders')
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        $this->logger->info('Заказ еды listed', [
+            'correlation_id' => $correlationId,
+            'tenant_id' => $tenantId,
+            'count' => $items->total(),
+        ]);
+
+        return new JsonResponse([
+            'correlation_id' => $correlationId,
+            'data' => $items->items(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+                'total' => $items->total(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $validated = $request->validate([
+            'restaurant_id' => 'required|integer', 'items' => 'required|array|min:1', 'delivery_address' => 'required|string', 'total' => 'required|numeric|min:0',
+        ]);
+
+        $id = $this->db->transaction(function () use ($validated, $request, $correlationId) {
+            $data = array_merge($validated, [
+                'tenant_id' => $request->get('tenant_id'),
+                'uuid' => (string) Str::uuid(),
+                'correlation_id' => $correlationId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            if (isset($data['items'])) { $data['items'] = json_encode($data['items']); }
+
+            return $this->db->table('food_orders')->insertGetId($data);
+        });
+
+        $this->logger->info('Заказ еды created', ['correlation_id' => $correlationId, 'id' => $id]);
+
+        return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Заказ еды создан(а)'], 201);
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $item = $this->db->table('food_orders')
+            ->where('id', $id)
+            ->where('tenant_id', $request->get('tenant_id'))
+            ->first();
+
+        if ($item === null) {
+            return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Заказ еды не найден(а)'], 404);
+        }
+
+        return new JsonResponse(['correlation_id' => $correlationId, 'data' => $item]);
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $validated = $request->validate([
+            'status' => 'sometimes|string|in:pending,preparing,ready,delivering,delivered,cancelled', 'delivery_address' => 'sometimes|string',
+        ]);
+
+        $this->db->transaction(function () use ($validated, $id, $request) {
+            $data = array_merge($validated, ['updated_at' => now()]);
+            if (isset($data['items'])) { $data['items'] = json_encode($data['items']); }
+
+            $this->db->table('food_orders')
+                ->where('id', $id)
+                ->where('tenant_id', $request->get('tenant_id'))
+                ->update($data);
+        });
+
+        $this->logger->info('Заказ еды updated', ['correlation_id' => $correlationId, 'id' => $id]);
+
+        return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Заказ еды обновлён(а)']);
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+
+        $this->db->transaction(function () use ($id, $request) {
+            $this->db->table('food_orders')
+                ->where('id', $id)
+                ->where('tenant_id', $request->get('tenant_id'))
+                ->delete();
+        });
+
+        $this->logger->info('Заказ еды deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+
+        return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Заказ еды удалён(а)']);
+    }
+}

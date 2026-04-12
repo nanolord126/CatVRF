@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 final class ParkingBookingCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     /**
      * Create a new event instance.
      */

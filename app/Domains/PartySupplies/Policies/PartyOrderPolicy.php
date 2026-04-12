@@ -4,12 +4,8 @@ namespace App\Domains\PartySupplies\Policies;
 
 use App\Models\User;
 use App\Domains\PartySupplies\Models\PartyOrder;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class PartyOrderPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

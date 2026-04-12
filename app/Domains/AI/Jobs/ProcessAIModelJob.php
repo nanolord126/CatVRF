@@ -2,6 +2,7 @@
 
 namespace App\Domains\AI\Jobs;
 
+
 use App\Domains\AI\Models\AIModel;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

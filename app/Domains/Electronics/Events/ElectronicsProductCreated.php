@@ -28,8 +28,7 @@ use Illuminate\Queue\SerializesModels;
 final class ElectronicsProductCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         /**
          * Create a new event instance.
          */

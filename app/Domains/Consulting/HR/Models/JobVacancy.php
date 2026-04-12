@@ -12,7 +12,7 @@ final class JobVacancy extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'hr_vacancies';
 

@@ -24,6 +24,9 @@
 
 namespace App\Events\ML;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
 final class UserInteractionEvent
 {
 

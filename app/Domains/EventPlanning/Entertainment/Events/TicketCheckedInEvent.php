@@ -18,11 +18,14 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class TicketCheckedInEvent
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly Ticket $ticket,
             public readonly string $correlationId

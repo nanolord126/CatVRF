@@ -18,11 +18,14 @@
 
 namespace App\Domains\Sports\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class ReviewSubmitted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public Review $review,
             private string $correlationId = '') {}

@@ -24,7 +24,6 @@ final class LogPayoutInitiatedListener implements ShouldQueue
     /**
      * Очередь, в которой обрабатывается слушатель.
      */
-    public string $queue = 'audit-logs';
 
     /**
      * Количество попыток выполнения.

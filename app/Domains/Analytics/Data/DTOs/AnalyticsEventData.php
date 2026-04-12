@@ -22,7 +22,7 @@ use Spatie\LaravelData\Data;
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
  * @package App\Domains\Analytics\Data\DTOs
  */
-final readonly class AnalyticsEventData extends Data
+final class AnalyticsEventData extends Data
 {
     public function __construct(
         private readonly string $uuid,

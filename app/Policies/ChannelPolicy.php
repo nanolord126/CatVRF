@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Policies;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class ChannelPolicy
@@ -23,9 +24,6 @@ namespace App\Policies;
  */
 final class ChannelPolicy extends Model
 {
-
-    use HandlesAuthorization;
-
         /** Смотреть собственный канал */
         public function view(User $user, BusinessChannel $channel): bool
         {

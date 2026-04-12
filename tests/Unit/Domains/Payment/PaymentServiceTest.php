@@ -1,0 +1,72 @@
+<?php declare(strict_types=1);
+
+namespace Tests\Unit\Domains\Payment;
+
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Unit tests for PaymentService.
+ *
+ * @covers \App\Domains\Payment\Domain\Services\PaymentService
+ */
+final class PaymentServiceTest extends TestCase
+{
+    public function test_class_is_final(): void
+    {
+        $reflection = new \ReflectionClass(
+            \App\Domains\Payment\Domain\Services\PaymentService::class
+        );
+        $this->assertTrue($reflection->isFinal(), 'PaymentService must be final');
+    }
+
+    public function test_class_is_readonly(): void
+    {
+        $reflection = new \ReflectionClass(
+            \App\Domains\Payment\Domain\Services\PaymentService::class
+        );
+        $this->assertTrue($reflection->isReadOnly(), 'PaymentService must be readonly');
+    }
+
+    public function test_has_constructor_injection(): void
+    {
+        $reflection = new \ReflectionClass(
+            \App\Domains\Payment\Domain\Services\PaymentService::class
+        );
+        $constructor = $reflection->getConstructor();
+        $this->assertNotNull($constructor, 'PaymentService must have __construct');
+        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
+    }
+
+    public function test_create_method_exists(): void
+    {
+        $this->assertTrue(
+            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'create'),
+            'PaymentService must implement create()'
+        );
+    }
+
+    public function test_updateStatus_method_exists(): void
+    {
+        $this->assertTrue(
+            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'updateStatus'),
+            'PaymentService must implement updateStatus()'
+        );
+    }
+
+    public function test_findById_method_exists(): void
+    {
+        $this->assertTrue(
+            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'findById'),
+            'PaymentService must implement findById()'
+        );
+    }
+
+    public function test_findByIdempotencyKey_method_exists(): void
+    {
+        $this->assertTrue(
+            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'findByIdempotencyKey'),
+            'PaymentService must implement findByIdempotencyKey()'
+        );
+    }
+
+}

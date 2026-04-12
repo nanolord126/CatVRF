@@ -18,6 +18,8 @@
 
 namespace App\Domains\Flowers\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+
 final class LowStockReached
 {
 

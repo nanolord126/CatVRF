@@ -1,16 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Common\Listeners;
 
+use App\Services\FraudControlService;
 use Carbon\Carbon;
-
-
+use Illuminate\Bus\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
+
 final class UpdateUserTasteProfileListener
 {
-
     use InteractsWithQueue;
-use App\Services\FraudControlService;
 
         public int $tries = 3;
 

@@ -12,7 +12,7 @@ final class SocialPost extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
         protected $table = 'social_posts';
 

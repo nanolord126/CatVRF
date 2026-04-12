@@ -18,13 +18,16 @@
 
 namespace App\Domains\Education\LanguageLearning\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 
 use Psr\Log\LoggerInterface;
 final class VideoCallStarted
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public LanguageVideoCall $videoCall,
             public string $correlationId, public readonly LoggerInterface $logger

@@ -3,6 +3,7 @@
 namespace App\Domains\Photography\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Photography\Models\PhotoSession;
 use Illuminate\Bus\Queueable;

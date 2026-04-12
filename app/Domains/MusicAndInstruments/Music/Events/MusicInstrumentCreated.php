@@ -18,11 +18,14 @@
 
 namespace App\Domains\MusicAndInstruments\Music\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class MusicInstrumentCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         /**
          * Create a new event instance.
          */

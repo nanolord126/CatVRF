@@ -7,8 +7,6 @@ use Illuminate\Http\Request;
 use App\Domains\Beauty\Models\BeautyService;
 use App\Models\User;
 use App\Services\FraudControlService;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 /**
  * Class BeautyServicePolicy
  *
@@ -28,9 +26,6 @@ final class BeautyServicePolicy
     public function __construct(
         private readonly Request $request,
     ) {}
-
-    use HandlesAuthorization;
-
     public function view(User $user, BeautyService $service): bool
     {
         return true;

@@ -27,7 +27,7 @@ final class PropertyCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = PropertyResource::class;
+    public $collects = PropertyResource::class;
 
     /**
      * Трансформация коллекции в массив.

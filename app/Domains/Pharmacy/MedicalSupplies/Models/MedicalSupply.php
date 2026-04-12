@@ -17,6 +17,7 @@
 
 
 namespace App\Domains\Pharmacy\MedicalSupplies\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -41,7 +42,7 @@ final class MedicalSupply extends Model
             'requires_prescription' => 'boolean',
         ];
 
-        public function booted(): void
+        protected static function booted(): void
         {
             $this->addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', filament()?->getTenant()?->id ?? null));
         }

@@ -3,6 +3,7 @@
 namespace App\Domains\GeoLogistics\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\GeoLogistics\Models\LogisticsRoute;
 use App\Services\AuditService;

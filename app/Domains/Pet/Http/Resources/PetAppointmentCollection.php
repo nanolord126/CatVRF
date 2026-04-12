@@ -27,7 +27,7 @@ final class PetAppointmentCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = PetAppointmentResource::class;
+    public $collects = PetAppointmentResource::class;
 
     /**
      * Трансформация коллекции в массив.

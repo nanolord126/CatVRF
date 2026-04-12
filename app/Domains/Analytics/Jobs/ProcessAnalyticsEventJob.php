@@ -3,6 +3,7 @@
 namespace App\Domains\Analytics\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Analytics\Models\AnalyticsEvent;
 use App\Services\AuditService;

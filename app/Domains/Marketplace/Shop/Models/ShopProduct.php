@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Marketplace\Shop\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ final class ShopProduct extends Model
 {
     use HasFactory;
         use SoftDeletes;
-        use BelongsToTenant;
+        
 
         protected $table = 'shop_products';
 

@@ -27,7 +27,7 @@ final class FlowerOrderCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = FlowerOrderResource::class;
+    public $collects = FlowerOrderResource::class;
 
     /**
      * Трансформация коллекции в массив.

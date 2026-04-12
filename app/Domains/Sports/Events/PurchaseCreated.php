@@ -18,11 +18,14 @@
 
 namespace App\Domains\Sports\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class PurchaseCreated
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public Purchase $purchase,
             private string $correlationId = '') {}

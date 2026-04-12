@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Jobs;
 
+
 use App\Domains\Wallet\Models\Wallet;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;

@@ -17,6 +17,7 @@
 
 
 namespace App\Domains\Luxury\Jewelry\Models;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -40,7 +41,7 @@ final class JewelryItem extends Model
             'weight_grams' => 'float',
         ];
 
-        public function booted(): void
+        protected static function booted(): void
         {
             $this->addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', filament()?->getTenant()?->id ?? null));
         }

@@ -2,6 +2,7 @@
 
 namespace App\Domains\GroceryAndDelivery\Jobs;
 
+
 use App\Domains\GroceryAndDelivery\Models\SlotBooking;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

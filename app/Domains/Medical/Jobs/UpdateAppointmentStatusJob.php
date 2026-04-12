@@ -3,6 +3,7 @@
 namespace App\Domains\Medical\Jobs;
 
 
+
 use Psr\Log\LoggerInterface;
 use App\Domains\Medical\Models\MedicalAppointment;
 use Illuminate\Bus\Queueable;

@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Jobs;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

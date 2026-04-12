@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Sports\SportingGoods\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 use App\Models\Traits\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

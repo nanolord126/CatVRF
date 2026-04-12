@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 final class LowPartsStock implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public function __construct(
         public readonly AutoPart $part,
         public readonly string $correlationId, public readonly LoggerInterface $logger) {

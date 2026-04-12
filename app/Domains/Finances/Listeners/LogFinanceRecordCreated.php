@@ -23,7 +23,6 @@ final class LogFinanceRecordCreated implements ShouldQueue
     /**
      * Очередь для обработки.
      */
-    public string $queue = 'audit-logs';
 
     /**
      * Количество попыток.

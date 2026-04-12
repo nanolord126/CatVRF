@@ -2,6 +2,7 @@
 
 namespace App\Domains\Education\Jobs;
 
+
 use App\Domains\Education\Models\Enrollment;
 use App\Domains\Education\Models\Teacher;
 use App\Services\AuditService;

@@ -13,11 +13,6 @@ use Illuminate\Log\LogManager;
 
 final class ProductionBootstrapServiceProvider extends ServiceProvider
 {
-    public function __construct(
-        private readonly Request $request,
-        private readonly LogManager $logger,
-    ) {}
-
     /**
      * Register any application services.
      */
@@ -52,11 +47,13 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
      */
     private function bootDoppler(): void
     {
+        /** @var \Illuminate\Log\LogManager $logger */
+        $logger = $this->app->make('log');
         try {
             DopplerService::initialize();
-            $this->logger->info('Doppler service initialized successfully.');
+            $logger->info('Doppler service initialized successfully.');
         } catch (\Throwable $e) {
-            $this->logger->critical('Failed to initialize Doppler service.', [
+            $logger->critical('Failed to initialize Doppler service.', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -67,10 +64,12 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
      */
     private function bootCaching(): void
     {
+        /** @var \Illuminate\Log\LogManager $logger */
+        $logger = $this->app->make('log');
         if (app()->configurationIsCached() && app()->routesAreCached()) {
-            $this->logger->info('Production caching is active.');
+            $logger->info('Production caching is active.');
         } else {
-            $this->logger->warning('Production environment is running without cached config or routes.');
+            $logger->warning('Production environment is running without cached config or routes.');
         }
     }
 
@@ -111,8 +110,12 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
      */
     private function bootLogging(): void
     {
-        $this->logger->shareContext([
-            'correlation_id' => $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString(),
+        /** @var \Illuminate\Log\LogManager $logger */
+        $logger = $this->app->make('log');
+        /** @var \Illuminate\Http\Request $request */
+        $request = $this->app->make('request');
+        $logger->shareContext([
+            'correlation_id' => $request->header('X-Correlation-ID') ?? Str::uuid()->toString(),
         ]);
     }
 }

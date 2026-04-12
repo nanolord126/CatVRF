@@ -18,11 +18,14 @@
 
 namespace App\Domains\Confectionery\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class BakeryOrderReady
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly int $bakeryOrderId,
             public readonly int $tenantId,

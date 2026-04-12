@@ -9,7 +9,7 @@ final class AgroCrop extends Model
 {
     use HasFactory;
 
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
         protected $table = 'agro_crops';
 

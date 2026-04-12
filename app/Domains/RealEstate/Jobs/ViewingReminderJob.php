@@ -2,6 +2,7 @@
 
 namespace App\Domains\RealEstate\Jobs;
 
+
 use App\Domains\RealEstate\Models\ViewingAppointment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
-final readonly class FlowerDeliveryController extends Controller
+final class FlowerDeliveryController extends Controller
 {
     public function __construct(
         private FlowerDeliveryService $deliveryService,

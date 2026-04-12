@@ -4,12 +4,8 @@ namespace App\Domains\VeganProducts\Policies;
 
 use App\Models\User;
 use App\Domains\VeganProducts\Models\VeganModels;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class VeganModelsPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

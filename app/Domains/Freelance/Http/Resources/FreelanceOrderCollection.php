@@ -27,7 +27,7 @@ final class FreelanceOrderCollection extends ResourceCollection
      *
      * @var string
      */
-    private $collects = FreelanceOrderResource::class;
+    public $collects = FreelanceOrderResource::class;
 
     /**
      * Трансформация коллекции в массив.

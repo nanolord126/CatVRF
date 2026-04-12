@@ -7,6 +7,10 @@ namespace App\Filament\Tenant\Resources\Auto;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Filament\Forms;
+use Filament\Tables;
 
 final class AutoRepairOrderResource extends Resource
 {

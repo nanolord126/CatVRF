@@ -18,11 +18,14 @@
 
 namespace App\Domains\Common\Chat\Events;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
+
 final class MessageSent
 {
 
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
         public function __construct(
             public readonly Message $message,
             public readonly string $correlation_id

@@ -33,6 +33,7 @@
 
 
 namespace App\Traits;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\Builder;
 

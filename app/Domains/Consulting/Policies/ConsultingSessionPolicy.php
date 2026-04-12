@@ -4,12 +4,8 @@ namespace App\Domains\Consulting\Policies;
 
 use App\Models\User;
 use App\Domains\Consulting\Models\ConsultingSession;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 final class ConsultingSessionPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Determine whether the user can view any models.
      */

@@ -4,8 +4,6 @@ namespace App\Domains\Pet\Policies;
 
 use App\Domains\Pet\Models\PetClinic;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
-
 /**
  * Class PetClinicPolicy
  *
@@ -20,8 +18,6 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  */
 final class PetClinicPolicy
 {
-    use HandlesAuthorization;
-
     /**
      * Handle viewAny operation.
      *

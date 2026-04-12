@@ -8,9 +8,10 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 
-final readonly class ServiceJobController extends Controller
+final class ServiceJobController extends Controller
 {
-
+
+
     public function __construct(private JobService $jobService,
             private readonly FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}

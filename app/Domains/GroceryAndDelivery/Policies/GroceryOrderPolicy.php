@@ -8,9 +8,6 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class GroceryOrderPolicy
 {
-
-    use HandlesAuthorization;
-
         public function __construct(
             private readonly FraudControlService $fraudService, private readonly LoggerInterface $logger) {}
 
