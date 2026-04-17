@@ -146,14 +146,8 @@ jobs:
           DB_PASSWORD: postgres
           DB_PORT: 5432
 
-      - name: Run vertical cache migration (dry-run)
-        if: github.event.inputs.migrate_all == 'true'
-        run: |
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            php artisan cache:update-verticals --dry-run
-          else
-            php artisan cache:update-verticals
-          fi
+      - name: Run vertical cache migration
+        run: php artisan cache:update-verticals --dry-run
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
