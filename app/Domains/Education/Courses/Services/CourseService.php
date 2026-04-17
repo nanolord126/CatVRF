@@ -3,6 +3,8 @@
 namespace App\Domains\Education\Courses\Services;
 
 
+use App\Domains\Payment\Services\PaymentServiceAdapter;
+use App\Services\Payment\PaymentService;
 use Illuminate\Cache\RateLimiter;
 use Carbon\Carbon;
 
@@ -12,9 +14,10 @@ use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class CourseService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,
-            private readonly PaymentService $payment,
+            private readonly PaymentServiceAdapter $payment,
             private readonly WalletService $wallet,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
         private readonly RateLimiter $rateLimiter,) {}

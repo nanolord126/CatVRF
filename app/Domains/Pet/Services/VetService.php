@@ -2,18 +2,16 @@
 
 namespace App\Domains\Pet\Services;
 
-
-
-
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+
 final readonly class VetService
 {
-
     public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
-            private readonly PaymentService $payment,
+            private readonly PaymentServiceAdapter $payment,
             private readonly WalletService $wallet,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
         private readonly RateLimiter $rateLimiter,) {}

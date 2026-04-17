@@ -10,6 +10,7 @@ use App\Domains\ShortTermRentals\Models\{Apartment, ApartmentBooking};
 use App\Services\FraudControlService;
 use App\Services\WalletService;
 use App\Services\PaymentService;
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Support\Str;
 
 /**
@@ -33,7 +34,7 @@ final readonly class ApartmentService
 {
     public function __construct(private readonly FraudControlService $fraud,
         private readonly WalletService $wallet,
-        private readonly PaymentService $payment,
+        private readonly PaymentServiceAdapter $payment,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
     public function createBooking(array $data, bool $isB2B): array

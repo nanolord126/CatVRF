@@ -18,20 +18,25 @@
 
 namespace App\Domains\Pharmacy\Services;
 
-
-
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+
 final readonly class SubscriptionService
 {
-
-    public function __construct(private readonly PaymentService $payment,
+    public function __construct(private readonly PaymentServiceAdapter $payment,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-        public function subscribe(array $data, string $correlationId): PharmacySubscription
-        {
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+    public function subscribe(array $data, string $correlationId): PharmacySubscription
+    {
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
+        return $this->db->transaction(function () use ($data, $correlationId) {
+            $sub = PharmacySubscription::create(array_merge($data, ['correlation_id' => $correlationId]));
+            $this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);
+            return $sub;
+        });
+    }
             return $this->db->transaction(function () use ($data, $correlationId) {
                 $sub = PharmacySubscription::create(array_merge($data, ['correlation_id' => $correlationId]));
                 $this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);

@@ -10,6 +10,7 @@ use App\Domains\Taxi\Models\TaxiFleet;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Payment\PaymentService;
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -45,7 +46,7 @@ final readonly class TaxiFinanceService
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
-        private readonly PaymentService $payment,
+        private readonly PaymentServiceAdapter $payment,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}

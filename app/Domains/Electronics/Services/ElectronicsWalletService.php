@@ -9,6 +9,7 @@ use App\Domains\Electronics\Events\EscrowReleasedEvent;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
 use App\Services\PaymentService;
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ final readonly class ElectronicsWalletService
     public function __construct(
         private FraudControlService $fraud,
         private WalletService $wallet,
-        private PaymentService $payment,
+        private PaymentServiceAdapter $payment,
         private Cache $cache,
         private DatabaseManager $db,
         private LoggerInterface $logger,

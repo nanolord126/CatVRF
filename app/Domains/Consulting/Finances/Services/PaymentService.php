@@ -20,11 +20,14 @@ namespace App\Domains\Consulting\Finances\Services;
 
 
 
+use App\Domains\Payment\Services\PaymentServiceAdapter;
+use App\Services\Payment\PaymentService;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class PaymentService
 {
-
+
+
     // Dependencies injected via constructor
         // Add private readonly properties here
         public function __construct(private FraudControlService $fraud,

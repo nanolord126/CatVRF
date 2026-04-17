@@ -18,7 +18,7 @@ final class AppointmentService
 
     public function __construct(
         private FraudControlService $fraud,
-        private PaymentService $payment,
+        private PaymentServiceAdapter $payment,
         private CircuitBreakerService $circuitBreaker,
         private PaymentMetricsService $paymentMetrics,
         private AtomicWalletOperationsService $atomicWallet,

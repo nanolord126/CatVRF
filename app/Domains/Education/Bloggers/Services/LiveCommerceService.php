@@ -2,6 +2,8 @@
 
 namespace App\Domains\Education\Bloggers\Services;
 
+use App\Domains\Payment\Services\PaymentServiceAdapter;
+use App\Services\Payment\PaymentService;
 use Carbon\Carbon;
 
 
@@ -13,11 +15,12 @@ use Illuminate\Config\Repository as ConfigRepository;
 
 final readonly class LiveCommerceService
 {
-
+
+
     public function __construct(private readonly StreamService $streamService,
             private readonly FraudControlService $fraud,
             private readonly RateLimiterService $rateLimiter,
-            private readonly PaymentService $paymentService,
+            private readonly PaymentServiceAdapter $paymentService,
             private readonly WalletService $walletService,
             private readonly InventoryManagementService $inventoryService,
         private readonly \Illuminate\Database\DatabaseManager $db,
