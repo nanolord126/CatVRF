@@ -24,7 +24,7 @@ use Illuminate\Log\LogManager;
  */
 final class CleanupExpiredIdempotencyRecordsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries = 3;
     public int $timeout = 300;  // 5 минут
@@ -60,3 +60,4 @@ final class CleanupExpiredIdempotencyRecordsJob implements ShouldQueue
         }
     }
 }
+

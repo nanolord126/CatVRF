@@ -14,10 +14,6 @@ use Illuminate\Http\Request;
 final class RideReminderJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public function __construct(
             private TaxiRide $ride,

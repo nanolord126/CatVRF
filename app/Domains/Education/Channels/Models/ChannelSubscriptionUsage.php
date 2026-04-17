@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ChannelSubscriptionUsage extends Model
 {
-    use HasFactory;
 
     protected $table = 'channel_subscription_usages';
 

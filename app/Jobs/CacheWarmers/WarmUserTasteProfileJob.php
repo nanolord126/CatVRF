@@ -19,8 +19,6 @@ use Illuminate\Cache\CacheManager;
  */
 final class WarmUserTasteProfileJob implements ShouldQueue
 {
-    use Queueable;
-
         protected int $tries = 3;
         protected int $timeout = 30;
 

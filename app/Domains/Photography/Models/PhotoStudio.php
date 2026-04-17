@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 final class PhotoStudio extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'photography_studios';
 

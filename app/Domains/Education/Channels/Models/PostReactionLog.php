@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class PostReactionLog extends Model
 {
-    use HasFactory;
 
     protected $table = 'post_reaction_logs';
 

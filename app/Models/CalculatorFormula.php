@@ -28,7 +28,6 @@ use Illuminate\Support\Str;
  */
 final class CalculatorFormula extends Model
 {
-    use HasFactory;
 
     protected $table = 'calculator_formulas';
 

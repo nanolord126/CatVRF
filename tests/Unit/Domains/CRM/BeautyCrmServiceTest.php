@@ -7,14 +7,14 @@ use PHPUnit\Framework\TestCase;
 /**
  * Unit tests for BeautyCrmService.
  *
- * @covers \App\Domains\CRM\Domain\Services\BeautyCrmService
+ * @covers \App\Domains\CRM\Services\BeautyCrmService
  */
 final class BeautyCrmServiceTest extends TestCase
 {
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\BeautyCrmService::class
+            \App\Domains\CRM\Services\BeautyCrmService::class
         );
         $this->assertTrue($reflection->isFinal(), 'BeautyCrmService must be final');
     }
@@ -22,7 +22,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\BeautyCrmService::class
+            \App\Domains\CRM\Services\BeautyCrmService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'BeautyCrmService must be readonly');
     }
@@ -30,7 +30,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\BeautyCrmService::class
+            \App\Domains\CRM\Services\BeautyCrmService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'BeautyCrmService must have __construct');
@@ -40,7 +40,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_createBeautyProfile_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\BeautyCrmService::class, 'createBeautyProfile'),
+            method_exists(\App\Domains\CRM\Services\BeautyCrmService::class, 'createBeautyProfile'),
             'BeautyCrmService must implement createBeautyProfile()'
         );
     }
@@ -48,7 +48,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_updateMedicalCard_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\BeautyCrmService::class, 'updateMedicalCard'),
+            method_exists(\App\Domains\CRM\Services\BeautyCrmService::class, 'updateMedicalCard'),
             'BeautyCrmService must implement updateMedicalCard()'
         );
     }
@@ -56,7 +56,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_addBeforeAfterPhoto_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\BeautyCrmService::class, 'addBeforeAfterPhoto'),
+            method_exists(\App\Domains\CRM\Services\BeautyCrmService::class, 'addBeforeAfterPhoto'),
             'BeautyCrmService must implement addBeforeAfterPhoto()'
         );
     }
@@ -64,7 +64,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_checkAllergies_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\BeautyCrmService::class, 'checkAllergies'),
+            method_exists(\App\Domains\CRM\Services\BeautyCrmService::class, 'checkAllergies'),
             'BeautyCrmService must implement checkAllergies()'
         );
     }
@@ -72,7 +72,7 @@ final class BeautyCrmServiceTest extends TestCase
     public function test_recordVisit_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\BeautyCrmService::class, 'recordVisit'),
+            method_exists(\App\Domains\CRM\Services\BeautyCrmService::class, 'recordVisit'),
             'BeautyCrmService must implement recordVisit()'
         );
     }

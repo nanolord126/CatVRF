@@ -15,7 +15,7 @@ use Throwable;
 
 final class UpdateAppointmentStatusJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         private readonly int $appointmentId,
@@ -70,3 +70,4 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
         return now()->addHours(4)->toDateTime();
     }
 }
+

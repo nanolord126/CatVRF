@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class CarDealerStorefrontResource extends Resource
 {
-
+
     protected static ?string $model = CarDealerStorefront::class;
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
         protected static ?string $navigationGroup = 'Продажи авто';
@@ -58,9 +58,9 @@ final class CarDealerStorefrontResource extends Resource
     	public static function getPages(): array
     	{
     		return [
-    			'index'  => Pages\ListCarDealerStorefronts::route('/'),
-    			'create' => Pages\CreateCarDealerStorefront::route('/create'),
-    			'edit'   => Pages\EditCarDealerStorefront::route('/{record}/edit'),
+    			'index'  => \App\Domains\Auto\CarSales\Filament\Resources\CarDealerStorefrontResource\Pages\ListCarDealerStorefronts::route('/'),
+    			'create' => \App\Domains\Auto\CarSales\Filament\Resources\CarDealerStorefrontResource\Pages\CreateCarDealerStorefront::route('/create'),
+    			'edit'   => \App\Domains\Auto\CarSales\Filament\Resources\CarDealerStorefrontResource\Pages\EditCarDealerStorefront::route('/{record}/edit'),
     		];
     	}
 }

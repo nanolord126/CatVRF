@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Оптимизация маршрута + динамическое ценообразование + подбор водителя
@@ -26,12 +26,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class TaxiAIConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -55,16 +59,27 @@ final readonly class TaxiAIConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Оптимизация маршрута и подбор тарифа для поездки. Определи: пункт отправления, назначение, тип поездки, количество пассажиров. Рекомендуй оптимальный маршрут, тариф, водителя.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($rideData, $userId), ['ride_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($rideData, $userId), ['ride_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Анонимизация ПДн перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Оптимизация маршрута и подбор тарифа для поездки. Определи: пункт отправления, назначение, тип поездки, количество пассажиров. Рекомендуй оптимальный маршрут, тариф, водителя.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.3, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get route optimization. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -128,6 +143,27 @@ final readonly class TaxiAIConstructorService
     /**
      * Сохранение результата в профиль пользователя (user_ai_designs).
      */
+
+    private function anonymizeData(string $data): string
+    {
+        $patterns = [
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $rideData, int $userId): array
+    {
+        return [
+            'pickup_location' => $rideData['pickup_location'] ?? '',
+            'dropoff_location' => $rideData['dropoff_location'] ?? '',
+            'ride_type' => $rideData['ride_type'] ?? 'economy',
+            'passengers' => $rideData['passengers'] ?? 1,
+        ];
+    }
     private function saveToUserProfile(int $userId, string $vertical, array $data, string $correlationId): void
     {
         $this->db->table('user_ai_designs')->updateOrInsert(

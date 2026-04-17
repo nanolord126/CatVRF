@@ -22,7 +22,7 @@ use Illuminate\Log\LogManager;
  */
 final class ConsumableDeductionJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private readonly Appointment $appointment,
@@ -64,3 +64,4 @@ final class ConsumableDeductionJob implements ShouldQueue
             }
         }
 }
+

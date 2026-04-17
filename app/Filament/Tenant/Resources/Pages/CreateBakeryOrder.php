@@ -49,7 +49,7 @@ final class CreateBakeryOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Bakery order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Bakery order created', [
             'order_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

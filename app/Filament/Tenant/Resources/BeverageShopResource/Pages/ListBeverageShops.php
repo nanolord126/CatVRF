@@ -43,7 +43,7 @@ final class ListBeverageShops extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Register New Venue')
                     ->icon('heroicon-o-plus'),
             ];

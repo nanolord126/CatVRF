@@ -24,10 +24,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessInventoryCheckJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries   = 3;
     public int $timeout = 600;

@@ -24,8 +24,6 @@ use Illuminate\Queue\SerializesModels;
 final class AppointmentBooked
 {
 
-    use Dispatchable;
-        use SerializesModels;
 
         public function __construct(
             private readonly PetAppointment $appointment,

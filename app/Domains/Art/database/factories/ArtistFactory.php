@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Database\Factories;
+namespace App\Domains\Art\database\factories;
 
 use App\Domains\Art\Models\Artist;
 use Illuminate\Database\Eloquent\Factories\Factory;

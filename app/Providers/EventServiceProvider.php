@@ -5,6 +5,50 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
+use App\Domains\Beauty\Events\LoyaltyPointsEarnedEvent;
+use App\Domains\Beauty\Events\MasterMatchedEvent;
+use App\Domains\Beauty\Events\PriceUpdatedEvent;
+use App\Domains\Beauty\Events\VideoCallEndedEvent;
+use App\Domains\Beauty\Events\VideoCallInitiatedEvent;
+use App\Domains\Beauty\Listeners\LoyaltyPointsEarnedListener;
+use App\Domains\Beauty\Listeners\MasterMatchedListener;
+use App\Domains\Beauty\Listeners\PriceUpdatedListener;
+use App\Domains\Beauty\Listeners\VideoCallEndedListener;
+use App\Domains\Auto\Events\AIDiagnosticsCompletedEvent;
+use App\Domains\Auto\Events\VideoInspectionInitiatedEvent;
+use App\Domains\Auto\Events\ServiceOrderCreatedEvent;
+use App\Domains\Auto\Events\CarImportCalculatedEvent;
+use App\Domains\Auto\Events\CarImportInitiatedEvent;
+use App\Domains\Auto\Events\CarImportDutiesPaidEvent;
+use App\Domains\Auto\Listeners\SendDiagnosticsNotificationListener;
+use App\Domains\Auto\Listeners\UpdateVehicleConditionListener;
+use App\Domains\Auto\Listeners\NotifyServiceCentersListener;
+use App\Domains\Auto\Listeners\SendImportCalculationNotificationListener;
+use App\Domains\Auto\Listeners\NotifyCustomsDepartmentListener;
+use App\Domains\Auto\Listeners\UpdateImportStatusListener;
+use App\Domains\Taxi\Events\DriverAssigned;
+use App\Domains\Taxi\Events\RideCreated;
+use App\Domains\Taxi\Events\RideCompleted;
+use App\Domains\Taxi\Events\RideStarted;
+use App\Domains\Taxi\Events\SurgeUpdated;
+use App\Domains\Taxi\Listeners\NotifyDriverRideCreated;
+use App\Domains\Taxi\Listeners\NotifyPassengerDriverAssigned;
+use App\Domains\Taxi\Listeners\NotifyRideStarted;
+use App\Domains\Taxi\Listeners\ProcessRideCompletedPayout;
+use App\Domains\Education\Events\LearningPathGeneratedEvent;
+use App\Domains\Education\Listeners\LearningPathGeneratedListener;
+use App\Domains\Education\Events\SlotBookedEvent;
+use App\Domains\Education\Listeners\SlotBookedListener;
+use App\Domains\Education\Events\FraudDetectedEvent;
+use App\Domains\Education\Listeners\FraudDetectedListener;
+use App\Domains\Sports\Events\AdaptiveWorkoutGeneratedEvent;
+use App\Domains\Sports\Events\BookingConfirmedEvent;
+use App\Domains\Sports\Events\LiveStreamStartedEvent;
+use App\Domains\Sports\Events\FraudDetectedEvent as SportsFraudDetectedEvent;
+use App\Domains\Sports\Listeners\SyncAdaptiveWorkoutToCRMListener;
+use App\Domains\Sports\Listeners\SendBookingConfirmationNotificationListener;
+use App\Domains\Sports\Listeners\NotifyLiveStreamStartedListener;
+use App\Domains\Sports\Listeners\HandleFraudDetectedListener;
 use App\Listeners\DebitAdCampaignBudget;
 
 final class EventServiceProvider extends ServiceProvider
@@ -12,17 +56,35 @@ final class EventServiceProvider extends ServiceProvider
     /** @var array<class-string, list<class-string>> */
         protected $listen = [
             // ── Auto / Taxi ─────────────────────────────────────────────
-            RideCreated::class           => [NotifyDriverRideCreated::class],
-            RideCompleted::class         => [ProcessRideCompletedPayout::class],
-            SurgeUpdated::class          => [],
-            AutoPartOrderCreated::class  => [],
-            RepairWorkCompleted::class   => [DeductRepairPartsListener::class],
-            LowPartsStock::class         => [LowPartsStockAlertListener::class],
+            // TODO: Auto event listeners not implemented yet
+            // RideCreated::class           => [NotifyDriverRideCreated::class],
+            // RideCompleted::class         => [ProcessRideCompletedPayout::class],
+            // SurgeUpdated::class          => [],
+            // AutoPartOrderCreated::class  => [],
+            // RepairWorkCompleted::class   => [DeductRepairPartsListener::class],
+            // LowPartsStock::class        => [LowPartsStockAlertListener::class],
+            CarImportCalculatedEvent::class => [SendImportCalculationNotificationListener::class],
+            CarImportInitiatedEvent::class => [NotifyCustomsDepartmentListener::class],
+            CarImportDutiesPaidEvent::class => [UpdateImportStatusListener::class],
+            // TODO: AutoPartOrderCreated not implemented yet
+            // AutoPartOrderCreated::class  => [],
+            // TODO: RepairWorkCompleted, DeductRepairPartsListener not implemented yet
+            // RepairWorkCompleted::class   => [DeductRepairPartsListener::class],
+            // TODO: LowPartsStock, LowPartsStockAlertListener not implemented yet
+            // LowPartsStock::class         => [LowPartsStockAlertListener::class],
 
             // ── Beauty ──────────────────────────────────────────────────
-            AppointmentScheduled::class  => [SendAppointmentReminder::class],
-            AppointmentCompleted::class  => [DeductAppointmentConsumablesListener::class],
+            // TODO: AppointmentScheduled, SendAppointmentReminder not implemented yet
+            // AppointmentScheduled::class  => [SendAppointmentReminder::class],
+            // TODO: AppointmentCompleted, DeductAppointmentConsumablesListener not implemented yet
+            // AppointmentCompleted::class  => [DeductAppointmentConsumablesListener::class],
+            VideoCallInitiatedEvent::class => [],
+            VideoCallEndedEvent::class    => [VideoCallEndedListener::class],
             AppointmentCancelled::class  => [],
+            MasterMatchedEvent::class    => [MasterMatchedListener::class],
+            PriceUpdatedEvent::class     => [PriceUpdatedListener::class],
+            LoyaltyPointsEarnedEvent::class => [LoyaltyPointsEarnedListener::class],
+            FraudDetectedEvent::class    => [FraudDetectedListener::class],
             ConsumableDeducted::class    => [UpdateConsumableInventory::class],
             LowStockReached::class       => [LowStockNotificationListener::class],
 
@@ -143,6 +205,11 @@ final class EventServiceProvider extends ServiceProvider
             ],
             \App\Domains\RealEstate\Domain\Events\ContractSigned::class => [
                 \App\Domains\RealEstate\Application\Listeners\UpdatePropertyStatusOnContractSigned::class,
+            // Sports AI & Live Stream Events
+            AdaptiveWorkoutGeneratedEvent::class => [SyncAdaptiveWorkoutToCRMListener::class],
+            BookingConfirmedEvent::class => [SendBookingConfirmationNotificationListener::class],
+            LiveStreamStartedEvent::class => [NotifyLiveStreamStartedListener::class],
+            SportsFraudDetectedEvent::class => [HandleFraudDetectedListener::class],
             ],
             \App\Domains\RealEstate\Domain\Events\PropertyListed::class  => [],
             \App\Domains\RealEstate\Domain\Events\ViewingCancelled::class => [],
@@ -167,6 +234,20 @@ final class EventServiceProvider extends ServiceProvider
             // ── Ad Campaigns ─────────────────────────────────────────────
             AdImpressionRegistered::class => [
                 DebitAdCampaignBudget::class,
+            ],
+
+            // ── Education ────────────────────────────────────────────────
+            LearningPathGeneratedEvent::class => [
+                LearningPathGeneratedListener::class,
+            ],
+            PriceUpdatedEvent::class => [
+                PriceUpdatedListener::class,
+            ],
+            SlotBookedEvent::class => [
+                SlotBookedListener::class,
+            ],
+            FraudDetectedEvent::class => [
+                FraudDetectedListener::class,
             ],
         ];
 

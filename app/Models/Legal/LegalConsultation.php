@@ -12,7 +12,6 @@ use Illuminate\Support\Str;
 
 final class LegalConsultation extends Model
 {
-    use HasFactory;
 
         protected $table = 'legal_consultations';
 

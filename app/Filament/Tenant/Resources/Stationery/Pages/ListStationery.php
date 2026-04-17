@@ -11,8 +11,6 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class ListStationery extends ListRecords
 {
@@ -34,7 +32,7 @@ final class ListStationery extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
         $this->logger->info('Stationery ListRecords accessed', [
@@ -59,10 +57,9 @@ final class ListStationery extends ListRecords
         ];
     }
 
-    public function render()
-    {
+    public function render(): \Illuminate\Contracts\View\View {
         $this->logger->info('ListStationery page rendered', [
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

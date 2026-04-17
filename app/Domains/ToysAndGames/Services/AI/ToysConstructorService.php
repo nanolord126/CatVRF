@@ -33,7 +33,7 @@ final readonly class ToysConstructorService
 
         $cacheKey = 'user_ai_designs:ToysAndGames:' . $userId . ':' . md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->tags(['toys', 'ai', 'constructor'])->remember($cacheKey, now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 

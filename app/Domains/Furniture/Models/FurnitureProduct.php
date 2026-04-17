@@ -9,7 +9,10 @@ namespace App\Domains\Furniture\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 /**
      * FurnitureProduct Model
@@ -17,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class FurnitureProduct extends Model
 {
-        use FurnitureDomainTrait, SoftDeletes;
+    use FurnitureDomainTrait, SoftDeletes, TenantScoped;
 
         protected $table = 'furniture_products';
 

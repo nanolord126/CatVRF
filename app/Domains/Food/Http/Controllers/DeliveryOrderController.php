@@ -3,22 +3,27 @@
 namespace App\Domains\Food\Http\Controllers;
 
 use Carbon\Carbon;
-
-
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
+use App\Domains\Food\Models\DeliveryOrder;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 final class DeliveryOrderController extends Controller
 {
-
+    use AuthorizesRequests;
+
     public function __construct(
             private readonly FraudControlService $fraud, private readonly LoggerInterface $logger) {}
 
-        public function index(): JsonResponse
+        public function index(Request $request): JsonResponse
         {
             try {
                 $deliveries = DeliveryOrder::query()
-                    ->whereHas('order', fn ($q) => $q->where('client_id', $request->user()?->id))
+                    ->whereHas('order', fn ($q) => $q->where('customer_id', $request->user()?->id))
                     ->with('order')
                     ->paginate(15);
 
@@ -36,17 +41,17 @@ final class DeliveryOrderController extends Controller
             }
         }
 
-        public function show(DeliveryOrder $delivery): JsonResponse
-        {
-            $this->authorize('view', $delivery);
+        public function show(Request $request, DeliveryOrder $delivery): JsonResponse
+    {
+        $this->authorize('view', $delivery);
 
-            return new \Illuminate\Http\JsonResponse([
-                'success' => true,
-                'data' => $delivery->load('order'),
-            ]);
-        }
+        return new \Illuminate\Http\JsonResponse([
+            'success' => true,
+            'data' => $delivery->load('order'),
+        ]);
+    }
 
-        public function start(DeliveryOrder $delivery): JsonResponse
+        public function start(Request $request, DeliveryOrder $delivery): JsonResponse
         {
             $correlationId = Str::uuid()->toString();
 
@@ -107,7 +112,7 @@ final class DeliveryOrderController extends Controller
             }
         }
 
-        public function track(DeliveryOrder $delivery): JsonResponse
+        public function track(Request $request, DeliveryOrder $delivery): JsonResponse
         {
             $this->authorize('track', $delivery);
 
@@ -117,5 +122,47 @@ final class DeliveryOrderController extends Controller
                 'location' => $delivery->delivery_point,
                 'eta' => $delivery->eta_minutes,
             ]);
+        }
+
+        public function cancel(Request $request, DeliveryOrder $delivery): JsonResponse
+        {
+            $this->authorize('cancel', $delivery);
+
+            $correlationId = Str::uuid()->toString();
+            $reason = $request->input('reason', 'Customer request');
+
+            try {
+                $before = $delivery->status;
+
+                $delivery->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => Carbon::now(),
+                    'cancellation_reason' => $reason,
+                ]);
+
+                $this->logger->info('Delivery cancelled', [
+                    'correlation_id' => $correlationId,
+                    'delivery_id' => $delivery->id,
+                    'tenant_id' => $delivery->tenant_id ?? null,
+                    'before' => $before,
+                    'after' => 'cancelled',
+                    'reason' => $reason,
+                    'user_id' => $request->user()?->id,
+                ]);
+
+                return new \Illuminate\Http\JsonResponse([
+                    'success' => true,
+                    'message' => 'Доставка отменена',
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->error('Delivery cancellation failed', [
+                    'correlation_id' => $correlationId,
+                    'delivery_id' => $delivery->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'correlation_id' => $correlationId], 500);
+            }
         }
 }

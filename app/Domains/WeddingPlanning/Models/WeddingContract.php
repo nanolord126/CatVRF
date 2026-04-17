@@ -25,7 +25,6 @@ use Illuminate\Support\Str;
 
 final class WeddingContract extends Model
 {
-    use HasFactory;
 
     protected $table = 'wedding_contracts';
 

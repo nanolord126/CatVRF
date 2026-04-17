@@ -39,7 +39,7 @@ final class CreateBeverageSubscription extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('BeverageSubscription created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageSubscription created', [
             'subscription_id' => $this->record->id,
             'plan_type'       => $this->record->plan_type,
             'user_id'         => $this->record->user_id,

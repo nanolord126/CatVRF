@@ -13,8 +13,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class UpdateOrderStatusJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private int $orderId = 0,
@@ -83,3 +84,4 @@ final class UpdateOrderStatusJob
         ];
     }
 }
+

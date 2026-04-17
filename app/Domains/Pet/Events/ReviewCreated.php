@@ -24,8 +24,6 @@ use Illuminate\Queue\SerializesModels;
 final class ReviewCreated
 {
 
-    use Dispatchable;
-        use SerializesModels;
 
         public function __construct(
             private readonly PetReview $review,

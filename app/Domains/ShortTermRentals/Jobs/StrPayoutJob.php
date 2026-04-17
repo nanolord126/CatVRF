@@ -11,12 +11,12 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Contracts\Queue\InteractsWithQueue;
 use Illuminate\Bus\Queueable;
 final class StrPayoutJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(private readonly int $bookingId,
             private ?string $correlationId = null,
@@ -62,3 +62,4 @@ final class StrPayoutJob
             return ['short-term-rentals', 'payout', "booking:{$this->bookingId}"];
         }
 }
+

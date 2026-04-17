@@ -24,7 +24,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class GiftProduct extends Model
 {
-    use HasFactory;
 
     use HasFactory, HasUuids;
 

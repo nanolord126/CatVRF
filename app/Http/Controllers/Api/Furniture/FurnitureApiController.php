@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Api\Furniture;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Log\LogManager;
 
 final class FurnitureApiController extends Controller
 {
-
+
+
     public function __construct(
             private readonly FurnitureDomainService $furnitureService,
             private readonly AIInteriorConstructorService $aiService,
             private readonly ResponseFactory $response,
+            private readonly LogManager $logger,
     ) {}
         /**
          * Search and Filter Furniture Objects.
@@ -58,7 +61,7 @@ final class FurnitureApiController extends Controller
                     ],
                 ]);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -108,7 +111,7 @@ final class FurnitureApiController extends Controller
                     ],
                 ]);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

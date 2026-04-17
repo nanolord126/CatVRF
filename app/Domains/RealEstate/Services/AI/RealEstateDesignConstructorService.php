@@ -157,17 +157,19 @@ final readonly class RealEstateDesignConstructorService
      */
     private function saveToUserProfile(int $userId, string $vertical, array $data, string $correlationId): void
     {
-        $this->db->table('user_ai_designs')->updateOrInsert(
-            [
-                'user_id'  => $userId,
-                'vertical' => $vertical,
-            ],
-            [
-                'design_data'    => json_encode($data),
-                'correlation_id' => $correlationId,
-                'updated_at'     => now(),
-                'created_at'     => now(),
-            ]
-        );
+        $this->db->transaction(function () use ($userId, $vertical, $data, $correlationId) {
+            $this->db->table('user_ai_designs')->updateOrInsert(
+                [
+                    'user_id'  => $userId,
+                    'vertical' => $vertical,
+                ],
+                [
+                    'design_data'    => json_encode($data),
+                    'correlation_id' => $correlationId,
+                    'updated_at'     => now(),
+                    'created_at'     => now(),
+                ]
+            );
+        });
     }
 }

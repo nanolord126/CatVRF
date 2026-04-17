@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Персональный план тренировок + подбор экипировки + расписание
@@ -26,12 +26,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class SportsTrainingConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -55,16 +59,27 @@ final readonly class SportsTrainingConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Анализ физической формы и целей для составления тренировочного плана. Определи: уровень подготовки, вид спорта, цели, ограничения. Рекомендуй план тренировок, экипировку, инвентарь.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($athleteData, $userId), ['training_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($athleteData, $userId), ['training_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Анонимизация данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Анализ физической формы и целей для составления тренировочного плана. Определи: уровень подготовки, вид спорта, цели, ограничения. Рекомендуй план тренировок, экипировку, инвентарь.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.3, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get training plan. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -142,5 +157,27 @@ final readonly class SportsTrainingConstructorService
                 'created_at'     => now(),
             ]
         );
+    }
+
+    private function anonymizeData(string $data): string
+    {
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[АТЛЕТ]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{2}\.\d{2}\.\d{4}\b/' => '[ДАТА]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $athleteData, int $userId): array
+    {
+        return [
+            'fitness_level' => $athleteData['fitness_level'] ?? null,
+            'goals' => $athleteData['goals'] ?? [],
+            'limitations' => $athleteData['limitations'] ?? [],
+            'sport' => $athleteData['sport'] ?? null,
+        ];
     }
 }

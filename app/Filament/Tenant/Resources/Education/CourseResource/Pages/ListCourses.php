@@ -64,7 +64,7 @@ final class ListCourses extends ListRecords
          */
         protected function beforeFill(): void
         {
-            $this->logger->info('User accessed Education Course List', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('User accessed Education Course List', [
                 'tenant_id' => tenant()->id,
                 'correlation_id' => (string) Str::uuid(),
             ]);

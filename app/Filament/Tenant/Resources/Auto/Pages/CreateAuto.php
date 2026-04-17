@@ -10,9 +10,6 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Auto\AutoResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class CreateAuto extends CreateRecord
 {
@@ -35,7 +32,7 @@ final class CreateAuto extends CreateRecord
             $this->logger->info('Auto creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'model' => $data['model'] ?? null,
             ]);
         });
@@ -49,7 +46,7 @@ final class CreateAuto extends CreateRecord
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);

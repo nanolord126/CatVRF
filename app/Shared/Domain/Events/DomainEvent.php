@@ -1,74 +1,49 @@
 <?php
 
 declare(strict_types=1);
-
-/**
- *  — CatVRF 2026 Component.
- *
- * Part of the CatVRF multi-vertical marketplace platform.
- * Implements tenant-aware, fraud-checked business logic
- * with full correlation_id tracing and audit logging.
- *
- * @package CatVRF
- * @version 2026.1
- * @author CatVRF Team
- * @license Proprietary
-
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- */
-
-
-/**
- *  — CatVRF 2026 Component.
- *
- * Part of the CatVRF multi-vertical marketplace platform.
- * Implements tenant-aware, fraud-checked business logic
- * with full correlation_id tracing and audit logging.
- *
- * @package CatVRF
- * @version 2026.1
- * @author CatVRF Team
- * @license Proprietary
-
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- * @see https://catvrf.ru/docs/component
- */
-
-
 namespace App\Shared\Domain\Events;
 
-interface DomainEvent
+abstract class DomainEvent
 {
-    public function getEventName(): string;
+    private \DateTimeImmutable $occurredAt;
 
-    public function getPayload(): array;
+    public function __construct(protected mixed $correlationId = null)
+    {
+        $this->occurredAt = new \DateTimeImmutable();
+    }
 
-    public function getCorrelationId(): string;
+    public function occurredOn(): string
+    {
+        return $this->occurredAt->format(DATE_ATOM);
+    }
+
+    public function getEventName(): string
+    {
+        if (method_exists($this, 'eventName')) {
+            /** @phpstan-ignore-next-line */
+            return (string) $this->eventName();
+        }
+
+        return static::class;
+    }
+
+    public function getPayload(): array
+    {
+        if (method_exists($this, 'toArray')) {
+            /** @phpstan-ignore-next-line */
+            return (array) $this->toArray();
+        }
+
+        return [];
+    }
+
+    public function getCorrelationId(): string
+    {
+        if (is_object($this->correlationId) && method_exists($this->correlationId, 'toString')) {
+            /** @phpstan-ignore-next-line */
+            return (string) $this->correlationId->toString();
+        }
+
+        return (string) ($this->correlationId ?? '');
+    }
 }

@@ -6,13 +6,18 @@ namespace App\Domains\Food\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
 
 final class Dish extends Model
 {
+    use SoftDeletes, TenantScoped;
+
     protected $table = "food_dishes";
 
     protected $fillable = [
         "restaurant_id", "uuid", "correlation_id",
+        "tenant_id", "business_group_id",
         "name", "description", "price", "weight_grams",
         "calories", "proteins", "fats", "carbohydrates",
         "is_available", "modifiers", "image_url"

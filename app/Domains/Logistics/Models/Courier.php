@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Courier extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'couriers';
 

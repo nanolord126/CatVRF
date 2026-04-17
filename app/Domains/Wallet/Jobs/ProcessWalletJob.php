@@ -22,10 +22,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessWalletJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
     public int $backoff = 60;

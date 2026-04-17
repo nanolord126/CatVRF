@@ -11,10 +11,6 @@ use Psr\Log\LoggerInterface;
 final class UpdateAppointmentStatusJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-
         public function __construct(
             private int $appointmentId = 0,
             private string $newStatus = '',

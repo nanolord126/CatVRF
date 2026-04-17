@@ -15,9 +15,6 @@ use Illuminate\Http\Request;
 final class HeatmapUpdateEvent
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         /**
          * @var int Tenant ID for broadcast channel scoping

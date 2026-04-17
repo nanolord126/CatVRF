@@ -16,7 +16,7 @@ use App\Services\FraudControlService;
 
 final class UpdateBookingStatusJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $maxExceptions = 3;
@@ -67,3 +67,4 @@ final class UpdateBookingStatusJob implements ShouldQueue
             return now()->addHours(24);
         }
 }
+

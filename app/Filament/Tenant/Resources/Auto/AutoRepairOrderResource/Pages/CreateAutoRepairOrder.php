@@ -41,7 +41,7 @@ final class CreateAutoRepairOrder extends CreateRecord
 
             $data['total_cost_kopecks'] = ($data['labor_cost_kopecks'] ?? 0) + ($data['parts_cost_kopecks'] ?? 0);
 
-            $this->logger->info('Repair Order Creation Initiated', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Repair Order Creation Initiated', [
                 'tenant_id' => $data['tenant_id'],
                 'correlation_id' => $data['correlation_id'],
             ]);

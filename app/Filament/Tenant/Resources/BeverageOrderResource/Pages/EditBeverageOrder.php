@@ -14,7 +14,8 @@ final class EditBeverageOrder extends EditRecord
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static string $resource = BeverageOrderResource::class;
 
         protected function getHeaderActions(): array
@@ -32,7 +33,7 @@ final class EditBeverageOrder extends EditRecord
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
                 'status' => $this->record->status,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

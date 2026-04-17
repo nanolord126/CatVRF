@@ -34,6 +34,7 @@
 
 namespace App\Filament\Tenant\Resources\AutoRepairOrderResource\Pages;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListAutoRepairOrders extends ListRecords
@@ -44,7 +45,7 @@ final class ListAutoRepairOrders extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Открыть заказ-наряд')
                     ->icon('heroicon-o-plus'),
             ];

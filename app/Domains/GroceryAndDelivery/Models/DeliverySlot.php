@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class DeliverySlot extends Model
 {
-    use HasFactory;
 
     protected $table = 'delivery_slots';
 

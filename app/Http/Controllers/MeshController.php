@@ -42,7 +42,7 @@ final class MeshController extends Controller
                     'turn_servers' => $this->getTurnServers(),
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -85,7 +85,7 @@ final class MeshController extends Controller
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -127,7 +127,7 @@ final class MeshController extends Controller
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -170,7 +170,7 @@ final class MeshController extends Controller
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -204,7 +204,7 @@ final class MeshController extends Controller
                     'topology_switched' => $switched,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -237,7 +237,7 @@ final class MeshController extends Controller
                 );
                 return $this->response->json(['status' => 'failed']);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

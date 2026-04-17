@@ -25,9 +25,6 @@ use Illuminate\Queue\SerializesModels;
 final class FlightBooked
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         public function __construct(
             public TravelFlight $flight,

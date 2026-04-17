@@ -195,17 +195,19 @@ final readonly class InteriorDesignConstructorService
      */
     private function saveDesign(int $userId, array $profile, string $visualizationUrl, string $correlationId): void
     {
-        $this->db->table('user_ai_designs')->updateOrInsert(
-            ['user_id' => $userId, 'vertical' => 'furniture'],
-            [
-                'design_data'    => json_encode([
-                    'profile'          => $profile,
-                    'visualization_url' => $visualizationUrl,
-                ], JSON_UNESCAPED_UNICODE),
-                'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
-            ]
-    );
+        $this->db->transaction(function () use ($userId, $profile, $visualizationUrl, $correlationId) {
+            $this->db->table('user_ai_designs')->updateOrInsert(
+                ['user_id' => $userId, 'vertical' => 'furniture'],
+                [
+                    'design_data'    => json_encode([
+                        'profile'          => $profile,
+                        'visualization_url' => $visualizationUrl,
+                    ], JSON_UNESCAPED_UNICODE),
+                    'correlation_id' => $correlationId,
+                    'updated_at'     => Carbon::now(),
+                    'created_at'     => Carbon::now(),
+                ]
+            );
+        });
     }
 }

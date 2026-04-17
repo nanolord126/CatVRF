@@ -18,33 +18,10 @@
 
 namespace App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages;
 
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource;
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateTaxiVehicle extends CreateRecord
 {
-
     protected static string $resource = TaxiVehicleResource::class;
-
-    /**
-     * Get the string representation of this instance.
-     *
-     * @return string The string representation
-     */
-    public function __toString(): string
-    {
-        return static::class;
-    }
-
-    /**
-     * Get debug information for this instance.
-     *
-     * @return array<string, mixed> Debug data including class name and state
-     */
-    public function toDebugArray(): array
-    {
-        return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
-        ];
-    }
 }

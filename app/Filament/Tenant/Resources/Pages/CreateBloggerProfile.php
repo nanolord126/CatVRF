@@ -45,7 +45,7 @@ final class CreateBloggerProfile extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Blogger profile created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Blogger profile created', [
             'profile_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

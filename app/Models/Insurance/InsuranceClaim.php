@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class InsuranceClaim extends Model
 {
-    use HasFactory;
 
     protected $table = 'insurance_claims';
 

@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MedicalService extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_services';
 
@@ -58,15 +56,7 @@ final class MedicalService extends Model
         /**
          * Настройка логов для аудита и ФЗ-152.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'base_price', 'is_active', 'age_limit_min', 'required_prepayment_percentage'])
-                ->logOnlyDirty()
-                ->useLogName('medical_service_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиника, предоставляющая услугу.
          */
         public function clinic(): BelongsTo

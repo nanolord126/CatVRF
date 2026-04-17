@@ -107,21 +107,20 @@ final class AuditService
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @deprecated Use constructor-injected AuditService::record() instead.
+     * Instance-метод log() — alias для record(), совместим с доменными сервисами.
+     *
+     * Сигнатура: log(action, subjectType, subjectId, old, new, correlationId)
+     * Пример: $this->audit->log('wallet_credited', Wallet::class, $id, $old, $new, $cid);
      */
-    public static function log(string $operation, array $data, string $correlationId, array $metadata = []): void
-    {
-        $context = array_merge([
-            'correlation_id' => $correlationId,
-            'operation' => $operation,
-            'user_id' => $this->authManager->id(),
-            'tenant_id' => tenant()->id ?? null,
-            'ip_address' => $this->request->ip(),
-            'user_agent' => $this->request->userAgent(),
-            'timestamp' => now(),
-        ], $metadata, $data);
-
-        $this->logger->channel('audit')->info($operation, $context);
+    public function log(
+        string  $action,
+        string  $subjectType,
+        ?int    $subjectId     = null,
+        array   $oldValues     = [],
+        array   $newValues     = [],
+        ?string $correlationId = null,
+    ): void {
+        $this->record($action, $subjectType, $subjectId, $oldValues, $newValues, $correlationId);
     }
 
     /**

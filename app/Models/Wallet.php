@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Wallet extends Model
 {
-    use HasFactory;
     protected $table = 'wallets';
 
     protected $fillable = [

@@ -2,7 +2,7 @@
 
 namespace Tests\Integration\Fraud;
 
-use App\DTOs\OperationDTO;
+use App\Domains\FraudML\DTOs\OperationDto;
 use App\Models\FraudAttempt;
 use App\Models\Tenant;
 use App\Models\User;

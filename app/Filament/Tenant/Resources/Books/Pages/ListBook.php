@@ -4,10 +4,8 @@ namespace App\Filament\Tenant\Resources\Books\Pages;
 
 
 
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Books\BooksResource;
-use Filament\Actions\CreateAction;
+use Filament\Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,10 +14,6 @@ use Illuminate\Support\Str;
 
 final class ListBook extends ListRecords
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = BooksResource::class;
 
     protected function getHeaderActions(): array
@@ -34,10 +28,10 @@ final class ListBook extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Books ListRecords accessed', [
+        Log::channel('audit')->info('Books ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -59,13 +53,8 @@ final class ListBook extends ListRecords
         ];
     }
 
-    public function render()
+    public function render(): \Illuminate\Contracts\View\View
     {
-        $this->logger->info('ListBook page rendered', [
-            'user_id' => $this->guard->id(),
-            'tenant_id' => filament()->getTenant()->id,
-        ]);
-
         return parent::render();
     }
 }

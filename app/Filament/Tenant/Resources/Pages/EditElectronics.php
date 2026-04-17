@@ -49,7 +49,7 @@ final class EditElectronics extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Electronic product updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Electronic product updated', [
             'product_id'     => $record->id,
             'name'           => $record->name,
             'status'         => $record->status,

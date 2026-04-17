@@ -52,7 +52,6 @@ final class Order extends Model
         private readonly Request $request,
     ) {}
 
-    use SoftDeletes;
 
     protected $table = 'orders';
 

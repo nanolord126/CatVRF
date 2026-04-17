@@ -4,13 +4,13 @@ namespace App\Domains\Common\Chat\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 final class Conversation extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
-    use SoftDeletes;
 
         protected $table = 'chat_conversations';
 

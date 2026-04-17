@@ -20,7 +20,6 @@ use Illuminate\Cache\CacheManager;
 
 final class AnalyticsEventListener implements ShouldQueue
 {
-    use InteractsWithQueue;
 
     public int $tries = 3;
     public int $timeout = 300; // 5 минут

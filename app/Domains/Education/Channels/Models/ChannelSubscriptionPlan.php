@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ChannelSubscriptionPlan extends Model
 {
-    use HasFactory;
 
     protected $table = 'channel_subscription_plans';
 

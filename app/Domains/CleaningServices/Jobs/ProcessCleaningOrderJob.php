@@ -2,10 +2,6 @@
 
 namespace App\Domains\CleaningServices\Jobs;
 
-
-
-
-use App\Services\FraudControlService;
 use Psr\Log\LoggerInterface;
 use App\Domains\CleaningServices\Models\CleaningOrder;
 use App\Services\AuditService;
@@ -29,10 +25,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ProcessCleaningOrderJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
     public int $backoff = 60;

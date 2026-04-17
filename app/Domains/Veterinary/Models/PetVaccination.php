@@ -12,9 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 final class PetVaccination extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'pet_vaccinations';
 

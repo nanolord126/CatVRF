@@ -97,11 +97,11 @@ final readonly class PolicyService
                 });
 
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $correlationId,
                 ]);
 
                 // 7. Error handling (Log and bubble up)

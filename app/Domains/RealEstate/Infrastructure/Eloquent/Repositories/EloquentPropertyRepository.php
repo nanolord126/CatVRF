@@ -51,7 +51,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             ->map(fn (PropertyModel $m) => $this->toDomain($m));
     }
 
-    public function findByStatus(int $tenantId, PropertyStatusEnum $status): Collection
+    public function findByStatus(PropertyStatusEnum $status, int $tenantId): Collection
     {
         return PropertyModel::withoutGlobalScope('tenant')
             ->with(['photos', 'documents'])
@@ -62,11 +62,10 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
     }
 
     public function searchPublic(
-        ?string $query,
-        ?string $type,
+        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
-        ?float $minAreaSqm,
+        ?float $minArea,
         ?int $rooms,
         ?float $lat,
         ?float $lon,
@@ -78,15 +77,8 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             ->with(['photos'])
             ->where('status', PropertyStatusEnum::Active->value);
 
-        if ($query !== null && $query !== '') {
-            $builder->where(function ($q) use ($query): void {
-                $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('address', 'like', "%{$query}%");
-            });
-        }
-
         if ($type !== null) {
-            $builder->where('type', $type);
+            $builder->where('type', $type->value);
         }
 
         if ($minPriceKopecks !== null) {
@@ -97,8 +89,8 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             $builder->where('price_kopecks', '<=', $maxPriceKopecks);
         }
 
-        if ($minAreaSqm !== null) {
-            $builder->where('area_sqm', '>=', $minAreaSqm);
+        if ($minArea !== null) {
+            $builder->where('area_sqm', '>=', $minArea);
         }
 
         if ($rooms !== null) {
@@ -122,11 +114,10 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
     }
 
     public function countSearchPublic(
-        ?string $query,
-        ?string $type,
+        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
-        ?float $minAreaSqm,
+        ?float $minArea,
         ?int $rooms,
         ?float $lat,
         ?float $lon,
@@ -135,15 +126,8 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
         $builder = PropertyModel::withoutGlobalScope('tenant')
             ->where('status', PropertyStatusEnum::Active->value);
 
-        if ($query !== null && $query !== '') {
-            $builder->where(function ($q) use ($query): void {
-                $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('address', 'like', "%{$query}%");
-            });
-        }
-
         if ($type !== null) {
-            $builder->where('type', $type);
+            $builder->where('type', $type->value);
         }
 
         if ($minPriceKopecks !== null) {
@@ -154,8 +138,8 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             $builder->where('price_kopecks', '<=', $maxPriceKopecks);
         }
 
-        if ($minAreaSqm !== null) {
-            $builder->where('area_sqm', '>=', $minAreaSqm);
+        if ($minArea !== null) {
+            $builder->where('area_sqm', '>=', $minArea);
         }
 
         if ($rooms !== null) {

@@ -31,10 +31,6 @@ use Psr\Log\LoggerInterface;
  */
 final class RecalculateVerticalItemRatingJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
 

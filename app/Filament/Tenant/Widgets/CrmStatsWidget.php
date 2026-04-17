@@ -17,8 +17,6 @@ use Illuminate\Database\DatabaseManager;
  */
 final class CrmStatsWidget extends StatsOverviewWidget
 {
-protected static ?string $heading = 'CRM — обзор';
-
     protected static ?int $sort = 5;
 
     protected static ?string $pollingInterval = '60s';

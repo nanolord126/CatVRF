@@ -2,19 +2,16 @@
 
 namespace App\Domains\Taxi\Models;
 
-use Illuminate\Http\Request;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 
 final class Vehicle extends Model
 {
-    use HasFactory;
-
-    use SoftDeletes, LogsActivity;
+
 
         protected $table = 'taxi_vehicles';
 
@@ -50,7 +47,7 @@ final class Vehicle extends Model
             static::creating(function (Vehicle $vehicle) {
                 $vehicle->uuid = $vehicle->uuid ?? (string) Str::uuid();
                 $vehicle->tenant_id = $vehicle->tenant_id ?? (tenant()->id ?? 1);
-                $vehicle->correlation_id = $vehicle->correlation_id ?? $this->request->header('X-Correlation-ID');
+                $vehicle->correlation_id = $vehicle->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
             });
 
             static::addGlobalScope('tenant', function ($query) {
@@ -63,14 +60,7 @@ final class Vehicle extends Model
         /**
          * Настройка логов активности.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['status', 'driver_id', 'documents'])
-                ->logOnlyDirty()
-                ->dontSubmitEmptyLogs()
-                ->setLogName('fleet_management');
-        }
+        
 
         /**
          * Отношения.
@@ -93,5 +83,91 @@ final class Vehicle extends Model
             ];
 
             return ($classes[$this->class] ?? 0) >= ($classes[$requestedClass] ?? 0);
+        }
+
+        /**
+         * Проверить, доступен ли автомобиль.
+         */
+        public function isAvailable(): bool
+        {
+            return $this->status === 'active';
+        }
+
+        /**
+         * Рассчитать возраст автомобиля в годах.
+         */
+        public function getVehicleAge(): int
+        {
+            return (int) date('Y') - $this->year;
+        }
+
+        /**
+         * Проверить, требует ли автомобиль техобслуживания.
+         */
+        public function requiresMaintenance(): bool
+        {
+            $age = $this->getVehicleAge();
+            return $age > 5;
+        }
+
+        /**
+         * Получить полное название автомобиля.
+         */
+        public function getFullName(): string
+        {
+            return "{$this->brand} {$this->model} ({$this->year})";
+        }
+
+        /**
+         * Проверить валидность документов.
+         */
+        public function hasValidDocuments(): bool
+        {
+            if (!is_array($this->documents) || empty($this->documents)) {
+                return false;
+            }
+
+            $requiredDocs = ['insurance', 'registration', 'inspection'];
+            foreach ($requiredDocs as $doc) {
+                if (!isset($this->documents[$doc]) || !$this->documents[$doc]['valid'] ?? false) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /**
+         * Получить класс автомобиля для отображения.
+         */
+        public function getClassLabel(): string
+        {
+            $labels = [
+                'economy' => 'Эконом',
+                'comfort' => 'Комфорт',
+                'business' => 'Бизнес',
+                'delivery' => 'Доставка',
+            ];
+
+            return $labels[$this->class] ?? $this->class;
+        }
+
+        /**
+         * Проверить, соответствует ли автомобиль требованиям класса.
+         */
+        public function meetsClassRequirements(string $requiredClass): bool
+        {
+            $requirements = [
+                'economy' => ['min_year' => 2015],
+                'comfort' => ['min_year' => 2018],
+                'business' => ['min_year' => 2020],
+            ];
+
+            $req = $requirements[$requiredClass] ?? null;
+            if ($req === null) {
+                return true;
+            }
+
+            return $this->year >= ($req['min_year'] ?? 0);
         }
 }

@@ -6,12 +6,13 @@ namespace App\Domains\Auto\CarSales\Http\Controllers;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 
-final class B2BAutoController extends Controller
+final class CarSalesController extends Controller
 {
     public function __construct(
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-
+
+
     public function storefronts(): JsonResponse
     	{
     		try {

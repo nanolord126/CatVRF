@@ -27,7 +27,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class CollectibleCategory extends Model
 {
-    use HasFactory;
 
     protected $table = 'collectible_categories';
 

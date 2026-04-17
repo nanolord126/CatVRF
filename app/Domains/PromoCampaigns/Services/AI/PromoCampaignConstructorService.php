@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Промо-механика + креативы + прогноз метрик + A/B план
@@ -26,12 +26,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class PromoCampaignConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -55,16 +59,27 @@ final readonly class PromoCampaignConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Разработка промо-кампании с механиками и прогнозом результата. Определи: цель, аудиторию, бюджет, канал, срок. Предложи механику, креативы, ожидаемые метрики.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($promoData, $userId), ['promo_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($promoData, $userId), ['promo_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Анонимизация данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Разработка промо-кампании с механиками и прогнозом результата. Определи: цель, аудиторию, бюджет, канал, срок. Предложи механику, креативы, ожидаемые метрики.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.3, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get promo campaign design. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -142,5 +157,28 @@ final readonly class PromoCampaignConstructorService
                 'created_at'     => now(),
             ]
         );
+    }
+
+    private function anonymizeData(string $data): string
+    {
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[БРЕНД]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $promoData, int $userId): array
+    {
+        return [
+            'goal' => $promoData['goal'] ?? null,
+            'audience' => $promoData['audience'] ?? null,
+            'budget' => $promoData['budget'] ?? null,
+            'channel' => $promoData['channel'] ?? null,
+            'duration' => $promoData['duration'] ?? null,
+        ];
     }
 }

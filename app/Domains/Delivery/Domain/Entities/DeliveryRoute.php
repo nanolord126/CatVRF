@@ -32,7 +32,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class DeliveryRoute extends Model
 {
-    use HasUuids;
 
     protected $table = 'delivery_routes';
 

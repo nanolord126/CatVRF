@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ViewingAppointment extends Model
 {
-    use HasFactory;
 
     protected $table = 'viewing_appointments';
 

@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class CollectibleAuction extends Model
 {
-    use HasFactory;
 
     protected $table = 'collectible_auctions';
 

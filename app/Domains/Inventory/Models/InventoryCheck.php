@@ -29,7 +29,6 @@ use Illuminate\Support\Str;
  */
 final class InventoryCheck extends Model
 {
-    use HasFactory;
 
     protected $table = 'inventory_checks';
 

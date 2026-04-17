@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\Finances\Services;
 
 use App\Services\FraudControlService;
+use App\Models\PaymentIdempotencyRecord;
+use App\Models\PaymentTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,8 +16,7 @@ use Modules\Finances\Data\PaymentTransactionData;
 use Modules\Finances\Enums\PaymentStatus;
 use Modules\Finances\Exceptions\PaymentGatewayException;
 use Modules\Finances\Interfaces\PaymentGatewayInterface;
-use Modules\Finances\Models\PaymentIdempotencyRecord;
-use Modules\Finances\Models\PaymentTransaction;
+use Modules\Finances\Services\WalletService;
 
 final class TinkoffPaymentGateway implements PaymentGatewayInterface
 {

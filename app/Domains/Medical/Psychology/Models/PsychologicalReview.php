@@ -2,14 +2,13 @@
 
 namespace App\Domains\Medical\Psychology\Models;
 
-
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class PsychologicalReview extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'psy_reviews';
 

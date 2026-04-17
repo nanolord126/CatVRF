@@ -9,6 +9,7 @@ namespace App\Domains\Furniture\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 /**
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class FurnitureStore extends Model
 {
-        use FurnitureDomainTrait, SoftDeletes;
+        use FurnitureDomainTrait, SoftDeletes, TenantScoped;
 
         protected $table = 'furniture_stores';
 

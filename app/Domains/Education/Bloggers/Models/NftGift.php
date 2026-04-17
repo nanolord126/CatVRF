@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class NftGift extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

@@ -22,10 +22,6 @@ use Illuminate\Support\Carbon;
  */
 final class CleanupExpiredAppointmentsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Queue\InteractsWithQueue;
-    use \Illuminate\Bus\Queueable;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * Максимальное количество попыток.

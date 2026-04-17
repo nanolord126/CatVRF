@@ -44,9 +44,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class StaffMemberModel extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'staff_members';
 

@@ -25,7 +25,7 @@ final class ConfectioneryOrderController extends Controller
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -55,7 +55,7 @@ final class ConfectioneryOrderController extends Controller
                 ]);
                 return $this->successResponse($order, 'Order created successfully', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -80,7 +80,7 @@ final class ConfectioneryOrderController extends Controller
                 $this->logger->channel('audit')->info('Confectionery order marked ready', ['order_id' => $id]);
                 return $this->successResponse($order->refresh(), 'Order marked as ready');
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

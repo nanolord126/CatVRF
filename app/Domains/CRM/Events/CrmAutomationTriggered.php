@@ -20,9 +20,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class CrmAutomationTriggered
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Broadcasting\InteractsWithSockets;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * @param CrmAutomation $automation    Автоматизация, которая сработала

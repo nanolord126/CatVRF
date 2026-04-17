@@ -39,7 +39,6 @@ use Illuminate\Foundation\Events\Dispatchable;
 final class AIConstructorDesignSaved
 {
 
-    use Dispatchable;
 
         public function __construct(
             private readonly int $userId,

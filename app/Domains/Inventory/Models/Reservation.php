@@ -8,13 +8,12 @@ use Carbon\Carbon;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class Reservation extends Model
 {
-    use HasFactory;
-
 
 /** @param \Illuminate\Database\Eloquent\Builder<self> $query */
     public function scopeExpired($query): void

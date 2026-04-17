@@ -14,9 +14,10 @@ return new class extends Migration
             return;
         }
 
-        Schema::create('real_estate_agents', function (Blueprint $table): void {
+        Schema::create('real_estate_agents', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->unsignedBigInteger('tenant_id')->index();
+            $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID бизнес-группы (филиала)');
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('full_name', 255);
             $table->string('license_number', 100)->unique();
@@ -33,9 +34,12 @@ return new class extends Migration
             $table->index(['tenant_id', 'is_active'], 'real_estate_agents_tenant_active_idx');
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "ALTER TABLE real_estate_agents COMMENT = 'Агенты по недвижимости — привязаны к tenant'"
-        );
+        // Skip COMMENT for SQLite
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "ALTER TABLE real_estate_agents COMMENT = 'Агенты по недвижимости — привязаны к tenant'"
+            );
+        }
     }
 
     public function down(): void

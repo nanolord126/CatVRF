@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class AIConstruction extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'ai_constructions';
 

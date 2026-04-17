@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 final class Message extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'chat_messages';
 

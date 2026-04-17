@@ -9,6 +9,7 @@ use Carbon\Carbon;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 /**
      * ElectronicsReview - User feedback.

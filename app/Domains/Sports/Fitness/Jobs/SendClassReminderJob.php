@@ -12,10 +12,6 @@ use Psr\Log\LoggerInterface;
 final class SendClassReminderJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public function __construct(
             private ?int $scheduleId = null,

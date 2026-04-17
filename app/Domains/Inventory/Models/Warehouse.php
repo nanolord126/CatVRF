@@ -31,7 +31,6 @@ use Illuminate\Support\Str;
  */
 final class Warehouse extends Model
 {
-    use HasFactory;
 
     protected $table = 'warehouses';
 

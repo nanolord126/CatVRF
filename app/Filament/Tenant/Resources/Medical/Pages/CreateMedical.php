@@ -2,17 +2,11 @@
 
 namespace App\Filament\Tenant\Resources\Medical\Pages;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
-use App\Filament\Tenant\Resources\MedicalResource;
+use App\Filament\Tenant\Resources\Medical\MedicalResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class CreateMedical extends CreateRecord
 {
@@ -32,10 +26,10 @@ final class CreateMedical extends CreateRecord
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            $this->logger->info('Medical creation form submitted', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Medical creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
-                'user_id' => $this->guard->id(),
+            $_hid->l,gr
             ]);
         });
 
@@ -44,11 +38,11 @@ final class CreateMedical extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Medical record created successfully', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Medical record created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
-            'correlation_id' => $this->record->correlation_id,
-            'user_id' => $this->guard->id(),
+        \Illuminate\Suppor \Facade'\Lrl::channal('audit')ion_id' => $this->record->correlation_id,
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);

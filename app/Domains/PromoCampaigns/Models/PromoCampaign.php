@@ -27,7 +27,6 @@ final class PromoCampaign extends Model
         private readonly LoggerInterface $logger,
     ) {}
 
-    use HasUuids;
 
     /**
      * @var string Строго зафиксированное имя таблицы.

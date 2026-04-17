@@ -194,6 +194,11 @@ return [
          */
         // App\Domains\Food\Providers\FoodServiceProvider::class,
 
+        /*
+         * Fashion Service Provider...
+         */
+        Modules\Fashion\Providers\FashionServiceProvider::class,
+
     ],
 
 ];

@@ -98,9 +98,9 @@ final class HotelResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListHotels::route('/'),
-                'create' => Pages\CreateHotel::route('/create'),
-                'edit' => Pages\EditHotel::route('/{record}/edit'),
+                'index' => \App\Domains\Hotels\Filament\Resources\HotelResource\Pages\ListHotels::route('/'),
+                'create' => \App\Domains\Hotels\Filament\Resources\HotelResource\Pages\CreateHotel::route('/create'),
+                'edit' => \App\Domains\Hotels\Filament\Resources\HotelResource\Pages\EditHotel::route('/{record}/edit'),
             ];
         }
 }

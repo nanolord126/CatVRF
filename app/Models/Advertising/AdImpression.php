@@ -30,7 +30,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class AdImpression extends Model
 {
-    use HasFactory;
 
     protected $table = 'ad_impressions';
 

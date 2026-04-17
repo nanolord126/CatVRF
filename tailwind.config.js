@@ -59,6 +59,26 @@ export default {
             boxShadow: {
                 'glass-sm': '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
                 'glass-md': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                // Marketplace design system
+                'card':  '0 2px 8px rgba(0,0,0,0.08)',
+                'modal': '0 8px 32px rgba(0,0,0,0.16)',
+            },
+            borderRadius: {
+                // Marketplace unified radius
+                'marketplace': '0.75rem',
+            },
+            colors: {
+                // Marketplace design-system tokens (дополняют существующую палитру)
+                marketplace: {
+                    primary:   '#6366f1', // neuro-indigo-500
+                    secondary: '#14b8a6', // organic-teal-500
+                    success:   '#10b981',
+                    warning:   '#f59e0b',
+                    danger:    '#ef4444',
+                    neutral:   '#6b7280',
+                    'primary-hover':   '#4f46e5',
+                    'secondary-hover': '#0d9488',
+                },
             },
         },
     },

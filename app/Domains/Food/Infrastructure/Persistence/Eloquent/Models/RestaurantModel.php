@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class RestaurantModel extends Model
 {
-    use HasUuids;
 
     protected $table = 'food_restaurants';
 

@@ -2,9 +2,6 @@
 
 namespace App\Domains\Auto\Http\Controllers;
 
-
-
-use App\Services\FraudControlService;
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
 

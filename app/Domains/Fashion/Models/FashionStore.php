@@ -13,10 +13,8 @@ use Illuminate\Support\Str;
 final class FashionStore extends Model
 {
 
-    use HasFactory;
 
 
-    use SoftDeletes;
 
         protected $table = 'fashion_stores';
 

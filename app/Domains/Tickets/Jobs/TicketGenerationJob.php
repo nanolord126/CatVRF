@@ -17,7 +17,7 @@ use Throwable;
 
 final class TicketGenerationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries = 3;
     public int $timeout = 120;
@@ -60,3 +60,4 @@ final class TicketGenerationJob implements ShouldQueue
         return now()->addMinutes(5);
     }
 }
+

@@ -28,7 +28,6 @@ use Illuminate\Support\Str;
  */
 final class CollectibleStore extends Model
 {
-    use HasFactory;
 
     protected $table = 'collectible_stores';
 

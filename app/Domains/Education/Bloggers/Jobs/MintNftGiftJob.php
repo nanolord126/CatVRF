@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class MintNftGiftJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public $tries = 3;
 
@@ -71,3 +72,4 @@ final class MintNftGiftJob
             }
         }
 }
+

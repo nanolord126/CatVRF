@@ -24,8 +24,6 @@ namespace App\Filament\Tenant\Resources\ArtisticProjectResource\Pages;
 use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\ArtisticProjectResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Class ViewArtisticProject

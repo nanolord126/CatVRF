@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Support\Str;
 
 /**
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
  */
 final class SportsNutritionProduct extends Model
 {
-    use SoftDeletes, SportsNutritionDomainTrait;
+    use SoftDeletes, SportsNutritionDomainTrait, TenantScoped;
 
     protected $table = 'sports_nutrition_products';
     protected $fillable = [

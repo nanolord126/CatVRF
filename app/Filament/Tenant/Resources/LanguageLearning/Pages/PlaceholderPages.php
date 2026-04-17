@@ -23,6 +23,9 @@
 
 namespace App\Filament\Tenant\Resources\LanguageLearning\Pages;
 
+use App\Filament\Tenant\Resources\LanguageLearning\LanguageTeacherResource;
+use Filament\Resources\Pages\ListRecords;
+
 final class ListLanguageSchools extends ListRecords
 {
 
@@ -47,10 +50,10 @@ final class ListLanguageSchools extends ListRecords
     }
 
     // Повторяем для учителей
-    namespace App\Filament\Tenant\Resources\LanguageLearning\Pages;
 
-    use App\Filament\Tenant\Resources\LanguageLearning\LanguageTeacherResource;
-    use Filament\Resources\Pages\ListRecords;
+
+
+
 
     final class ListLanguageTeachers extends ListRecords
     {

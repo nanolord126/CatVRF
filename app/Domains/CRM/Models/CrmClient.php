@@ -24,8 +24,6 @@ use Illuminate\Support\Str;
  */
 final class CrmClient extends Model
 {
-    use HasFactory;
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected static function newFactory(): \Database\Factories\CRM\CrmClientFactory
     {

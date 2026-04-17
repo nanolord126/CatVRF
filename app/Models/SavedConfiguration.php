@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class SavedConfiguration extends Model
 {
-    use HasFactory;
 
     protected $table = 'saved_configurations';
 

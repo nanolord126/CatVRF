@@ -54,7 +54,7 @@ final class EditBeauty extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Beauty salon updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Beauty salon updated', [
             'salon_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

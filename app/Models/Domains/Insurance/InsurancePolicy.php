@@ -53,9 +53,7 @@ final class InsurancePolicy extends Model
         'tenant_id',
     ];
 
-    use HasFactory;
         protected $table = "insurance_policies";
-        protected $guarded = [];
 
         protected static function newFactory()
         {

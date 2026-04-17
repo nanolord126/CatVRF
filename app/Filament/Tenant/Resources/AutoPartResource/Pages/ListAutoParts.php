@@ -27,6 +27,7 @@
 
 namespace App\Filament\Tenant\Resources\AutoPartResource\Pages;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListAutoParts extends ListRecords
@@ -37,7 +38,7 @@ final class ListAutoParts extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Добавить запчасть')
                     ->icon('heroicon-o-plus'),
             ];

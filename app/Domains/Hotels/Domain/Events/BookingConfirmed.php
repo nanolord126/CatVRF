@@ -22,9 +22,9 @@ use Illuminate\Queue\SerializesModels;
  * @see \Illuminate\Foundation\Events\Dispatchable
  * @package App\Domains\Hotels\Domain\Events
  */
-final class BookingConfirmed implements DomainEvent
+final class BookingConfirmed extends DomainEvent
 {
-    use Dispatchable, SerializesModels;
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
     /**
      * @param BookingId $bookingId
@@ -36,8 +36,10 @@ final class BookingConfirmed implements DomainEvent
         private readonly BookingId $bookingId,
         private readonly int $totalPrice,
         private readonly int $userId,
-        private readonly string $correlationId
+        string $correlationId
     ) {
+        parent::__construct($correlationId);
+
         if ($totalPrice < 0) {
             throw new \InvalidArgumentException('Total price cannot be negative');
         }
@@ -64,6 +66,7 @@ final class BookingConfirmed implements DomainEvent
 
     public function getCorrelationId(): string
     {
-        return $this->correlationId;
+        return parent::getCorrelationId();
     }
 }
+

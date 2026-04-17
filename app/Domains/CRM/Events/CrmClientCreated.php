@@ -19,9 +19,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class CrmClientCreated
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Broadcasting\InteractsWithSockets;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * @param CrmClient $client      Созданный клиент

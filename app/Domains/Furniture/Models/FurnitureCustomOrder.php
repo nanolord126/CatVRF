@@ -9,13 +9,14 @@ namespace App\Domains\Furniture\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 /**
      * FurnitureCustomOrder Model
      */
 final class FurnitureCustomOrder extends Model
 {
-        use FurnitureDomainTrait;
+        use FurnitureDomainTrait, TenantScoped;
 
         protected $table = 'furniture_custom_orders';
 

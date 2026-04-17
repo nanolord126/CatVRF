@@ -10,8 +10,6 @@ use Illuminate\Support\Str;
 
 final class PartyOrder extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'party_orders';
 

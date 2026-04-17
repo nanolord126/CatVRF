@@ -111,6 +111,14 @@ final class FoodOrderController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
+        $key = 'food:orders:destroy:' . $request->ip();
+        
+        if ($this->limiter->tooManyAttempts($key, 30)) {
+            return new JsonResponse(['message' => 'Too many requests. Please try again later.'], 429);
+        }
+
+        $this->limiter->hit($key, 60);
+
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
         $this->db->transaction(function () use ($id, $request) {

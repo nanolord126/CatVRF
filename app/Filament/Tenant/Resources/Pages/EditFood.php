@@ -49,7 +49,7 @@ final class EditFood extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Food order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Food order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'total_price'    => $record->total_price,

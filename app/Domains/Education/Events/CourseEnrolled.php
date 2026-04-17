@@ -7,8 +7,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class CourseEnrolled
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         private string $correlation_id;
 
@@ -60,3 +61,4 @@ final class CourseEnrolled
     }
 
 }
+

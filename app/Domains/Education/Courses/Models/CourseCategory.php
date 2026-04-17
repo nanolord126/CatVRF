@@ -27,7 +27,6 @@ final class CourseCategory extends Model
 {
     protected $table = 'education_course_categories';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

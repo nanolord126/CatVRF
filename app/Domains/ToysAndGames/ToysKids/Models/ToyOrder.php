@@ -4,8 +4,6 @@ namespace App\Domains\ToysAndGames\ToysKids\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ToyOrder extends Model
 {
-    use HasFactory;
 
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 

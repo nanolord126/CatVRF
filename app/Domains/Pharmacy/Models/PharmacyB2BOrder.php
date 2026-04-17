@@ -31,7 +31,6 @@ use Illuminate\Support\Str;
  */
 final class PharmacyB2BOrder extends Model
 {
-    use HasFactory;
 
     protected $table = 'pharmacy_b2b_orders';
     protected $fillable = ['uuid', 'tenant_id', 'supplier_id', 'pharmacy_id', 'amount', 'status', 'correlation_id', 'tags'];

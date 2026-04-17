@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 
@@ -10,9 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 final class PsychologicalClinic extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'psy_clinics';
 

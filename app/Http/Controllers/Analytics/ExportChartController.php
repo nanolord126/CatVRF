@@ -57,7 +57,7 @@ final class ExportChartController extends Controller
                     ->header('Content-Disposition', "attachment; filename=\"{$filename}\"")
                     ->header('X-Correlation-ID', $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -119,7 +119,7 @@ final class ExportChartController extends Controller
                 return $pdf->download($filename)
                     ->header('X-Correlation-ID', $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -169,7 +169,7 @@ final class ExportChartController extends Controller
                 return $this->response->json(['error' => 'Browsershot PNG export requires Chrome installation. Use basic PNG export instead.'], 501)
                     ->header('X-Correlation-ID', $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -221,7 +221,7 @@ final class ExportChartController extends Controller
                     'correlation_id' => $correlationId,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

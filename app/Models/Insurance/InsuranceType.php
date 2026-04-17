@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class InsuranceType extends Model
 {
-    use HasFactory;
 
     protected $table = 'insurance_types';
 

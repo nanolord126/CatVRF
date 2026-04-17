@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class TranscodeShortsJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $timeout = 600;
@@ -67,3 +68,4 @@ final class TranscodeShortsJob
             }
         }
 }
+

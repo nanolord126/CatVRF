@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
+use Filament\Notifications\Notification;
 
 use Psr\Log\LoggerInterface;
 use Filament\Resources\Pages\CreateRecord;
@@ -25,7 +26,7 @@ final class CreateEvent extends CreateRecord
         {
             $correlationId = (string) Str::uuid();
 
-            $this->logger->info('Filament: Creating new event plan', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Filament: Creating new event plan', [
                 'tenant_id' => tenant()->id,
                 'correlation_id' => $correlationId,
                 'title' => $data['title'] ?? 'untitled',

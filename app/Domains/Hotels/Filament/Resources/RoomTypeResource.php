@@ -75,9 +75,9 @@ final class RoomTypeResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListRoomTypes::route('/'),
-                'create' => Pages\CreateRoomType::route('/create'),
-                'edit' => Pages\EditRoomType::route('/{record}/edit'),
+                'index' => \App\Domains\Hotels\Filament\Resources\RoomTypeResource\Pages\ListRoomTypes::route('/'),
+                'create' => \App\Domains\Hotels\Filament\Resources\RoomTypeResource\Pages\CreateRoomType::route('/create'),
+                'edit' => \App\Domains\Hotels\Filament\Resources\RoomTypeResource\Pages\EditRoomType::route('/{record}/edit'),
             ];
         }
 }

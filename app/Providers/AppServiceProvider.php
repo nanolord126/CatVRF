@@ -18,17 +18,10 @@ use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
 use App\Services\Payment\PaymentGatewayService;
 use App\Services\Payment\PaymentIdempotencyService;
-use App\Services\SearchRankingService;
-use App\Services\Security\IdempotencyService;
-use App\Services\Security\RateLimiterService;
-use App\Services\Security\TenantAwareRateLimiter;
-use App\Services\Security\WebhookSignatureService;
-use App\Services\Webhook\WebhookSignatureValidator;
-use App\Services\Wishlist\WishlistAntiFraudService;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Log\LogManager;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 use Livewire\Livewire;
 
 final class AppServiceProvider extends ServiceProvider

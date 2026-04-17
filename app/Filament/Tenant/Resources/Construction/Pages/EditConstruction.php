@@ -39,8 +39,8 @@ final class EditConstruction extends EditRecord
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            $this->logger->info('Construction project updated', [
-                'user_id' => $this->guard->id(),
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Construction project updated', [
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'project_id' => $this->record->id,
@@ -52,9 +52,9 @@ final class EditConstruction extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Construction edit page saved', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Construction edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

@@ -72,9 +72,9 @@ final class ReviewResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListReviews::route('/'),
-                'create' => Pages\CreateReview::route('/create'),
-                'edit' => Pages\EditReview::route('/{record}/edit'),
+                'index' => \App\Domains\Hotels\Filament\Resources\ReviewResource\Pages\ListReviews::route('/'),
+                'create' => \App\Domains\Hotels\Filament\Resources\ReviewResource\Pages\CreateReview::route('/create'),
+                'edit' => \App\Domains\Hotels\Filament\Resources\ReviewResource\Pages\EditReview::route('/{record}/edit'),
             ];
         }
 }

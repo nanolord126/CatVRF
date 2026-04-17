@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MeatOrder extends Model
 {
-    use HasFactory;
 
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 

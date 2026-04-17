@@ -7,6 +7,7 @@ namespace App\Domains\Luxury\Jewelry\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
      */
 final class JewelryCategory extends Model
 {
-        use JewelryDomainTrait;
+        use JewelryDomainTrait, TenantScoped;
 
         protected $table = 'jewelry_categories';
         protected $fillable = ['uuid', 'tenant_id', 'name', 'slug', 'sort_order', 'correlation_id'];

@@ -12,7 +12,8 @@ final class TwoFactorAuthentication
         private readonly ResponseFactory $response,
     ) {}
 
-
+
+
     /**
          * Проверяет 2FA и историю устройств.
          *
@@ -70,11 +71,10 @@ final class TwoFactorAuthentication
 
                 return $next($request);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
                 ]);
 
                 $this->logger->channel('audit')->error('Ошибка при проверке 2FA', [

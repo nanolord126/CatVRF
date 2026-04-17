@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class PharmacyOrderCancelled
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
         public function __construct(private readonly string $correlationId, private readonly mixed $order) {}
 
     /**
@@ -50,3 +51,4 @@ final class PharmacyOrderCancelled
         ];
     }
 }
+

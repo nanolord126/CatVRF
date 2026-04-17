@@ -33,8 +33,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 final class B2BTravelStorefront extends Model
 {
 
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'b2b_travel_storefronts';
 

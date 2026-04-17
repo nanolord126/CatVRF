@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class PetAppointment extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'pet_appointments';
 

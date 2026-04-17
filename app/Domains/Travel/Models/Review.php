@@ -4,14 +4,11 @@ namespace App\Domains\Travel\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Review extends Model
 {
-    use HasFactory;
 
-    use LogsActivity;
 
         protected $table = 'travel_reviews';
 
@@ -56,12 +53,5 @@ final class Review extends Model
             return $this->belongsTo(\App\Models\User::class);
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['rating', 'comment', 'is_verified'])
-                ->logOnlyDirty()
-                ->useLogName('travel_domain')
-                ->dontSubmitEmptyLogs();
-        }
+        
 }

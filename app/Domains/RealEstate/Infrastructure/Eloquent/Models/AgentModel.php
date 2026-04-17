@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class AgentModel extends Model
 {
-    use SoftDeletes;
 
     public $incrementing = false;
 

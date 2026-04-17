@@ -36,11 +36,11 @@ final class EditBeverageShop extends EditRecord
 
         protected function afterSave(): void
         {
-            $this->logger->info('Beverage Shop Updated', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Beverage Shop Updated', [
                 'shop_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

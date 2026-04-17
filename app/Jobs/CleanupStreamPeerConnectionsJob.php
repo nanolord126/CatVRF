@@ -38,7 +38,7 @@ use Illuminate\Log\LogManager;
  */
 final class CleanupStreamPeerConnectionsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $timeout = 300;
         public int $tries = 3;
@@ -64,11 +64,10 @@ final class CleanupStreamPeerConnectionsJob implements ShouldQueue
                     ['deleted' => $deleted, 'older_than_minutes' => $this->olderThanMinutes]
                 );
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
                 ]);
 
                 $this->logger->channel('error')->error(
@@ -80,3 +79,4 @@ final class CleanupStreamPeerConnectionsJob implements ShouldQueue
             }
         }
 }
+

@@ -30,11 +30,11 @@ final class CreateCourse extends CreateRecord
             // 1. Фрод-проверка на создание контента
             app(FraudControlService::class)->checkOperation('create_education_course', [
                 'tenant_id' => tenant()->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $correlationId
             ]);
 
-            $this->logger->info('Creating new Education Course', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Creating new Education Course', [
                 'tenant_id' => tenant()->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -65,7 +65,7 @@ final class CreateCourse extends CreateRecord
          */
         protected function afterCreate(): void
         {
-            $this->logger->info('Education Course created successfully', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Education Course created successfully', [
                 'course_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

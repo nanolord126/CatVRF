@@ -17,8 +17,6 @@ final class Booking extends Model
         private readonly ConfigRepository $config,
     ) {}
 
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'car_bookings';
 

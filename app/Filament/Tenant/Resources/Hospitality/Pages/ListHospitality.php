@@ -34,10 +34,10 @@ final class ListHospitality extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Hospitality ListRecords accessed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Hospitality ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -59,10 +59,9 @@ final class ListHospitality extends ListRecords
         ];
     }
 
-    public function render()
-    {
-        $this->logger->info('ListHospitality page rendered', [
-            'user_id' => $this->guard->id(),
+    public function render(): \Illuminate\Contracts\View\View {
+        \Illuminate\Support\Facades\Log::channel('audit')->info('ListHospitality page rendered', [
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

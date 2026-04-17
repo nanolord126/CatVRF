@@ -32,7 +32,7 @@ final class HotelCalendarWidget extends Widget
             ->toArray();
     }
 
-    public function render(): View
+    public function render(): \Illuminate\Contracts\View\View
     {
         return view(static::$view, [
             "events" => $this->bookingsThisMonth,

@@ -26,7 +26,7 @@ use Illuminate\Log\LogManager;
  */
 final class MLRecalculateJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries  = 3;
     public int $backoff = 30; // секунд между попытками
@@ -76,3 +76,4 @@ final class MLRecalculateJob implements ShouldQueue
             });
     }
 }
+

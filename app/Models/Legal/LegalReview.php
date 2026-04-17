@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class LegalReview extends Model
 {
-    use HasFactory;
 
         protected $table = 'legal_reviews';
 

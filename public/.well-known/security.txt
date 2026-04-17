@@ -1,0 +1,12 @@
+Contact: mailto:security@catvrf.ru
+Contact: https://catvrf.ru/security/report
+Encryption: https://catvrf.ru/.well-known/pgp-key.txt
+Preferred-Languages: ru, en
+Canonical: https://catvrf.ru/.well-known/security.txt
+Policy: https://catvrf.ru/security/policy
+Expires: 2027-04-12T00:00:00.000Z
+
+# Responsible Disclosure Policy
+# Please report security vulnerabilities to security@catvrf.ru
+# We respond within 72 hours for critical issues.
+# Bug bounty program: https://catvrf.ru/security/bounty

@@ -127,18 +127,17 @@ final class PayoutProcessingJob implements ShouldQueue
                 'failed' => $failureCount,
             ]);
 
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+        } catch (Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $this->correlationId,
             ]);
 
             $this->logger->channel('audit')->error('Payout processing job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;

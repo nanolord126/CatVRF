@@ -24,10 +24,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessCrmAutomationsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Queue\InteractsWithQueue;
-    use \Illuminate\Bus\Queueable;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * Количество попыток.

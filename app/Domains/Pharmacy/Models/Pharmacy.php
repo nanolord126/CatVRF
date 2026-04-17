@@ -4,18 +4,12 @@ namespace App\Domains\Pharmacy\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Pharmacy extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'pharmacies';
 

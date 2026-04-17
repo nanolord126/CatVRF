@@ -2,8 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning;
 
-
-
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
@@ -11,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 
 final class EventResource extends Resource
 {
@@ -29,7 +29,7 @@ final class EventResource extends Resource
         /**
          * Форма создания/редактирования события.
          */
-        public function form(Form $form): Form
+        public static function form(Form $form): Form
         {
             return $form
                 ->schema([
@@ -114,7 +114,7 @@ final class EventResource extends Resource
         /**
          * Таблица списка событий.
          */
-        public function table(Table $table): Table
+        public static function table(Table $table): Table
         {
             return $table
                 ->columns([

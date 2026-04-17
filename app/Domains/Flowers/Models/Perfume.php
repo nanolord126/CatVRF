@@ -25,7 +25,6 @@ final class Perfume extends Model
 {
     protected $table = 'flower_perfumes';
 
-    use HasFactory;
 
         protected $fillable = [
             'tenant_id', 'shop_id', 'brand', 'name',

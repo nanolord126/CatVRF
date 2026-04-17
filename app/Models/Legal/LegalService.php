@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class LegalService extends Model
 {
-    use HasFactory;
 
         protected $table = 'legal_services';
 

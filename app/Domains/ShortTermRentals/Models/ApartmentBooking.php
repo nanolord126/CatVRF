@@ -31,7 +31,6 @@ final class ApartmentBooking extends Model
 {
     protected $table = 'short_term_apartment_bookings';
 
-    use HasFactory;
 
     protected $fillable = [
         'tenant_id', 'apartment_id', 'user_id', 'inn',

@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 final class MedicalTestOrder extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'medical_test_orders';
 

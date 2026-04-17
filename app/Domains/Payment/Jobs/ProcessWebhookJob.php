@@ -19,10 +19,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ProcessWebhookJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Повторные попытки при ошибках (сбои БД, дэдлоки).

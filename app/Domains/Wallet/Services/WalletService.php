@@ -4,45 +4,75 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Services;
 
-use App\Domains\Wallet\Models\Wallet;
-use App\Domains\Wallet\Models\BalanceTransaction;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
-use App\Services\Fraud\FraudControlService;
-use App\Services\Audit\AuditService;
+use App\Domains\Wallet\Models\Wallet;
+use App\Models\BalanceTransaction;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 
+/**
+ * WalletService — сервис управления кошельками (domain layer).
+ *
+ * Канон 2026: FraudControlService::check() → DB::transaction() → AuditService::log() → event().
+ * Конструктор (порядок): DatabaseManager, LoggerInterface, Guard, FraudControlService,
+ *                         AuditService, CacheRepository.
+ *
+ * @package App\Domains\Wallet\Services
+ */
 final readonly class WalletService
 {
+    /** Типы транзакций, допустимые для зачисления. */
+    private const CREDIT_TYPES = [
+        BalanceTransactionType::DEPOSIT,
+        BalanceTransactionType::BONUS,
+        BalanceTransactionType::REFUND,
+        BalanceTransactionType::COMMISSION,
+        BalanceTransactionType::RELEASE_HOLD,
+    ];
+
+    /** Типы транзакций, допустимые для списания. */
+    private const DEBIT_TYPES = [
+        BalanceTransactionType::WITHDRAWAL,
+        BalanceTransactionType::HOLD,
+        BalanceTransactionType::PAYOUT,
+        BalanceTransactionType::COMMISSION,
+    ];
+
     public function __construct(
-        private DatabaseManager $db,
+        private DatabaseManager  $db,
+        private LoggerInterface  $logger,
+        private Guard            $guard,
         private FraudControlService $fraud,
-        private AuditService $audit,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private AuditService     $audit,
+        private CacheRepository  $cache,
     ) {}
 
+    // ─── Public API ───────────────────────────────────────────────────
+
     public function credit(
-        int $walletId,
-        int $amount,
+        int                    $walletId,
+        int                    $amount,
         BalanceTransactionType $type,
-        string $correlationId,
-        ?string $sourceType = null,
-        ?int $sourceId = null,
-        ?array $metadata = null
+        string                 $correlationId,
+        ?string                $sourceType = null,
+        ?int                   $sourceId   = null,
+        ?array                 $metadata   = null,
     ): Wallet {
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('Credit amount must be greater than zero.');
-        }
+        $this->guardAmount($amount);
+        $this->guardCreditType($type);
 
-        $userId = (int) ($this->guard->id() ?? 0);
-
+        $userId = $this->getCurrentUserId() ?? 0;
         $this->fraud->check($userId, "wallet_credit_{$type->value}", $amount, null, null, $correlationId);
 
-        return $this->db->transaction(function () use ($walletId, $amount, $type, $correlationId, $sourceType, $sourceId, $metadata, $userId): Wallet {
+        return $this->db->transaction(function () use (
+            $walletId, $amount, $type, $correlationId, $sourceType, $sourceId, $metadata
+        ): Wallet {
             /** @var Wallet $wallet */
-            $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
+            $wallet     = Wallet::query()->lockForUpdate()->findOrFail($walletId);
             $oldBalance = $wallet->current_balance;
 
             $wallet->current_balance += $amount;
@@ -57,51 +87,54 @@ final readonly class WalletService
             $wallet->save();
 
             BalanceTransaction::create([
-                'wallet_id' => $wallet->id,
-                'type' => $type->value,
-                'amount' => $amount,
-                'source_type' => $sourceType,
-                'source_id' => $sourceId,
+                'wallet_id'      => $wallet->id,
+                'type'           => $type->value,
+                'amount'         => $amount,
+                'source_type'    => $sourceType,
+                'source_id'      => $sourceId,
                 'correlation_id' => $correlationId,
-                'metadata' => $metadata,
+                'metadata'       => $metadata,
             ]);
 
             $this->audit->log('wallet_credited', Wallet::class, $wallet->id, [
-                'current_balance' => $oldBalance
+                'current_balance' => $oldBalance,
             ], [
-                'current_balance' => $wallet->current_balance
+                'current_balance' => $wallet->current_balance,
             ], $correlationId);
 
             $this->logger->info('Wallet credited', [
-                'wallet_id' => $wallet->id,
-                'amount' => $amount,
-                'type' => $type->value,
+                'wallet_id'      => $wallet->id,
+                'amount'         => $amount,
+                'type'           => $type->value,
                 'correlation_id' => $correlationId,
             ]);
+
+            $this->cache->forget("wallet:{$wallet->id}");
 
             return $wallet;
         });
     }
 
     public function debit(
-        int $walletId,
-        int $amount,
+        int                    $walletId,
+        int                    $amount,
         BalanceTransactionType $type,
-        string $correlationId,
-        ?string $sourceType = null,
-        ?int $sourceId = null,
-        ?array $metadata = null
+        string                 $correlationId,
+        ?string                $sourceType = null,
+        ?int                   $sourceId   = null,
+        ?array                 $metadata   = null,
     ): Wallet {
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('Debit amount must be greater than zero.');
-        }
+        $this->guardAmount($amount);
+        $this->guardDebitType($type);
 
-        $userId = (int) ($this->guard->id() ?? 0);
+        $userId = $this->getCurrentUserId() ?? 0;
         $this->fraud->check($userId, "wallet_debit_{$type->value}", $amount, null, null, $correlationId);
 
-        return $this->db->transaction(function () use ($walletId, $amount, $type, $correlationId, $sourceType, $sourceId, $metadata, $userId): Wallet {
+        return $this->db->transaction(function () use (
+            $walletId, $amount, $type, $correlationId, $sourceType, $sourceId, $metadata
+        ): Wallet {
             /** @var Wallet $wallet */
-            $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
+            $wallet     = Wallet::query()->lockForUpdate()->findOrFail($walletId);
             $oldBalance = $wallet->current_balance;
 
             if ($wallet->current_balance < $amount) {
@@ -112,19 +145,19 @@ final readonly class WalletService
             $wallet->save();
 
             BalanceTransaction::create([
-                'wallet_id' => $wallet->id,
-                'type' => $type->value,
-                'amount' => $amount,
-                'source_type' => $sourceType,
-                'source_id' => $sourceId,
+                'wallet_id'      => $wallet->id,
+                'type'           => $type->value,
+                'amount'         => $amount,
+                'source_type'    => $sourceType,
+                'source_id'      => $sourceId,
                 'correlation_id' => $correlationId,
-                'metadata' => $metadata,
+                'metadata'       => $metadata,
             ]);
 
             $this->audit->log('wallet_debited', Wallet::class, $wallet->id, [
-                'current_balance' => $oldBalance
+                'current_balance' => $oldBalance,
             ], [
-                'current_balance' => $wallet->current_balance
+                'current_balance' => $wallet->current_balance,
             ], $correlationId);
 
             $this->logger->info('Wallet debited', [
@@ -139,19 +172,17 @@ final readonly class WalletService
     }
 
     public function hold(
-        int $walletId,
-        int $amount,
-        string $correlationId,
+        int     $walletId,
+        int     $amount,
+        string  $correlationId,
         ?string $sourceType = null,
-        ?int $sourceId = null,
-        ?array $metadata = null
+        ?int    $sourceId   = null,
+        ?array  $metadata   = null,
     ): Wallet {
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('Hold amount must be greater than zero.');
-        }
+        $this->guardAmount($amount);
 
-        $userId = (int) ($this->guard->id() ?? 0);
-        $this->fraud->check($userId, "wallet_hold", $amount, null, null, $correlationId);
+        $userId = $this->getCurrentUserId() ?? 0;
+        $this->fraud->check($userId, 'wallet_hold', $amount, null, null, $correlationId);
 
         return $this->db->transaction(function () use ($walletId, $amount, $correlationId, $sourceType, $sourceId, $metadata, $userId): Wallet {
             /** @var Wallet $wallet */
@@ -186,12 +217,62 @@ final readonly class WalletService
             ], $correlationId);
 
             $this->logger->info('Wallet amount held', [
-                'wallet_id' => $wallet->id,
-                'amount' => $amount,
+                'wallet_id'      => $wallet->id,
+                'amount'         => $amount,
                 'correlation_id' => $correlationId,
             ]);
 
+            $this->cache->forget("wallet:{$wallet->id}");
+
             return $wallet;
         });
+    }
+
+    // ─── Guard helpers ────────────────────────────────────────────────
+
+    /**
+     * Проверяет что сумма положительная.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function guardAmount(int $amount): void
+    {
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Amount must be positive');
+        }
+    }
+
+    /**
+     * Проверяет что тип подходит для операции credit.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function guardCreditType(BalanceTransactionType $type): void
+    {
+        if (!\in_array($type, self::CREDIT_TYPES, true)) {
+            throw new \InvalidArgumentException("Invalid credit type: {$type->value}");
+        }
+    }
+
+    /**
+     * Проверяет что тип подходит для операции debit.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function guardDebitType(BalanceTransactionType $type): void
+    {
+        if (!\in_array($type, self::DEBIT_TYPES, true)) {
+            throw new \InvalidArgumentException("Invalid debit type: {$type->value}");
+        }
+    }
+
+    /**
+     * Возвращает ID текущего аутентифицированного пользователя или null.
+     */
+    private function getCurrentUserId(): ?int
+    {
+        $user = $this->guard->user();
+
+        return $user ? (int) $user->getAuthIdentifier() : null;
     }
 }

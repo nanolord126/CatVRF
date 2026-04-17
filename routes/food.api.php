@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Food\OrderController;
+use App\Domains\Food\Http\Controllers\DeliveryOrderController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -53,6 +54,7 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     Route::get('deliveries', [DeliveryOrderController::class, 'index'])->name('deliveries.index');
     Route::get('deliveries/{delivery}', [DeliveryOrderController::class, 'show'])->name('deliveries.show');
     Route::post('deliveries/{delivery}/start', [DeliveryOrderController::class, 'start'])->name('deliveries.start');
+    Route::post('deliveries/{delivery}/cancel', [DeliveryOrderController::class, 'cancel'])->name('deliveries.cancel');
     Route::get('deliveries/{delivery}/track', [DeliveryOrderController::class, 'track'])->name('deliveries.track');
 });
 

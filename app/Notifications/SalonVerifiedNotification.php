@@ -18,8 +18,6 @@ use App\Domains\Beauty\Models\Salon as BeautySalon;
  */
 final class SalonVerifiedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
-
     public function __construct(
         private readonly BeautySalon $salon,
     ) {

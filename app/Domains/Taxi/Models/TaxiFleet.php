@@ -3,7 +3,6 @@
 namespace App\Domains\Taxi\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
-use App\Models\Traits\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +10,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class TaxiFleet extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

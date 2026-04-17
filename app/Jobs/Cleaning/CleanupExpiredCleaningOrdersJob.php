@@ -12,7 +12,7 @@ use Illuminate\Log\LogManager;
 
 final class CleanupExpiredCleaningOrdersJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * Parameters for the job (correlation tracking).
@@ -86,3 +86,4 @@ final class CleanupExpiredCleaningOrdersJob implements ShouldQueue
             return ['cleaning', 'maintenance', 'cleanup', $this->correlationId];
         }
 }
+

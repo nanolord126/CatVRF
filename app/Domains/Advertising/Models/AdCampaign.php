@@ -35,9 +35,6 @@ use Illuminate\Support\Str;
  */
 final class AdCampaign extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'ad_campaigns';
 

@@ -39,11 +39,11 @@ final class CreateMusicStudio extends CreateRecord
             return $this->db->transaction(function () use ($data) {
                 $record = static::getModel()::create($data);
 
-                $this->logger->info('New music studio created via UI', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('New music studio created via UI', [
                     'studio_id' => $record->id,
                     'tenant_id' => $record->tenant_id,
                     'correlation_id' => $record->correlation_id,
-                    'created_by' => $this->guard->id(),
+                    'created_by' => auth()->id(),
                 ]);
 
                 return $record;

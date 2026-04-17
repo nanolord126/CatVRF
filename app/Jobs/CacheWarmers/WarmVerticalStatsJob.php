@@ -9,8 +9,6 @@ use Illuminate\Cache\CacheManager;
 
 final class WarmVerticalStatsJob implements ShouldQueue
 {
-    use Queueable;
-
         protected int $tries = 3;
         protected int $timeout = 45;
 

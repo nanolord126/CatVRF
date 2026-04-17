@@ -19,7 +19,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class DailyAnalyticsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     private string $correlationId;
 
@@ -86,11 +86,11 @@ final class DailyAnalyticsJob implements ShouldQueue
                 ]);
             });
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $this->correlationId,
             ]);
 
             $this->logger->channel('audit')->error('Daily analytics job failed', [
@@ -103,3 +103,4 @@ final class DailyAnalyticsJob implements ShouldQueue
         }
     }
 }
+

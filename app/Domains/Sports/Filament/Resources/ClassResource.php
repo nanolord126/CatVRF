@@ -2,6 +2,7 @@
 
 namespace App\Domains\Sports\Filament\Resources;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;

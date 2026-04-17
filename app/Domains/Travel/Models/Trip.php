@@ -6,14 +6,11 @@ use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Trip extends Model
 {
-    use HasFactory;
 
-    use LogsActivity;
 
         protected $table = 'trips';
 
@@ -56,14 +53,7 @@ final class Trip extends Model
             return $this->belongsTo(Tour::class);
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['start_at', 'price', 'status', 'booked_slots'])
-                ->logOnlyDirty()
-                ->useLogName('travel_domain')
-                ->dontSubmitEmptyLogs();
-        }
+        
 
         public function isAvailable(int $slots = 1): bool
         {

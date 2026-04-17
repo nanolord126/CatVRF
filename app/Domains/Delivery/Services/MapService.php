@@ -2,11 +2,6 @@
 
 namespace App\Domains\Delivery\Services;
 
-
-
-
-
-use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -241,7 +236,7 @@ final readonly class MapService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction(function () use ($callback) {
+        return $this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

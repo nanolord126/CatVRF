@@ -2,11 +2,14 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-
-
+use Illuminate\Database\Eloquent\Builder;
+use App\Domains\Auto\Models\TaxiRide;
+use Filament\Forms;
+use Filament\Tables;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
+use Illuminate\Support\Str;
 
 final class TaxiRideResource extends Resource
 {
@@ -14,7 +17,8 @@ final class TaxiRideResource extends Resource
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static ?string $model = TaxiRide::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-arrow-right';
@@ -509,7 +513,7 @@ final class TaxiRideResource extends Resource
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', filament()->getTenant()->id)

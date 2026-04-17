@@ -43,7 +43,7 @@ final class ListBeverageSubscriptions extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Grant New Subscription')
                     ->icon('heroicon-o-sparkles'),
             ];

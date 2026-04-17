@@ -98,12 +98,12 @@ final class FraudMLRecalculationJob implements ShouldQueue
             // 7. Очистить старые модели (старше 30 дней)
             $this->cleanupOldModels();
 
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+        } catch (Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $this->correlationId,
             ]);
 
             $this->logger->channel('audit')->error('FraudML recalculation failed', [

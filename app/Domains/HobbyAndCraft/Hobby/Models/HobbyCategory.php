@@ -8,6 +8,7 @@ namespace App\Domains\HobbyAndCraft\Hobby\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
      */
 final class HobbyCategory extends Model
 {
-        use HobbyDomainTrait;
+        use HobbyDomainTrait, TenantScoped;
 
         protected $table = 'hobby_categories';
 

@@ -16,28 +16,42 @@ use Illuminate\Support\Str;
  */
 final class ChatMessage extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
-    protected $table = 'communication_chat_messages';
+    protected $table = 'chat_messages';
 
     protected $fillable = [
         'tenant_id',
-        'room_id',
+        'business_group_id',
+        'chat_room_id',
         'uuid',
         'correlation_id',
-        'sender_id',
+        'sender_user_id',
+        'is_system_message',
+        'type',
         'body',
-        'type',         // text | image | file | system
-        'attachment_url',
+        'attachment_path',
+        'attachment_meta',
+        'inline_data',
         'is_read',
-        'metadata',
+        'read_at',
+        'delivery_status',
+        'reply_to_message_id',
+        'is_deleted',
+        'deleted_at',
+        'reactions',
         'tags',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
-        'tags'     => 'array',
-        'is_read'  => 'boolean',
+        'attachment_meta'  => 'array',
+        'inline_data'      => 'array',
+        'reactions'        => 'array',
+        'tags'             => 'array',
+        'is_read'          => 'boolean',
+        'is_system_message'=> 'boolean',
+        'is_deleted'       => 'boolean',
+        'read_at'          => 'datetime',
+        'deleted_at'       => 'datetime',
     ];
 
     protected static function booted(): void

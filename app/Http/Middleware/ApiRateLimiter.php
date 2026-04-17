@@ -67,7 +67,7 @@ final class ApiRateLimiter
             $windowStart = $now->copy()->subSeconds($window);
 
             // Get current count from Redis
-            $redis = \Illuminate\Support\Facades\Redis::connection('default');
+            $redis = $this->redis;
 
             // Remove old entries (outside window)
             $redis->zremrangebyscore($key, '-inf', $windowStart->timestamp);

@@ -13,7 +13,6 @@ use Psr\Log\LoggerInterface;
 
 final class NotifyClientOnViewingConfirmed implements ShouldQueue
 {
-    use InteractsWithQueue;
 
 
     public int $tries = 3;

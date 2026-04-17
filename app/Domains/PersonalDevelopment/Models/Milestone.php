@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class Milestone extends Model
 {
-    use HasFactory;
 
     protected $table = 'pd_milestones';
 

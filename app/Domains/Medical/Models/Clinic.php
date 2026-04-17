@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Clinic extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_clinics';
 
@@ -70,15 +68,7 @@ final class Clinic extends Model
         /**
          * Логирование активности модели для аудита.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'status', 'license_number'])
-                ->logOnlyDirty()
-                ->useLogName('medical_clinic_audit');
-        }
-
-        /**
+/**
          * Отношение: Врачи клиники.
          */
         public function doctors(): HasMany

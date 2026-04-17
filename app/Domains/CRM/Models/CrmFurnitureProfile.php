@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class CrmFurnitureProfile extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'crm_furniture_profiles';
 

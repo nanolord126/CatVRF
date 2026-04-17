@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class PortfolioItem extends Model
 {
-    use HasFactory;
 
     protected $table = 'portfolio_items';
 

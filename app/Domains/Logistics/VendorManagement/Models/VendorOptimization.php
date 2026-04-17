@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class VendorOptimization extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='vendor_optimizations';protected $fillable=['uuid','tenant_id','consultant_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','optimization_type','hours_spent','due_date','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','hours_spent'=>'integer','due_date'=>'datetime','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('vendor_optimizations.tenant_id',tenant()->id));}
 

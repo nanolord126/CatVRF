@@ -63,7 +63,7 @@ final class EditDentalReview extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('DentalReview updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalReview updated', [
             'review_id'      => $this->record->id,
             'rating'         => $this->record->rating,
             'is_verified'    => $this->record->is_verified,

@@ -2,13 +2,14 @@
 
 namespace App\Filament\Tenant\Resources\Art;
 
-
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 
 final class ArtworkResource extends Resource
 {

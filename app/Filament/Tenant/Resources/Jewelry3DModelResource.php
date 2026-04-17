@@ -3,10 +3,13 @@
 namespace App\Filament\Tenant\Resources;
 
 use Filament\Resources\Resource;
+use Filament\Forms;
+use App\Models\Jewelry3DModel;
 
 final class Jewelry3DModelResource extends Resource
 {
-
+
+
     protected static ?string $model = Jewelry3DModel::class;
 
         protected static ?string $slug = 'jewelry-3d-models';

@@ -31,7 +31,6 @@ final class Orders extends Component
         private readonly DatabaseManager $db,
     ) {}
 
-    use WithPagination;
 
     // ── публичные свойства ───────────────────────────────────────────────────
 

@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Review extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_reviews';
 
@@ -58,15 +58,7 @@ final class Review extends Model
         /**
          * Настройка логов для аудита.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['rating', 'status', 'is_verified_visit'])
-                ->logOnlyDirty()
-                ->useLogName('medical_review_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиника.
          */
         public function clinic(): BelongsTo

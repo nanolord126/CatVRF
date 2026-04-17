@@ -52,7 +52,7 @@ final readonly class TravelConstructorService
 
         $cacheKey = "user_ai_designs:travel:{$userId}:" . md5(json_encode($preferences));
 
-        return $this->cache->remember($cacheKey, now()->addHour(), function () use ($preferences, $userId, $correlationId) {
+        return $this->cache->tags(['travel', 'ai', 'constructor'])->remember($cacheKey, now()->addHour(), function () use ($preferences, $userId, $correlationId) {
             return $this->db->transaction(function () use ($preferences, $userId, $correlationId) {
 
                 // 1. Мерджим предпочтения с UserTasteProfile
@@ -152,14 +152,16 @@ final readonly class TravelConstructorService
      */
     private function saveDesign(int $userId, array $profile, array $itinerary, string $correlationId): void
     {
-        $this->db->table('user_ai_designs')->updateOrInsert(
-            ['user_id' => $userId, 'vertical' => 'travel'],
-            [
-                'design_data'    => json_encode(['profile' => $profile, 'itinerary' => $itinerary], JSON_UNESCAPED_UNICODE),
-                'correlation_id' => $correlationId,
-                'updated_at'     => now(),
-                'created_at'     => now(),
-            ]
-    );
+        $this->db->transaction(function () use ($userId, $profile, $itinerary, $correlationId) {
+            $this->db->table('user_ai_designs')->updateOrInsert(
+                ['user_id' => $userId, 'vertical' => 'travel'],
+                [
+                    'design_data'    => json_encode(['profile' => $profile, 'itinerary' => $itinerary], JSON_UNESCAPED_UNICODE),
+                    'correlation_id' => $correlationId,
+                    'updated_at'     => now(),
+                    'created_at'     => now(),
+                ]
+            );
+        });
     }
 }

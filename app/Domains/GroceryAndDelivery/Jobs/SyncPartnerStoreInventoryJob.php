@@ -27,10 +27,6 @@ use Throwable;
  */
 final class SyncPartnerStoreInventoryJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 5;
 

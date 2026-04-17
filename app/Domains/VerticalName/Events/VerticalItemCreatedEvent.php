@@ -20,9 +20,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class VerticalItemCreatedEvent
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * @param VerticalItem $item          Созданный товар

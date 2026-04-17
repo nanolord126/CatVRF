@@ -25,10 +25,6 @@ use Throwable;
  */
 final class UpdateDeliverySurgeJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
 

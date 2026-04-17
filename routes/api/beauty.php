@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Domains\Beauty\Controllers\BeautyLoyaltyController;
+use App\Domains\Beauty\Controllers\BeautyFraudDetectionController;
+use App\Domains\Beauty\Controllers\DynamicPricingController;
+use App\Domains\Beauty\Controllers\MasterMatchingController;
+use App\Domains\Beauty\Controllers\VideoCallController;
 use App\Domains\Beauty\Http\Controllers\AIConstructorController;
 use App\Domains\Beauty\Http\Controllers\AppointmentController;
 use App\Domains\Beauty\Http\Controllers\MasterController;
@@ -28,6 +33,15 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/beauty')
     ->middleware(['correlation-id', 'tenant', 'throttle:120,1'])
     ->group(function (): void {
+
+        // Публичный тестовый эндпоинт для нагрузочного тестирования
+        Route::post('test/stress', function () {
+            return response()->json([
+                'success' => true,
+                'message' => 'Test endpoint',
+                'timestamp' => now(),
+            ]);
+        })->name('beauty.test.stress');
 
         /*
         |--------------------------------------------------------------
@@ -108,6 +122,53 @@ Route::prefix('api/beauty')
 
                 Route::get('ai/designs', [AIConstructorController::class, 'designs'])
                     ->name('beauty.ai.designs');
+
+                // --- AI-подбор мастера по фото ---
+                Route::post('masters/match-by-photo', [MasterMatchingController::class, 'matchByPhoto'])
+                    ->name('beauty.masters.match-by-photo')
+                    ->middleware('throttle:20,1'); // max 20 запросов в минуту
+
+                Route::get('masters/match-history', [MasterMatchingController::class, 'getMatchHistory'])
+                    ->name('beauty.masters.match-history');
+
+                // --- Dynamic pricing (AI-driven) ---
+                Route::post('pricing/calculate', [DynamicPricingController::class, 'calculate'])
+                    ->name('beauty.pricing.calculate')
+                    ->middleware('throttle:30,1'); // max 30 запросов в минуту
+
+                Route::get('pricing/history', [DynamicPricingController::class, 'getPriceHistory'])
+                    ->name('beauty.pricing.history');
+
+                // --- Video calls (WebRTC) ---
+                Route::post('video-calls/initiate', [VideoCallController::class, 'initiate'])
+                    ->name('beauty.video-calls.initiate')
+                    ->middleware('throttle:10,1'); // max 10 calls в минуту
+
+                Route::post('video-calls/end', [VideoCallController::class, 'end'])
+                    ->name('beauty.video-calls.end');
+
+                // --- Loyalty & Gamification ---
+                Route::post('loyalty/action', [BeautyLoyaltyController::class, 'processAction'])
+                    ->name('beauty.loyalty.action')
+                    ->middleware('throttle:60,1'); // max 60 actions в минуту
+
+                Route::get('loyalty/status', [BeautyLoyaltyController::class, 'getStatus'])
+                    ->name('beauty.loyalty.status');
+
+                Route::post('loyalty/referral/generate', [BeautyLoyaltyController::class, 'generateReferral'])
+                    ->name('beauty.loyalty.referral.generate')
+                    ->middleware('throttle:5,1'); // max 5 генераций в минуту
+
+                // --- Fraud Detection (AI-powered) ---
+                Route::post('fraud/analyze', [BeautyFraudDetectionController::class, 'analyze'])
+                    ->name('beauty.fraud.analyze')
+                    ->middleware('throttle:100,1'); // max 100 analyses в минуту
+
+                Route::post('fraud/suspicious-ip', [BeautyFraudDetectionController::class, 'addSuspiciousIP'])
+                    ->name('beauty.fraud.suspicious-ip');
+
+                Route::post('fraud/failed-payment', [BeautyFraudDetectionController::class, 'recordFailedPayment'])
+                    ->name('beauty.fraud.failed-payment');
 
                 // --- Генерация слотов (Tenant / автоматика) ---
                 Route::post('masters/{master}/slots/generate', [SlotController::class, 'generate'])

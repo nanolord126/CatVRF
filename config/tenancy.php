@@ -69,13 +69,17 @@ return [
     */
     'identification' => [
         'resolvers' => [
-            'domain' => true,
+            'domain'    => true,
             'subdomain' => true,
-            'path' => true,
-            'header' => true,
+            'path'      => true,
+            // SECURITY: Header resolver MUST be disabled in production.
+            // Enable only in trusted internal networks behind auth:sanctum + rate-limit.
+            // Set TENANT_HEADER_RESOLVER=false in production .env
+            'header'      => env('TENANT_HEADER_RESOLVER', false),
             'header_name' => 'X-Tenant-ID',
         ],
-        'early_identification' => true,
+        // SECURITY: early_identification must be false when header resolver is on
+        'early_identification' => env('TENANT_HEADER_RESOLVER', false) ? false : true,
     ],
 
     /*
@@ -119,7 +123,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'seeding' => [
-        'shared_seeder' => \Database\Seeders\TenantSeeder::class,
+        'shared_seeder' => \Database\Seeders\DatabaseSeeder::class,
     ],
 
     /*

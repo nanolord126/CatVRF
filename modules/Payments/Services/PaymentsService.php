@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\Common\Services\AbstractTechnicalVerticalService;
 use Modules\Payments\Gateways\PaymentGatewayInterface;
-use Modules\Payments\Models\PaymentTransaction;
+use App\Models\PaymentTransaction;
 
 final class PaymentsService extends AbstractTechnicalVerticalService
 {

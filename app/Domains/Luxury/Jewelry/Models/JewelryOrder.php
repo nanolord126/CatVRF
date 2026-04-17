@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class JewelryOrder extends Model
 {
-    use HasFactory;
 
     use SoftDeletes, TenantScoped;
 

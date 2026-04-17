@@ -23,7 +23,7 @@ use Illuminate\Log\LogManager;
  */
 final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $timeout = 300;
     public int $tries = 3;
@@ -60,3 +60,4 @@ final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
         }
     }
 }
+

@@ -1,5 +1,11 @@
 <?php declare(strict_types=1);
 
+namespace App\Domains\Fitness\Events;
+
+use App\Domains\Fitness\Models\Membership;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
 /**
  * Class MembershipPurchased
  *
@@ -15,9 +21,10 @@
  */
 final class MembershipPurchased
 {
-    use Dispatchable, SerializesModels;
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         public readonly Membership $membership,
         public readonly string     $correlationId) {}
 }
+

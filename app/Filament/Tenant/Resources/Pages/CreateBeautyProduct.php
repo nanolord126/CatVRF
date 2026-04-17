@@ -49,7 +49,7 @@ final class CreateBeautyProduct extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Beauty product created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Beauty product created', [
             'product_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

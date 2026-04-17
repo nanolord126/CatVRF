@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FashionRetailProductVariant extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'fashion_retail_product_variants';
 

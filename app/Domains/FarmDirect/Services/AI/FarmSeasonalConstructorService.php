@@ -15,8 +15,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Сезонный план закупок + рецепты + заготовки + подбор фермеров
@@ -28,12 +28,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class FarmSeasonalConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -57,16 +61,27 @@ final readonly class FarmSeasonalConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Составление сезонного плана закупок фермерской продукции. Определи: сезон, регион, предпочтения, объём, бюджет. Рекомендуй продукты, фермеров, рецепты, способы заготовки.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($farmData, $userId), ['farm_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($farmData, $userId), ['farm_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Анонимизация данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Составление сезонного плана закупок фермерской продукции. Определи: сезон, регион, предпочтения, объём, бюджет. Рекомендуй продукты, фермеров, рецепты, способы заготовки.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.3, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get seasonal planning. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -144,5 +159,28 @@ final readonly class FarmSeasonalConstructorService
                 'created_at'     => Carbon::now(),
             ]
         );
+    }
+
+    private function anonymizeData(string $data): string
+    {
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[ФЕРМЕР]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $farmData, int $userId): array
+    {
+        return [
+            'season' => $farmData['season'] ?? null,
+            'region' => $farmData['region'] ?? null,
+            'preferences' => $farmData['preferences'] ?? [],
+            'volume' => $farmData['volume'] ?? null,
+            'budget' => $farmData['budget'] ?? null,
+        ];
     }
 }

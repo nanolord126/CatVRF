@@ -23,9 +23,9 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique()->index();
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('business_group_id')->nullable()->constrained('business_groups')->onDelete('set null');
+            $table->foreignId('tenant_id')->nullable()->index();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->foreignId('business_group_id')->nullable()->index();
 
             // Вертикаль (beauty, food, furniture, fashion, medical и т.д.)
             $table->string('vertical', 50)->index();
@@ -85,7 +85,7 @@ return new class extends Migration
         // Таблица позиций заказа
         Schema::create('order_items', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+            $table->foreignId('order_id')->nullable()->index();
             $table->string('product_type', 100)->nullable(); // Polymorphic: BeautyProduct, Dish, FurnitureItem…
             $table->unsignedBigInteger('product_id')->nullable();
             $table->string('product_name')->nullable();        // snapshot

@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 final class Artwork extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'artworks';
 

@@ -12,8 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Coach extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'pd_coaches';
 

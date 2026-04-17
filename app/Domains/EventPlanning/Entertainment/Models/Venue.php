@@ -5,12 +5,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class Venue extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
-    use SoftDeletes;
 
         protected $table = 'entertainment_venues';
 

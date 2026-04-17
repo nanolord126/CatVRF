@@ -24,10 +24,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessAdCampaignJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Number of retry attempts.

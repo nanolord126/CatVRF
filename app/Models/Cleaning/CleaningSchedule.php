@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class CleaningSchedule extends Model
 {
-    use HasFactory;
 
     protected $table = 'cleaning_schedules';
 

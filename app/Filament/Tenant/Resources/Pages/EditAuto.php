@@ -48,7 +48,7 @@ final class EditAuto extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Auto vehicle updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Auto vehicle updated', [
             'vehicle_id'     => $this->record->id,
             'brand'          => $this->record->brand,
             'model'          => $this->record->model,

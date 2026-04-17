@@ -14,9 +14,7 @@ final class DeliveryOrder extends Model
     public function __construct(
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'logistics_delivery_orders';
 

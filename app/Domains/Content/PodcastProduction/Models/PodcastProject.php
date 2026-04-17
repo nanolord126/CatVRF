@@ -10,10 +10,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class PodcastProject extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'podcast_projects';
 

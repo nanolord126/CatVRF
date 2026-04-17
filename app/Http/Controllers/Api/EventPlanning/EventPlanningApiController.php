@@ -56,7 +56,7 @@ final class EventPlanningApiController extends Controller
                     ]
                 ], 200);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -111,7 +111,7 @@ final class EventPlanningApiController extends Controller
                     'message' => 'Project initialized successfully from AI plan.',
                 ], 201);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

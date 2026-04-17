@@ -27,7 +27,6 @@ use Illuminate\Support\Str;
  */
 final class ArtMaterial extends Model
 {
-    use HasFactory;
 
     protected $table = 'art_materials';
 

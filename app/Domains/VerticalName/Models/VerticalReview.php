@@ -34,9 +34,6 @@ use Illuminate\Support\Str;
  */
 final class VerticalReview extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'vertical_name_reviews';
 

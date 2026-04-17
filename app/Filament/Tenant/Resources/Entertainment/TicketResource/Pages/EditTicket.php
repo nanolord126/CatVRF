@@ -43,7 +43,7 @@ final class EditTicket extends EditRecord
 
         protected function beforeSave(): void
         {
-            $this->logger->info('Entertainment Ticket modification', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Ticket modification', [
                 'ticket_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

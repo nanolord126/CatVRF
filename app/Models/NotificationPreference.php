@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class NotificationPreference extends Model
 {
-    use HasFactory;
 
     protected $table = 'notification_preferences';
 

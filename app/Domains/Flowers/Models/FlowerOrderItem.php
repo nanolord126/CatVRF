@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FlowerOrderItem extends Model
 {
-    use HasFactory;
 
         protected $table = 'flower_order_items';
 

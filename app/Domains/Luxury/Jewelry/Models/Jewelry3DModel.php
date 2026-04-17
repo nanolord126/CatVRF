@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Jewelry3DModel extends Model
 {
-    use HasFactory;
 
     protected $table = '3d_models';
 

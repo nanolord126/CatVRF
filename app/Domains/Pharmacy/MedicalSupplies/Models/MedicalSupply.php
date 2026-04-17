@@ -24,9 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MedicalSupply extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'medical_supplies';
 

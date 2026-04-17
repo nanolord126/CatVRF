@@ -10,9 +10,7 @@ use Illuminate\Support\Str;
 
 final class VapeDevice extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'vapes_devices';
 

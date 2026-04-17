@@ -32,8 +32,9 @@ use Illuminate\Log\LogManager;
 
 final class AggregateDailyAnalyticsJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $timeout = 300;
@@ -77,3 +78,4 @@ final class AggregateDailyAnalyticsJob
     private const MAX_RETRIES = 3;
 
 }
+

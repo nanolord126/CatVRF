@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domains\Beauty\Models\Appointment;
+use App\Domains\Education\Models\Enrollment;
 use App\Domains\Hotels\Models\Booking;
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Models\Channels\BusinessChannel;
@@ -39,6 +40,7 @@ final class AuthServiceProvider extends ServiceProvider
         Payroll::class => PayrollPolicy::class,
         Payout::class => PayoutPolicy::class,
         Wallet::class => WalletManagementPolicy::class,
+        Enrollment::class => LearningPathPolicy::class,
         // Channels
         BusinessChannel::class => ChannelPolicy::class,
         Post::class             => PostPolicy::class,

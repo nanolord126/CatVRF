@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class PetClinic extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'pet_clinics';
 

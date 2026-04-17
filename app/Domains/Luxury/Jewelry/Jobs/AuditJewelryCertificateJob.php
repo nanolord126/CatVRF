@@ -13,8 +13,9 @@ use Illuminate\Http\Request;
 
 final class AuditJewelryCertificateJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $backoff = 60;
@@ -108,3 +109,4 @@ final class AuditJewelryCertificateJob
             return ['jewelry', 'audit', 'compliance', $this->correlationId];
         }
 }
+

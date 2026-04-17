@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MovingOrder extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

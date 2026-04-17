@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\Art;
 
-
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;

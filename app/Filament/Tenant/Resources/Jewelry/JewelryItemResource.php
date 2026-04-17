@@ -5,11 +5,24 @@ namespace App\Filament\Tenant\Resources\Jewelry;
 
 use Psr\Log\LoggerInterface;
     use Filament\Resources\Resource;
+    use Filament\Forms\Form;
+    use Filament\Forms;
+    use App\Models\JewelryItem;
+    use Filament\Forms\Components\Section;
+    use Filament\Forms\Components\TextInput;
+    use Filament\Forms\Components\Textarea;
+    use Filament\Forms\Components\FileUpload;
+    use Filament\Forms\Components\Select;
+    use Filament\Forms\Components\TagsInput;
+    use Filament\Forms\Components\Toggle;
+    use Filament\Forms\Components\Hidden;
+    use Filament\Tables\Columns\NumericColumn;
+    use Filament\Tables\Actions\BulkActionGroup;
+    use Filament\Tables\Actions\DeleteBulkAction;
     use Filament\Tables;
-    use Filament\Tables\Columns\{BadgeColumn, IconColumn, ImageColumn, TextColumn, NumericColumn};
+    use Filament\Tables\Columns\{BadgeColumn, IconColumn, ImageColumn, TextColumn};
     use Filament\Tables\Filters\{SelectFilter, TernaryFilter, TrashedFilter};
     use Filament\Tables\Actions\{Action, ActionGroup, RestoreAction, DeleteAction, EditAction, ViewAction};
-    use Filament\Tables\Actions\BulkActions\{BulkActionGroup, DeleteBulkAction};
     use Filament\Tables\Enums\ActionsPosition;
     use Illuminate\Support\Str;
     use Illuminate\Support\Facades\Log;
@@ -29,7 +42,7 @@ use Psr\Log\LoggerInterface;
         protected static ?string $label = 'Ювелирное изделие';
         protected static ?string $pluralLabel = 'Ювелирные изделия';
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

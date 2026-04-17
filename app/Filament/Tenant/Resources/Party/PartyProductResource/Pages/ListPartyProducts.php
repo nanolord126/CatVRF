@@ -53,9 +53,9 @@ final class ListPartyProducts extends ListRecords
     {
         parent::mount();
 
-        $this->logger->info('PartyProduct catalog viewed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('PartyProduct catalog viewed', [
             'tenant_id' => tenant()->id ?? null,
-            'user_id' => $this->guard->id() ?? null,
+            'user_id' => auth()->id() ?? null,
         ]);
     }
 }

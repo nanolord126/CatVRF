@@ -16,7 +16,6 @@ final class CarType extends Model
         private readonly ConfigRepository $config,
     ) {}
 
-    use HasFactory;
 
     protected $table = 'car_types';
 

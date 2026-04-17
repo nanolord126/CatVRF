@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 final class ShipmentInsurance extends Model
 {
 
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

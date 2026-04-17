@@ -37,7 +37,7 @@ final class CreateBeverageItem extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('BeverageItem created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageItem created', [
             'item_id'        => $this->record->id,
             'name'           => $this->record->name,
             'price'          => $this->record->price,

@@ -9,13 +9,13 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 use Psr\Log\LoggerInterface;
 
 final class VeganSubscriptionBatchRenewalJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * The number of times the job may be attempted.
@@ -73,3 +73,4 @@ final class VeganSubscriptionBatchRenewalJob
             }
         }
     }
+

@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Route extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'logistics_routes';
 

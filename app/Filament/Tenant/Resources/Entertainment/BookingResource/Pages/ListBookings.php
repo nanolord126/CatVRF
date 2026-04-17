@@ -41,9 +41,9 @@ final class ListBookings extends ListRecords
             return [
                 Actions\CreateAction::make()
                     ->after(function () {
-                        $this->logger->info('Entertainment Booking creation started', [
+                        \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Booking creation started', [
                             'tenant_id' => filament()->getTenant()->id,
-                            'user_id' => $this->guard->id(),
+                            'user_id' => auth()->id(),
                         ]);
                     }),
             ];

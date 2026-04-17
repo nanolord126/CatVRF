@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class GroceryOrderItem extends Model
 {
-    use HasFactory;
 
     protected $table = 'grocery_order_items';
 

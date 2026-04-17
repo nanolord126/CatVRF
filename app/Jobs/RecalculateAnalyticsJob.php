@@ -8,8 +8,6 @@ use Illuminate\Log\LogManager;
 
 final class RecalculateAnalyticsJob implements ShouldQueue
 {
-    use Queueable;
-
         public int $tries = 3;
         public int $timeout = 3600;  // 1 hour
 
@@ -49,11 +47,11 @@ final class RecalculateAnalyticsJob implements ShouldQueue
                     'tenant_id' => $this->tenantId,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $correlationId,
                 ]);
 
                 $this->logger->error('Analytics recalculation failed', [

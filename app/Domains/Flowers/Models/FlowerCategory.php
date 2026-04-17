@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 final class FlowerCategory extends Model
 {
 
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

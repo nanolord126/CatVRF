@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class CleanupExpiredWeddingBookingsJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
 
@@ -74,3 +75,4 @@ final class CleanupExpiredWeddingBookingsJob
             return ['wedding', 'cleanup', 'expiration', $this->correlationId];
         }
 }
+

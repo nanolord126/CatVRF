@@ -25,7 +25,7 @@ use Illuminate\Cache\CacheManager;
  */
 final class TaxiSurgeRecalculateJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries = 3;
     public int $timeout = 60;
@@ -88,3 +88,4 @@ final class TaxiSurgeRecalculateJob implements ShouldQueue
         return ['taxi', 'surge', 'recalculate'];
     }
 }
+

@@ -59,7 +59,7 @@ final class CreateFarmDirect extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Farm product created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Farm product created', [
             'product_id'     => $record->id,
             'name'           => $record->name,
             'correlation_id' => $record->correlation_id,

@@ -16,9 +16,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class StockReserved
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     public function __construct(
         public readonly int    $productId,

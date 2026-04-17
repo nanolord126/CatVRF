@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ChannelSubscriber extends Model
 {
-    use HasFactory;
 
     protected $table = 'channel_subscribers';
 

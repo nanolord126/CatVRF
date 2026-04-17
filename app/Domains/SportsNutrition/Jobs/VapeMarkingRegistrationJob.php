@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class VapeMarkingRegistrationJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 5;
         public int $backoff = 60; // 1 min
@@ -79,3 +80,4 @@ final class VapeMarkingRegistrationJob
             ];
         }
 }
+

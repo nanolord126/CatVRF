@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FashionB2BOrder extends Model
 {
-    use HasFactory;
 
     protected $table = 'fashion_b2b_orders';
 

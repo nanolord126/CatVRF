@@ -24,8 +24,6 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\VIPBookingResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Class CreateVIPBooking
@@ -50,7 +48,7 @@ final class CreateVIPBooking extends CreateRecord
 
         $this->logger->info('Creating VIP Booking via Filament', [
             'client_id' => $data['client_id'] ?? 'N/A',
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'correlation_id' => $data['correlation_id'],
         ]);
 

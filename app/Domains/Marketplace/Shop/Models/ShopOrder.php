@@ -7,9 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ShopOrder extends Model
 {
-    use HasFactory;
 
-    use HasFactory;
 
         protected $table = 'shop_orders';
 

@@ -95,6 +95,8 @@ return [
     | Registered panel providers. Each panel has its own provider class.
     */
     'panels' => [
+        // Temporarily disabled for seeder
+        /*
         'admin' => [
             'provider' => \App\Providers\Filament\AdminPanelProvider::class,
             'path' => 'admin',
@@ -120,6 +122,7 @@ return [
             'path' => 'emergency',
             'domain' => env('FILAMENT_EMERGENCY_DOMAIN'),
         ],
+        */
     ],
 
     /*

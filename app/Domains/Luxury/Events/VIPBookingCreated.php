@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class VIPBookingCreated
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             public VIPBooking $booking,
@@ -54,3 +55,4 @@ final class VIPBookingCreated
         ];
     }
 }
+

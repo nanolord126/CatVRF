@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class EventVenue extends Model
 {
-    use HasFactory;
 
         protected $table = 'event_venues';
 

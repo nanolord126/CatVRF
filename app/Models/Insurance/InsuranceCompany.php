@@ -12,8 +12,6 @@ use Illuminate\Support\Str;
 
 final class InsuranceCompany extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'insurance_companies';
 

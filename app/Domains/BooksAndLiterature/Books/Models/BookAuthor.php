@@ -9,6 +9,7 @@ namespace App\Domains\BooksAndLiterature\Books\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 /**
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class BookAuthor extends Model
 {
-        use BooksDomainTrait, SoftDeletes;
+        use BooksDomainTrait, SoftDeletes, TenantScoped;
         protected $table = 'book_authors';
         protected $fillable = ['tenant_id', 'uuid', 'name', 'biography', 'nationality', 'birth_date', 'tags', 'correlation_id'];
         protected $casts = ['tags' => 'json', 'birth_date' => 'date'];

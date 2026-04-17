@@ -11,9 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class B2BTravelOrder extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'b2b_travel_orders';
 

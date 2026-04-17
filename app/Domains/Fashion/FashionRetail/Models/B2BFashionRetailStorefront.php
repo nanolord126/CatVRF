@@ -12,9 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 final class B2BFashionRetailStorefront extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'b2b_fashion_retail_storefronts';
 

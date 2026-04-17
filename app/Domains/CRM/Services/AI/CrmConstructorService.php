@@ -75,7 +75,7 @@ final readonly class CrmConstructorService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction(function () use ($callback) {
+        return $this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

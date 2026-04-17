@@ -56,7 +56,7 @@ final class CreateFashionProduct extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('FashionProduct created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('FashionProduct created', [
             'product_id'     => $this->record->id,
             'name'           => $this->record->name,
             'sku'            => $this->record->sku,

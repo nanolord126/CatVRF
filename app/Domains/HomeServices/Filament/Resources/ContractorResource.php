@@ -2,15 +2,18 @@
 
 namespace App\Domains\HomeServices\Filament\Resources;
 
+use App\Domains\HomeServices\Models\Contractor;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ContractorResource extends Resource
 {
-
+
+
     protected static ?string $model = Contractor::class;
         protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
         protected static ?string $navigationLabel = 'Подрядчики';

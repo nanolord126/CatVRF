@@ -13,9 +13,7 @@ final class Vehicle extends Model
     public function __construct(
         private readonly LoggerInterface $logger) {}
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'logistics_vehicles';
 

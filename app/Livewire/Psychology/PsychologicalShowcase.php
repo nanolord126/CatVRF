@@ -17,7 +17,6 @@ final class PsychologicalShowcase extends Component
         private readonly LogManager $logger,
     ) {}
 
-    use WithPagination;
 
     private string $search = '';
     private array $aiSymptoms = [];

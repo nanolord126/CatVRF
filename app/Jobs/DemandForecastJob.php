@@ -13,7 +13,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class DemandForecastJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $backoff = 60;
@@ -54,11 +54,11 @@ final class DemandForecastJob implements ShouldQueue
                 ]);
 
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->correlationId,
                 ]);
 
                 $this->logger->channel('audit')->error('DemandForecastJob failed', [
@@ -185,3 +185,4 @@ final class DemandForecastJob implements ShouldQueue
             }
         }
 }
+

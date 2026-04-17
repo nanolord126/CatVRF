@@ -5,12 +5,16 @@ namespace App\Domains\Food\Filament\Resources;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms;
-use Filament\Tables;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 
 final class RestaurantResource extends Resource
 {
-
+
     protected static ?string $model = Restaurant::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
@@ -46,10 +50,10 @@ final class RestaurantResource extends Resource
                         ]),
                     Section::make('Параметры')
                         ->schema([
-                            ToggleButtons::make('is_verified')
+                            Toggle::make('is_verified')
                                 ->label('Верифицирован')
                                 ->boolean(),
-                            ToggleButtons::make('accepts_delivery')
+                            Toggle::make('accepts_delivery')
                                 ->label('Принимает доставку')
                                 ->boolean(),
                             TextInput::make('rating')
@@ -98,9 +102,9 @@ final class RestaurantResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListRestaurants::route('/'),
-                'create' => Pages\CreateRestaurant::route('/create'),
-                'edit' => Pages\EditRestaurant::route('/{record}/edit'),
+                'index' => \App\Domains\Food\Filament\Resources\RestaurantResource\Pages\ListRestaurants::route('/'),
+                'create' => \App\Domains\Food\Filament\Resources\RestaurantResource\Pages\CreateRestaurant::route('/create'),
+                'edit' => \App\Domains\Food\Filament\Resources\RestaurantResource\Pages\EditRestaurant::route('/{record}/edit'),
             ];
         }
 }

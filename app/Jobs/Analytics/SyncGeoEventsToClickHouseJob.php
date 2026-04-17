@@ -11,8 +11,9 @@ use Illuminate\Log\LogManager;
 
 final class SyncGeoEventsToClickHouseJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private string $correlationId;
         public int $timeout = 300;
@@ -64,11 +65,11 @@ final class SyncGeoEventsToClickHouseJob
                     );
                 }
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->correlationId,
                 ]);
 
                 $this->logger->channel('error')->error('[SyncGeoEventsToClickHouse] Sync failed', [
@@ -96,11 +97,11 @@ final class SyncGeoEventsToClickHouseJob
                     'correlation_id' => $this->correlationId,
                 ]);
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->correlationId,
                 ]);
 
                 $this->logger->channel('error')->error('[SyncGeoEventsToClickHouse] Chunk sync failed', [
@@ -123,3 +124,4 @@ final class SyncGeoEventsToClickHouseJob
             ]);
         }
 }
+

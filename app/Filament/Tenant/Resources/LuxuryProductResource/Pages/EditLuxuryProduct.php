@@ -52,9 +52,9 @@ final class EditLuxuryProduct extends EditRecord
         {
             $data['correlation_id'] = (string) Str::uuid();
 
-            $this->logger->info('Editing Luxury Product via Filament', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Editing Luxury Product via Filament', [
                 'product_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
             ]);
 

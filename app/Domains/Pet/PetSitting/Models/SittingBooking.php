@@ -20,8 +20,6 @@ namespace App\Domains\Pet\PetSitting\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class SittingBooking extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'sitting_bookings';
     protected $fillable = ['uuid', 'tenant_id', 'sitter_id', 'owner_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'start_date', 'end_date', 'pet_names', 'tags'];

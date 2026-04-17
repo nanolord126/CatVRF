@@ -11,7 +11,6 @@ final class Enrollment extends Model
 {
     protected $table = 'education_enrollments';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

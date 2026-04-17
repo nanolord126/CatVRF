@@ -1,9 +1,26 @@
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\ShortTermRentals;
+use Filament\Resources\Resource;
+use Filament\Forms\Form;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\KeyValue;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
 
-
-
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 final class ApartmentResource extends Resource
@@ -12,7 +29,8 @@ final class ApartmentResource extends Resource
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static ?string $model = Apartment::class;
         protected static ?string $navigationIcon = 'heroicon-o-home';
         protected static ?string $navigationGroup = 'Short-Term Rentals';
@@ -616,7 +634,7 @@ final class ApartmentResource extends Resource
             return [];
         }
 
-        protected static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+        public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', filament()->getTenant()->id);

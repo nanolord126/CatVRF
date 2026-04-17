@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Enrollment extends Model
 {
-    use HasFactory;
 
     protected $table = 'pd_enrollments';
 

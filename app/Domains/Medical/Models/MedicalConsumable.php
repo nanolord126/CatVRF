@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MedicalConsumable extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_consumables';
 
@@ -60,15 +60,7 @@ final class MedicalConsumable extends Model
         /**
          * Настройка логов для аудита.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'stock_quantity', 'min_threshold'])
-                ->logOnlyDirty()
-                ->useLogName('medical_consumable_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиника.
          */
         public function clinic(): BelongsTo

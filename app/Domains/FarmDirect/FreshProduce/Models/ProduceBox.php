@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ProduceBox extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

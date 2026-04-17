@@ -46,9 +46,10 @@ final readonly class ChatService
                 'tenant_id'      => $tenantId,
                 'type'           => $type,
                 'title'          => $title,
-                'entity_type'    => $entityType,
-                'entity_id'      => $entityId,
-                'is_active'      => true,
+                'context_type'   => $entityType,
+                'context_id'     => $entityId,
+                'participants'   => [],
+                'status'         => 'active',
                 'correlation_id' => $correlationId,
             ]);
 
@@ -85,7 +86,7 @@ final readonly class ChatService
         return $this->db->transaction(function () use ($dto): ChatMessage {
             $room = ChatRoom::findOrFail($dto->roomId);
 
-            if (!$room->is_active) {
+            if ($room->status !== 'active') {
                 throw new \RuntimeException('Chat room is closed');
             }
 
@@ -111,10 +112,11 @@ final readonly class ChatService
      */
     public function markRoomAsRead(int $roomId, int $userId): void
     {
-        ChatMessage::where('room_id', $roomId)
-            ->where('sender_id', '!=', $userId)
+        ChatMessage::where('chat_room_id', $roomId)
+            ->where('sender_user_id', '!=', $userId)
             ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->where('is_deleted', false)
+            ->update(['is_read' => true, 'read_at' => now()]);
     }
 
     /**
@@ -123,7 +125,10 @@ final readonly class ChatService
     public function closeRoom(int $roomId, string $correlationId): void
     {
         $this->db->transaction(function () use ($roomId, $correlationId): void {
-            ChatRoom::where('id', $roomId)->update(['is_active' => false]);
+            ChatRoom::where('id', $roomId)->update([
+                'status'    => 'closed',
+                'closed_at' => now(),
+            ]);
 
             $this->logger->channel('audit')->info('Chat room closed', [
                 'room_id'        => $roomId,
@@ -139,7 +144,8 @@ final readonly class ChatService
      */
     public function getRoomHistory(int $roomId, int $perPage = 50): mixed
     {
-        return ChatMessage::where('room_id', $roomId)
+        return ChatMessage::where('chat_room_id', $roomId)
+            ->where('is_deleted', false)
             ->with('sender:id,name,avatar')
             ->orderBy('created_at')
             ->paginate($perPage);

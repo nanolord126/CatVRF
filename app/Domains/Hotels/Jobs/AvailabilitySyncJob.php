@@ -28,10 +28,6 @@ use Psr\Log\LoggerInterface;
  */
 final class AvailabilitySyncJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Максимальное количество попыток выполнения.

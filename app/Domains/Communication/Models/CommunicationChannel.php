@@ -16,7 +16,6 @@ use Illuminate\Support\Str;
  */
 final class CommunicationChannel extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'communication_channels';
 

@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class EventBooking extends Model
 {
-    use HasFactory;
 
         protected $table = 'event_bookings';
 

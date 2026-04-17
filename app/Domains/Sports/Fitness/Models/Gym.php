@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Gym extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'gyms';
     protected $fillable = [

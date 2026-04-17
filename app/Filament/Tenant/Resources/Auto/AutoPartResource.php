@@ -2,11 +2,14 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-
-
+use Illuminate\Database\Eloquent\Builder;
+use App\Domains\Auto\Models\AutoPart;
+use Filament\Forms;
+use Filament\Tables;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
+use Illuminate\Support\Str;
 
 final class AutoPartResource extends Resource
 {
@@ -14,7 +17,8 @@ final class AutoPartResource extends Resource
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
@@ -440,7 +444,7 @@ final class AutoPartResource extends Resource
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', filament()->getTenant()->id);

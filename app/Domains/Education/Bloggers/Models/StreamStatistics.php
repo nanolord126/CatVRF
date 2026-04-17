@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class StreamStatistics extends Model
 {
-    use HasFactory;
 
         protected $table = 'stream_statistics';
 

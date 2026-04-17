@@ -36,7 +36,7 @@ final class CreateDentalClinic extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('DentalClinic created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalClinic created', [
             'clinic_id'      => $this->record->id,
             'name'           => $this->record->name,
             'license_number' => $this->record->license_number,

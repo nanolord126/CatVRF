@@ -29,9 +29,9 @@ final readonly class FiscalService
     public function __construct(
         private readonly ConfigRepository $config,
         private readonly PendingRequest $http,
-        private readonly LogManager $log,
-        private readonly FraudControlService $fraud,
         private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly Request $request
     ) {}
 
     /**
@@ -102,12 +102,12 @@ final readonly class FiscalService
 
             return $result;
 
-        } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             $this->logger->channel('audit')->error('Fiscal transmission failed', [
@@ -227,12 +227,12 @@ final readonly class FiscalService
             }
 
             return true;
-        } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             throw new \RuntimeException("Failed to send to Yandex Kassa OFD: {$e->getMessage()}");
@@ -270,12 +270,12 @@ final readonly class FiscalService
             }
 
             return true;
-        } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             throw new \RuntimeException("Failed to send to Tinkoff OFD: {$e->getMessage()}");

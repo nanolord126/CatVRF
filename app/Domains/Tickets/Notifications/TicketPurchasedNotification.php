@@ -7,8 +7,7 @@ use Illuminate\Notifications\Notification;
 final class TicketPurchasedNotification extends Notification
 {
 
-    use Queueable;
-
+    use \Illuminate\Bus\Queueable;
         private readonly string $correlationId;
 
         public function __construct(

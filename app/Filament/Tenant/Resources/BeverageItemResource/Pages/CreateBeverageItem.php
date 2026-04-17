@@ -17,7 +17,8 @@ final class CreateBeverageItem extends CreateRecord
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static string $resource = BeverageItemResource::class;
 
         protected function mutateFormDataBeforeCreate(array $data): array
@@ -35,7 +36,7 @@ final class CreateBeverageItem extends CreateRecord
                 'item_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

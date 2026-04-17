@@ -22,7 +22,7 @@ use Illuminate\Log\LogManager;
  */
 final class LessonReminderJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             public int $lessonId,
@@ -58,3 +58,4 @@ final class LessonReminderJob implements ShouldQueue
             ]);
         }
 }
+

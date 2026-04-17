@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class RecalculateDoctorRatingJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * @var int Попытки с задержкой 5 минут
@@ -102,3 +103,4 @@ final class RecalculateDoctorRatingJob
             ];
         }
 }
+

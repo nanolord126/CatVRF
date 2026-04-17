@@ -23,8 +23,7 @@ use Illuminate\Notifications\Notification;
 final class RideCreatedNotification extends Notification
 {
 
-    use Queueable;
-
+    use \Illuminate\Bus\Queueable;
         public function __construct(
             private readonly TaxiRide $ride,
             private readonly string $correlationId

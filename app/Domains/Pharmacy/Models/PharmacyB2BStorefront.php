@@ -31,7 +31,6 @@ use Illuminate\Support\Str;
  */
 final class PharmacyB2BStorefront extends Model
 {
-    use HasFactory;
 
     protected $table = 'pharmacy_b2b_storefronts';
     protected $fillable = ['uuid', 'tenant_id', 'pharmacy_id', 'is_active', 'correlation_id', 'tags'];

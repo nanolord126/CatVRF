@@ -63,7 +63,7 @@ final class EditDentalTreatmentPlan extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('DentalTreatmentPlan updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalTreatmentPlan updated', [
             'plan_id'        => $this->record->id,
             'title'          => $this->record->title,
             'status'         => $this->record->status,

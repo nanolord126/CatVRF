@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ProduceProduct extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

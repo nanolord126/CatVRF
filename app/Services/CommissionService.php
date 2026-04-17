@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-
-
 use App\Services\FraudControlService;
+use App\Services\AuditService;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
@@ -12,62 +11,63 @@ use Illuminate\Database\DatabaseManager;
  * Commission Service
  * Production 2026 CANON
  *
- * Calculates and tracks commissions per-vertical:
- * - Beauty: 14% / 10-12% with migration
- * - Food: 14%
- * - Hotels: 12-14% (4-day payout)
- * - Auto: 15% + 5% fleet owner
- * - RealEstate: 14%
+ * Тарифы комиссий:
+ * B2C (физлица):   14% (все вертикали по умолчанию)
+ * B2B (standard): 12%
+ * B2B (silver):   11%
+ * B2B (gold):     10%
+ * B2B (platinum): 8%
  *
- * Features:
- * - Idempotent commission recording (operation_id prevents duplicates)
- * - Atomic DB transactions
- * - Full audit trail with correlation_id
- * - Per-vertical rate configuration
- *
+ * Миграционные скидки (4 месяца после перехода с dikidi, booking, етц.)
  * @author CatVRF Team
- * @version 2026.03.24
+ * @version 2026.04.13
  */
-final class CommissionService
+final readonly class CommissionService
 {
     public function __construct(
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
+        private LogManager $logger,
+        private DatabaseManager $db,
+        private FraudControlService $fraud,
+        private AuditService $audit,
     ) {}
 
     /**
-     * Calculate commission for transaction
+     * Рассчитать комиссию для транзакции.
      *
-     * @param int $tenantId Tenant ID
-     * @param string $vertical Vertical type (beauty, food, hotels, auto, etc.)
-     * @param int $amount Amount in kopeks
-     * @param array $context Additional context (migration_source, has_fleet, etc.)
-     * @return int Commission amount in kopeks
+     * @param int    $tenantId  ID тенанта
+     * @param string $vertical  Вертикаль (beauty, food, hotels, auto, ...)
+     * @param int    $amount    Сумма в копейках
+     * @param array  $context   Доп. контекст: b2b_tier, migration_source, has_fleet
+     * @return int Сумма комиссии в копейках
      */
-    public static function calculateCommission(
+    public function calculateCommission(
         int $tenantId,
         string $vertical,
         int $amount,
         array $context = []
     ): int {
-        $baseRate = self::getBaseRate($vertical);
+        $baseRate = $this->getBaseRate($vertical);
+
+        // B2B-тир снижает комиссию (8–12% вместо 14%)
+        if (!empty($context['b2b_tier'])) {
+            $baseRate = $this->getB2BTierRate($vertical, $context['b2b_tier']);
+        }
+
         $rate = $baseRate / 100;
 
-        // Apply migration discount if applicable
+        // Миграционная скидка (4 месяца)
         if (!empty($context['migration_source'])) {
-            $migrationDiscount = self::getMigrationDiscount($vertical, $context['migration_source']);
-            if ($migrationDiscount > 0) {
-                $rate = $migrationDiscount / 100;
+            $migrationRate = $this->getMigrationDiscount($vertical, $context['migration_source']);
+            if ($migrationRate > 0) {
+                $rate = $migrationRate / 100;
             }
         }
 
-        // Calculate commission
-        $commission = (int)($amount * $rate);
+        $commission = (int) ($amount * $rate);
 
-        // Additional rules per vertical
+        // +5% для auto флита
         if ($vertical === 'auto' && !empty($context['has_fleet'])) {
-            // Add 5% for fleet owner
-            $commission += (int)($amount * 0.05);
+            $commission += (int) ($amount * 0.05);
         }
 
         return $commission;
@@ -87,7 +87,7 @@ final class CommissionService
      * @return int Commission record ID
      * @throws \Exception If commission already recorded (duplicate operation_id)
      */
-    public static function recordCommission(
+    public function recordCommission(
         int $tenantId,
         string $vertical,
         int $amount,
@@ -97,7 +97,12 @@ final class CommissionService
         string $correlationId,
         array $context = []
     ): int {
-        $this->fraud->check(new \stdClass());
+        $this->fraud->check(
+            userId: $tenantId,
+            operationType: 'commission_record',
+            amount: $commission,
+            correlationId: $correlationId,
+        );
         return $this->db->transaction(function () use (
             $tenantId,
             $vertical,
@@ -141,16 +146,17 @@ final class CommissionService
                 'created_at' => now(),
             ]);
 
-            // Schedule payout
-            if ($payoutScheduledFor) {
-                SchedulerService::schedulePayout(
-                    $id,
-                    'commission_records',
-                    $commission,
-                    $payoutScheduledFor,
-                    $correlationId
-                );
-            }
+            // Запись в audit
+            $this->audit->record('commission_recorded', 'commission_records', $id, [], [
+                'tenant_id'            => $tenantId,
+                'vertical'             => $vertical,
+                'amount'               => $amount,
+                'commission'           => $commission,
+                'rate_percent'         => ($commission / $amount) * 100,
+                'operation_type'       => $operationType,
+                'operation_id'         => $operationId,
+                'payout_scheduled_for' => $payoutScheduledFor,
+            ], $correlationId);
 
             $this->logger->channel('audit')->info('Commission recorded', [
                 'correlation_id' => $correlationId,
@@ -177,7 +183,7 @@ final class CommissionService
      * @param string $period Period: day, week, month, all
      * @return array Statistics
      */
-    public static function getCommissionStats(
+    public function getCommissionStats(
         int $tenantId,
         ?string $vertical = null,
         string $period = 'month'
@@ -215,53 +221,57 @@ final class CommissionService
     }
 
     /**
-     * Get base commission rate for vertical
-     *
-     * @param string $vertical Vertical type
-     * @return float Base rate (as percentage: 14 = 14%)
+     * Базовая ставка комиссии B2C (14% по умолчанию).
      */
-    private static function getBaseRate(string $vertical): float
+    private function getBaseRate(string $vertical): float
     {
         return match ($vertical) {
-            'food' => 14.0,
-            'hotels' => 14.0,
-            'auto' => 15.0,
+            'food'        => 14.0,
+            'hotels'      => 14.0,
+            'auto'        => 15.0,
             'real_estate' => 14.0,
-            'courses' => 14.0,
-            'medical' => 14.0,
-            'pet' => 14.0,
-            'tickets' => 12.0,
-            'travel' => 14.0,
-            default => 14.0,
+            'courses'     => 14.0,
+            'medical'     => 14.0,
+            'pet'         => 14.0,
+            'tickets'     => 12.0,
+            'travel'      => 14.0,
+            default       => 14.0,
         };
     }
 
     /**
-     * Get migration discount for vertical + platform
+     * B2B-тарифы комиссии по тиру (канон: 8–12%).
      *
-     * @param string $vertical Vertical type
-     * @param string $migrationSource Source platform (dikidi, booking, ostrovok, etc.)
-     * @return float Discounted rate (0 = no discount)
+     * B2B standard: 12%
+     * B2B silver:   11%
+     * B2B gold:     10%
+     * B2B platinum: 8%
      */
-    private static function getMigrationDiscount(string $vertical, string $migrationSource): float
+    private function getB2BTierRate(string $vertical, string $tier): float
+    {
+        // auto и tickets остаются неизменными даже для B2B
+        if (in_array($vertical, ['auto', 'tickets'], true)) {
+            return $this->getBaseRate($vertical);
+        }
+
+        return match ($tier) {
+            'platinum' => 8.0,
+            'gold'     => 10.0,
+            'silver'   => 11.0,
+            default    => 12.0, // standard
+        };
+    }
+
+    /**
+     * Миграционная скидка (4 месяца после перехода с dikidi, booking и т.д.)
+     */
+    private function getMigrationDiscount(string $vertical, string $migrationSource): float
     {
         $discounts = [
-            'beauty' => [
-                'dikidi' => 10.0, // 10% first 4 months → 12% after
-                'flowwow' => 10.0,
-            ],
-            'hotels' => [
-                'booking' => 12.0,
-                'ostrovok' => 12.0,
-            ],
-            'food' => [
-                'yandex_eats' => 12.0,
-                'delivery_club' => 12.0,
-            ],
-            'auto' => [
-                'yandex_taxi' => 14.0, // No discount for taxis
-                'uber' => 14.0,
-            ],
+            'beauty' => ['dikidi' => 10.0, 'flowwow' => 10.0],
+            'hotels' => ['booking' => 12.0, 'ostrovok' => 12.0],
+            'food'   => ['yandex_eats' => 12.0, 'delivery_club' => 12.0],
+            'auto'   => ['yandex_taxi' => 14.0, 'uber' => 14.0],
         ];
 
         return $discounts[$vertical][$migrationSource] ?? 0.0;
@@ -291,7 +301,7 @@ final class CommissionService
      * @param string $correlationId Tracing ID
      * @return bool
      */
-    public static function markAsPaid(int $commissionId, string $correlationId): bool
+    public function markAsPaid(int $commissionId, string $correlationId): bool
     {
         return $this->db->transaction(function () use ($commissionId, $correlationId) {
             $this->db->table('commission_records')
@@ -317,7 +327,7 @@ final class CommissionService
      * @param string|null $vertical Filter by vertical (optional)
      * @return array Pending commission records
      */
-    public static function getPendingCommissions(int $tenantId, ?string $vertical = null): array
+    public function getPendingCommissions(int $tenantId, ?string $vertical = null): array
     {
         $query = $this->db->table('commission_records')
             ->where('tenant_id', $tenantId)

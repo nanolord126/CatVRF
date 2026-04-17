@@ -14,9 +14,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class PaymentRecordUpdated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * @param PaymentRecord        $paymentRecord текущее состояние

@@ -6,15 +6,21 @@ namespace App\Domains\Beauty\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\TenantScoped;
 
 final class Master extends Model
 {
+    use SoftDeletes, TenantScoped;
+
     protected $table = 'beauty_masters';
 
     protected $fillable = [
         'salon_id',
         'user_id',
+        'tenant_id',
+        'business_group_id',
         'uuid',
         'correlation_id',
         'full_name',

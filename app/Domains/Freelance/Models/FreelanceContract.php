@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceContract extends Model
 {
-    use HasFactory;
 
     protected $table = 'freelance_contracts';
 

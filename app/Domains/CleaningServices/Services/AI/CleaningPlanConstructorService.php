@@ -15,8 +15,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Персональный план уборки + подбор химии + периодичность + расчёт стоимости
@@ -28,12 +28,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class CleaningPlanConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -57,16 +61,27 @@ final readonly class CleaningPlanConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Составление плана уборки на основе параметров помещения. Определи: тип помещения, площадь, загрязнённость, особые требования. Рекомендуй виды уборки, химию, периодичность, расчёт стоимости.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($cleaningData, $userId), ['cleaning_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($cleaningData, $userId), ['cleaning_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Анонимизация данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Составление плана уборки на основе параметров помещения. Определи: тип помещения, площадь, загрязнённость, особые требования. Рекомендуй виды уборки, химию, периодичность, расчёт стоимости.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.3, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get cleaning plan. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -144,5 +159,27 @@ final readonly class CleaningPlanConstructorService
                 'created_at'     => Carbon::now(),
             ]
         );
+    }
+
+    private function anonymizeData(string $data): string
+    {
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[КЛИЕНТ]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $cleaningData, int $userId): array
+    {
+        return [
+            'property_type' => $cleaningData['property_type'] ?? null,
+            'area' => $cleaningData['area'] ?? null,
+            'dirt_level' => $cleaningData['dirt_level'] ?? null,
+            'special_requirements' => $cleaningData['special_requirements'] ?? [],
+        ];
     }
 }

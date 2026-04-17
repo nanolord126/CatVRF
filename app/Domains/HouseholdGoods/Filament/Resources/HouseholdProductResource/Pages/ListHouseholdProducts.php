@@ -19,31 +19,17 @@
 namespace App\Domains\HouseholdGoods\Filament\Resources\HouseholdProductResource\Pages;
 
 use App\Domains\HouseholdGoods\Filament\Resources\HouseholdProductResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListHouseholdProducts
- *
- * Part of the HouseholdGoods vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\HouseholdGoods\Filament\Resources\HouseholdProductResource\Pages
- */
 final class ListHouseholdProducts extends ListRecords
 {
     protected static string $resource = HouseholdProductResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

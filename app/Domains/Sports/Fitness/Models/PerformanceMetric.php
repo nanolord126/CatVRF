@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class PerformanceMetric extends Model
 {
-    use HasFactory;
 
     protected $table = 'performance_metrics';
     protected $fillable = [

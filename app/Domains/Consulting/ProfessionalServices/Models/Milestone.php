@@ -24,9 +24,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Milestone extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'professional_services_milestones';
 

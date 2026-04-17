@@ -27,10 +27,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ProcessFraudModelJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
     public int $backoff = 60;

@@ -18,12 +18,12 @@
 
 namespace App\Domains\Auto\Cars\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class CarOrder extends Model
 {
-    use HasFactory;
 
     protected $table = 'car_orders';
 

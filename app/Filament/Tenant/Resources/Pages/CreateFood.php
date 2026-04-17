@@ -41,7 +41,7 @@ final class CreateFood extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Food order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Food order created', [
             'order_id'       => $record->id,
             'restaurant_id'  => $record->restaurant_id,
             'total_price'    => $record->total_price,

@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ServiceJob extends Model
 {
-    use HasFactory;
 
     protected $table = 'service_jobs';
         protected $fillable = [

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -17,9 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class CrmFoodProfile extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected static function newFactory(): \Database\Factories\CRM\CrmFoodProfileFactory
     {

@@ -63,7 +63,7 @@ final class EditBeverageReview extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('BeverageReview updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageReview updated', [
             'review_id'      => $this->record->id,
             'rating'         => $this->record->rating,
             'is_verified'    => $this->record->is_verified,

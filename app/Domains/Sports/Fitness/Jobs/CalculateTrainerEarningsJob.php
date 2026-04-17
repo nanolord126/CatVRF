@@ -12,11 +12,6 @@ use Psr\Log\LoggerInterface;
 final class CalculateTrainerEarningsJob
 {
 
-    use Dispatchable;
-use App\Services\FraudControlService;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public function __construct(public ?string $correlationId = null,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger)

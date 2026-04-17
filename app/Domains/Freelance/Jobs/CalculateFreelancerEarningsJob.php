@@ -15,8 +15,9 @@ use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final class CalculateFreelancerEarningsJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(public int $freelancerId = 0,
             private string $correlationId = '',
@@ -65,3 +66,4 @@ final class CalculateFreelancerEarningsJob
             return Carbon::now()->addHours(24);
         }
 }
+

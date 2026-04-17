@@ -18,6 +18,7 @@
 
 namespace App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListPartWarranties extends ListRecords

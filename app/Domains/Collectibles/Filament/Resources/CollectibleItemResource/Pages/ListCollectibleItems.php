@@ -19,31 +19,17 @@
 namespace App\Domains\Collectibles\Filament\Resources\CollectibleItemResource\Pages;
 
 use App\Domains\Collectibles\Filament\Resources\CollectibleItemResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListCollectibleItems
- *
- * Part of the Collectibles vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\Collectibles\Filament\Resources\CollectibleItemResource\Pages
- */
 final class ListCollectibleItems extends ListRecords
 {
     protected static string $resource = CollectibleItemResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

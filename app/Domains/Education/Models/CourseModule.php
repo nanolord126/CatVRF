@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class CourseModule extends Model
 {
-    use HasFactory;
 
     protected $table = 'course_modules';
 

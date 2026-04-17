@@ -13,7 +13,6 @@ use Illuminate\Support\Str;
 final class Psychologist extends Model
 {
 
-    use HasFactory;
 
 
     protected $table = 'psychologists';

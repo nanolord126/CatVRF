@@ -20,8 +20,6 @@ namespace App\Domains\Sports\DanceStudios\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class DanceClass extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'dance_classes';
     protected $fillable = ['uuid', 'tenant_id', 'studio_id', 'student_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'class_date', 'tags'];

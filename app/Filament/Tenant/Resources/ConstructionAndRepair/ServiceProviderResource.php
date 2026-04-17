@@ -4,7 +4,6 @@ namespace App\Filament\Tenant\Resources\ConstructionAndRepair;
 
     use Filament\Resources\Resource;
 use Filament\Forms\Form;
-use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
@@ -98,7 +97,7 @@ use Filament\Tables;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

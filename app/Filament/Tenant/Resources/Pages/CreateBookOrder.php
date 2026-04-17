@@ -51,7 +51,7 @@ final class CreateBookOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Book order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Book order created', [
             'order_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

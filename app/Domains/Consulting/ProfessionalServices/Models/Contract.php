@@ -23,9 +23,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Contract extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'professional_services_contracts';
 

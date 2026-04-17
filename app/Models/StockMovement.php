@@ -28,7 +28,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class StockMovement extends Model
 {
-    use HasFactory;
 
         protected $table = 'stock_movements';
 

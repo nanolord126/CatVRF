@@ -31,7 +31,6 @@ use Illuminate\Support\Str;
  */
 final class PharmacyReview extends Model
 {
-    use HasFactory;
 
     protected $table = 'pharmacy_reviews';
     protected $fillable = ['uuid', 'tenant_id', 'pharmacy_id', 'user_id', 'rating', 'comment', 'correlation_id', 'tags'];

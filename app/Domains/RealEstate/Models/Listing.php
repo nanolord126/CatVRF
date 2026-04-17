@@ -5,14 +5,10 @@ namespace App\Domains\RealEstate\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Listing extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
-    use LogsActivity;
 
     protected $table = 'real_estate_listings';
 
@@ -67,11 +63,5 @@ final class Listing extends Model
         return $this->hasMany(B2BDeal::class);
     }
 
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logFillable()
-            ->useLogName('real_estate_listings')
-            ->logOnlyDirty();
-    }
+    
 }

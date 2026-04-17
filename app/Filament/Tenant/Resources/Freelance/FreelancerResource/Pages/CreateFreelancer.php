@@ -48,7 +48,7 @@ final class CreateRecordFreelancer extends CreateRecord
 
             // Пре-проверка на фрод при регистрации профиля специалиста
             app(FraudControlService::class)->check([
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'operation' => 'freelancer_register',
                 'correlation_id' => $data['correlation_id']
             ]);

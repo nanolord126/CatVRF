@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 final class Enrollment extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'enrollments';
 

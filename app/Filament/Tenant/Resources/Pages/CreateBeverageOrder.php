@@ -58,7 +58,7 @@ final class CreateBeverageOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('BeverageOrder created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageOrder created', [
             'order_id'       => $this->record->id,
             'customer_id'    => $this->record->customer_id,
             'total_amount'   => $this->record->total_amount,

@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class Session extends Model
 {
-    use HasFactory;
 
     protected $table = 'pd_sessions';
 

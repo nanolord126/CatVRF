@@ -58,50 +58,59 @@ final readonly class AIConstructorService
         ): array {
             $correlationId = Str::uuid()->toString();
 
-            return $this->db->transaction(function () use ($user, $type, $photo, $params, $correlationId) {
-                try {
-                    // 1. Fraud check
-                    $this->fraud->check([
-                        'user_id' => $user->id,
-                        'action' => "ai_constructor_{$type}",
-                        'ip' => $this->request->ip(),
-                    ]);
+            // 1. Fraud check (вне транзакции)
+            $this->fraud->check([
+                'user_id' => $user->id,
+                'action' => "ai_constructor_{$type}",
+                'ip' => $this->request->ip(),
+            ]);
 
+            // 2. Получить или создать профиль вкусов (вне транзакции)
+            $tasteProfile = $this->getOrCreateTasteProfile($user);
+
+            // 3. Сохранить фото и проанализировать (LLM-вызов вне транзакции)
+            $photoPath = $this->imageAnalysis->storePhoto($photo, $type);
+            
+            try {
+                $analysis = $this->imageAnalysis->analyze($photo, $params['prompt'] ?? '', [
+                    'vertical' => $type,
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->channel('audit')->error("AI image analysis failed", [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'error' => $e->getMessage(),
+                ]);
+                throw new \RuntimeException('Failed to analyze photo. Please try again later.');
+            }
+
+            // 4. Получить используемые вкусы (вне транзакции)
+            [$explicitPrefs, $implicitPrefs] = $this->extractUsedPreferences(
+                $tasteProfile,
+                $type,
+                $analysis,
+                $params,
+            );
+
+            // 5. Запустить конкретный конструктор (бизнес-логика)
+            $constructorResult = $this->runConstructor(
+                $type,
+                $analysis,
+                $explicitPrefs,
+                $implicitPrefs,
+                $params,
+            );
+
+            // 6. Сохранить результаты в БД (в транзакции)
+            return $this->db->transaction(function () use ($user, $type, $photoPath, $analysis, $constructorResult, $tasteProfile, $explicitPrefs, $implicitPrefs, $correlationId) {
+                try {
                     $this->logger->channel('audit')->info("AI Constructor started: {$type}", [
                         'correlation_id' => $correlationId,
                         'user_id' => $user->id,
                         'type' => $type,
                     ]);
 
-                    // 2. Получить или создать профиль вкусов
-                    $tasteProfile = $this->getOrCreateTasteProfile($user);
-
-                    // 3. Сохранить фото
-                    $photoPath = $this->imageAnalysis->storePhoto($photo, $type);
-
-                    // 4. Анализировать фото
-                    $analysis = $this->imageAnalysis->analyze($photo, $params['prompt'] ?? '', [
-                        'vertical' => $type,
-                    ]);
-
-                    // 5. Получить используемые вкусы
-                    [$explicitPrefs, $implicitPrefs] = $this->extractUsedPreferences(
-                        $tasteProfile,
-                        $type,
-                        $analysis,
-                        $params,
-                    );
-
-                    // 6. Запустить конкретный конструктор
-                    $constructorResult = $this->runConstructor(
-                        $type,
-                        $analysis,
-                        $explicitPrefs,
-                        $implicitPrefs,
-                        $params,
-                    );
-
-                    // 7. Сохранить результаты в БД
                     $construction = AIConstruction::create([
                         'uuid' => Str::uuid(),
                         'user_id' => $user->id,
@@ -110,8 +119,6 @@ final readonly class AIConstructorService
                         'correlation_id' => $correlationId,
                         'input_data' => [
                             'params' => $params,
-                            'photo_size' => $photo->getSize(),
-                            'photo_mime' => $photo->getMimeType(),
                         ],
                         'photo_path' => $photoPath,
                         'analysis_result' => $analysis,

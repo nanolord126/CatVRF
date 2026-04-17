@@ -6,7 +6,7 @@ namespace Modules\Wallet\Infrastructure\Adapters\System;
 
 use Modules\Wallet\Application\Ports\FraudCheckPort;
 use App\Services\FraudMLService; // Assuming the existing core AI service architecture
-use App\DTOs\OperationDto; // Assuming existing DTO logic
+use App\Domains\FraudML\DTOs\OperationDto;
 use RuntimeException;
 use Illuminate\Support\Facades\Log;
 use Throwable;

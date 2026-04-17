@@ -10,8 +10,6 @@ use Illuminate\Support\Str;
 
 final class AutoPart extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'auto_parts';
 

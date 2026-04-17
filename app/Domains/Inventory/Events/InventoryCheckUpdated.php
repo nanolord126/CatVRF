@@ -13,9 +13,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class InventoryCheckUpdated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     public function __construct(
         public readonly int    $inventoryCheckId,

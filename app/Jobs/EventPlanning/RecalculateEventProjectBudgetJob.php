@@ -13,7 +13,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class RecalculateEventProjectBudgetJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $backoff = 60;
@@ -72,20 +72,12 @@ final class RecalculateEventProjectBudgetJob implements ShouldQueue
                     ]);
                 });
 
-            } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            } catch (\Exception $e) {
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
-                ]);
-
-                // 6. Error Audit Log (Canon 2026: Full stack trace)
-                $this->logger->channel('audit')->error('[Job] Budget recalculation failed', [
                     'correlation_id' => $this->correlationId,
-                    'project_id' => $this->projectId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
                 ]);
 
                 // Release back to queue if retries remain
@@ -105,3 +97,4 @@ final class RecalculateEventProjectBudgetJob implements ShouldQueue
             ];
         }
 }
+

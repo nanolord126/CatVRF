@@ -33,8 +33,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class B2BPetServicesOrder extends Model
 {
 
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'b2b_pet_services_orders';
 

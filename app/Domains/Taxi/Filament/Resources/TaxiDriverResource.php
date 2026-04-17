@@ -110,10 +110,10 @@ final class TaxiDriverResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListTaxiDrivers::route('/'),
-                'create' => Pages\CreateTaxiDriver::route('/create'),
-                'edit' => Pages\EditTaxiDriver::route('/{record}/edit'),
-                'view' => Pages\ViewTaxiDriver::route('/{record}'),
+                'index' => \App\Domains\Taxi\Filament\Resources\TaxiDriverResource\Pages\ListTaxiDrivers::route('/'),
+                'create' => \App\Domains\Taxi\Filament\Resources\TaxiDriverResource\Pages\CreateTaxiDriver::route('/create'),
+                'edit' => \App\Domains\Taxi\Filament\Resources\TaxiDriverResource\Pages\EditTaxiDriver::route('/{record}/edit'),
+                'view' => \App\Domains\Taxi\Filament\Resources\TaxiDriverResource\Pages\ViewTaxiDriver::route('/{record}'),
             ];
         }
 }

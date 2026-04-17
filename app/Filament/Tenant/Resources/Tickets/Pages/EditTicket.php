@@ -39,8 +39,8 @@ final class EditTicket extends EditRecord
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            $this->logger->info('Tickets updated', [
-                'user_id' => $this->guard->id(),
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Tickets updated', [
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'record_id' => $this->record->id,
@@ -52,9 +52,9 @@ final class EditTicket extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Tickets edit page saved', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Tickets edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

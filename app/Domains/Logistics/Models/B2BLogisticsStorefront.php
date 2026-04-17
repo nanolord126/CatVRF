@@ -13,9 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 final class B2BLogisticsStorefront extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'b2b_logistics_storefronts';
 

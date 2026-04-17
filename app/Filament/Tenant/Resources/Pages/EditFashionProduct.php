@@ -47,7 +47,7 @@ final class EditFashionProduct extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('FashionProduct updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('FashionProduct updated', [
             'product_id'     => $this->record->id,
             'name'           => $this->record->name,
             'status'         => $this->record->status,

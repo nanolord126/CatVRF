@@ -4,13 +4,10 @@ namespace App\Domains\RealEstate\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class RentalContract extends Model
 {
-    use HasFactory;
-    use LogsActivity;
 
     protected $table = 'rental_contracts';
 
@@ -57,11 +54,5 @@ final class RentalContract extends Model
         return $this->belongsTo(\App\Models\User::class, 'tenant_user_id');
     }
 
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logFillable()
-            ->useLogName('rental_contracts')
-            ->logOnlyDirty();
-    }
+    
 }

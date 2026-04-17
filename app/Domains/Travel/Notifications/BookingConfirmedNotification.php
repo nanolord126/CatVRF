@@ -9,8 +9,7 @@ use Illuminate\Notifications\Notification;
 final class BookingConfirmedNotification extends Notification
 {
 
-    use Queueable;
-
+    use \Illuminate\Bus\Queueable;
         public function __construct(
             private readonly Booking $booking,
             private readonly string $correlationId, private readonly LoggerInterface $logger

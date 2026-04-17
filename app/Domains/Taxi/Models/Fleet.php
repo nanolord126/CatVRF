@@ -2,19 +2,16 @@
 
 namespace App\Domains\Taxi\Models;
 
-use Illuminate\Http\Request;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 
 final class Fleet extends Model
 {
-    use HasFactory;
-
-    use SoftDeletes, LogsActivity;
+
 
         protected $table = 'taxi_fleets';
 
@@ -48,7 +45,7 @@ final class Fleet extends Model
                 $fleet->uuid = $fleet->uuid ?? (string) Str::uuid();
                 $fleet->tenant_id = $fleet->tenant_id ?? (tenant()->id ?? 1);
                 $fleet->status = $fleet->status ?? 'active';
-                $fleet->correlation_id = $fleet->correlation_id ?? $this->request->header('X-Correlation-ID');
+                $fleet->correlation_id = $fleet->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
             });
 
             static::addGlobalScope('tenant', function ($query) {
@@ -61,14 +58,7 @@ final class Fleet extends Model
         /**
          * Настройка логов активности.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'status', 'commission_rate'])
-                ->logOnlyDirty()
-                ->dontSubmitEmptyLogs()
-                ->setLogName('taxi_management');
-        }
+        
 
         /**
          * Отношения.
@@ -89,5 +79,70 @@ final class Fleet extends Model
         public function calculateNetIncome(int $grossAmount): int
         {
             return (int) ($grossAmount * (1 - ($this->commission_rate / 100)));
+        }
+
+        /**
+         * Рассчитать комиссию с суммы.
+         */
+        public function calculateCommission(int $amount): int
+        {
+            return (int) ($amount * ($this->commission_rate / 100));
+        }
+
+        /**
+         * Получить количество активных водителей.
+         */
+        public function getActiveDriversCount(): int
+        {
+            return $this->activeDrivers()->count();
+        }
+
+        /**
+         * Рассчитать общий доход автопарка.
+         */
+        public function calculateTotalRevenue(): int
+        {
+            $total = 0;
+            foreach ($this->drivers as $driver) {
+                $total += $driver->getTotalEarnings();
+            }
+            return $total;
+        }
+
+        /**
+         * Рассчитать средний рейтинг водителей автопарка.
+         */
+        public function getAverageDriverRating(): float
+        {
+            $drivers = $this->drivers;
+            if ($drivers->isEmpty()) {
+                return 0.0;
+            }
+
+            return $drivers->avg('rating') ?? 0.0;
+        }
+
+        /**
+         * Проверить, активен ли автопарк.
+         */
+        public function isActive(): bool
+        {
+            return $this->status === 'active';
+        }
+
+        /**
+         * Получить статистику завершенных поездок.
+         */
+        public function getCompletedRidesStats(): array
+        {
+            $total = 0;
+            foreach ($this->drivers as $driver) {
+                $total += $driver->completed_rides;
+            }
+
+            return [
+                'total' => $total,
+                'by_driver' => $this->drivers->pluck('completed_rides', 'id'),
+            ];
         }
 }

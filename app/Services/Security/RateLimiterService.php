@@ -2,14 +2,14 @@
 
 namespace App\Services\Security;
 
-
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\Connections\Connection;
 use Illuminate\Log\LogManager;
 
 final readonly class RateLimiterService
 {
     public function __construct(
         private readonly LogManager $logger,
+        private readonly Connection $redis
     ) {}
 
     private const SLIDING_WINDOW_TTL = 60;      // 1 минута для sliding window
@@ -233,16 +233,16 @@ final readonly class RateLimiterService
             $windowStart = $now - $windowSeconds;
             $member = (string) $now . ':' . (string) random_int(1000, 9999);
 
-            Redis::zadd($key, [$member => $now]);
+            $this->redis->zadd($key, [$member => $now]);
 
             // Установить TTL на ключ
-            Redis::expire($key, $windowSeconds + 60);
+            $this->redis->expire($key, $windowSeconds + 60);
 
             // Удалить старые записи
-            Redis::zremrangebyscore($key, 0, $windowStart);
+            $this->redis->zremrangebyscore($key, 0, $windowStart);
 
             // Получить текущее количество попыток в окне
-            $attempts = Redis::zcard($key);
+            $attempts = $this->redis->zcard($key);
 
             if ($attempts > $limit) {
                 // Лимит превышен
@@ -308,16 +308,16 @@ final readonly class RateLimiterService
          * @return int Количество очищенных ключей
          */
         public function clearUserLimits(int $userId): int
-        {
-            $pattern = "rate_limit:*:{$userId}*";
-            $keys = Redis::keys($pattern);
+    {
+        $pattern = "rate_limit:*:{$userId}*";
+        $keys = $this->redis->keys($pattern);
 
-            if (empty($keys)) {
-                return 0;
-            }
-
-            return Redis::del(...$keys);
+        if (empty($keys)) {
+            return 0;
         }
+
+        return $this->redis->del(...$keys);
+    }
 
         /**
          * Базовая эвристика подозрительной активности.
@@ -328,10 +328,10 @@ final readonly class RateLimiterService
             $key = "rate_limit:suspicious:{$operationType}:{$userId}";
             $now = now()->timestamp;
 
-            Redis::zadd($key, [(string) $now . ':' . (string) random_int(1000, 9999) => $now]);
-            Redis::zremrangebyscore($key, 0, $now - self::SLIDING_WINDOW_TTL);
-            Redis::expire($key, self::SLIDING_WINDOW_TTL + 10);
+            $this->redis->zadd($key, [(string) $now . ':' . (string) random_int(1000, 9999) => $now]);
+            $this->redis->zremrangebyscore($key, 0, $now - self::SLIDING_WINDOW_TTL);
+            $this->redis->expire($key, self::SLIDING_WINDOW_TTL + 10);
 
-            return Redis::zcard($key) > 30;
+            return $this->redis->zcard($key) > 30;
         }
 }

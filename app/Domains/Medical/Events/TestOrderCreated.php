@@ -25,9 +25,6 @@ use Illuminate\Queue\SerializesModels;
 final class TestOrderCreated
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         public function __construct(
             private readonly MedicalTestOrder $testOrder,

@@ -8,6 +8,7 @@ namespace App\Domains\HobbyAndCraft\Hobby\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class HobbyStore extends Model
 {
-        use SoftDeletes, HobbyDomainTrait;
+        use SoftDeletes, HobbyDomainTrait, TenantScoped;
 
         protected $table = 'hobby_stores';
 

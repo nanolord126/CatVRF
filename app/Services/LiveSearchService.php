@@ -2,18 +2,23 @@
 
 namespace App\Services;
 
+use App\Domains\Search\Models\SearchIndex;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final readonly class LiveSearchService
 {
     public function __construct(
         private readonly LogManager $logger,
         private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     private const SEARCH_CACHE_TTL = 300; // 5 minutes
-        private const MAX_RESULTS = 50;
+    private const MAX_RESULTS = 50;
 
         /**
          * Выполняет поиск по документам
@@ -34,12 +39,36 @@ final readonly class LiveSearchService
                     return collect($cached);
                 }
 
-                $results = collect();
+                // Build search query
+                $searchQuery = SearchIndex::where('tenant_id', $tenantId)
+                    ->where(function ($q) use ($query) {
+                        $q->where('title', 'like', "%{$query}%")
+                          ->orWhere('content', 'like', "%{$query}%");
+                    });
 
-                // Имитация поиска (в реальности - DB query с FTS)
-                if (!empty($query)) {
-                    $results = $results->take(self::MAX_RESULTS);
+                // Apply filters
+                if (!empty($filters['type'])) {
+                    $searchQuery->where('searchable_type', $filters['type']);
                 }
+
+                if (!empty($filters['status'])) {
+                    $searchQuery->whereJsonContains('metadata->status', $filters['status']);
+                }
+
+                $results = $searchQuery
+                    ->orderBy('ranking_score', 'desc')
+                    ->limit(self::MAX_RESULTS)
+                    ->get()
+                    ->map(function ($item) {
+                        return [
+                            'id' => $item->uuid,
+                            'type' => $item->searchable_type,
+                            'title' => $item->title,
+                            'content' => $item->content,
+                            'metadata' => $item->metadata,
+                            'ranking_score' => $item->ranking_score,
+                        ];
+                    });
 
                 $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
 
@@ -83,7 +112,23 @@ final readonly class LiveSearchService
 
                 if (!empty($query)) {
                     // DB поиск пользователей по имени/email
-                    $results = $results->take(self::MAX_RESULTS);
+                    $users = $this->db->table('users')
+                        ->where('tenant_id', $tenantId)
+                        ->where(function ($q) use ($query) {
+                            $q->where('name', 'like', "%{$query}%")
+                              ->orWhere('email', 'like', "%{$query}%");
+                        })
+                        ->limit(self::MAX_RESULTS)
+                        ->get();
+
+                    $results = collect($users)->map(function ($user) {
+                        return [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'role' => $user->role ?? null,
+                        ];
+                    });
                 }
 
                 $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);

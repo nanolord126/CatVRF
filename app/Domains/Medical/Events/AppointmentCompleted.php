@@ -25,9 +25,6 @@ use Illuminate\Queue\SerializesModels;
 final class AppointmentCompleted
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         public function __construct(
             private readonly MedicalAppointment $appointment,

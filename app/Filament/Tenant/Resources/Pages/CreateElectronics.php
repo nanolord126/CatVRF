@@ -42,7 +42,7 @@ final class CreateElectronics extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Electronic product created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Electronic product created', [
             'product_id'     => $record->id,
             'name'           => $record->name,
             'brand'          => $record->brand,

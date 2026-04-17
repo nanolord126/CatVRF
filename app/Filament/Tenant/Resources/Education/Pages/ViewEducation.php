@@ -24,9 +24,9 @@ namespace App\Filament\Tenant\Resources\Education\Pages;
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Log\LogManager;
 use App\Filament\Tenant\Resources\Education\EducationResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Class ViewEducation
@@ -51,7 +51,7 @@ final class ViewEducation extends ViewRecord
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);
@@ -62,11 +62,10 @@ final class ViewEducation extends ViewRecord
      *
      * @throws \DomainException
      */
-    public function render()
-    {
+    public function render(): \Illuminate\Contracts\View\View {
         $this->logger->debug('ViewEducation page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
         ]);
 
         return parent::render();

@@ -22,10 +22,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessPaymentRecordJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Максимум попыток.

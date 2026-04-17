@@ -27,7 +27,7 @@ use Illuminate\Support\Str;
  */
 final class ClassReminderJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     private int $classId;
     private string $correlationId;
@@ -61,3 +61,4 @@ final class ClassReminderJob implements ShouldQueue
         $this->logger->info('ClassReminderJob finished', ['correlation_id' => $correlationId]);
     }
 }
+

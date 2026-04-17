@@ -42,9 +42,9 @@ final class CRMPanelProvider extends PanelProvider
             ->colors([
                 'primary' => \Filament\Support\Colors\Color::Teal,
             ])
-            ->discoverResources(in: app_path('Filament/CRM/Resources'), for: 'App\\Filament\\CRM\\Resources')
-            ->discoverPages(in: app_path('Filament/CRM/Pages'), for: 'App\\Filament\\CRM\\Pages')
-            ->discoverWidgets(in: app_path('Filament/CRM/Widgets'), for: 'App\\Filament\\CRM\\Widgets')
+            // ->discoverResources(in: app_path('Filament/CRM/Resources'), for: 'App\Filament\CRM\Resources')
+            // ->discoverPages(in: app_path('Filament/CRM/Pages'), for: 'App\Filament\CRM\Pages')
+            // ->discoverWidgets(in: app_path('Filament/CRM/Widgets'), for: 'App\Filament\CRM\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

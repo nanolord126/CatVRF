@@ -13,8 +13,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class CarWashReminderJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
         private readonly string $type; // '24h' or '2h'
@@ -75,3 +76,4 @@ final class CarWashReminderJob
             return ['auto', 'car-wash', 'reminder', $this->type, $this->correlationId];
         }
 }
+

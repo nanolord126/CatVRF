@@ -15,8 +15,6 @@ final class DeductSessionCommissionListener
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
 
-    use InteractsWithQueue;
-use App\Services\FraudControlService;
 
     	public function handle(SessionCreated $event): void
     	{
@@ -65,3 +63,4 @@ use App\Services\FraudControlService;
         ];
     }
 }
+

@@ -22,7 +22,6 @@ use Illuminate\Support\Str;
  */
 final class Amenity extends Model
 {
-    use HasFactory;
 
     protected $table = 'hotel_amenities';
 

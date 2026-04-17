@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 final class VideoCall extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'video_calls';
 

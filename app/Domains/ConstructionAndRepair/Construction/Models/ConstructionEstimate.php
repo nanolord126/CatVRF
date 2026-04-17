@@ -4,12 +4,13 @@ namespace App\Domains\ConstructionAndRepair\Construction\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class ConstructionEstimate extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
         protected $table = 'construction_estimates';
 

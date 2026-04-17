@@ -7,6 +7,7 @@ namespace App\Domains\Luxury\Jewelry\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class JewelryProduct extends Model
 {
-        use JewelryDomainTrait, SoftDeletes;
+        use JewelryDomainTrait, SoftDeletes, TenantScoped;
 
         protected $table = 'jewelry_products';
         protected $fillable = [

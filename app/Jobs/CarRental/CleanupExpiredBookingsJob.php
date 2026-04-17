@@ -13,7 +13,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class CleanupExpiredBookingsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * correlation_id transfer across queue.
@@ -85,3 +85,4 @@ final class CleanupExpiredBookingsJob implements ShouldQueue
             ]);
         }
 }
+

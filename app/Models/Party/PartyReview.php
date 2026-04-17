@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 final class PartyReview extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'party_reviews';
 

@@ -171,7 +171,7 @@ namespace App\Filament\Tenant\Resources\Furniture;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

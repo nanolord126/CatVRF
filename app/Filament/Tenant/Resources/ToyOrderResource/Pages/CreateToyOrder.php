@@ -6,8 +6,6 @@ namespace App\Filament\Tenant\Resources\ToyOrderResource\Pages;
 use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\ToyOrderResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Class CreateToyOrder

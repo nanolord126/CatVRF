@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceServiceOffer extends Model
 {
-    use HasFactory;
 
     protected $table = 'freelance_service_offers';
 

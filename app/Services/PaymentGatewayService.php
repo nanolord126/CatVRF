@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-
-
+use App\Services\Fraud\FraudControlService;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
@@ -27,6 +27,8 @@ final class PaymentGatewayService
     public function __construct(
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly Request $request
     ) {}
 
     private const GATEWAYS = ['tinkoff', 'tochka', 'sber'];
@@ -40,7 +42,7 @@ final class PaymentGatewayService
      * @throws \Exception
      */
     public function initPayment(array $paymentData, string $correlationId): array
-    {
+    {''
         $this->fraud->check([
             'operation' => payment_init,
             'user_id' => $paymentData['user_id'],
@@ -283,11 +285,11 @@ final class PaymentGatewayService
                 'gateway_response_code' => '00',
             ];
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             $this->logger->channel('audit')->error('Gateway call failed', [

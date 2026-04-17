@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class NftGiftCollection extends Model
 {
-    use HasFactory;
 
         protected $table = 'nft_gift_collections';
 

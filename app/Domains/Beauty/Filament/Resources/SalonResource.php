@@ -160,9 +160,9 @@ final class SalonResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListSalons::route('/'),
-            'create' => Pages\CreateSalon::route('/create'),
-            'edit'   => Pages\EditSalon::route('/{record}/edit'),
+            'index'  => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\ListSalons::route('/'),
+            'create' => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\CreateSalon::route('/create'),
+            'edit'   => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\EditSalon::route('/{record}/edit'),
         ];
     }
 }

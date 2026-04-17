@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class GroceryStore extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'grocery_stores';
 

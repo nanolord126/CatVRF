@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class TeamBuildingEvent extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='team_building_events';protected $fillable=['uuid','tenant_id','facilitator_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','event_type','hours_spent','due_date','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','hours_spent'=>'integer','due_date'=>'datetime','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('team_building_events.tenant_id',tenant()->id));}
 

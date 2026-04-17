@@ -54,8 +54,8 @@ final class ListPsychologists extends ListRecords
 
     protected function getTableQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        $this->logger->info('Accessing Psychologists list', [
-            'user_id' => $this->guard->id(),
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Accessing Psychologists list', [
+            'user_id' => auth()->id(),
             'tenant_id' => $this->guard->user()->tenant_id,
         ]);
 

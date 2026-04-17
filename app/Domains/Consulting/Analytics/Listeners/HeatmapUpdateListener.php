@@ -15,7 +15,6 @@ final class HeatmapUpdateListener
         private readonly \Illuminate\Cache\CacheManager $cache, private readonly LoggerInterface $logger) {}
 
 
-    use InteractsWithQueue;
 
         /**
          * @var int Maximum retry attempts

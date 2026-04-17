@@ -60,15 +60,3 @@ final class EditBloggerProfile extends EditRecord
         ];
     }
 }
-
-    
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-}

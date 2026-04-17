@@ -27,7 +27,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class InventoryItem extends Model
 {
-    use HasFactory;
 
         protected $table = 'inventory_items';
 

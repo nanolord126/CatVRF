@@ -5,15 +5,13 @@ namespace App\Services\AI;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-
-use OpenAI\Client;
 use Illuminate\Log\LogManager;
 
 final readonly class ImageAnalysisService
 {
     public function __construct(
         private readonly Request $request,
-            private Client $openai,
+        private readonly OpenAIClientService $openai,
         private readonly LogManager $logger,
     ) {}
 
@@ -36,20 +34,21 @@ final readonly class ImageAnalysisService
                 // Подготовить детальный промпт
                 $detailedPrompt = $this->buildPrompt($prompt, $context);
 
-                // Отправить в OpenAI Vision API
-                $response = $this->openai->messages()->create([
-                    'model' => 'gpt-4-vision',
-                    'max_tokens' => 2000,
-                    'messages' => [
+                // Проверяем доступность OpenAI
+                if (!$this->openai->isEnabled()) {
+                    throw new \RuntimeException('OpenAI Vision service is not configured.');
+                }
+
+                // Отправить в OpenAI Vision API через клиент
+                try {
+                    $response = $this->openai->chat([
                         [
                             'role' => 'user',
                             'content' => [
                                 [
-                                    'type' => 'image',
-                                    'source' => [
-                                        'type' => 'base64',
-                                        'media_type' => $mimeType,
-                                        'data' => $base64Photo,
+                                    'type' => 'image_url',
+                                    'image_url' => [
+                                        'url' => "data:{$mimeType};base64,{$base64Photo}",
                                     ],
                                 ],
                                 [
@@ -58,11 +57,17 @@ final readonly class ImageAnalysisService
                                 ],
                             ],
                         ],
-                    ],
-                ]);
+                    ], 0.3, 'text');
+                } catch (\Throwable $e) {
+                    $this->logger->channel('audit')->error('OpenAI Vision API call failed', [
+                        'error' => $e->getMessage(),
+                        'context' => $context,
+                    ]);
+                    throw new \RuntimeException("Ошибка анализа фото: {$e->getMessage()}");
+                }
 
                 // Парсить ответ
-                $analysisText = $response->content[0]->text;
+                $analysisText = $response['content'] ?? '';
                 $analysis = $this->parseAnalysis($analysisText, $context);
 
                 $this->logger->channel('audit')->info('Image analysis completed', [
@@ -78,8 +83,7 @@ final readonly class ImageAnalysisService
                     'file_name' => $photo->getClientOriginalName() ?? 'unknown',
                     'error' => $e->getMessage(),
                     'context' => $context,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+                ]);
 
                 throw new \RuntimeException("Ошибка анализа фото: {$e->getMessage()}");
             }

@@ -15,10 +15,11 @@ use Illuminate\Queue\SerializesModels;
      */
 final class VeganStockAlertEvent
 {
-        use Dispatchable, SerializesModels;
+        use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private readonly VeganProduct $product,
             private readonly int $currentStock,
             private readonly string $correlationId) {}
     }
+

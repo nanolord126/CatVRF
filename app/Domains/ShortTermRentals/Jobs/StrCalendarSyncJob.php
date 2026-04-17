@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class StrCalendarSyncJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private readonly int $apartmentId,
@@ -63,3 +64,4 @@ final class StrCalendarSyncJob
             return ['short-term-rentals', 'sync', "apartment:{$this->apartmentId}"];
         }
 }
+

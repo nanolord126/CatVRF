@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class StockMovement extends Model
 {
-    use HasFactory;
 
     protected $table = 'stock_movements';
 

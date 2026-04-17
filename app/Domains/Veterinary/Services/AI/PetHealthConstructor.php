@@ -51,7 +51,7 @@ string $correlationId = '', private readonly LoggerInterface $logger, private re
 
             $cacheKey = 'user_ai_designs:veterinary:' . $userId . ':' . md5((string) $petId . $symptoms . json_encode($context));
 
-            return $this->cache->remember($cacheKey, now()->addHour(), function () use ($petId, $photo, $symptoms, $context): array {
+            return $this->cache->tags(['veterinary', 'ai', 'constructor'])->remember($cacheKey, now()->addHour(), function () use ($petId, $photo, $symptoms, $context): array {
                 $result = $this->analyzeAndSuggest($petId, $photo instanceof UploadedFile ? $photo : null, $symptoms, $context);
                 $result['correlation_id'] = $this->correlationId;
 

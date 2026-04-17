@@ -28,7 +28,6 @@ use Psr\Log\LoggerInterface;
 final class SendChannelArchivedNotification
 {
 
-    use InteractsWithQueue;
 
 
         public function __construct(

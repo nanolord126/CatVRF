@@ -33,7 +33,7 @@ final class ListFuneralOrders extends ListRecords
             Actions\Action::make('ritual_report')
                 ->label('Выгрузить отчет')
                 ->icon('heroicon-o-document-arrow-down')
-                ->action(fn () => $this->logger->info('Ritual report downloaded')),
+                ->action(fn () => \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual report downloaded')),
         ];
     }
 
@@ -58,8 +58,8 @@ final class ListFuneralOrders extends ListRecords
     {
         parent::mount();
 
-        $this->logger->info('Ritual orders list visited', [
-            'user_id' => $this->guard->id(),
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual orders list visited', [
+            'user_id' => auth()->id(),
             'tenant_id' => function_exists('tenant') ? tenant('id') : null,
         ]);
     }

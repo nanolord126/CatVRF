@@ -41,7 +41,7 @@ final class CreateFitness extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('B2B Fitness order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Fitness order created', [
             'order_id'       => $record->id,
             'order_number'   => $record->order_number,
             'total_amount'   => $record->total_amount,

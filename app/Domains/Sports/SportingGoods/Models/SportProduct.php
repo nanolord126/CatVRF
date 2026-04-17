@@ -3,13 +3,11 @@
 namespace App\Domains\Sports\SportingGoods\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
-use App\Models\Traits\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class SportProduct extends Model
 {
-    use HasFactory;
 
     use HasFactory, HasUuids;
 

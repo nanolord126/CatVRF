@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class LanguageVideoCall extends Model
 {
-    use HasFactory;
 
     protected $table = 'language_videocalls';
 

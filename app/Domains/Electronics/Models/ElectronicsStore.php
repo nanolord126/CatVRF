@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 

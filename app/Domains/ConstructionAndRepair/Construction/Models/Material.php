@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Material extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
         protected $table = 'construction_materials'; protected $fillable = ['uuid','tenant_id','supplier_id','correlation_id','name','price_kopecks','unit','stock','tags'];

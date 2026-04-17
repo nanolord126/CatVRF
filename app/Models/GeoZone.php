@@ -46,16 +46,25 @@ use Illuminate\Database\Eloquent\Model;
 final class GeoZone extends Model
 {
 
+
+    protected $table = 'geo_zones';
+
     protected $fillable = [
         'uuid',
         'correlation_id',
         'tenant_id',
+        'business_group_id',
+        'name',
+        'slug',
+        'polygon',
+        'center_lat',
+        'center_lon',
+        'radius_km',
+        'delivery_price',
+        'min_order_amount',
+        'is_active',
+        'tags',
     ];
-
-    use HasFactory;
-
-        protected $table = "geo_zones";
-        protected $guarded = [];
 
         protected static function newFactory()
         {

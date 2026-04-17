@@ -26,11 +26,11 @@ final class EditBeverageSubscription extends EditRecord
 
         protected function afterSave(): void
         {
-            $this->logger->info('Beverage Subscription Configuration Updated', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Beverage Subscription Configuration Updated', [
                 'subscription_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

@@ -10,9 +10,6 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 final class ProjectCreated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     public function __construct(
         public readonly Project $project,

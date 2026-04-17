@@ -30,8 +30,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class Membership extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'memberships';
     protected $fillable = [

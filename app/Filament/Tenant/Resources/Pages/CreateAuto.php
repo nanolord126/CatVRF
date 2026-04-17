@@ -56,7 +56,7 @@ final class CreateAuto extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Auto vehicle created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Auto vehicle created', [
             'vehicle_id'     => $this->record->id,
             'brand'          => $this->record->brand,
             'model'          => $this->record->model,

@@ -19,31 +19,17 @@
 namespace App\Domains\CleaningServices\Filament\Resources\CleaningOrderResource\Pages;
 
 use App\Domains\CleaningServices\Filament\Resources\CleaningOrderResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListCleaningOrders
- *
- * Part of the CleaningServices vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\CleaningServices\Filament\Resources\CleaningOrderResource\Pages
- */
 final class ListCleaningOrders extends ListRecords
 {
     protected static string $resource = CleaningOrderResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

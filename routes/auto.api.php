@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Auto\RideController;
+use App\Domains\Auto\Http\Controllers\AIDiagnosticsController;
+use App\Domains\Auto\Http\Controllers\CarImportController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -42,31 +44,38 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     
     Route::get('/rides', [RideController::class, 'listUserRides'])
         ->name('api.auto.rides.list');
-    
-    // ========== Auto Service Orders ==========
-    Route::apiResource('services/orders', AutoServiceOrderController::class);
-    Route::post('services/orders/{order}/cancel', [AutoServiceOrderController::class, 'cancel'])->name('services.orders.cancel');
-    Route::post('services/orders/{order}/complete', [AutoServiceOrderController::class, 'complete'])->name('services.orders.complete');
-    Route::get('services', [AutoServiceOrderController::class, 'listServices'])->name('services.list');
-    
-    // ========== Car Wash Bookings ==========
-    Route::apiResource('car-wash/bookings', CarWashBookingController::class);
-    Route::post('car-wash/bookings/{booking}/cancel', [CarWashBookingController::class, 'cancel'])->name('car-wash.bookings.cancel');
-    Route::get('car-wash/availability', [CarWashBookingController::class, 'availability'])->name('car-wash.availability');
-    Route::get('car-wash/types', [CarWashBookingController::class, 'washTypes'])->name('car-wash.types');
-    
-    // ========== Auto Parts (Staff only) ==========
-    Route::middleware('staff')->group(function () {
-        Route::apiResource('parts', AutoPartController::class);
-        Route::post('parts/{part}/restock', [AutoPartController::class, 'restock'])->name('parts.restock');
-        Route::get('parts/low-stock', [AutoPartController::class, 'lowStock'])->name('parts.low-stock');
-    });
-});
 
-// ===== PUBLIC ENDPOINTS (No Auth) =====
-Route::middleware(['api'])->prefix('api/v1/auto')->group(function () {
-    Route::get('taxi/drivers', [TaxiDriverController::class, 'list'])->name('taxi.drivers.list');
-    Route::get('taxi/drivers/{driver}', [TaxiDriverController::class, 'show'])->name('taxi.drivers.show');
-    Route::get('services', [AutoServiceOrderController::class, 'listServices'])->name('public.services.list');
-    Route::get('car-wash/types', [CarWashBookingController::class, 'washTypes'])->name('public.car-wash.types');
+    // ========== AI Diagnostics ==========
+    Route::prefix('diagnostics')->group(function () {
+        Route::post('/analyze', [AIDiagnosticsController::class, 'diagnose'])
+            ->name('diagnostics.analyze')
+            ->middleware('throttle:30,1');
+
+        Route::post('/video-inspection/{vehicle}', [AIDiagnosticsController::class, 'initiateVideoInspection'])
+            ->name('diagnostics.video-inspection')
+            ->middleware('throttle:20,1');
+
+        Route::post('/book-service/{vehicle}', [AIDiagnosticsController::class, 'bookService'])
+            ->name('diagnostics.book-service')
+            ->middleware('throttle:20,1');
+    });
+
+    // ========== Car Import ==========
+    Route::prefix('import')->group(function () {
+        Route::post('/calculate-duties', [CarImportController::class, 'calculateDuties'])
+            ->name('import.calculate-duties')
+            ->middleware('throttle:30,1');
+
+        Route::post('/initiate', [CarImportController::class, 'initiateImport'])
+            ->name('import.initiate')
+            ->middleware('throttle:20,1');
+
+        Route::post('/{import}/pay-duties', [CarImportController::class, 'payDuties'])
+            ->name('import.pay-duties')
+            ->middleware('throttle:20,1');
+
+        Route::get('/{import}/status', [CarImportController::class, 'getImportStatus'])
+            ->name('import.status')
+            ->middleware('throttle:60,1');
+    });
 });

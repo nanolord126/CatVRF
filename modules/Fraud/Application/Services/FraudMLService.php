@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Modules\Fraud\Application\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\OperationDto;
 use Modules\Fraud\Domain\Entities\FraudAttempt;
 use Modules\Fraud\Domain\Enums\DecisionType;
 use Modules\Fraud\Domain\Repositories\FraudAttemptRepositoryInterface;

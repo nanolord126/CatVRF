@@ -41,7 +41,6 @@ final class Staff extends Model
     public function __construct(
         private readonly Guard $guard) {}
 
-    use HasUuids;
 
     protected $table = 'staff';
 

@@ -12,7 +12,7 @@ use Illuminate\Log\LogManager;
 
 final class SportsNutritionCleanupJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
 
@@ -119,3 +119,4 @@ final class SportsNutritionCleanupJob implements ShouldQueue
             return ['sports_nutrition', 'cleanup', 'tenant:' . $this->tenantId];
         }
 }
+

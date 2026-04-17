@@ -32,8 +32,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 final class B2BPhotoOrder extends Model
 {
 
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'b2b_photo_orders';
 

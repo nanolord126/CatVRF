@@ -27,8 +27,7 @@ use Illuminate\Notifications\Notification;
 final class ChannelPlanExpiringSoonNotification extends Model
 {
 
-    use Queueable;
-
+    use \Illuminate\Bus\Queueable;
         public function __construct(
             private readonly ChannelSubscriptionUsage $usage,
             private readonly int $daysLeft,

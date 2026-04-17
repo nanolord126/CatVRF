@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class NursingAgency extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='nursing_agencies';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','qualifications','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['qualifications'=>'json','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('nursing_agencies.tenant_id',tenant()->id));}
 

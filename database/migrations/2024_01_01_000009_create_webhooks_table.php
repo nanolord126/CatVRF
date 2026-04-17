@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('webhooks', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('uuid')->unique();
+            $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('url', 500);
+            $table->json('events');
+            $table->string('secret')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->integer('retry_count')->default(3);
+            $table->integer('timeout')->default(30);
+            $table->json('headers')->nullable();
+            $table->timestamps();
+            
+            $table->index(['tenant_id', 'is_active']);
+            $table->index('events');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('webhooks');
+    }
+};

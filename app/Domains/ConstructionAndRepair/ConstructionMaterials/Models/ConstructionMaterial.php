@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ConstructionMaterial extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'construction_materials';
 

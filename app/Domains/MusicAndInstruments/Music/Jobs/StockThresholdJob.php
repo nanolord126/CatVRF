@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class StockThresholdJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * Create a new job instance.
@@ -64,3 +65,4 @@ final class StockThresholdJob
             return ['music', 'stock', 'alert', 'instrument:' . $this->instrumentId];
         }
 }
+

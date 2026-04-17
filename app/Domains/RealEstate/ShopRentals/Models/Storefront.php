@@ -20,8 +20,6 @@ namespace App\Domains\RealEstate\ShopRentals\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class Storefront extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'storefronts';
     protected $fillable = ['uuid', 'tenant_id', 'owner_id', 'correlation_id', 'name', 'area_sqm', 'location', 'price_kopecks_per_month', 'rating', 'is_verified', 'tags'];

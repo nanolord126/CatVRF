@@ -23,7 +23,6 @@ use Illuminate\Foundation\Events\Dispatchable;
 final class LowStockReached
 {
 
-    use Dispatchable;
 
         public function __construct(
             public readonly int $itemId,

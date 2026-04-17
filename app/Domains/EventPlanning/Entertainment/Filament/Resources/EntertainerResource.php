@@ -2,11 +2,15 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Filament\Resources;
 
+use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
 final class EntertainerResource extends Resource
 {
-
+
+
     protected static ?string $model = Entertainer::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-user-group';

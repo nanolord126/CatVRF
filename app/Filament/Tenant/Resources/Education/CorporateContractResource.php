@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\Education;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;

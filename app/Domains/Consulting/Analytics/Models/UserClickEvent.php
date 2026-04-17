@@ -4,11 +4,13 @@ namespace App\Domains\Consulting\Analytics\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use App\Traits\TenantScoped;
 
 final class UserClickEvent extends Model
 {
-    use HasFactory;
-
+
+
     protected $table = 'user_click_events';
         public $timestamps = false;
 

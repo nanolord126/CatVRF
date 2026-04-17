@@ -38,7 +38,7 @@ final class CreateFinances extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Financial transaction created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Financial transaction created', [
             'transaction_id' => $record->id,
             'type'           => $record->type,
             'amount'         => $record->amount,

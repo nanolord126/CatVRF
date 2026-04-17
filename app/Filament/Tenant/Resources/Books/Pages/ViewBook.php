@@ -22,8 +22,6 @@ namespace App\Filament\Tenant\Resources\Books\Pages;
 
 
 
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Books\BooksResource;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Log;
@@ -39,19 +37,15 @@ use Illuminate\Support\Facades\Log;
  */
 final class ViewBook extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = BooksResource::class;
 
     protected function afterLoad(): void
     {
-        $this->logger->info('Books record viewed', [
+        Log::channel('audit')->info('Books record viewed', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);
@@ -62,11 +56,11 @@ final class ViewBook extends ViewRecord
      *
      * @throws \DomainException
      */
-    public function render()
+    public function render(): \Illuminate\Contracts\View\View
     {
-        $this->logger->debug('ViewBook page rendered', [
+        Log::channel('audit')->debug('ViewBook page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
         ]);
 
         return parent::render();

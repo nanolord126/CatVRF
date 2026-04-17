@@ -13,8 +13,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class CertificateGenerationJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private ?int $certificateId;
         private ?string $correlationId;
@@ -80,3 +81,4 @@ final class CertificateGenerationJob
         ];
     }
 }
+

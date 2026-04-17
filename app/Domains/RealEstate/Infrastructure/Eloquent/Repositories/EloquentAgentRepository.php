@@ -32,10 +32,11 @@ final class EloquentAgentRepository implements AgentRepositoryInterface
         return $model !== null ? $this->toDomain($model) : null;
     }
 
-    public function findByUserId(int $userId): ?RealEstateAgent
+    public function findByUserId(int $userId, int $tenantId): ?RealEstateAgent
     {
         $model = AgentModel::withoutGlobalScope('tenant')
             ->where('user_id', $userId)
+            ->where('tenant_id', $tenantId)
             ->first();
 
         return $model !== null ? $this->toDomain($model) : null;

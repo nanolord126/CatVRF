@@ -5,6 +5,10 @@
 /vendor
 .env
 .env.backup
+.env.cache
+.env.ci
+.env.testing
+# Keep only .env.example in repo
 .phpunit.result.cache
 docker-compose.override.yml
 Homestead.json

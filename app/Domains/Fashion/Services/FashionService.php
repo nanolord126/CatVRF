@@ -3,16 +3,17 @@
 namespace App\Domains\Fashion\Services;
 
 use Carbon\Carbon;
-
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
+use App\Domains\Fashion\Models\FashionProduct;
 
 final readonly class FashionService
 {
-
+
     private string $correlation_id;
 
         public function __construct(private FraudControlService $fraud,
@@ -78,7 +79,7 @@ final readonly class FashionService
          */
         public function calculateB2BPrice(FashionProduct $product, string $inn): int
         {
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'product_id', amount: 0, correlationId: $correlationId ?? '');
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'product_id', amount: 0, correlationId: $this->correlation_id);
 
             // Проверяем наличие B2B цены. Если нет — отдаем B2C.
             return $product->price_b2b ?? $product->price_b2c;

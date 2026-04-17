@@ -36,7 +36,7 @@ final class CreateDentalReview extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('DentalReview created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalReview created', [
             'review_id'      => $this->record->id,
             'client_id'      => $this->record->client_id,
             'dentist_id'     => $this->record->dentist_id,

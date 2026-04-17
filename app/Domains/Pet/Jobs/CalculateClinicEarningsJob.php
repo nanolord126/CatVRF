@@ -12,10 +12,6 @@ use Psr\Log\LoggerInterface;
 
 final class CalculateClinicEarningsJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-
     private readonly string $resolvedCorrelationId;
 
     public function __construct(

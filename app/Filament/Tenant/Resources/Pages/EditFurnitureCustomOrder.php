@@ -54,7 +54,7 @@ final class EditFurnitureCustomOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Furniture custom order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture custom order updated', [
             'order_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

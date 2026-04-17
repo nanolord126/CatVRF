@@ -2,7 +2,10 @@
 
 namespace App\Domains\Flowers\Jobs;
 
+use App\Domains\Flowers\Models\FlowerShop;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
+use Illuminate\Bus\Queueable;
 
 
 
@@ -13,18 +16,25 @@ use Illuminate\Http\Request;
 final class CalculateFlowerShopEarningsJob
 {
     public function __construct(private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+    ) {}
 
-
-    use Queueable;
-use App\Services\FraudControlService;
+
 
         public $tries = 3;
 
         public function handle(): void
         {
             try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->fraud->check(
+                    userId: $this->guard->id() ?? 0,
+                    operationType: 'mutation',
+                    amount: 0,
+                    correlationId: $this->request->header('X-Correlation-ID', ''),
+                );
                 $this->db->transaction(function () {
                     $shops = FlowerShop::query()
                         ->where('is_active', true)

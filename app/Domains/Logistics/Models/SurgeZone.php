@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class SurgeZone extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'logistics_surge_zones';
 

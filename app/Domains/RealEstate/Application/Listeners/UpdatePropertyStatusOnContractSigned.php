@@ -15,7 +15,6 @@ use Psr\Log\LoggerInterface;
 
 final class UpdatePropertyStatusOnContractSigned implements ShouldQueue
 {
-    use InteractsWithQueue;
 
 
     public int $tries = 5;

@@ -1,0 +1,15 @@
+Found 3 duplicate FQCNs
+
+FQCN: App\Domains\Travel\Http\Resources\TravelBookingResource
+  KEEP:    app\Domains\Travel\Http\Resources\TravelBookingResource.php
+  STUBBED: app\Domains\Travel\Jobs\CalculateAgencyEarningsJob.php
+
+FQCN: App\Http\Controllers\Insurance\InsuranceController
+  KEEP:    app\Http\Controllers\Insurance\InsuranceController.php
+  STUBBED: app\Http\Controllers\Internal\PaymentWebhookController.php
+
+FQCN: App\Services\Payment\Gateways\TochkaGateway
+  KEEP:    app\Services\Payment\Gateways\TochkaGateway.php
+  STUBBED: app\Services\Payout\MassPayoutService.php
+
+Total stubbed: 3

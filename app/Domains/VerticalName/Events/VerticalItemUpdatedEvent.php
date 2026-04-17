@@ -19,9 +19,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class VerticalItemUpdatedEvent
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * @param VerticalItem $item          Обновлённый товар

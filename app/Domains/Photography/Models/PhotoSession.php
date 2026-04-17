@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class PhotoSession extends Model
 {
-    use HasFactory;
 
     protected $table = 'photography_sessions';
 

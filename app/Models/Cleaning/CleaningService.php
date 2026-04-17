@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 
 final class CleaningService extends Model
 {
-    use HasFactory;
 
     protected $table = 'cleaning_services';
 

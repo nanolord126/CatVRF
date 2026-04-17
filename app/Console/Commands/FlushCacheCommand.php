@@ -17,7 +17,9 @@ final class FlushCacheCommand extends Command
     public function __construct(
         private readonly CacheManager $cache,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     protected $signature = 'cache:flush-tags
         {--tag= : Cache tag to flush}

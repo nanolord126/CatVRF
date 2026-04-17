@@ -39,8 +39,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class DeliveryStatusChanged
 {
-    use Dispatchable;
-    use SerializesModels;
 
     public function __construct(
         public readonly Delivery $delivery,

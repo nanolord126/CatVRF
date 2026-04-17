@@ -42,7 +42,7 @@ final class ListLeads extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make(),
+            \Filament\\Filament\Actions\CreateAction::make(),
         ];
     }
 

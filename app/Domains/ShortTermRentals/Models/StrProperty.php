@@ -9,8 +9,6 @@ use Illuminate\Support\Str;
 
 final class StrProperty extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'str_properties';
 

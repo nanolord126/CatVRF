@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class SportsMembership extends Model
 {
-    use HasFactory;
 
         protected $table = 'sports_memberships';
 

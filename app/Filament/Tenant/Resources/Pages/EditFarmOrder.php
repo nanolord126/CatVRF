@@ -65,7 +65,7 @@ final class EditFarmOrder extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Farm order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Farm order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'correlation_id' => $record->correlation_id,

@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 final class B2BPetStorefront extends Model
 {
 
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'b2b_pet_storefronts';
 

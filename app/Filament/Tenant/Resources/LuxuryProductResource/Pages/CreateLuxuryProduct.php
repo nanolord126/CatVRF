@@ -42,9 +42,9 @@ final class CreateLuxuryProduct extends CreateRecord
         {
             $data['correlation_id'] = (string) Str::uuid();
 
-            $this->logger->info('Creating Luxury Product via Filament', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Creating Luxury Product via Filament', [
                 'sku' => $data['sku'] ?? 'N/A',
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
             ]);
 

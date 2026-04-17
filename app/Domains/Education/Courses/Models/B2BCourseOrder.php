@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 final class B2BCourseOrder extends Model
 {
-        use SoftDeletes;
 
         protected $table = 'b2b_course_orders';
 

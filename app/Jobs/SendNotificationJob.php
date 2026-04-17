@@ -25,10 +25,6 @@ use Illuminate\Log\LogManager;
  */
 final class SendNotificationJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * ID уведомления

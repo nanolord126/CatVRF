@@ -17,8 +17,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class AdCampaignCreated
 {
-    use Dispatchable;
-    use SerializesModels;
 
     /**
      * Create a new event instance.

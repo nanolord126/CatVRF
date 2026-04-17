@@ -49,7 +49,7 @@ final class EditFinances extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Financial transaction updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Financial transaction updated', [
             'transaction_id' => $record->id,
             'type'           => $record->type,
             'status'         => $record->status,

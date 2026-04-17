@@ -27,7 +27,7 @@ final class OrderWasPlaced extends DomainEvent
         public readonly Uuid $orderId,
         public readonly Uuid $clientId,
         public readonly Money $totalPrice,
-        private ?Uuid $correlationId = null
+        ?Uuid $correlationId = null
     ) {
         parent::__construct($correlationId);
     }

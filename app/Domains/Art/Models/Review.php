@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class Review extends Model
 {
-    use HasFactory;
 
     protected $table = 'reviews';
 

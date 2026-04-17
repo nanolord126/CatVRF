@@ -18,12 +18,12 @@
 
 namespace App\Domains\MeatShops\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class MeatConsumable extends Model
 {
-    use HasFactory;
 
     protected $table = 'meat_consumables';
         protected $fillable = ['uuid', 'tenant_id', 'meat_shop_id', 'name', 'stock', 'min_threshold', 'correlation_id', 'tags'];

@@ -49,7 +49,7 @@ final class CreateHotel extends CreateRecord
 
     protected function beforeCreate(): void
     {
-        $this->logger->info('Hotel Creation Started', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Hotel Creation Started', [
             'raw_data' => $this->data,
         ]);
 

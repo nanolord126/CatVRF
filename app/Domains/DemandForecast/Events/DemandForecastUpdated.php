@@ -38,9 +38,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class DemandForecastUpdated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * Create a new event instance.

@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class PharmacyOrderItem extends Model
 {
-    use HasFactory;
 
     protected $table = 'pharmacy_order_items';
 

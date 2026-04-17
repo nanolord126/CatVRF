@@ -12,5 +12,5 @@ return [
     App\Providers\FortifyServiceProvider::class,
     App\Providers\GeoLogisticsServiceProvider::class,
     App\Domains\RealEstate\Application\Providers\RealEstateServiceProvider::class,
+    App\Domains\Education\Providers\EducationServiceProvider::class,
 ];
-

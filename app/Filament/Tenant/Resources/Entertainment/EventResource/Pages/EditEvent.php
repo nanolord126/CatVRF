@@ -27,18 +27,18 @@ final class EditEvent extends EditRecord
 
         protected function beforeSave(): void
         {
-            $this->logger->info('Entertainment Event modification started', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Event modification started', [
                 'event_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }
 
         protected function afterSave(): void
         {
-            $this->logger->info('Entertainment Event modification completed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Event modification completed', [
                 'event_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }

@@ -7,14 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Destination extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'destinations';
 
@@ -58,12 +55,5 @@ final class Destination extends Model
             return $this->hasMany(Excursion::class);
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'country_code', 'description'])
-                ->logOnlyDirty()
-                ->useLogName('travel_domain')
-                ->dontSubmitEmptyLogs();
-        }
+        
 }

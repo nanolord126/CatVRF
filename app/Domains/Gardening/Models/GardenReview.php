@@ -23,7 +23,6 @@ use Illuminate\Support\Str;
  */
 final class GardenReview extends Model
 {
-    use HasFactory;
 
     protected $table = 'garden_reviews';
 

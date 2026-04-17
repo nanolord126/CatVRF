@@ -41,21 +41,20 @@ final class ViewFitnes extends ViewRecord
 
     protected function afterLoad(): void
     {
-        $this->logger->info('Fitness record viewed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Fitness record viewed', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);
     }
 
-    public function render()
-    {
+    public function render(): \Illuminate\Contracts\View\View {
         $this->logger->debug('ViewFitnes page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
         ]);
 
         return parent::render();

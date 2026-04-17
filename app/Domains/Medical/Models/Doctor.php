@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Doctor extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_doctors';
 
@@ -62,15 +62,7 @@ final class Doctor extends Model
         /**
          * Настройка логов для ФЗ-152 и аудита.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['full_name', 'status', 'specialization', 'consultation_price'])
-                ->logOnlyDirty()
-                ->useLogName('medical_doctor_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиника врача.
          */
         public function clinic(): BelongsTo

@@ -16,10 +16,6 @@ use Illuminate\Http\Request;
 final class MLRecalculateUserTastesJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public int $tries = 3;
 

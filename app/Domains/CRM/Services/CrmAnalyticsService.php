@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\CRM\Services;
 
-
-
-
-use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use App\Services\AuditService;
 use App\Domains\CRM\Models\CrmClient;
@@ -165,7 +161,7 @@ final readonly class CrmAnalyticsService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction(function () use ($callback) {
+        return $this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

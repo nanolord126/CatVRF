@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class CarWashBookingResource extends Resource
 {
-
+
     protected static ?string $model = CarWashBooking::class;
 
         protected static ?string $navigationLabel = 'Бронь мойки';
@@ -57,63 +57,63 @@ final class CarWashBookingResource extends Resource
             ]);
         }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    Tables\Columns\TextColumn::make('client_id')
-                        ->label('Клиент')
-                        ->searchable(),
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('client_id')
+                    ->label('Клиент')
+                    ->searchable(),
 
-                    Tables\Columns\TextColumn::make('wash_type')
-                        ->label('Тип мойки'),
+                Tables\Columns\TextColumn::make('wash_type')
+                    ->label('Тип мойки'),
 
-                    Tables\Columns\TextColumn::make('box_number')
-                        ->label('Бокс'),
+                Tables\Columns\TextColumn::make('box_number')
+                    ->label('Бокс'),
 
-                    Tables\Columns\TextColumn::make('status')
-                        ->label('Статус')
-                        ->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge(),
 
-                    Tables\Columns\TextColumn::make('scheduled_at')
-                        ->label('Дата')
-                        ->dateTime('d.m.Y H:i')
-                        ->sortable(),
+                Tables\Columns\TextColumn::make('scheduled_at')
+                    ->label('Дата')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable(),
 
-                    Tables\Columns\TextColumn::make('price')
-                        ->label('Цена')
-                        ->formatStateUsing(fn ($state) => ($state / 100) . ' ₽'),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('status')
-                        ->options([
-                            'pending' => 'В ожидании',
-                            'in_progress' => 'В процессе',
-                            'completed' => 'Завершена',
-                            'cancelled' => 'Отменена',
-                        ]),
-
-                    Tables\Filters\SelectFilter::make('wash_type'),
-                ])
-                ->actions([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Цена')
+                    ->formatStateUsing(fn ($state) => ($state / 100) . ' ₽'),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'В ожидании',
+                        'in_progress' => 'В процессе',
+                        'completed' => 'Завершена',
+                        'cancelled' => 'Отменена',
                     ]),
-                ]);
-        }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListCarWashBookings::route('/'),
-                'create' => Pages\CreateCarWashBooking::route('/create'),
-                'edit' => Pages\EditCarWashBooking::route('/{record}/edit'),
-                'view' => Pages\ViewCarWashBooking::route('/{record}'),
-            ];
-        }
+                Tables\Filters\SelectFilter::make('wash_type'),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ListCarWashBookings::route('/'),
+            'create' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\CreateCarWashBooking::route('/create'),
+            'edit' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\EditCarWashBooking::route('/{record}/edit'),
+            'view' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ViewCarWashBooking::route('/{record}'),
+        ];
+    }
 }

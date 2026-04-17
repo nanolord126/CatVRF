@@ -53,9 +53,9 @@ final class ListPartyOrders extends ListRecords
     {
         parent::mount();
 
-        $this->logger->info('PartyOrder registry viewed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('PartyOrder registry viewed', [
             'tenant_id' => tenant()->id ?? null,
-            'user_id' => $this->guard->id() ?? null,
+            'user_id' => auth()->id() ?? null,
         ]);
     }
 }

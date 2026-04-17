@@ -8,8 +8,7 @@ use Illuminate\Notifications\Notification;
 final class OrderStatusNotification extends Model
 {
 
-    use Queueable;
-
+    use \Illuminate\Bus\Queueable;
         private Order $order;
         private string $status;
         private string $correlationId;

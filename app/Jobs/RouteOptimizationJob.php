@@ -24,7 +24,7 @@ use Illuminate\Log\LogManager;
  */
 final class RouteOptimizationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries   = 2;
     public int $timeout = 60;
@@ -81,3 +81,4 @@ final class RouteOptimizationJob implements ShouldQueue
         return 'route-opt';
     }
 }
+

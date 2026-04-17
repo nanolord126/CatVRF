@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Support\Str;
 
 /**
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
  */
 final class SportsNutritionConsumable extends Model
 {
-    use SportsNutritionDomainTrait;
+    use SportsNutritionDomainTrait, TenantScoped;
 
     protected $table = 'sports_nutrition_consumables';
     protected $fillable = ['uuid', 'tenant_id', 'name', 'stock_kg', 'min_threshold', 'purity_percentage', 'correlation_id'];

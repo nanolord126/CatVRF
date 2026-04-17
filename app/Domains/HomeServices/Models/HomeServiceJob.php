@@ -27,7 +27,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class HomeServiceJob extends Model
 {
-    use HasFactory;
 
     use SoftDeletes, TenantScoped;
 

@@ -39,9 +39,6 @@ use Illuminate\Support\Str;
  */
 final class AIModel extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'ai_models';
 

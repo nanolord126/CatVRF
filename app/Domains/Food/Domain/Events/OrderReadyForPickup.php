@@ -25,7 +25,7 @@ final class OrderReadyForPickup extends DomainEvent
     public function __construct(
         public readonly Uuid $orderId,
         public readonly Uuid $clientId,
-        private ?Uuid $correlationId = null
+        ?Uuid $correlationId = null
     ) {
         parent::__construct($correlationId);
     }

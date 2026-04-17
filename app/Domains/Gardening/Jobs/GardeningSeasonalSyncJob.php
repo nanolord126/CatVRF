@@ -18,7 +18,7 @@ final class GardeningSeasonalSyncJob
 {
 
 
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
 
@@ -130,3 +130,4 @@ final class GardeningSeasonalSyncJob
             return ['gardening', 'seasonal', 'tenant:' . $this->tenantId, 'cid:' . $this->correlationId];
         }
 }
+

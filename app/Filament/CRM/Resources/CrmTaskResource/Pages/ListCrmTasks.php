@@ -38,7 +38,7 @@ final class ListCrmTasks extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [\Filament\Actions\CreateAction::make()];
+        return [\Filament\\Filament\Actions\CreateAction::make()];
     }
 
     /**

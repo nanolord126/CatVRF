@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class VehicleRentalResource extends Resource
 {
-
+
     protected static ?string $model = VehicleRental::class;
 
         protected static ?string $navigationLabel = 'Аренда авто';
@@ -134,23 +134,24 @@ final class VehicleRentalResource extends Resource
                     Tables\Actions\DeleteAction::make(),
                 ])
                 ->bulkActions([
+
                     Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
-                    ]),
-                ]);
-        }
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+        ]);
+    }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListVehicleRentals::route('/'),
-                'create' => Pages\CreateVehicleRental::route('/create'),
-                'edit' => Pages\EditVehicleRental::route('/{record}/edit'),
-            ];
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages\ListVehicleRentals::route('/'),
+            'create' => \App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages\CreateVehicleRental::route('/create'),
+            'edit' => \App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages\EditVehicleRental::route('/{record}/edit'),
+        ];
+    }
 
-        public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
-        {
-            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
-        }
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
 }

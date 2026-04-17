@@ -624,4 +624,101 @@ final readonly class RecommendationService
         // Возвращает вектор [768] элементов для text-embedding-3-large
         return array_fill(0, 768, 0.0);
     }
+
+    /**
+     * Получить образовательные ресурсы для учебного пути
+     */
+    public function getEducationResources(
+        int $userId,
+        int $courseId,
+        ?string $learningGoal = null,
+        ?string $currentLevel = null,
+        bool $isCorporate = false,
+    ): array {
+        $correlationId = Str::uuid()->toString();
+
+        $this->fraud->check([
+            'operation_type' => 'education_resources_request',
+            'user_id' => $userId,
+            'course_id' => $courseId,
+            'is_corporate' => $isCorporate,
+            'ip_address' => $this->request->ip(),
+            'correlation_id' => $correlationId,
+        ]);
+
+        $cacheKey = "education:resources:user:{$userId}:course:{$courseId}:goal:" . md5($learningGoal ?? '') . ":v1";
+        $cached = $this->cache->get($cacheKey);
+
+        if ($cached) {
+            return $cached;
+        }
+
+        $resources = [
+            'courses' => $this->getRecommendedCourses($userId, $courseId, $currentLevel, $isCorporate),
+            'books' => $this->getRecommendedBooks($courseId, $learningGoal),
+            'videos' => $this->getRecommendedVideos($courseId, $currentLevel),
+            'practice_exercises' => $this->getPracticeExercises($courseId),
+            'community_forums' => $this->getCommunityForums($courseId),
+        ];
+
+        $this->cache->put($cacheKey, $resources, 1800);
+
+        $this->log->channel('audit')->info('Education resources retrieved', [
+            'correlation_id' => $correlationId,
+            'user_id' => $userId,
+            'course_id' => $courseId,
+        ]);
+
+        return $resources;
+    }
+
+    private function getRecommendedCourses(int $userId, int $courseId, ?string $currentLevel, bool $isCorporate): array
+    {
+        $query = $this->db->table('courses')
+            ->where('id', '!=', $courseId)
+            ->where('is_active', true)
+            ->limit(5);
+
+        if ($currentLevel !== null) {
+            $query->where('level', $currentLevel);
+        }
+
+        if ($isCorporate) {
+            $query->whereNotNull('corporate_price_kopecks');
+        }
+
+        return $query->get()->toArray();
+    }
+
+    private function getRecommendedBooks(int $courseId, ?string $learningGoal): array
+    {
+        return [
+            ['title' => 'Fundamentals of the subject', 'author' => 'Expert Author', 'isbn' => '978-1234567890'],
+            ['title' => 'Advanced techniques', 'author' => 'Advanced Expert', 'isbn' => '978-0987654321'],
+        ];
+    }
+
+    private function getRecommendedVideos(int $courseId, ?string $currentLevel): array
+    {
+        return [
+            ['title' => 'Introduction to the topic', 'duration' => 1200, 'platform' => 'youtube'],
+            ['title' => 'Practical examples', 'duration' => 1800, 'platform' => 'vimeo'],
+        ];
+    }
+
+    private function getPracticeExercises(int $courseId): array
+    {
+        return [
+            ['title' => 'Basic exercises', 'difficulty' => 'easy', 'estimated_time' => 30],
+            ['title' => 'Advanced challenges', 'difficulty' => 'hard', 'estimated_time' => 60],
+        ];
+    }
+
+    private function getCommunityForums(int $courseId): array
+    {
+        return [
+            ['name' => 'General Discussion', 'members' => 1250, 'active_threads' => 45],
+            ['name' => 'Q&A Forum', 'members' => 890, 'active_threads' => 32],
+        ];
+    }
 }

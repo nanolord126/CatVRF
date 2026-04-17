@@ -13,8 +13,9 @@ use Illuminate\Http\Request;
 
 final class LowMaterialStockAlertJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $backoff = 60;
@@ -106,3 +107,4 @@ final class LowMaterialStockAlertJob
             $this->logger->info("Email notification queued for Store: {$store->name} (SKUs: " . implode(',', $skus) . ")");
         }
 }
+

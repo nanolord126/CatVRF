@@ -21,6 +21,8 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
+use Filament\Resources\Pages\ViewRecord;
+
 final class ViewJewelry extends ViewRecord
 {
 

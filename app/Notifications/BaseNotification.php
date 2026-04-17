@@ -31,8 +31,6 @@ use Illuminate\Support\Str;
  */
 abstract class BaseNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
-
     /**
      * UUID для трейсинга через систему
      */

@@ -16,7 +16,6 @@ use Illuminate\Database\DatabaseManager;
 
 final class SendOrderNotification implements ShouldQueue
 {
-    use InteractsWithQueue;
 
     public function __construct(private readonly Dispatcher $notification,
         private readonly LogManager $logger,

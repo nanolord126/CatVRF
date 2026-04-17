@@ -15,8 +15,6 @@ final class DeductJobCommissionListener
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
 
-    use InteractsWithQueue;
-use App\Services\FraudControlService;
 
         public function handle(ServiceJobCreated $event): void
         {
@@ -76,3 +74,4 @@ use App\Services\FraudControlService;
         ];
     }
 }
+

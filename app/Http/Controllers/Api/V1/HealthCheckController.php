@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Log\LogManager;
 
 final class HealthCheckController extends Controller
 {
@@ -16,9 +17,11 @@ final class HealthCheckController extends Controller
         private readonly DatabaseManager $db,
         private readonly CacheManager $cache,
         private readonly ResponseFactory $response,
+        private readonly LogManager $logger,
     ) {}
 
-
+
+
     /**
          * Get overall system health status
          *
@@ -35,26 +38,26 @@ final class HealthCheckController extends Controller
                 $this->db->connection()->getPdo();
                 $components['database'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
-                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
+                return $this->response->json(['error' => $e->getMessage(), 'correlation_id' => $request->header('X-Correlation-ID')], 500);
             }
             // Check Redis connectivity (rate limiting, cache)
             try {
                 Redis::ping();
                 $components['redis'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
-                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
+                return $this->response->json(['error' => $e->getMessage(), 'correlation_id' => $request->header('X-Correlation-ID')], 500);
             }
             // Check Cache system
             try {
@@ -66,13 +69,13 @@ final class HealthCheckController extends Controller
                     throw new \RuntimeException('Cache get/put failed');
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $request->header('X-Correlation-ID'),
                 ]);
-                return response()->json(['error' => $e->getMessage(), 'correlation_id' => request()->header('X-Correlation-ID')], 500);
+                return $this->response->json(['error' => $e->getMessage(), 'correlation_id' => $request->header('X-Correlation-ID')], 500);
             }
             // Check Sanctum token model
             try {

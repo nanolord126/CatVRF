@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 final class Course extends Model
 {
-    use HasFactory;
 
     protected $table = 'pd_courses';
 

@@ -17,7 +17,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 final class CalculateCourierEarningsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         private string $correlationId = '', private readonly Request $request, private readonly LoggerInterface $logger) {
@@ -75,3 +75,4 @@ final class CalculateCourierEarningsJob implements ShouldQueue
         return now()->addHours(6);
     }
 }
+

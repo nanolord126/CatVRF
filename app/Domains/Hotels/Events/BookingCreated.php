@@ -21,8 +21,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final readonly class BookingCreated
 {
-    use Dispatchable;
-    use SerializesModels;
 
     /**
      * @param Booking $booking      Созданное бронирование

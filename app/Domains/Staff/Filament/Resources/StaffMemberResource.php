@@ -45,9 +45,9 @@ final class StaffMemberResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStaffMembers::route('/'),
-            'create' => Pages\CreateStaffMember::route('/create'),
-            'edit' => Pages\EditStaffMember::route('/{record}/edit'),
+            'index' => \App\Domains\Staff\Filament\Resources\StaffMemberResource\Pages\ListStaffMembers::route('/'),
+            'create' => \App\Domains\Staff\Filament\Resources\StaffMemberResource\Pages\CreateStaffMember::route('/create'),
+            'edit' => \App\Domains\Staff\Filament\Resources\StaffMemberResource\Pages\EditStaffMember::route('/{record}/edit'),
         ];
     }
 }

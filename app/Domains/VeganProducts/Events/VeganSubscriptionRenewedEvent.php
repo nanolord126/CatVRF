@@ -15,10 +15,11 @@ use Illuminate\Queue\SerializesModels;
      */
 final class VeganSubscriptionRenewedEvent
 {
-        use Dispatchable, SerializesModels;
+        use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private readonly int $subscriptionId,
             private readonly int $boxId,
             private readonly string $correlationId) {}
 }
+

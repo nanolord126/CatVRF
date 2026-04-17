@@ -206,18 +206,20 @@ final readonly class FitnessConstructorService
      */
     private function saveDesign(int $userId, array $body, array $workout, array $nutrition, string $correlationId): void
     {
-        $this->db->table('user_ai_designs')->updateOrInsert(
-            ['user_id' => $userId, 'vertical' => 'fitness'],
-            [
-                'design_data'    => json_encode([
-                    'body_profile'   => $body,
-                    'workout_plan'   => $workout,
-                    'nutrition_plan' => $nutrition,
-                ], JSON_UNESCAPED_UNICODE),
-                'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
-            ]
-    );
+        $this->db->transaction(function () use ($userId, $body, $workout, $nutrition, $correlationId) {
+            $this->db->table('user_ai_designs')->updateOrInsert(
+                ['user_id' => $userId, 'vertical' => 'fitness'],
+                [
+                    'design_data'    => json_encode([
+                        'body_profile'   => $body,
+                        'workout_plan'   => $workout,
+                        'nutrition_plan' => $nutrition,
+                    ], JSON_UNESCAPED_UNICODE),
+                    'correlation_id' => $correlationId,
+                    'updated_at'     => Carbon::now(),
+                    'created_at'     => Carbon::now(),
+                ]
+            );
+        });
     }
 }

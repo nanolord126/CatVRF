@@ -31,11 +31,11 @@ final class CreateBeverageShop extends CreateRecord
 
         protected function afterCreate(): void
         {
-            $this->logger->info('Beverage Shop Registered', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Beverage Shop Registered', [
                 'shop_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

@@ -146,7 +146,7 @@ namespace App\Filament\Tenant\Resources\PartySupplies;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

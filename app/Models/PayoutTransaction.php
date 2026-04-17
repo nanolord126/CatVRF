@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\SoftDeletes;
 
 /**
  * Транзакция выплаты (курьерам, мастерам, партнёрам)
@@ -15,7 +14,6 @@ use App\Models\Traits\SoftDeletes;
  */
 final class PayoutTransaction extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'payout_transactions';
 

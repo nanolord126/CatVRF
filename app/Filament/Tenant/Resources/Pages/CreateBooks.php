@@ -49,7 +49,7 @@ final class CreateBooks extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Book created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Book created', [
             'book_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

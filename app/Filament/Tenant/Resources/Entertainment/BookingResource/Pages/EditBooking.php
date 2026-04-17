@@ -27,18 +27,18 @@ final class EditBooking extends EditRecord
 
         protected function beforeSave(): void
         {
-            $this->logger->info('Entertainment Booking modification started', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Booking modification started', [
                 'booking_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }
 
         protected function afterSave(): void
         {
-            $this->logger->info('Entertainment Booking modification completed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Booking modification completed', [
                 'booking_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }

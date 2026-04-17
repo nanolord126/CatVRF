@@ -36,7 +36,7 @@ final class CreateFashionStore extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('FashionStore created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('FashionStore created', [
             'store_id'       => $this->record->id,
             'name'           => $this->record->name,
             'type'           => $this->record->type,

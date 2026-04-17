@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class BloggerVerificationDocument extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

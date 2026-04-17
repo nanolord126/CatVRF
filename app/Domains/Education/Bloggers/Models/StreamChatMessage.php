@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class StreamChatMessage extends Model
 {
-    use HasFactory;
 
         protected $table = 'stream_chat_messages';
 

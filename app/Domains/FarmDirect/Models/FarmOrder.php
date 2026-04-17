@@ -19,31 +19,38 @@
 namespace App\Domains\FarmDirect\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
+use Database\Factories\FarmOrderFactory;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FarmOrder extends Model
 {
+    use HasFactory, SoftDeletes, TenantScoped;
+
+    protected $table = 'farm_orders';
 
     protected $fillable = [
         'uuid',
         'correlation_id',
         'tenant_id',
+        'business_group_id',
+        'farm_id',
+        'customer_id',
+        'status',
+        'total_price',
+        'delivery_address',
+        'delivery_date',
+        'notes',
+        'tags',
     ];
-    use HasFactory;
-
-    use HasFactory, SoftDeletes, TenantScoped;
-
-        protected $table = "farm_orders";
-        protected $guarded = [];
         protected $casts = [
             "tags"            => "json",
         ];
 
-        protected static function newFactory()
+        protected static function newFactory(): FarmOrderFactory
         {
-            return FarmOrderFactory::new();
+            return new FarmOrderFactory();
         }
 
         protected static function booted(): void

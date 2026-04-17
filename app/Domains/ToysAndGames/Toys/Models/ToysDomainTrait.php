@@ -13,9 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 
-final class ToysDomainTrait extends Model
+trait ToysDomainTrait
 {
-    use HasFactory;
     protected static function booted(): void
         {
             // 1. Automatic UUID and Correlation Logic

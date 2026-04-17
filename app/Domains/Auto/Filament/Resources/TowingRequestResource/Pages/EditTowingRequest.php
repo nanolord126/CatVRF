@@ -2,7 +2,10 @@
 
 namespace App\Domains\Auto\Filament\Resources\TowingRequestResource\Pages;
 
-
+use App\Domains\Auto\Filament\Resources\TowingRequestResource;
+use App\Events\TowingCompleted;
+use Filament\Pages\Actions;
+use Filament\Notifications\Notification;
 use Psr\Log\LoggerInterface;
 use Filament\Resources\Pages\EditRecord;
 
@@ -11,7 +14,7 @@ final class EditTowingRequest extends EditRecord
     public function __construct(
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
-
+
     protected static string $resource = TowingRequestResource::class;
 
         protected function getHeaderActions(): array
@@ -43,7 +46,7 @@ final class EditTowingRequest extends EditRecord
                             ));
                         });
 
-                        $this->notification->make()
+                        Notification::make()
                             ->success()
                             ->title('Эвакуация завершена')
                             ->send();

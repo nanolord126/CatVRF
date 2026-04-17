@@ -41,11 +41,10 @@ final readonly class ReferralService
     public function __construct(
         private readonly Request $request,
         private readonly ConfigRepository $config,
-        private ConnectionInterface $db,
-        private LogManager $log,
-        private FraudControlService $fraud,
-        private BonusService $bonus,
+        private readonly ConnectionInterface $db,
         private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly BonusService $bonus,
     ) {}
 
     /**
@@ -119,11 +118,11 @@ final readonly class ReferralService
                 'referral_id' => $referral->id,
             ];
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             // 4. ERROR LOG
@@ -208,11 +207,11 @@ final readonly class ReferralService
 
             return $referral;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             // 4. ERROR LOG
@@ -264,11 +263,11 @@ final readonly class ReferralService
                 'threshold_reached' => $totalSpent,
             ];
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             $this->logger->channel('audit')->error('Referral: Qualification check failed', [
@@ -349,11 +348,11 @@ final readonly class ReferralService
                 'bonus_amount' => $bonusAmount,
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             // ERROR LOG

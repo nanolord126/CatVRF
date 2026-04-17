@@ -40,35 +40,3 @@ final class ViewFood extends ViewRecord
         return [EditAction::make()];
     }
 }
-    protected static string $resource = FoodResource::class;
-
-        /**
-         * Handle getTitle operation.
-         *
-         * @throws \DomainException
-         */
-        public function getTitle(): string
-        {
-            return 'View Food';
-        }
-
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
-    }
-}

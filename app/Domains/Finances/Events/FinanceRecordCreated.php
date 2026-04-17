@@ -20,9 +20,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class FinanceRecordCreated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * @param FinanceRecord $financeRecord Созданная модель

@@ -20,8 +20,6 @@ namespace App\Domains\Pet\PetServices\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class PetGroomer extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'pet_groomers';
     protected $fillable = ['uuid', 'tenant_id', 'user_id', 'correlation_id', 'name', 'specialization', 'price_kopecks_per_hour', 'rating', 'is_verified', 'tags'];

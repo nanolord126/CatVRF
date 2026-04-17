@@ -9,8 +9,6 @@ use Illuminate\Support\Str;
 
 final class ArtGallery extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'art_galleries';
 

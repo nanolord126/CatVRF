@@ -25,7 +25,7 @@ final class FurnitureOrderController extends Controller
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -56,7 +56,7 @@ final class FurnitureOrderController extends Controller
                 $this->logger->channel('audit')->info('Furniture order created', ['order_id' => $order->id]);
                 return $this->successResponse($order, 'Order created successfully', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -83,7 +83,7 @@ final class FurnitureOrderController extends Controller
                 $this->logger->channel('audit')->info('Furniture delivery scheduled', ['order_id' => $id]);
                 return $this->successResponse($order->refresh(), 'Delivery scheduled');
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

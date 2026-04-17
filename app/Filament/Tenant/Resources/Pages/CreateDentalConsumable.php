@@ -36,7 +36,7 @@ final class CreateDentalConsumable extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('DentalConsumable created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalConsumable created', [
             'consumable_id'  => $this->record->id,
             'name'           => $this->record->name,
             'sku'            => $this->record->sku,

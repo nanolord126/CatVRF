@@ -44,7 +44,7 @@ final class ListB2BDeals extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make(),
             ];
         }
 

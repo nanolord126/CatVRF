@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class ReleaseStockReservationJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(private readonly int $productId,
             private readonly int $quantity,
@@ -64,3 +65,4 @@ final class ReleaseStockReservationJob
             return ['fashion', 'reservation', "product:{$this->productId}", $this->correlationId];
         }
 }
+

@@ -25,7 +25,9 @@ final class RunMLTasteRecalculationCommand extends Command
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     protected $signature = 'taste-ml:recalculate
         {--force : Пересчитать всех пользователей, даже если недавно обновляли}

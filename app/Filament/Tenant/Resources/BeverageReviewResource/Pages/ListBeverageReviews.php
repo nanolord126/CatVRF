@@ -43,7 +43,7 @@ final class ListBeverageReviews extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Manually Post Feedback')
                     ->icon('heroicon-o-pencil-square'),
             ];

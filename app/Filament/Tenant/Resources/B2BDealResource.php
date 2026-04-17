@@ -7,6 +7,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 
 final class B2BDealResource extends Resource
 {

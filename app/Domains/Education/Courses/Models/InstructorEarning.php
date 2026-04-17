@@ -27,7 +27,6 @@ final class InstructorEarning extends Model
 {
     protected $table = 'education_instructor_earnings';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

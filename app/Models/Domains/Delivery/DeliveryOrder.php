@@ -52,9 +52,7 @@ final class DeliveryOrder extends Model
         'tenant_id',
     ];
 
-    use HasFactory;
 
-        protected $guarded = [];
 
         protected static function newFactory()
         {

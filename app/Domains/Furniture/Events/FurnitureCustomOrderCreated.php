@@ -9,7 +9,7 @@ final class FurnitureCustomOrderCreated
 {
 
 
-    use Dispatchable, SerializesModels;
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         /**
          * @param FurnitureCustomOrder $order
@@ -61,3 +61,4 @@ final class FurnitureCustomOrderCreated
     }
 
 }
+

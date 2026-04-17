@@ -19,31 +19,17 @@
 namespace App\Domains\Marketplace\Filament\Resources\MarketplaceListingResource\Pages;
 
 use App\Domains\Marketplace\Filament\Resources\MarketplaceListingResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListMarketplaceListings
- *
- * Part of the Marketplace vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\Marketplace\Filament\Resources\MarketplaceListingResource\Pages
- */
 final class ListMarketplaceListings extends ListRecords
 {
     protected static string $resource = MarketplaceListingResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

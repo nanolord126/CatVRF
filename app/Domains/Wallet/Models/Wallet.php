@@ -60,6 +60,12 @@ final class Wallet extends Model
             }
         });
 
+        static::addGlobalScope('businessGroup', static function (Builder $builder): void {
+            if (function_exists('tenant') && tenant()?->business_group_id) {
+                $builder->where('business_group_id', tenant()?->business_group_id);
+            }
+        });
+
         static::creating(static function (self $model): void {
             if (empty($model->uuid)) {
                 $model->uuid = Str::uuid()->toString();

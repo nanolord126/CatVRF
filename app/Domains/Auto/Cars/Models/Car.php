@@ -2,6 +2,7 @@
 
 namespace App\Domains\Auto\Cars\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;

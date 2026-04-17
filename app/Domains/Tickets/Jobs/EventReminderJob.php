@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 final class EventReminderJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     private ?string $correlationId;
     private int $eventId;
@@ -59,3 +59,4 @@ final class EventReminderJob implements ShouldQueue
         }
     }
 }
+

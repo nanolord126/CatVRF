@@ -336,6 +336,6 @@ final readonly class HotelCrmService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction($callback);
+        return $this->db->transaction($callback);
     }
 }

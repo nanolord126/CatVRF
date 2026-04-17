@@ -9,13 +9,14 @@ namespace App\Domains\Furniture\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 /**
      * FurnitureReview Model
      */
 final class FurnitureReview extends Model
 {
-        use FurnitureDomainTrait;
+        use FurnitureDomainTrait, TenantScoped;
 
         protected $table = 'furniture_reviews';
 

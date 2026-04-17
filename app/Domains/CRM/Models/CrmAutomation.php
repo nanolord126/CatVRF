@@ -20,9 +20,7 @@ use Illuminate\Support\Str;
  */
 final class CrmAutomation extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
-    use HasFactory;
 
     protected static function newFactory(): \Database\Factories\CRM\CrmAutomationFactory
     {

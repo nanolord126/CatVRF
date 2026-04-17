@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MedicalPrescription extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'medical_prescriptions';
 

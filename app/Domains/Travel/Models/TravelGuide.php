@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 final class TravelGuide extends Model
 {
 
-    use HasFactory;
-        use SoftDeletes;
 
         protected $table = 'travel_guides';
 

@@ -19,9 +19,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class CrmClientSegmentChanged
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Broadcasting\InteractsWithSockets;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * @param CrmClient $client        Клиент, у которого изменился сегмент

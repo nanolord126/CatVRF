@@ -13,8 +13,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class SendEventReminderJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private ?int $scheduleId = null,
@@ -86,3 +87,4 @@ final class SendEventReminderJob
         ];
     }
 }
+

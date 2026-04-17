@@ -15,7 +15,6 @@ final class GenerateWeddingContractOnBookingListener
         private readonly Request $request, private readonly LoggerInterface $logger) {}
 
 
-    use InteractsWithQueue;
 
         public function handle(object $event): void
         {

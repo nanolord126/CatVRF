@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FlowerOrder extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

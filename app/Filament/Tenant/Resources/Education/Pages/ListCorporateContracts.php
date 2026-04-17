@@ -65,8 +65,8 @@ final class ListCorporateContracts extends ListRecords
         {
             parent::mount();
 
-            $this->logger->info('B2B Education: Viewing contracts list', [
-                'user_id' => $this->guard->id(),
+            \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Education: Viewing contracts list', [
+                'user_id' => auth()->id(),
                 'tenant_id' => filament()->getTenant()->id,
                 'correlation_id' => (string) Str::uuid(),
             ]);

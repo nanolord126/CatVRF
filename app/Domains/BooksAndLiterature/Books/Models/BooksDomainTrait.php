@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 trait BooksDomainTrait
 {
-    use HasFactory;
 
     protected static function booted(): void
     {

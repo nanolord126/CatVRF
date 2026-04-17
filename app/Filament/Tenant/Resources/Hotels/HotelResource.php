@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\Resources\Hotels;
 use App\Domains\Hotels\Models\Hotel;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -602,7 +603,7 @@ final class HotelResource extends Resource
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', filament()->getTenant()?->id);

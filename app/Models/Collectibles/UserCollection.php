@@ -28,7 +28,6 @@ use Illuminate\Support\Str;
  */
 final class UserCollection extends Model
 {
-    use HasFactory;
 
     protected $table = 'user_collections';
 

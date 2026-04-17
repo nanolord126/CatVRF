@@ -54,7 +54,7 @@ final class EditFurnitureProduct extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Furniture product updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture product updated', [
             'product_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

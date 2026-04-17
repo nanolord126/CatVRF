@@ -22,9 +22,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class ConsultingEngagement extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'consulting_engagements_v2';
 

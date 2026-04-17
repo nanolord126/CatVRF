@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MedicalRecord extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'medical_records';
 
@@ -45,15 +43,7 @@ final class MedicalRecord extends Model
          * КРИТИЧНО: Настройка логов для ФЗ-152.
          * Логируем каждое изменение и каждое обращение к конфиденциальным данным.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['record_type', 'is_confidential'])
-                ->logOnlyDirty()
-                ->useLogName('medical_record_confidential_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиент (User).
          */
         public function client(): BelongsTo

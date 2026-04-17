@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ConsultingProject extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

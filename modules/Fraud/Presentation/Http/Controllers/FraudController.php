@@ -8,7 +8,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
-use Modules\Fraud\Application\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\OperationDto;
 use Modules\Fraud\Application\Services\FraudMLService;
 use Modules\Fraud\Domain\Enums\OperationType;
 use Modules\Fraud\Presentation\Http\Requests\CheckFraudRequest;

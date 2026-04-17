@@ -19,7 +19,9 @@ final class WarmCacheCommand extends Command
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     protected $signature = 'cache:warm
         {--vertical= : Warm cache for a specific vertical}

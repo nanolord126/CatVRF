@@ -57,7 +57,7 @@ final class CreateDentalAppointment extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('DentalAppointment created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalAppointment created', [
             'appointment_id' => $this->record->id,
             'dentist_id'     => $this->record->dentist_id,
             'client_id'      => $this->record->client_id,

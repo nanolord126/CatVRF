@@ -27,7 +27,6 @@ final class Lesson extends Model
 {
     protected $table = 'education_lessons';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

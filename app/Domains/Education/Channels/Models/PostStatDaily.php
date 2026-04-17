@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class PostStatDaily extends Model
 {
-    use HasFactory;
 
     protected $table = 'post_stats_daily';
 

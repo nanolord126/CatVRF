@@ -35,7 +35,7 @@ final class CreateDentalClinic extends CreateRecord
             return $this->db->transaction(function () use ($data) {
                 $record = parent::handleRecordCreation($data);
 
-                $this->logger->info('Dental Clinic Created', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Dental Clinic Created', [
                     'clinic_id' => $record->id,
                     'name' => $record->name,
                     'correlation_id' => $data['correlation_id']

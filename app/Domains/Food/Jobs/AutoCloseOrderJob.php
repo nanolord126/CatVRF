@@ -14,10 +14,6 @@ use Psr\Log\LoggerInterface;
 final class AutoCloseOrderJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public function __construct(
             private RestaurantOrder $order,

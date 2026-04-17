@@ -17,6 +17,8 @@ return new class extends Migration
         Schema::create('beauty_masters', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique()->index();
+            $table->unsignedBigInteger('tenant_id')->index();
+            $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID бизнес-группы (филиала)');
             $table->foreignId('salon_id')
                 ->constrained('beauty_salons')
                 ->cascadeOnDelete()

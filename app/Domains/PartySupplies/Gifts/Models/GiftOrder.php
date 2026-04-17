@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class GiftOrder extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
         protected $table = 'gift_orders'; protected $fillable = ['uuid','tenant_id','seller_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','items_json','tags'];

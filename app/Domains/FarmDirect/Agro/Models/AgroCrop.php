@@ -4,12 +4,13 @@ namespace App\Domains\FarmDirect\Agro\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class AgroCrop extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
         protected $table = 'agro_crops';
 

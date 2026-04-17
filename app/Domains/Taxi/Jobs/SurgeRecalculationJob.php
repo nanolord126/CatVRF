@@ -11,8 +11,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class SurgeRecalculationJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
 
@@ -64,3 +65,4 @@ final class SurgeRecalculationJob
             return ['auto', 'surge', 'recalculation', $this->correlationId];
         }
 }
+

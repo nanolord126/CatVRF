@@ -1,0 +1,13 @@
+{
+  "tabAutocomplete": {
+    "disable": false
+  },
+  "models": [
+    {
+      "title": "Claude 4 Sonnet",
+      "provider": "anthropic",
+      "model": "claude-3-5-sonnet-20241022"
+    }
+  ],
+  "systemMessage": "Ты — JSON-only бот. Никогда не пиши ничего кроме валидного JSON. Начинай сразу с { или [."
+}

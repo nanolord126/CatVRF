@@ -16,10 +16,6 @@ use Illuminate\Http\Request;
 final class OrderReadyReminderJob
 {
 
-    use Dispatchable;
-        use InteractsWithQueue;
-        use Queueable;
-        use SerializesModels;
 
         public function __construct(
             private RestaurantOrder $order,

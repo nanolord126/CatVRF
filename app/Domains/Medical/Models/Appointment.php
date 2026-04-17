@@ -1,16 +1,17 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 final class Appointment extends Model
 {
-    use HasFactory;
-
-    use SoftDeletes, LogsActivity;
+
+
 
         protected $table = 'medical_appointments';
 
@@ -62,15 +63,7 @@ final class Appointment extends Model
         /**
          * Настройка логов для ФЗ-152.
          */
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['status', 'payment_status', 'appointment_at', 'total_price'])
-                ->logOnlyDirty()
-                ->useLogName('medical_appointment_audit');
-        }
-
-        /**
+/**
          * Отношение: Клиент (User).
          */
         public function client(): BelongsTo

@@ -17,7 +17,6 @@ final class InsuranceContract extends Model
         private readonly Request $request,
     ) {}
 
-    use HasFactory;
 
     protected $table = 'insurance_contracts';
 

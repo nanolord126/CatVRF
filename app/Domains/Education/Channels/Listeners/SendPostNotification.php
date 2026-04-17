@@ -12,7 +12,6 @@ use Illuminate\Config\Repository as ConfigRepository;
 final class SendPostNotification
 {
 
-    use InteractsWithQueue;
 
 
         public int $tries = 3;

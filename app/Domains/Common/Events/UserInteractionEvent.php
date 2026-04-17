@@ -25,9 +25,6 @@ use Illuminate\Queue\SerializesModels;
 final class UserInteractionEvent
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         private string $correlationId;
 

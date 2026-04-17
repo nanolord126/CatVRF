@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Анализ симптомов + подбор препаратов + взаимодействия + рекомендация врача
@@ -26,12 +26,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class PharmacyHealthConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -55,16 +59,27 @@ final readonly class PharmacyHealthConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Анализ симптомов и состояния здоровья для подбора препаратов и БАД. Определи: симптомы, возраст, противопоказания, уже принимаемые лекарства. Рекомендуй препараты, дозировку, режим приёма. Всегда указывай необходимость консультации врача.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($healthData, $userId), ['health_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($healthData, $userId), ['health_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Критично: анонимизация медицинских данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeMedicalData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Анализ симптомов и состояния здоровья для подбора препаратов и БАД. Определи: симптомы, возраст, противопоказания, уже принимаемые лекарства. Рекомендуй препараты, дозировку, режим приёма. Всегда указывай необходимость консультации врача.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.2, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get health analysis. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -142,5 +157,30 @@ final readonly class PharmacyHealthConstructorService
                 'created_at'     => now(),
             ]
         );
+    }
+
+    private function anonymizeMedicalData(string $data): string
+    {
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[ПАЦИЕНТ]',
+            '/\b\d{2}\.\d{2}\.\d{4}\b/' => '[ДАТА]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+            '/\b\d{14}\b/' => '[СНИЛС]',
+            '/\b\d{16}\b/' => '[ИНН]',
+            '/\b\d{20}\b/' => '[ПОЛИС]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $healthData, int $userId): array
+    {
+        return [
+            'symptoms' => $healthData['symptoms'] ?? [],
+            'age' => $healthData['age'] ?? null,
+            'gender' => $healthData['gender'] ?? null,
+        ];
     }
 }

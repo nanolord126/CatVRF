@@ -170,19 +170,21 @@ final readonly class HotelConstructorService
      */
     private function saveDesign(int $userId, array $profile, array $package, string $correlationId): void
     {
-        $now = Carbon::now()->toDateTimeString();
+        $this->db->transaction(function () use ($userId, $profile, $package, $correlationId) {
+            $now = Carbon::now()->toDateTimeString();
 
-        $this->db->table('user_ai_designs')->updateOrInsert(
-            ['user_id' => $userId, 'vertical' => 'hotel'],
-            [
-                'design_data' => json_encode(
-                    ['profile' => $profile, 'package' => $package],
-                    JSON_UNESCAPED_UNICODE,
-                ),
-                'correlation_id' => $correlationId,
-                'updated_at' => $now,
-                'created_at' => $now,
-            ],
-        );
+            $this->db->table('user_ai_designs')->updateOrInsert(
+                ['user_id' => $userId, 'vertical' => 'hotel'],
+                [
+                    'design_data' => json_encode(
+                        ['profile' => $profile, 'package' => $package],
+                        JSON_UNESCAPED_UNICODE,
+                    ),
+                    'correlation_id' => $correlationId,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ],
+            );
+        });
     }
 }

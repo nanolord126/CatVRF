@@ -26,7 +26,6 @@ use Psr\Log\LoggerInterface;
 final class TriggerVapeMarkingRegistration
 {
 
-    use InteractsWithQueue;
 
         /**
          * Создание слушателя.

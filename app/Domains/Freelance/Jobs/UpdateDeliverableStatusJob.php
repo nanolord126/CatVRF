@@ -29,8 +29,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class UpdateDeliverableStatusJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private int $deliverableId = 0,
@@ -76,3 +77,4 @@ final class UpdateDeliverableStatusJob
     private const MAX_RETRIES = 3;
 
 }
+

@@ -18,38 +18,18 @@
 
 namespace App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages;
 
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListTaxiVehicles extends ListRecords
 {
-
     protected static string $resource = TaxiVehicleResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [Actions\CreateAction::make()];
-        }
-
-    /**
-     * Get the string representation of this instance.
-     *
-     * @return string The string representation
-     */
-    public function __toString(): string
-    {
-        return static::class;
-    }
-
-    /**
-     * Get debug information for this instance.
-     *
-     * @return array<string, mixed> Debug data including class name and state
-     */
-    public function toDebugArray(): array
+    protected function getHeaderActions(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            Actions\CreateAction::make(),
         ];
     }
 }

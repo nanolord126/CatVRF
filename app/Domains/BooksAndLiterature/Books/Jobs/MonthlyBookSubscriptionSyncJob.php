@@ -17,8 +17,9 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 final class MonthlyBookSubscriptionSyncJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(private readonly string $correlationId,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
@@ -136,3 +137,4 @@ final class MonthlyBookSubscriptionSyncJob
             return Carbon::now()->addHours(24);
         }
 }
+

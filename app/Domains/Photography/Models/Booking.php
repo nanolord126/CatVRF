@@ -9,8 +9,6 @@ use Illuminate\Support\Str;
 
 final class Booking extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'photography_bookings';
 

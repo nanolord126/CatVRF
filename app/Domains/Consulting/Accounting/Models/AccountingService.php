@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class AccountingService extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='accounting_services';protected $fillable=['uuid','tenant_id','accountant_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','service_type','request_date','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','request_date'=>'datetime','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('accounting_services.tenant_id',tenant()->id));}
 

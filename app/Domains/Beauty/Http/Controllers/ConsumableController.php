@@ -29,7 +29,7 @@ final class ConsumableController extends BaseConsumableController
                 ->orderBy('created_at', 'desc')
                 ->paginate((int) $request->input('per_page', 20));
 
-            return response()->json([
+            return $this->response->json([
                 'success' => true,
                 'correlation_id' => $correlationId,
                 'data' => $logs->items(),
@@ -40,7 +40,7 @@ final class ConsumableController extends BaseConsumableController
                 ],
             ], 200);
         } catch (\Throwable $e) {
-            return response()->json([
+            return $this->response->json([
                 'success' => false,
                 'message' => 'Failed to retrieve consumable logs',
                 'correlation_id' => $correlationId,

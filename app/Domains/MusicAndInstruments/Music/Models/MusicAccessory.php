@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MusicAccessory extends Model
 {
-    use HasFactory;
 
         protected $table = 'music_accessories';
 

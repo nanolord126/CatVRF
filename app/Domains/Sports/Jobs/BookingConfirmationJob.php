@@ -46,7 +46,7 @@ use App\Services\FraudControlService;
  */
 final class BookingConfirmationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(private readonly int $bookingId,
         private readonly string $correlationId,
@@ -72,3 +72,4 @@ final class BookingConfirmationJob implements ShouldQueue
         });
     }
 }
+

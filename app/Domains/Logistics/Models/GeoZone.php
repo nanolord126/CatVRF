@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class GeoZone extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'logistics_geo_zones';
 

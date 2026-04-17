@@ -7,7 +7,6 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Ticket extends Model
@@ -16,9 +15,7 @@ final class Ticket extends Model
         private readonly LoggerInterface $logger,
     ) {}
 
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'tickets';
 
@@ -57,14 +54,7 @@ final class Ticket extends Model
             });
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['status', 'checked_in_at', 'user_id', 'price'])
-                ->logOnlyDirty()
-                ->dontSubmitEmptyLogs()
-                ->useLogName('audit');
-        }
+        
 
         /**
          * Эвент билета.

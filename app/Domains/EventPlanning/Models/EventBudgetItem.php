@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 final class EventBudgetItem extends Model
 {
 
-    use HasFactory;
 
         protected $table = 'event_planning_budget_items';
 

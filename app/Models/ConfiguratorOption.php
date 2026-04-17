@@ -29,7 +29,6 @@ use Illuminate\Support\Str;
  */
 final class ConfiguratorOption extends Model
 {
-    use HasFactory;
 
     protected $table = 'configurator_options';
 

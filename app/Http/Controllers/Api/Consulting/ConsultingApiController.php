@@ -67,7 +67,7 @@ final class ConsultingApiController extends Controller
                 $service->fulfillSession($id, $data['duration_minutes'], $data['session_notes']);
                 return $this->respond(['status' => 'success', 'message' => 'Session fulfilled.'], 200, $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -108,7 +108,7 @@ final class ConsultingApiController extends Controller
                 );
                 return $this->respond(['contract' => $contract], 201, $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -138,7 +138,7 @@ final class ConsultingApiController extends Controller
                 );
                 return $this->respond(['review' => $review], 201, $correlationId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

@@ -13,7 +13,6 @@ final class AppliancePart extends Model
 {
 
 
-    use HasFactory;
 
         protected $table = 'appliance_parts';
 

@@ -21,6 +21,8 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
+use Filament\Resources\Pages\EditRecord;
+
     /**
  * Class EditRealEstate
  *

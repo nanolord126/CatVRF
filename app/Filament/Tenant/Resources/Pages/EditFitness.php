@@ -65,7 +65,7 @@ final class EditFitness extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('B2B Fitness order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Fitness order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'total_amount'   => $record->total_amount,

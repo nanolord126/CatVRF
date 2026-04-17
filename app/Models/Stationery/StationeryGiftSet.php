@@ -12,7 +12,6 @@ use Illuminate\Support\Str;
 
 final class StationeryGiftSet extends Model
 {
-    use HasFactory;
 
     protected $table = 'stationery_gift_sets';
 

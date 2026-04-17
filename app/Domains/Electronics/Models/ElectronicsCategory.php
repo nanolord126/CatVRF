@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Model;
      */
 final class ElectronicsCategory extends Model
 {
-        use HasFactory;
 
         protected $table = 'electronics_categories';
 

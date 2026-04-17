@@ -28,11 +28,11 @@ final class CreateBeverageReview extends CreateRecord
 
         protected function afterCreate(): void
         {
-            $this->logger->info('Beverage Review Manual Entry Recorded', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Beverage Review Manual Entry Recorded', [
                 'review_id' => $this->record->id,
                 'tenant_id' => $this->record->tenant_id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

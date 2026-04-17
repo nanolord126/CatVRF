@@ -30,7 +30,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class Earning extends Model
 {
-    use HasFactory;
 
     protected $table = 'earnings';
     protected $fillable = [

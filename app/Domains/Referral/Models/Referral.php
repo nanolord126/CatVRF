@@ -19,7 +19,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  */
 final class Referral extends Model
 {
-    use HasUuids;
 
     /**
      * @var string $table Жестко заданное имя таблицы в базе данных PostgreSQL.

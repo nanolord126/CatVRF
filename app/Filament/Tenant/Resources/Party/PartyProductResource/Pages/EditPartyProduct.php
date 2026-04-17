@@ -42,7 +42,7 @@ final class EditPartyProduct extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('PartyProduct updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('PartyProduct updated', [
             'product_id' => $this->record->id,
             'sku' => $this->record->sku,
             'correlation_id' => $this->record->correlation_id,

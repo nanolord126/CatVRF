@@ -2,13 +2,22 @@
 
 namespace App\Domains\RealEstate\Services;
 
-
+use App\Services\ML\FraudMLService;
+use App\Services\AuditService;
+use App\Domains\RealEstate\Models\Property;
+use App\Domains\RealEstate\Models\Listing;
+use App\Domains\RealEstate\Models\RentalContract;
+use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+
 final readonly class RealEstateService
 {
-    public function __construct(private FraudMLService $fraudService,
-        private \App\Services\AuditService $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+    public function __construct(
+        private FraudMLService $fraudService,
+        private AuditService $audit,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
         /**
          * Создать новый объект недвижимости

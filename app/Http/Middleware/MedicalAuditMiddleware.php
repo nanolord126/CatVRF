@@ -4,15 +4,17 @@ namespace App\Http\Middleware;
 
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Redis\Connections\Connection;
 
 final class MedicalAuditMiddleware
 {
     public function __construct(
         private readonly LogManager $logger,
         private readonly Guard $guard,
+        private readonly Connection $redis,
     ) {}
 
-
+
     /**
          * Обработка запроса: аудит, лимиты, заголовки.
          *
@@ -82,8 +84,8 @@ final class MedicalAuditMiddleware
             $userId = $this->guard->id() ?? $request->ip();
             $key = "audit_scan:{$userId}:" . now()->format('Y-m-d-H');
 
-            $count = \Illuminate\Support\Facades\Redis::incr($key);
-            \Illuminate\Support\Facades\Redis::expire($key, 3600);
+            $count = $this->redis->incr($key);
+            $this->redis->expire($key, 3600);
 
             // Порог: 200 приватных записей в час для врача (лимит по умолчанию в 2026)
             if ($count > 200 && !$this->guard->user()?->hasRole('admin')) {

@@ -7,6 +7,7 @@ namespace App\Filament\Tenant\Resources\CrmAutomationResource\Pages;
 use App\Filament\Tenant\Resources\CrmAutomationResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Notifications\Notification;
 
 /**
  * ListCrmAutomations — список автоматизаций CRM в Tenant Panel.

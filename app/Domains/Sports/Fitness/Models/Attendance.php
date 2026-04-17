@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class Attendance extends Model
 {
-    use HasFactory;
 
     protected $table = 'attendances';
     protected $fillable = [

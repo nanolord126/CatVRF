@@ -23,9 +23,6 @@ use Illuminate\Support\Str;
  */
 final class B2BContract extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
 
     protected $table = 'hotel_b2b_contracts';
 

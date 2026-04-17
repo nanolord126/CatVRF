@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  */
 final class PromoAuditLog extends Model
 {
-    use HasUuids;
 
     /**
      * @var string Жестко определенное имя таблицы.

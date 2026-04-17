@@ -24,6 +24,7 @@ namespace App\Filament\Tenant\Resources\Pages;
     use Filament\Tables\Columns\TextColumn;
     use Filament\Tables\Table;
     use Illuminate\Database\Eloquent\Builder;
+use Filament\Resources\Pages\ListRecords;
 
     /**
  * Class ListStationerySubscription

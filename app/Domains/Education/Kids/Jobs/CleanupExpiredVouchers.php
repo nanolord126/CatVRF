@@ -29,8 +29,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class CleanupExpiredVouchers
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private string $correlationId = '', private readonly LoggerInterface $logger) {}
@@ -75,3 +76,4 @@ final class CleanupExpiredVouchers
             return Carbon::now()->addHours(2);
         }
 }
+

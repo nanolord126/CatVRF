@@ -28,7 +28,6 @@ use Illuminate\Support\Str;
  */
 final class ArtOrder extends Model
 {
-    use HasFactory;
 
     protected $table = 'art_orders';
 

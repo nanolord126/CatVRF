@@ -54,7 +54,7 @@ final class EditGifts extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Gift product updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Gift product updated', [
             'gift_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

@@ -7,6 +7,7 @@ namespace App\Domains\Luxury\Jewelry\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
      */
 final class JewelryReview extends Model
 {
-        use JewelryDomainTrait;
+        use JewelryDomainTrait, TenantScoped;
 
         protected $table = 'jewelry_reviews';
         protected $fillable = ['uuid', 'tenant_id', 'product_id', 'user_id', 'rating', 'comment', 'photos', 'is_verified_purchase', 'correlation_id'];

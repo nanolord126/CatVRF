@@ -96,9 +96,9 @@ final class PricingRuleResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListPricingRules::route('/'),
-                'create' => Pages\CreatePricingRule::route('/create'),
-                'edit' => Pages\EditPricingRule::route('/{record}/edit'),
+                'index' => \App\Domains\Hotels\Filament\Resources\PricingRuleResource\Pages\ListPricingRules::route('/'),
+                'create' => \App\Domains\Hotels\Filament\Resources\PricingRuleResource\Pages\CreatePricingRule::route('/create'),
+                'edit' => \App\Domains\Hotels\Filament\Resources\PricingRuleResource\Pages\EditPricingRule::route('/{record}/edit'),
             ];
         }
 }

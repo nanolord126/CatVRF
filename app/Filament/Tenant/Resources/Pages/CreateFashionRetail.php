@@ -58,7 +58,7 @@ final class CreateFashionRetail extends CreateRecord
     {
         $record = $this->record;
 
-        $this->logger->info('B2B Fashion retail order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Fashion retail order created', [
             'order_id'       => $record->id,
             'order_number'   => $record->order_number,
             'buyer_inn'      => $record->buyer_inn,

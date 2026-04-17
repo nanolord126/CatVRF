@@ -98,7 +98,7 @@ final class PartySuppliesController extends Controller
                     'prepayment_required' => $order->prepayment_cents,
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

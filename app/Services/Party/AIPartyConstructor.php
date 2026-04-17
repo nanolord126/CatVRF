@@ -18,7 +18,7 @@ final readonly class AIPartyConstructor
 
     public function __construct(
         private readonly Request $request,
-            private AIConstructorService $aiService,
+        private readonly AIConstructorService $aiService,
         private readonly LogManager $logger,
     ) {}
 
@@ -77,11 +77,11 @@ final readonly class AIPartyConstructor
                 return $result;
 
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->correlationId(),
                 ]);
 
                 $this->logger->channel('audit')->error('Failed to build AI Party Decor Plan', [

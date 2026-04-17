@@ -31,7 +31,6 @@ final class EncryptedSecret extends Model
         'correlation_id',
         'tenant_id',
     ];
-    use HasFactory;
 
 
 

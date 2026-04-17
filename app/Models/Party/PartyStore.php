@@ -12,8 +12,6 @@ use Illuminate\Support\Str;
 
 final class PartyStore extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'party_stores';
 

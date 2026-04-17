@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 final class Program extends Model
 {
-    use HasFactory;
 
     protected $table = 'pd_programs';
 

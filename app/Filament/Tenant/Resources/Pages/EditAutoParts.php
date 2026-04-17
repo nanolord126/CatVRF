@@ -54,7 +54,7 @@ final class EditAutoParts extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Auto part updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Auto part updated', [
             'part_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

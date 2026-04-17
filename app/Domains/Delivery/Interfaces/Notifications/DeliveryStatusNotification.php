@@ -26,8 +26,6 @@ use Illuminate\Notifications\Notification;
  */
 final class DeliveryStatusNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(
         private readonly Delivery $delivery
     ) {

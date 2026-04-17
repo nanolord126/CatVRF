@@ -35,7 +35,7 @@ final class CreatePartyStore extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('New PartyStore created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('New PartyStore created', [
             'store_id' => $this->record->id,
             'correlation_id' => $this->record->correlation_id,
         ]);

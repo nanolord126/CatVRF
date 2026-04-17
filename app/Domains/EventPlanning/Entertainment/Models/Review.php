@@ -4,10 +4,11 @@ namespace App\Domains\EventPlanning\Entertainment\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class Review extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $table = 'entertainment_reviews';
 

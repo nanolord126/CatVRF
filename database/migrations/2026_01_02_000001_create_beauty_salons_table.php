@@ -18,6 +18,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique()->index();
             $table->unsignedBigInteger('tenant_id')->index();
+            $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID бизнес-группы (филиала)');
             $table->string('name', 200);
             $table->string('address', 300)->nullable();
             $table->string('city', 100)->nullable()->index();

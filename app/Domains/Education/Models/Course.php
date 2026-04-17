@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Course extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'courses';
 

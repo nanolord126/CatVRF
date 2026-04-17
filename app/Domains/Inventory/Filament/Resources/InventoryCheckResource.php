@@ -95,9 +95,9 @@ final class InventoryCheckResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListInventoryChecks::route('/'),
-            'create' => Pages\CreateInventoryCheck::route('/create'),
-            'edit'   => Pages\EditInventoryCheck::route('/{record}/edit'),
+            'index'  => \App\Domains\Inventory\Filament\Resources\InventoryCheckResource\Pages\ListInventoryChecks::route('/'),
+            'create' => \App\Domains\Inventory\Filament\Resources\InventoryCheckResource\Pages\CreateInventoryCheck::route('/create'),
+            'edit'   => \App\Domains\Inventory\Filament\Resources\InventoryCheckResource\Pages\EditInventoryCheck::route('/{record}/edit'),
         ];
     }
 }

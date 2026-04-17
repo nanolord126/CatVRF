@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 final class ApplianceRepairOrder extends Model
 {
 
-    use HasFactory;
 
 
     use HasFactory, SoftDeletes;

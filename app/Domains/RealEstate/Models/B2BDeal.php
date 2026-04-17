@@ -4,7 +4,6 @@ namespace App\Domains\RealEstate\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 /**
@@ -31,8 +30,6 @@ use Illuminate\Support\Str;
  */
 final class B2BDeal extends Model
 {
-    use HasFactory;
-    use LogsActivity;
 
     protected $table = 'b2b_deals';
 
@@ -69,11 +66,5 @@ final class B2BDeal extends Model
         return $this->belongsTo(Listing::class);
     }
 
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logFillable()
-            ->useLogName('b2b_deals')
-            ->logOnlyDirty();
-    }
+    
 }

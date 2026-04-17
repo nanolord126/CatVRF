@@ -27,10 +27,6 @@ use Throwable;
  */
 final class ProcessOrderDeliveryJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 5;
     public int $maxExceptions = 2;

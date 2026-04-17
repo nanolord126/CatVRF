@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class VeterinaryService extends Model
 {
-    use HasFactory;
 
     protected $table = 'veterinary_services';
 

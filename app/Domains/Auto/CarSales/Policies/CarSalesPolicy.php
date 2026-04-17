@@ -2,9 +2,10 @@
 
 namespace App\Domains\Auto\CarSales\Policies;
 
-final class B2BAutoPolicy
+final class CarSalesPolicy
 {
-
+
+
     public function viewAny(User $user): Response
     	{
     		return $this->response->allow();

@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class LegalContract extends Model
 {
-    use HasFactory;
 
         protected $table = 'legal_contracts';
 

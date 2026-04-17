@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\SoftDeletes;
 
 /**
  * Enterprise клиент (крупные B2B-заказчики)
@@ -15,7 +14,6 @@ use App\Models\Traits\SoftDeletes;
  */
 final class Enterprise extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'enterprises';
 

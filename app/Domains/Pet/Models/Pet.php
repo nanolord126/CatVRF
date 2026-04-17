@@ -13,8 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Pet extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'pets';
 

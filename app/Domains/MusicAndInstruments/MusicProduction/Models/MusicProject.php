@@ -20,8 +20,6 @@ namespace App\Domains\MusicAndInstruments\MusicProduction\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class MusicProject extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'music_projects';
     protected $fillable = ['uuid', 'tenant_id', 'producer_id', 'artist_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'project_type', 'production_hours', 'due_date', 'tags'];

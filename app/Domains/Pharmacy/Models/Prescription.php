@@ -30,7 +30,6 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class Prescription extends Model
 {
-    use HasFactory;
 
     protected $table = 'prescriptions';
 

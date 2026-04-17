@@ -2,12 +2,12 @@
 
 namespace App\Domains\Consulting\Analytics\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class GeoActivity extends Model
 {
-    use HasFactory;
 
     protected $table = 'geo_activities';
         public $timestamps = false;

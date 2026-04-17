@@ -19,31 +19,17 @@
 namespace App\Domains\Confectionery\Filament\Resources\BakeryOrderResource\Pages;
 
 use App\Domains\Confectionery\Filament\Resources\BakeryOrderResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListBakeryOrders
- *
- * Part of the Confectionery vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\Confectionery\Filament\Resources\BakeryOrderResource\Pages
- */
 final class ListBakeryOrders extends ListRecords
 {
     protected static string $resource = BakeryOrderResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

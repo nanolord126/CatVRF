@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class StationeryCategory extends Model
 {
-    use HasFactory;
 
     protected $table = 'stationery_categories';
 

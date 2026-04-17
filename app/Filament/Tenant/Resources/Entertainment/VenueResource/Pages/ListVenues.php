@@ -41,9 +41,9 @@ final class ListVenues extends ListRecords
             return [
                 Actions\CreateAction::make()
                     ->after(function () {
-                        $this->logger->info('Venue creation started', [
+                        \Illuminate\Support\Facades\Log::channel('audit')->info('Venue creation started', [
                             'tenant_id' => filament()->getTenant()->id,
-                            'user_id' => $this->guard->id(),
+                            'user_id' => auth()->id(),
                         ]);
                     }),
             ];

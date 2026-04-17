@@ -32,7 +32,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class PropertyModel extends Model
 {
-    use SoftDeletes;
 
     public $incrementing = false;
 

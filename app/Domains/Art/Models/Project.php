@@ -12,7 +12,6 @@ use Illuminate\Support\Str;
 
 final class Project extends Model
 {
-    use HasFactory;
 
     protected $table = 'projects';
 

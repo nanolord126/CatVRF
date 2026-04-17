@@ -27,8 +27,9 @@ use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 final class CheckBookingPaymentTimeout
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(private string $bookingUuid,
             private string $correlationId,
@@ -76,3 +77,4 @@ final class CheckBookingPaymentTimeout
             }
         }
 }
+

@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Warehouse extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='warehouses';protected $fillable=['uuid','tenant_id','owner_id','correlation_id','name','area_sqm','price_kopecks_per_month','rating','is_verified','tags'];protected $casts=['area_sqm'=>'integer','price_kopecks_per_month'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('warehouses.tenant_id',tenant()->id));}
 

@@ -13,7 +13,9 @@ final class CheckTenantUser extends Command
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     protected $signature = 'app:check-tenant-user
         {--tenant-id= : Tenant ID to check against}

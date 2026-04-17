@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
 final class PetPedigree extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'pet_pedigrees';
 

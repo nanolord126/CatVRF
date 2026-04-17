@@ -17,8 +17,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class AdImpressionRegistered
 {
-    use Dispatchable;
-    use SerializesModels;
 
     /**
      * Create a new event instance.

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Tickets\Filament\Resources;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
@@ -10,7 +11,7 @@ use Filament\Tables;
 
 final class TicketTypeResource extends Resource
 {
-
+
     protected static ?string $model = TicketType::class;
         protected static ?string $navigationIcon = 'heroicon-o-ticket';
         protected static ?string $navigationLabel = 'Типы билетов';
@@ -98,9 +99,9 @@ final class TicketTypeResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListTicketTypes::route('/'),
-                'create' => Pages\CreateTicketType::route('/create'),
-                'edit' => Pages\EditTicketType::route('/{record}/edit'),
+                'index' => \App\Domains\Tickets\Filament\Resources\TicketTypeResource\Pages\ListTicketTypes::route('/'),
+                'create' => \App\Domains\Tickets\Filament\Resources\TicketTypeResource\Pages\CreateTicketType::route('/create'),
+                'edit' => \App\Domains\Tickets\Filament\Resources\TicketTypeResource\Pages\EditTicketType::route('/{record}/edit'),
             ];
         }
 

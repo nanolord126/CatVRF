@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Payment\PaymentService;
+use App\Services\FraudControlService;
+use App\Services\Security\RateLimiterService;
+use App\Http\Requests\PaymentInitRequest;
+use App\Exceptions\DuplicatePaymentException;
+use App\Exceptions\RateLimitException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Str;
 
 final class PaymentController extends Controller
 {
-
     public function __construct(
             private readonly PaymentService $paymentService,
             private readonly FraudControlService $fraud,
@@ -37,7 +44,7 @@ final class PaymentController extends Controller
                         ip: $request->ip()
                     );
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                    $this->logger->channel('audit')->error($e->getMessage(), [
                         'exception' => $e::class,
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),
@@ -97,7 +104,7 @@ final class PaymentController extends Controller
                     'Retry-After' => $e->getRetryAfter(),
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

@@ -125,35 +125,40 @@ Schedule::call(function () {
 })->hourly()->name('platform.recalculate-analytics');
 
 // Уведомления о низком остатке — 08:00 UTC (оставляем фиксированным для утра)
-Schedule::job(new LowStockNotificationJob())
-    ->dailyAt('08:00')
-    ->name('platform.low-stock-notification')
-    ->withoutOverlapping(60);
+// Schedule::job(new LowStockNotificationJob())
+//     ->dailyAt('08:00')
+//     ->name('platform.low-stock-notification')
+//     ->withoutOverlapping(60);
 
 // Очистка истёкших idempotency records — каждый день 00:30 UTC
-Schedule::job(new CleanupExpiredIdempotencyRecordsJob())
-    ->dailyAt('00:30')
-    ->name('platform.cleanup-idempotency-records')
-    ->withoutOverlapping(30);
+// Schedule::job(new CleanupExpiredIdempotencyRecordsJob())
+//     ->dailyAt('00:30')
+//     ->name('platform.cleanup-idempotency-records')
+//     ->withoutOverlapping(30);
 
 // Очистка устаревших сессий совместной работы — еженедельно
-Schedule::job(new CleanupStaleCollaborationSessionsJob())
-    ->weeklyOn(1, '03:00')
-    ->name('platform.cleanup-collaboration-sessions')
-    ->withoutOverlapping(60);
+// Schedule::job(new CleanupStaleCollaborationSessionsJob())
+//     ->weeklyOn(1, '03:00')
+//     ->name('platform.cleanup-collaboration-sessions')
+//     ->withoutOverlapping(60);
 
 // Снятие холдов с истёкшими сроками — каждые 15 минут
-Schedule::job(new ReleaseHoldJob())
-    ->everyFifteenMinutes()
-    ->name('platform.release-hold')
-    ->withoutOverlapping(10);
+// Schedule::job(new ReleaseHoldJob())
+//     ->everyFifteenMinutes()
+//     ->name('platform.release-hold')
+//     ->withoutOverlapping(10);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TAXI / AUTO — Surge каждые 5 минут
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::call(fn () => SurgeRecalculationJob::dispatch())
-    ->everyFiveMinutes()
-    ->name('taxi.surge-recalculation');
+// Schedule::call(function () {
+//     LowStockNotificationJob::dispatch();
+// })->everyMinute();
+
+// Schedule::call(function () {
+//     SurgeRecalculationJob::dispatch();
+// })->everyFiveMinutes()
+//     ->name('taxi.surge-recalculation');
 
 // Закомментировано: требует параметры
 // Schedule::job(new RideReminderJob())
@@ -170,9 +175,9 @@ Schedule::call(fn () => SurgeRecalculationJob::dispatch())
 //     ->name('beauty.appointment-reminder')
 //     ->withoutOverlapping(25);
 
-Schedule::call(fn () => SendAppointmentRemindersJob::dispatch())
-    ->everyThirtyMinutes()
-    ->name('beauty.appointment-reminders');
+// Schedule::call(fn () => SendAppointmentRemindersJob::dispatch())
+//     ->everyThirtyMinutes()
+//     ->name('beauty.appointment-reminders');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CHANNELS
@@ -243,15 +248,15 @@ Schedule::call(fn () => SendAppointmentRemindersJob::dispatch())
 // ══════════════════════════════════════════════════════════════════════════════
 // HOME SERVICES
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateContractorEarningsJob())
-    ->dailyAt('05:00')
-    ->name('home-services.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateContractorEarningsJob())
+//     ->dailyAt('05:00')
+//     ->name('home-services.calculate-earnings')
+//     ->withoutOverlapping(60);
 
-Schedule::job(new SendJobReminderJob())
-    ->everyThirtyMinutes()
-    ->name('home-services.job-reminder')
-    ->withoutOverlapping(25);
+// Schedule::job(new SendJobReminderJob())
+//     ->everyThirtyMinutes()
+//     ->name('home-services.job-reminder')
+//     ->withoutOverlapping(25);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HOTELS
@@ -271,10 +276,10 @@ Schedule::job(new CheckInReminderJob())
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGISTICS
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateCourierEarningsJob())
-    ->dailyAt('05:30')
-    ->name('logistics.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateCourierEarningsJob())
+//     ->dailyAt('05:30')
+//     ->name('logistics.calculate-earnings')
+//     ->withoutOverlapping(60);
 
 // Schedule::job(new UpdateShipmentStatusJob())
 //     ->everyFifteenMinutes()
@@ -284,10 +289,10 @@ Schedule::job(new CalculateCourierEarningsJob())
 // ══════════════════════════════════════════════════════════════════════════════
 // MEDICAL
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateClinicEarningsJob())
-    ->dailyAt('06:00')
-    ->name('medical.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateClinicEarningsJob())
+//     ->dailyAt('06:00')
+//     ->name('medical.calculate-earnings')
+//     ->withoutOverlapping(60);
 
 // Schedule::job(new UpdateAppointmentStatusJob())
 //     ->everyThirtyMinutes()
@@ -310,10 +315,10 @@ Schedule::job(new CalculateClinicEarningsJob())
 // ══════════════════════════════════════════════════════════════════════════════
 // PHOTOGRAPHY
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateRatingsJob())
-    ->dailyAt('07:00')
-    ->name('photography.calculate-ratings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateRatingsJob())
+//     ->dailyAt('07:00')
+//     ->name('photography.calculate-ratings')
+//     ->withoutOverlapping(60);
 
 // Schedule::job(new UpdateSessionStatusJob())
 //     ->hourly()
@@ -362,13 +367,13 @@ Schedule::job(new CalculateRatingsJob())
 // ══════════════════════════════════════════════════════════════════════════════
 // TRAVEL
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateAgencyEarningsJob(1, 'sch-'.\Illuminate\Support\Str::uuid()->toString()))
-    ->dailyAt('08:00')
-    ->name('travel.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateAgencyEarningsJob(1, 'sch-'.\Illuminate\Support\Str::uuid()->toString()))
+//     ->dailyAt('08:00')
+//     ->name('travel.calculate-earnings')
+//     ->withoutOverlapping(60);
 
-Schedule::job(new UpdateBookingStatusJob())
-    ->everyThirtyMinutes()
-    ->name('travel.update-booking-status')
-    ->withoutOverlapping(25);
+// Schedule::job(new UpdateBookingStatusJob())
+//     ->everyThirtyMinutes()
+//     ->name('travel.update-booking-status')
+//     ->withoutOverlapping(25);
 

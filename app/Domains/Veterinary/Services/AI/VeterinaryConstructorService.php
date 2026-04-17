@@ -2,9 +2,6 @@
 
 namespace App\Domains\Veterinary\Services\AI;
 
-
-
-use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 final readonly class VeterinaryConstructorService
 {
@@ -71,7 +68,7 @@ final readonly class VeterinaryConstructorService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction(function () use ($callback) {
+        return $this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

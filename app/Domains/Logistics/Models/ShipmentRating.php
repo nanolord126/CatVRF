@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 final class ShipmentRating extends Model
 {
 
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

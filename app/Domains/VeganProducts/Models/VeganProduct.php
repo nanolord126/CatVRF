@@ -14,14 +14,32 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\TenantScoped;
 
 final class VeganProduct extends Model
 {
-    use HasFactory;
-
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, TenantScoped;
 
-        protected $table = 'vegan_products';
+    protected $table = 'vegan_products';
+
+    protected $fillable = [
+        'uuid',
+        'correlation_id',
+        'tenant_id',
+        'business_group_id',
+        'name',
+        'description',
+        'price',
+        'b2b_price',
+        'is_b2b_available',
+        'current_stock',
+        'hold_stock',
+        'availability_status',
+        'allergen_info',
+        'ingredients',
+        'tags',
+        'is_active',
+    ];
 
         /**
          * Check availability taking hold stock into account.

@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class AutoPartResource extends Resource
 {
-
+
     protected static ?string $model = AutoPart::class;
 
         protected static ?string $navigationLabel = 'Запчасти';
@@ -110,10 +110,10 @@ final class AutoPartResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListAutoParts::route('/'),
-                'create' => Pages\CreateAutoPart::route('/create'),
-                'edit' => Pages\EditAutoPart::route('/{record}/edit'),
-                'view' => Pages\ViewAutoPart::route('/{record}'),
+                'index' => \App\Domains\Auto\Filament\Resources\AutoPartResource\Pages\ListAutoParts::route('/'),
+                'create' => \App\Domains\Auto\Filament\Resources\AutoPartResource\Pages\CreateAutoPart::route('/create'),
+                'edit' => \App\Domains\Auto\Filament\Resources\AutoPartResource\Pages\EditAutoPart::route('/{record}/edit'),
+                'view' => \App\Domains\Auto\Filament\Resources\AutoPartResource\Pages\ViewAutoPart::route('/{record}'),
             ];
         }
 }

@@ -9,9 +9,6 @@ use Illuminate\Queue\SerializesModels;
 final class PeerJoined
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         private string $correlationId;
 

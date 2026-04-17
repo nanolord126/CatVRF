@@ -38,7 +38,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class AnalyticsEventTracked
 {
-    use Dispatchable, SerializesModels;
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         public readonly string $eventType,
@@ -47,3 +47,4 @@ final class AnalyticsEventTracked
     ) {
 }
 }
+

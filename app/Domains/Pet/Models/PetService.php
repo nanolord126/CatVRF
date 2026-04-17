@@ -12,7 +12,6 @@ use Illuminate\Support\Str;
 
 final class PetService extends Model
 {
-    use HasFactory;
 
     protected $table = 'pet_services';
 

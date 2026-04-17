@@ -4,14 +4,11 @@ namespace App\Domains\Tickets\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class CheckInLog extends Model
 {
-    use HasFactory;
 
-    use LogsActivity;
 
         protected $table = 'check_in_logs';
 
@@ -43,14 +40,7 @@ final class CheckInLog extends Model
             });
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['ticket_id', 'checker_user_id', 'is_success', 'error_reason'])
-                ->logOnlyDirty()
-                ->dontSubmitEmptyLogs()
-                ->useLogName('audit');
-        }
+        
 
         /**
          * Билет лога.

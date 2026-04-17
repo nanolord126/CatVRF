@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace App\Domains\Luxury\Jewelry\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 
@@ -10,9 +12,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 
-final class JewelryDomainTrait extends Model
+trait JewelryDomainTrait
 {
-    use HasFactory;
 
     protected static function booted_disabled(): void
         {

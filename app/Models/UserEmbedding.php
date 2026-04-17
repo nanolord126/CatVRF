@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\SoftDeletes;
 
 /**
  * Векторное представление (embedding) профиля пользователя для ML-рекомендаций
@@ -15,7 +14,6 @@ use App\Models\Traits\SoftDeletes;
  */
 final class UserEmbedding extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'user_embeddings';
 

@@ -30,12 +30,12 @@ final class EditCourse extends EditRecord
             // 1. Фрод-проверка на изменение контента
             app(FraudControlService::class)->checkOperation('edit_education_course', [
                 'tenant_id' => tenant()->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'course_id' => $this->record->id,
             ]);
 
-            $this->logger->info('User started Education Course edit', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('User started Education Course edit', [
                 'tenant_id' => tenant()->id,
                 'course_id' => $this->record->id,
                 'correlation_id' => $correlationId,
@@ -50,7 +50,7 @@ final class EditCourse extends EditRecord
             return $this->db->transaction(function () use ($record, $data) {
                 $updatedRecord = parent::handleRecordUpdate($record, $data);
 
-                $this->logger->info('Education Course updated', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Education Course updated', [
                     'course_id' => $updatedRecord->id,
                     'correlation_id' => $data['correlation_id'] ?? (string) Str::uuid(),
                 ]);
@@ -64,7 +64,7 @@ final class EditCourse extends EditRecord
          */
         protected function afterSave(): void
         {
-            $this->logger->info('Education Course edit successfully finalized', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Education Course edit successfully finalized', [
                 'course_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

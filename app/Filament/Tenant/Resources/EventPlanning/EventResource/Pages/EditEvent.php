@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
+use Filament\Notifications\Notification;
 
 
 use Psr\Log\LoggerInterface;
@@ -37,7 +38,7 @@ final class EditEvent extends EditRecord
 
                         $this->logger->warning('Filament: Event cancelled manual', [
                             'event_uuid' => $this->record->uuid,
-                            'user_id' => $this->guard->id()
+                            'user_id' => auth()->id()
                         ]);
 
                         Notification::make()
@@ -54,9 +55,9 @@ final class EditEvent extends EditRecord
                     ->action(function () {
                         $this->record->update(['status' => 'confirmed']);
 
-                        $this->logger->info('Filament: Event confirmed manual', [
+                        \Illuminate\Support\Facades\Log::channel('audit')->info('Filament: Event confirmed manual', [
                             'event_uuid' => $this->record->uuid,
-                            'user_id' => $this->guard->id()
+                            'user_id' => auth()->id()
                         ]);
 
                         Notification::make()
@@ -73,10 +74,10 @@ final class EditEvent extends EditRecord
          */
         protected function mutateFormDataBeforeSave(array $data): array
         {
-            $this->logger->info('Filament: Plan modified', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Filament: Plan modified', [
                 'event_uuid' => $this->record->uuid,
                 'tenant_id' => tenant()->id,
-                'modified_by' => $this->guard->id(),
+                'modified_by' => auth()->id(),
             ]);
 
             return $data;

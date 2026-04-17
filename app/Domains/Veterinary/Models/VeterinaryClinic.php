@@ -10,9 +10,7 @@ use Illuminate\Support\Str;
 
 final class VeterinaryClinic extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'veterinary_clinics';
 

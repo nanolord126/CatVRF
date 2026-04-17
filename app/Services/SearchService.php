@@ -2,14 +2,12 @@
 
 namespace App\Services;
 
-
+use App\Domains\Search\Models\SearchIndex;
+use App\Domains\Search\Services\SearchService as DomainSearchService;
 use Illuminate\Http\Request;
 use App\Services\Security\RateLimiterService;
 use Exception;
 use Illuminate\Support\Collection;
-
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
@@ -19,12 +17,13 @@ final readonly class SearchService
 
     public function __construct(
         private readonly Request $request,
-            private RecommendationService $recommendationService,
-            private FraudControlService $fraud,
-            private RateLimiterService $rateLimiterService,
-            private SearchRankingService $rankingService,
+        private readonly RecommendationService $recommendationService,
+        private readonly FraudControlService $fraud,
+        private readonly RateLimiterService $rateLimiterService,
+        private readonly SearchRankingService $rankingService,
         private readonly LogManager $logger,
         private readonly CacheManager $cache,
+        private readonly DomainSearchService $domainSearchService,
     ) {}
 
         /**
@@ -46,13 +45,15 @@ final readonly class SearchService
             int $perPage = 20,
         ): array {
             try {
+                $correlationId = $this->request->header('X-Correlation-ID', Str::uuid()->toString());
+                
                 $this->logger->channel('audit')->info('Search executed', [
                     'query' => $query,
                     'user_id' => $userId,
                     'filters' => count($filters),
                     'page' => $page,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+                    'correlation_id' => $correlationId,
+                ]);
 
                 $cacheKey = "search:{$query}:user:{$userId}:page:{$page}:v1";
 
@@ -62,32 +63,48 @@ final readonly class SearchService
                     return $cached;
                 }
 
-                // Плейсхолдер результатов
-                $results = collect([
-                    [
-                        'id' => 1,
-                        'name' => 'Найденный товар 1',
-                        'price' => 5000,
-                        'rating' => 4.8,
-                        'rank_score' => 0.95,
-                        'rank_reason' => 'wishlist_boost', // boost из wishlist
-                    ],
-                    [
-                        'id' => 2,
-                        'name' => 'Найденный товар 2',
-                        'price' => 7000,
-                        'rating' => 4.5,
-                        'rank_score' => 0.87,
-                        'rank_reason' => 'ml_recommendation',
-                    ],
-                ]);
+                // Выполняем реальный поиск через domain service
+                $searchType = $filters['vertical'] ?? null;
+                $rawResults = $this->domainSearchService->search(
+                    term: $query,
+                    type: $searchType,
+                    limit: $perPage * 2, // Получаем больше для ранжирования
+                );
+
+                // Применяем фильтры
+                $results = collect($rawResults);
+                
+                if (!empty($filters['price_from'])) {
+                    $results = $results->filter(function ($item) use ($filters) {
+                        $price = $item['metadata']['price'] ?? null;
+                        return $price !== null && $price >= $filters['price_from'];
+                    });
+                }
+
+                if (!empty($filters['price_to'])) {
+                    $results = $results->filter(function ($item) use ($filters) {
+                        $price = $item['metadata']['price'] ?? null;
+                        return $price !== null && $price <= $filters['price_to'];
+                    });
+                }
+
+                if (!empty($filters['rating_min'])) {
+                    $results = $results->filter(function ($item) use ($filters) {
+                        $rating = $item['metadata']['rating'] ?? null;
+                        return $rating !== null && $rating >= $filters['rating_min'];
+                    });
+                }
 
                 // Применяем ранжирование
                 $rankedResults = $this->applyRanking($results, $userId);
 
+                // Пагинация
+                $total = $rankedResults->count();
+                $pagedResults = $rankedResults->slice(($page - 1) * $perPage, $perPage)->values();
+
                 $response = [
-                    'data' => $rankedResults,
-                    'total' => 42, // плейсхолдер
+                    'data' => $pagedResults,
+                    'total' => $total,
                     'page' => $page,
                     'per_page' => $perPage,
                 ];
@@ -97,18 +114,18 @@ final readonly class SearchService
 
                 return $response;
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $correlationId,
                 ]);
 
                 $this->logger->channel('audit')->error('Search failed', [
                     'query' => $query,
                     'error' => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+                    'correlation_id' => $correlationId,
+                ]);
 
                 throw $e;
             }

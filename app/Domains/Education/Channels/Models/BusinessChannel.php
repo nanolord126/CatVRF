@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class BusinessChannel extends Model
 {
-    use HasFactory;
 
     use SoftDeletes, HasUuids;
 

@@ -4,11 +4,12 @@ namespace App\Domains\EventPlanning\Entertainment\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class Event extends Model
 {
-    use HasFactory;
-
+
+
     protected $table = 'entertainment_events';
 
         protected $fillable = [

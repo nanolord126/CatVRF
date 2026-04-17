@@ -17,8 +17,6 @@ final class RefundShipmentCommissionListener
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
 
-    use InteractsWithQueue;
-use App\Services\FraudControlService;
 
         public function handle(ShipmentCreated $event): void
         {
@@ -67,3 +65,4 @@ use App\Services\FraudControlService;
             }
         }
 }
+

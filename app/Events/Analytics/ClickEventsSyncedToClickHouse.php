@@ -25,9 +25,6 @@ use Illuminate\Queue\SerializesModels;
 final class ClickEventsSyncedToClickHouse
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         private int $tenantId;
         private string $correlationId;

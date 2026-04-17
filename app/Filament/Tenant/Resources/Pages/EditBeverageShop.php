@@ -48,7 +48,7 @@ final class EditBeverageShop extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('BeverageShop updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageShop updated', [
             'shop_id'        => $this->record->id,
             'name'           => $this->record->name,
             'is_active'      => $this->record->is_active,

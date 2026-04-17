@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Education\Kids\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Carbon\Carbon;
@@ -10,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class KidsEvent extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

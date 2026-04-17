@@ -27,18 +27,18 @@ final class EditVenue extends EditRecord
 
         protected function beforeSave(): void
         {
-            $this->logger->info('Venue modification started', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue modification started', [
                 'venue_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }
 
         protected function afterSave(): void
         {
-            $this->logger->info('Venue modification completed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue modification completed', [
                 'venue_id' => $this->record->id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->record->correlation_id,
             ]);
         }

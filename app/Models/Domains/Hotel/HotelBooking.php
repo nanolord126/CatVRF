@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class HotelBooking extends Model
 {
-    use HasFactory;
 
         protected $table = 'hotel_bookings';
 

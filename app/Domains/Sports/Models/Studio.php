@@ -9,8 +9,6 @@ use Illuminate\Support\Str;
 
 final class Studio extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'studios';
     protected $fillable = [

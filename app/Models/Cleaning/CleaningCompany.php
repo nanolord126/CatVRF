@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 final class CleaningCompany extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'cleaning_companies';
 

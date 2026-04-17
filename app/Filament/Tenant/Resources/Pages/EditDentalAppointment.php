@@ -63,7 +63,7 @@ final class EditDentalAppointment extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('DentalAppointment updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalAppointment updated', [
             'appointment_id' => $this->record->id,
             'status'         => $this->record->status,
             'total_price'    => $this->record->total_price,

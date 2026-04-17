@@ -51,7 +51,7 @@ final class EditFashionRetail extends EditRecord
     {
         $record = $this->record;
 
-        $this->logger->info('B2B Fashion retail order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Fashion retail order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'buyer_inn'      => $record->buyer_inn,

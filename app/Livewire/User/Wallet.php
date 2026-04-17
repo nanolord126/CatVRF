@@ -26,7 +26,6 @@ use Illuminate\Database\DatabaseManager;
  */
 final class Wallet extends Component
 {
-    use WithPagination;
 
     // ── публичные свойства ───────────────────────────────────────────────────
 

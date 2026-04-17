@@ -82,11 +82,11 @@ final readonly class ClaimService
                 });
 
             } catch (Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $correlationId,
                 ]);
 
                 // 6. Error handling (Canon 2026: Logging errors)

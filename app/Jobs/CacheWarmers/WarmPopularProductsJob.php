@@ -19,8 +19,6 @@ use Illuminate\Cache\CacheManager;
  */
 final class WarmPopularProductsJob implements ShouldQueue
 {
-    use Queueable;
-
         protected int $tries = 3;
         protected int $timeout = 45;
 

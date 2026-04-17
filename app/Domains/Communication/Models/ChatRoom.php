@@ -17,27 +17,33 @@ use Illuminate\Support\Str;
  */
 final class ChatRoom extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
-    protected $table = 'communication_chat_rooms';
+    protected $table = 'chat_rooms';
 
     protected $fillable = [
         'tenant_id',
+        'business_group_id',
         'uuid',
         'correlation_id',
-        'type',         // support | b2b_deal | order | direct
+        'type',
+        'context_type',
+        'context_id',
+        'vertical',
         'title',
-        'entity_type',  // order | booking | deal | null
-        'entity_id',
-        'is_active',
-        'metadata',
+        'participants',
+        'created_by_user_id',
+        'messages_count',
+        'last_message_at',
+        'status',
+        'closed_at',
         'tags',
     ];
 
     protected $casts = [
-        'metadata'  => 'array',
-        'tags'      => 'array',
-        'is_active' => 'boolean',
+        'participants'   => 'array',
+        'tags'           => 'array',
+        'last_message_at'=> 'datetime',
+        'closed_at'      => 'datetime',
     ];
 
     protected static function booted(): void

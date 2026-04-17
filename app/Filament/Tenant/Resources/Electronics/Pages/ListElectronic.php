@@ -11,8 +11,6 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class ListElectronic extends ListRecords
 {
@@ -34,10 +32,10 @@ final class ListElectronic extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Electronics ListRecords accessed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Electronics ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -59,10 +57,9 @@ final class ListElectronic extends ListRecords
         ];
     }
 
-    public function render()
-    {
+    public function render(): \Illuminate\Contracts\View\View {
         $this->logger->info('ListElectronic page rendered', [
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

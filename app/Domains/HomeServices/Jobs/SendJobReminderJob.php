@@ -7,9 +7,6 @@ namespace App\Domains\HomeServices\Jobs;
 
 use Carbon\Carbon;
 
-
-
-use App\Services\FraudControlService;
 use Psr\Log\LoggerInterface;
 use App\Domains\HomeServices\Models\ServiceJob;
 use Illuminate\Bus\Queueable;
@@ -19,7 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 final class SendJobReminderJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         private readonly FraudControlService $fraud,
@@ -73,3 +70,4 @@ final class SendJobReminderJob implements ShouldQueue
         return 'notifications';
     }
 }
+

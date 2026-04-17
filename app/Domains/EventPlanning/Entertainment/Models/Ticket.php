@@ -3,14 +3,15 @@
 namespace App\Domains\EventPlanning\Entertainment\Models;
 
 use Carbon\Carbon;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class Ticket extends Model
 {
-    use HasFactory;
-
+    use HasFactory, TenantScoped;
+
+
     protected $table = 'entertainment_tickets';
 
         protected $fillable = [

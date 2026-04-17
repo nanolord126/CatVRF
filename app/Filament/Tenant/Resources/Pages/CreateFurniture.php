@@ -42,7 +42,7 @@ final class CreateFurniture extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Furniture item created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture item created', [
             'item_id'        => $record->id,
             'name'           => $record->name,
             'category'       => $record->category,

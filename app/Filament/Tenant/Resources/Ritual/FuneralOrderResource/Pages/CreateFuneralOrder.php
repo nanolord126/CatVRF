@@ -51,7 +51,7 @@ final class CreateFuneralOrder extends CreateRecord
             'correlation_id' => $this->data['correlation_id'] ?? null,
         ]);
 
-        $this->logger->info('Creating ritual order from Filament', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Creating ritual order from Filament', [
             'data' => $this->data,
         ]);
     }
@@ -64,7 +64,7 @@ final class CreateFuneralOrder extends CreateRecord
         return $this->db->transaction(function () use ($data) {
             $record = parent::handleRecordCreation($data);
 
-            $this->logger->info('Ritual order record created in DB', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual order record created in DB', [
                 'order_id' => $record->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);

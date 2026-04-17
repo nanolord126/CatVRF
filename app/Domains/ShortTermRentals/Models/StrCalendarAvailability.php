@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class StrCalendarAvailability extends Model
 {
-    use HasFactory;
 
     protected $table = 'str_calendar_availability';
 

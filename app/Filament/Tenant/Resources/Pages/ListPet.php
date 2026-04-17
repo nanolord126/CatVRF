@@ -2,6 +2,15 @@
 
 namespace App\Filament\Tenant\Resources\Pages;
 
+use Filament\Resources\Pages\ListRecords;
+
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\CreateAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+
 
 /**
  * Class ListPet

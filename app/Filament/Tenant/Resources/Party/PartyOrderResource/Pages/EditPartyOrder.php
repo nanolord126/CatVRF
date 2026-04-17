@@ -42,7 +42,7 @@ final class EditPartyOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('PartyOrder updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('PartyOrder updated', [
             'order_id' => $this->record->id,
             'status' => $this->record->status,
             'correlation_id' => $this->record->correlation_id,

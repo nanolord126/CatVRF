@@ -23,7 +23,7 @@ use Illuminate\Log\LogManager;
  */
 final class DispatchMessageJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries   = 3;
     public int $timeout = 30;
@@ -68,3 +68,4 @@ final class DispatchMessageJob implements ShouldQueue
         Message::where('id', $this->messageId)->update(['status' => 'failed']);
     }
 }
+

@@ -36,8 +36,6 @@ use Illuminate\Notifications\Notification;
  */
 final class AppointmentReminderNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
-
     public function __construct(
         private readonly object $appointment,
     )

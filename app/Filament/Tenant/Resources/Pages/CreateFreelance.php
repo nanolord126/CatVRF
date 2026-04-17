@@ -58,7 +58,7 @@ final class CreateFreelance extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Freelance order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Freelance order created', [
             'order_id'       => $record->id,
             'title'          => $record->title,
             'budget'         => $record->budget_kopecks,

@@ -8,11 +8,13 @@ use Illuminate\Contracts\Auth\Guard;
 
 final class SubscriptionController extends Controller
 {
-
+
+
     public function __construct(
             private readonly RealtimeService $realtimeService,
             private readonly LogManager $logger,
             private readonly Guard $guard,
+            private readonly Connection $redis,
     ) {
             parent::__construct();
         }
@@ -122,7 +124,7 @@ final class SubscriptionController extends Controller
                 // Retrieve subscribed channels from cache using pattern scan
                 $channels = [];
                 try {
-                    $keys = \Illuminate\Support\Facades\Redis::keys($pattern);
+                    $keys = $this->redis->keys($pattern);
                     $channels = array_map(fn($k) => str_replace("subscription:user.{$userId}:", '', $k), $keys);
                 } catch (\Throwable $redisEx) {
                     // Redis unavailable — return empty list gracefully

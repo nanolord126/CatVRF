@@ -9,9 +9,6 @@ use Illuminate\Queue\SerializesModels;
 final class IceCandidateSent
 {
 
-    use Dispatchable;
-        use InteractsWithSockets;
-        use SerializesModels;
 
         private string $correlationId;
 

@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class RideCompleted
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             readonly public TaxiRide $ride,
@@ -54,3 +55,4 @@ final class RideCompleted
         ];
     }
 }
+

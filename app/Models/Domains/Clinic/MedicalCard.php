@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class MedicalCard extends Model
 {
-    use HasFactory;
 
         protected $table = 'medical_cards';
 

@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Luxury\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class LuxuryBrand extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'luxury_brands';
 

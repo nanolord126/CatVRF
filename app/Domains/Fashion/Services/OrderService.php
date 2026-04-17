@@ -12,7 +12,7 @@ use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class OrderService
 {
-
+
     public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,

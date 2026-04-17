@@ -6,6 +6,7 @@ use App\Domains\Travel\Http\Controllers\TravelBookingController;
 use App\Domains\Travel\Http\Controllers\TravelFlightController;
 use App\Domains\Travel\Http\Controllers\TravelTransportationController;
 use App\Domains\Travel\Http\Controllers\TravelReviewController;
+use App\Domains\Travel\Http\Controllers\FlightSearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/travel')->group(function () {
@@ -25,6 +26,19 @@ Route::prefix('api/travel')->group(function () {
         Route::get('/search', [TravelAgencyController::class, 'search']);
         Route::get('/guides', [TravelAgencyController::class, 'indexGuides']);
         Route::get('/guides/{id}', [TravelAgencyController::class, 'showGuide']);
+        
+        // External flight search endpoints
+        Route::prefix('flights/search')->group(function () {
+            Route::get('/', [FlightSearchController::class, 'search']);
+            Route::get('/airports', [FlightSearchController::class, 'airports']);
+            Route::get('/{id}', [FlightSearchController::class, 'show']);
+        });
+
+        // Tour search endpoints
+        Route::prefix('tours/search')->group(function () {
+            Route::get('/', [TravelTourController::class, 'search']);
+            Route::get('/destinations', [TravelTourController::class, 'searchDestinations']);
+        });
     });
 
     Route::middleware(['auth:sanctum'])->group(function () {

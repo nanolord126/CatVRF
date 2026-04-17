@@ -10,7 +10,8 @@
         "ms-azuretools.vscode-docker",
         "amiralizadeh94.laravel-extra-intellisense",
         "onecentlin.laravel-blade",
-        "bmewburn.vscode-intelephense-client"
+        "bmewburn.vscode-intelephense-client",
+        "TomKent.windsurf-tools"
       ],
       "settings": {
         "http.systemCertificatesNode": true,

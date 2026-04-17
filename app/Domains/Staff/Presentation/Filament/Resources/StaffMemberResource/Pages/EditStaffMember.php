@@ -2,18 +2,13 @@
 
 declare(strict_types=1);
 
-/**
- * Class EditStaffMember
- *
- * Part of the Staff vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\Staff\Presentation\Filament\Resources\StaffMemberResource\Pages
- */
+namespace App\Domains\Staff\Presentation\Filament\Resources\StaffMemberResource\Pages;
+
+use App\Domains\Staff\Presentation\Filament\Resources\StaffMemberResource;
+use Filament\Actions\DeleteAction;
+use Filament\Resources\Pages\EditRecord;
+use Ramsey\Uuid\Uuid;
+
 final class EditStaffMember extends EditRecord
 {
     protected static string $resource = StaffMemberResource::class;
@@ -25,12 +20,6 @@ final class EditStaffMember extends EditRecord
         ];
     }
 
-    /**
-     * Обновляем correlation_id перед каждым сохранением изменений.
-     *
-     * @param  array<string, mixed> $data
-     * @return array<string, mixed>
-     */
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['correlation_id'] = Uuid::uuid4()->toString();

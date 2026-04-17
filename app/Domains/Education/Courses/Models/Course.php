@@ -11,7 +11,6 @@ final class Course extends Model
 {
     protected $table = 'education_courses';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

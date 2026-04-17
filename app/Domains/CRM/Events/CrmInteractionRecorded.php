@@ -19,9 +19,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class CrmInteractionRecorded
 {
-    use \Illuminate\Foundation\Events\Dispatchable;
-    use \Illuminate\Broadcasting\InteractsWithSockets;
-    use \Illuminate\Queue\SerializesModels;
 
     /**
      * @param CrmInteraction $interaction   Созданное взаимодействие

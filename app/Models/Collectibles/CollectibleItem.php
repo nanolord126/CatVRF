@@ -8,7 +8,6 @@ use Illuminate\Support\Str;
 
 final class CollectibleItem extends Model
 {
-    use HasFactory;
 
     protected $table = 'collectible_items';
 

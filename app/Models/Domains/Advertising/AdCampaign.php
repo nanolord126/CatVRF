@@ -52,10 +52,8 @@ final class AdCampaign extends Model
         'tenant_id',
     ];
 
-    use HasFactory;
 
         protected $table = "ad_campaigns";
-        protected $guarded = [];
 
         protected static function newFactory()
         {

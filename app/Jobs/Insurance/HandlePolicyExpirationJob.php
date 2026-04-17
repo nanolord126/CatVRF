@@ -13,7 +13,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class HandlePolicyExpirationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
         public int $backoff = 60;
@@ -84,11 +84,11 @@ final class HandlePolicyExpirationJob implements ShouldQueue
                 ]);
 
             } catch (Exception $globalException) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($globalException->getMessage(), [
+                $logger->channel('audit')->error($globalException->getMessage(), [
                     'exception' => $globalException::class,
                     'file' => $globalException->getFile(),
                     'line' => $globalException->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    'correlation_id' => $this->correlationId,
                 ]);
 
                 $logger->channel('audit')->critical('[HandlePolicyExpirationJob] GLOBAL CRITICAL FAILURE', [
@@ -109,3 +109,4 @@ final class HandlePolicyExpirationJob implements ShouldQueue
             return ['insurance', 'expiration', 'cron', $this->correlationId];
         }
 }
+

@@ -33,10 +33,6 @@ use Psr\Log\LoggerInterface;
 
 final class HotelPayoutJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Number of times the job may be attempted.

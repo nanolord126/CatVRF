@@ -19,6 +19,7 @@
 
 namespace App\Filament\Tenant\Resources\Education\Pages;
 
+use Filament\Notifications\Notification;
 
 
 use Psr\Log\LoggerInterface;
@@ -66,7 +67,7 @@ final class CreateCorporateContract extends CreateRecord
                 ->body('Corporate agreement #' . $this->record->contract_number . ' is now active.')
                 ->send();
 
-            $this->logger->info('B2B Education: Corporate agreement created', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Education: Corporate agreement created', [
                 'contract_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
             ]);

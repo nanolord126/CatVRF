@@ -13,7 +13,7 @@ use Illuminate\Database\DatabaseManager;
 
 final class SeasonalDiscountJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private string $correlationId,
@@ -100,7 +100,7 @@ final class SeasonalDiscountJob implements ShouldQueue
      */
     final class EventReminderJob implements ShouldQueue
     {
-        use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private string $correlationId
@@ -137,3 +137,4 @@ final class SeasonalDiscountJob implements ShouldQueue
             ]);
         }
 }
+

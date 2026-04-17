@@ -23,7 +23,7 @@ final class CalculateRatingsJob implements ShouldQueue
     public function __construct(private readonly \Illuminate\Database\DatabaseManager $db,
         private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
 
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries = 1;
     public int $timeout = 120;
@@ -65,3 +65,4 @@ final class CalculateRatingsJob implements ShouldQueue
         }
     }
 }
+

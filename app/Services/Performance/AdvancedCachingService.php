@@ -2,11 +2,8 @@
 
 namespace App\Services\Performance;
 
-
-
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\Connections\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
 
@@ -16,6 +13,7 @@ final readonly class AdvancedCachingService
         private readonly Request $request,
         private readonly LogManager $logger,
         private readonly CacheManager $cache,
+        private readonly Connection $redis
     ) {}
 
 
@@ -164,7 +162,7 @@ final readonly class AdvancedCachingService
                 $this->logger->channel('performance')->info('Cache pattern invalidated', [
                     'pattern' => $pattern,
                     'keys_cleared' => $count,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', ''),
             ]);
 
                 return $count;
@@ -173,7 +171,7 @@ final readonly class AdvancedCachingService
                 $this->logger->channel('performance')->error('Pattern invalidation failed', [
                     'pattern' => $pattern,
                     'error' => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', ''),
             ]);
                 return 0;
             }
@@ -199,8 +197,7 @@ final readonly class AdvancedCachingService
         public function getStats(): array
         {
             try {
-                $redis = Redis::connection();
-                $info = $redis->info();
+                $info = $this->redis->info();
 
                 return [
                     'used_memory' => $info['used_memory'] ?? 0,
@@ -213,7 +210,7 @@ final readonly class AdvancedCachingService
             } catch (\Throwable $e) {
                 $this->logger->channel('performance')->warning('Failed to get cache stats', [
                     'error' => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', ''),
             ]);
                 return [];
             }
@@ -253,7 +250,7 @@ final readonly class AdvancedCachingService
                 $this->logger->channel('performance')->warning('Key search failed', [
                     'pattern' => $pattern,
                     'error' => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                    'correlation_id' => $this->request->header('X-Correlation-ID', ''),
             ]);
                 return [];
             }

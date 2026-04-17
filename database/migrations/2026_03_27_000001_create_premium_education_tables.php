@@ -24,6 +24,7 @@ return new class extends Migration
                 $table->id();
                 $table->uuid('uuid')->unique()->index();
                 $table->unsignedBigInteger('tenant_id')->index();
+                $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID бизнес-группы (филиала)');
                 $table->string('title')->comment('Название курса');
                 $table->text('description')->nullable()->comment('Описание программы');
                 $table->string('level')->default('middle')->comment('Уровень сложности: junior, middle, senior, expert');
@@ -90,6 +91,7 @@ return new class extends Migration
                 $table->id();
                 $table->uuid('uuid')->unique()->index();
                 $table->unsignedBigInteger('user_id')->index();
+                $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID бизнес-группы (филиала)');
                 $table->unsignedBigInteger('tenant_id')->index();
                 $table->foreignId('course_id')->constrained('courses');
                 $table->foreignId('corporate_contract_id')->nullable()->constrained('corporate_contracts');

@@ -36,11 +36,10 @@ final readonly class BonusService
 
     public function __construct(
         private readonly Request $request,
-        private ConnectionInterface $db,
-        private LogManager $log,
-        private FraudControlService $fraud,
-        private WalletService $wallet,
+        private readonly ConnectionInterface $db,
         private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
     ) {}
 
     /**
@@ -128,11 +127,11 @@ final readonly class BonusService
 
             return $bonus;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             // 4. ERROR LOG
@@ -282,11 +281,11 @@ final readonly class BonusService
                 'amount' => $amount,
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
+                'correlation_id' => $correlationId,
             ]);
 
             // 4. ERROR LOG

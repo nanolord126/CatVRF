@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class LanguageReview extends Model
 {
-    use HasFactory;
 
     protected $table = 'language_reviews';
 

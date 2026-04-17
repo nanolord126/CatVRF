@@ -11,9 +11,6 @@ use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Travel\TravelResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class EditTravel extends EditRecord
 {
@@ -40,7 +37,7 @@ final class EditTravel extends EditRecord
             $data['tenant_id'] = filament()->getTenant()->id;
 
             $this->logger->info('Travel updated', [
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'record_id' => $this->record->id,
@@ -54,7 +51,7 @@ final class EditTravel extends EditRecord
     {
         $this->logger->info('Travel edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

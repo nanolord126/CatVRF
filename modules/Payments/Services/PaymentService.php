@@ -2,7 +2,7 @@
 
 namespace Modules\Payments\Services;
 
-use App\Modules\Payments\Models\PaymentTransaction;
+use App\Models\PaymentTransaction;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -206,4 +206,6 @@ final class PaymentService
                 'error' => $e->getMessage(),
             ]);
             throw $e;
+        }
+    }
 }

@@ -24,7 +24,7 @@ final class HealthyFoodDietController extends Controller
                     ->paginate(20);
                 return $this->successResponse($diets);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -57,7 +57,7 @@ final class HealthyFoodDietController extends Controller
                 ]);
                 return $this->successResponse($diet, 'Diet plan created successfully', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -88,7 +88,7 @@ final class HealthyFoodDietController extends Controller
                 ]);
                 return $this->successResponse($subscription, 'Subscription created', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

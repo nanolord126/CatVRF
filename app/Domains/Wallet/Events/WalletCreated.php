@@ -17,9 +17,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class WalletCreated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     public function __construct(
         public readonly Wallet $wallet,

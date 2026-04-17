@@ -2,8 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-
-
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;

@@ -10,8 +10,6 @@ use Illuminate\Support\Str;
 
 final class Review extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'reviews';
     protected $fillable = [

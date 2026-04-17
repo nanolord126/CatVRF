@@ -28,7 +28,6 @@ use Illuminate\Support\Str;
  */
 final class CollectibleCertificate extends Model
 {
-    use HasFactory;
 
     protected $table = 'collectible_certificates';
 

@@ -55,7 +55,7 @@ final class CreatePartyOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('New PartyOrder created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('New PartyOrder created', [
             'order_id' => $this->record->id,
             'event_date' => $this->record->event_date,
             'correlation_id' => $this->record->correlation_id,

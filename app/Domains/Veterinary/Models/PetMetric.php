@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
 final class PetMetric extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'pet_metrics';
 

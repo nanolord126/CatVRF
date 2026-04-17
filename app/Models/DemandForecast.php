@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\SoftDeletes;
 
 /**
  * Прогноз спроса (хранит результаты ML-прогнозирования для post-factum анализа)
@@ -15,7 +14,6 @@ use App\Models\Traits\SoftDeletes;
  */
 final class DemandForecast extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'demand_forecasts';
 

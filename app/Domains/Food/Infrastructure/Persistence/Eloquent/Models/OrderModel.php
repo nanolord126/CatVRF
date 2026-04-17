@@ -32,7 +32,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class OrderModel extends Model
 {
-    use HasUuids;
 
     protected $table = 'food_orders';
 

@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class GardenJob extends Model
 {
-    use HasFactory;
 
 
     protected $table = 'garden_jobs';

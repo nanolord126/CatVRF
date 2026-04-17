@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Translator extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

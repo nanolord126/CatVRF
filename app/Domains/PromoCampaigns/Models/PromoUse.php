@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  */
 final class PromoUse extends Model
 {
-    use HasUuids;
 
     /**
      * @var string Безусловное имя таблицы в реляционной базе данных.

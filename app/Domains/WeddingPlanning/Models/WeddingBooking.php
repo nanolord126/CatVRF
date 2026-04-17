@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class WeddingBooking extends Model
 {
-    use HasFactory;
 
     protected $table = 'wedding_bookings';
 

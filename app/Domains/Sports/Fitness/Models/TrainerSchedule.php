@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class TrainerSchedule extends Model
 {
-    use HasFactory;
 
     protected $table = 'trainer_schedules';
     protected $fillable = [

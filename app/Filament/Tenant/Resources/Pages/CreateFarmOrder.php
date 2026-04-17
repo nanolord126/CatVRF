@@ -59,7 +59,7 @@ final class CreateFarmOrder extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $this->logger->info('Farm order created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Farm order created', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'correlation_id' => $record->correlation_id,

@@ -24,8 +24,6 @@ final class CartCleanupJob implements ShouldQueue
         private readonly LogManager $logger,
     ) {}
 
-    use Queueable;
-
     public int $tries = 3;
 
     public function handle(InventoryService $inventory): void

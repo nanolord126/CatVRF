@@ -36,7 +36,7 @@ use Illuminate\Database\DatabaseManager;
  */
 final class AnnualAnonymizationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public int $tries   = 1;
     public int $timeout = 1800;  // 30 минут
@@ -248,3 +248,4 @@ final class AnnualAnonymizationJob implements ShouldQueue
         return \Illuminate\Support\Facades\Schema::hasTable($table);
     }
 }
+

@@ -18,17 +18,18 @@ final readonly class FoodOrderingService
         private FraudControlService $fraud,
         private AuditService $audit,
         private DatabaseManager $db,
-        private LogManager $log
+        private LogManager $log,
+        private FoodDeliveryService $deliveryService
     ) {}
 
     public function placeOrder(CreateFoodOrderDto $dto): FoodOrder
     {
-        $this->fraud->check([
-            "action" => "place_food_order",
-            "customer_id" => $dto->customerId,
-            "restaurant_id" => $dto->restaurantId,
-            "correlation_id" => $dto->correlationId,
-        ]);
+        $this->fraud->check(
+            userId: $dto->customerId,
+            operationType: 'place_food_order',
+            amount: 0,
+            correlationId: $dto->correlationId
+        );
 
         return $this->db->transaction(function () use ($dto): FoodOrder {
             $restaurant = Restaurant::findOrFail($dto->restaurantId);
@@ -52,13 +53,32 @@ final readonly class FoodOrderingService
             // Dispatch event for Delivery Integration to assign a courier
             event(new \App\Events\FoodOrderPlacedEvent($order));
 
+            // Automatically create delivery record for the order
+            if ($dto->deliveryAddress) {
+                try {
+                    $this->deliveryService->createDeliveryForOrder($order);
+                    $this->log->channel("audit")->info("Food delivery created for order", [
+                        "order_id" => $order->id,
+                        "delivery_address" => $dto->deliveryAddress,
+                        "correlation_id" => $dto->correlationId,
+                    ]);
+                } catch (\Throwable $e) {
+                    $this->log->channel("audit")->error("Failed to create delivery for food order", [
+                        "order_id" => $order->id,
+                        "error" => $e->getMessage(),
+                        "correlation_id" => $dto->correlationId,
+                    ]);
+                    // Don't fail the order if delivery creation fails
+                }
+            }
+
             $this->audit->log(
-                action: "food_order_placed",
-                subjectType: FoodOrder::class,
-                subjectId: $order->id,
-                old: [],
-                new: $order->toArray(),
-                correlationId: $dto->correlationId
+                'created',
+                FoodOrder::class,
+                $order->id,
+                [],
+                $order->toArray(),
+                $dto->correlationId
             );
 
             $this->log->channel("audit")->info("Food order successfully placed", [

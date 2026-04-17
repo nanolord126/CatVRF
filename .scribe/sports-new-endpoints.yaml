@@ -1,0 +1,674 @@
+openapi: 3.0.3
+info:
+  title: CatVRF Sports Vertical API
+  description: Production-ready Sports vertical API with AI-powered personal training, real-time booking, dynamic pricing, live-streaming, and ML-based fraud detection
+  version: 1.0.0
+  contact:
+    name: CatVRF Team
+    email: support@catvrf.com
+
+servers:
+  - url: https://api.catvrf.com/api/v1/sports
+    description: Production server
+  - url: https://staging-api.catvrf.com/api/v1/sports
+    description: Staging server
+  - url: http://localhost:8000/api/v1/sports
+    description: Local development server
+
+tags:
+  - name: Adaptive Workouts
+    description: AI-powered adaptive workout plans
+  - name: Real-time Booking
+    description: Slot-based booking with biometric verification
+  - name: Dynamic Pricing
+    description: AI-based dynamic pricing and flash memberships
+  - name: Live Streams
+    description: WebRTC-powered live training sessions
+  - name: Fraud Detection
+    description: ML-based fraud detection for cancellations and no-shows
+
+paths:
+  /adaptive-workouts/generate:
+    post:
+      tags:
+        - Adaptive Workouts
+      summary: Generate adaptive workout plan
+      description: Generates a personalized workout plan using AI with embeddings and LLM
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fitness_level
+                - goals
+                - sport_type
+                - weekly_frequency
+                - session_duration_minutes
+              properties:
+                fitness_level:
+                  type: string
+                  enum: [beginner, intermediate, advanced]
+                  description: User's fitness level
+                goals:
+                  type: array
+                  items:
+                    type: string
+                  description: Fitness goals (e.g., weight_loss, strength)
+                limitations:
+                  type: array
+                  items:
+                    type: string
+                  description: Physical limitations or injuries
+                sport_type:
+                  type: string
+                  description: Type of sport or fitness activity
+                weekly_frequency:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                  description: Number of workout sessions per week
+                session_duration_minutes:
+                  type: integer
+                  minimum: 15
+                  maximum: 180
+                  description: Duration of each session in minutes
+                available_equipment:
+                  type: array
+                  items:
+                    type: string
+                  description: Available equipment at user's disposal
+      responses:
+        '200':
+          description: Workout plan generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  workout_plan:
+                    type: object
+                    description: Generated workout plan with weekly schedule
+                  recommendations:
+                    type: array
+                    items:
+                      type: object
+                  version:
+                    type: string
+                    description: Plan version for tracking iterations
+        '422':
+          description: Validation error
+        '403':
+          description: Fraud detected - request blocked
+
+  /adaptive-workouts/{userId}/adjust:
+    post:
+      tags:
+        - Adaptive Workouts
+      summary: Adjust workout plan
+      description: Adjusts the current workout plan based on user feedback
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                too_easy:
+                  type: boolean
+                too_hard:
+                  type: boolean
+                increase_intensity:
+                  type: boolean
+                decrease_intensity:
+                  type: boolean
+                focus_areas:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Plan adjusted successfully
+        '403':
+          description: Unauthorized
+
+  /adaptive-workouts/{userId}/progress:
+    post:
+      tags:
+        - Adaptive Workouts
+      summary: Track workout progress
+      description: Tracks workout session progress for AI adaptation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - duration_minutes
+                - exercises_completed
+                - intensity
+              properties:
+                duration_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 300
+                exercises_completed:
+                  type: integer
+                  minimum: 0
+                intensity:
+                  type: string
+                  enum: [low, medium, high]
+                calories_burned:
+                  type: integer
+                  minimum: 0
+                heart_rate_avg:
+                  type: integer
+                  minimum: 40
+                  maximum: 220
+                notes:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Progress tracked successfully
+        '403':
+          description: Unauthorized
+
+  /bookings/hold:
+    post:
+      tags:
+        - Real-time Booking
+      summary: Hold a booking slot
+      description: Holds a time slot for 15 minutes (or 60 minutes with extended hold)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - venue_id
+                - slot_start
+                - slot_end
+                - booking_type
+              properties:
+                venue_id:
+                  type: integer
+                trainer_id:
+                  type: integer
+                  nullable: true
+                slot_start:
+                  type: string
+                  format: date-time
+                slot_end:
+                  type: string
+                  format: date-time
+                booking_type:
+                  type: string
+                  enum: [gym_access, personal_training, group_class]
+                biometric_data:
+                  type: object
+                  description: Biometric data for verification
+                extended_hold:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Slot held successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  hold_until:
+                    type: string
+                    format: date-time
+                  hold_id:
+                    type: string
+        '409':
+          description: Slot already held by another user
+
+  /bookings/confirm:
+    post:
+      tags:
+        - Real-time Booking
+      summary: Confirm booking
+      description: Confirms a held slot as a booking with payment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - venue_id
+                - slot_start
+                - slot_end
+                - booking_type
+                - payment_data
+              properties:
+                venue_id:
+                  type: integer
+                trainer_id:
+                  type: integer
+                  nullable: true
+                slot_start:
+                  type: string
+                  format: date-time
+                slot_end:
+                  type: string
+                  format: date-time
+                booking_type:
+                  type: string
+                  enum: [gym_access, personal_training, group_class]
+                biometric_data:
+                  type: object
+                payment_data:
+                  type: object
+                  required:
+                    - amount
+                    - transaction_id
+                  properties:
+                    amount:
+                      type: number
+                    transaction_id:
+                      type: string
+      responses:
+        '200':
+          description: Booking confirmed successfully
+        '400':
+          description: Slot hold expired
+
+  /bookings/extend-hold:
+    post:
+      tags:
+        - Real-time Booking
+      summary: Extend slot hold
+      description: Extends the hold time to 60 minutes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - venue_id
+                - slot_start
+              properties:
+                venue_id:
+                  type: integer
+                trainer_id:
+                  type: integer
+                  nullable: true
+                slot_start:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Hold extended successfully
+        '404':
+          description: Hold not found or expired
+
+  /pricing/venues/{venueId}/calculate:
+    get:
+      tags:
+        - Dynamic Pricing
+      summary: Calculate dynamic price
+      description: Calculates price based on AI load analysis and time multipliers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: service_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [single_visit, monthly_membership, personal_training, group_class]
+        - name: is_b2b
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Price calculated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  base_price:
+                    type: number
+                  final_price:
+                    type: number
+                  load_factor:
+                    type: number
+                    format: float
+                  time_multiplier:
+                    type: number
+                    format: float
+                  is_flash_discount:
+                    type: boolean
+                  flash_discount_percentage:
+                    type: integer
+                  is_b2b:
+                    type: boolean
+                  b2b_discount:
+                    type: number
+
+  /pricing/venues/{venueId}/flash-membership:
+    post:
+      tags:
+        - Dynamic Pricing
+      summary: Create flash membership
+      description: Creates a flash discount membership when load is low
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - membership_type
+                - duration_days
+                - base_price
+                - amount
+              properties:
+                membership_type:
+                  type: string
+                  enum: [monthly, quarterly, annual]
+                duration_days:
+                  type: integer
+                  minimum: 1
+                  maximum: 365
+                base_price:
+                  type: number
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Flash membership created
+        '400':
+          description: Flash discount not available
+
+  /live-streams/create:
+    post:
+      tags:
+        - Live Streams
+      summary: Create live stream
+      description: Creates a new live streaming session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trainer_id
+                - session_title
+                - scheduled_start
+                - scheduled_end
+                - stream_type
+              properties:
+                trainer_id:
+                  type: integer
+                session_title:
+                  type: string
+                  maxLength: 255
+                session_description:
+                  type: string
+                  maxLength: 2000
+                scheduled_start:
+                  type: string
+                  format: date-time
+                scheduled_end:
+                  type: string
+                  format: date-time
+                stream_type:
+                  type: string
+                  enum: [group, personal, workshop]
+                max_participants:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Stream created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stream_id:
+                    type: integer
+                  room_name:
+                    type: string
+                  status:
+                    type: string
+
+  /live-streams/{streamId}/start:
+    post:
+      tags:
+        - Live Streams
+      summary: Start live stream
+      description: Starts a scheduled live stream and generates WebRTC token
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: streamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Stream started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stream_id:
+                    type: integer
+                  token:
+                    type: string
+                  room_name:
+                    type: string
+                  webrtc_url:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+
+  /live-streams/{streamId}/join:
+    post:
+      tags:
+        - Live Streams
+      summary: Join live stream
+      description: Joins an active live stream session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: streamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Joined successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stream_id:
+                    type: integer
+                  participant_token:
+                    type: string
+                  room_name:
+                    type: string
+                  webrtc_url:
+                    type: string
+                  current_participants:
+                    type: integer
+                  max_participants:
+                    type: integer
+
+  /fraud/bookings/{bookingId}/cancellation:
+    post:
+      tags:
+        - Fraud Detection
+      summary: Detect cancellation fraud
+      description: Analyzes cancellation for fraud patterns using ML
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cancellation_reason
+              properties:
+                cancellation_reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Fraud analysis complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  risk_score:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 1
+                  risk_level:
+                    type: string
+                    enum: [low, medium, high]
+                  is_fraudulent:
+                    type: boolean
+                  requires_review:
+                    type: boolean
+                  fraud_details:
+                    type: object
+
+  /fraud/users/{userId}/fraud-score:
+    get:
+      tags:
+        - Fraud Detection
+      summary: Get user fraud score
+      description: Returns the current fraud score and penalty status for a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Fraud score retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  fraud_score:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 100
+                  total_penalties:
+                    type: integer
+                  high_risk_penalties:
+                    type: integer
+                  risk_level:
+                    type: string
+                  is_restricted:
+                    type: boolean
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from authentication
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

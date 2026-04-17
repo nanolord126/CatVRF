@@ -36,7 +36,6 @@ use App\Models\User;
  */
 final class Delivery extends Model
 {
-    use HasUuids;
 
     protected $table = 'deliveries';
 

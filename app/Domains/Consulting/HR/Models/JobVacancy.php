@@ -6,11 +6,12 @@ use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 final class JobVacancy extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     use HasFactory, SoftDeletes;
 

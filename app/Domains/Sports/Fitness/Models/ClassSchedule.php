@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class ClassSchedule extends Model
 {
-    use HasFactory;
 
     protected $table = 'class_schedules';
     protected $fillable = [

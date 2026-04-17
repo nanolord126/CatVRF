@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class LanguageLesson extends Model
 {
-    use HasFactory;
 
     protected $table = 'language_lessons';
 

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FurnitureItem extends Model
 {
-    use HasFactory;
 
     /**
          * Boot the model to handle automatic UUID and tenant scoping.

@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 final class PetGroomingService extends Model
 {
 
-    use HasFactory;
-        use SoftDeletes;
 
         protected $table = 'pet_grooming_services';
 

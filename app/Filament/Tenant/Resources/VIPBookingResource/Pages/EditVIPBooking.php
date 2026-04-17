@@ -9,8 +9,6 @@ use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\VIPBookingResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Class EditVIPBooking
@@ -45,7 +43,7 @@ final class EditVIPBooking extends EditRecord
 
         $this->logger->info('Editing VIP Booking via Filament', [
             'booking_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'correlation_id' => $data['correlation_id'],
         ]);
 

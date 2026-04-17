@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 final class B2BMedicalHealthcareStorefront extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'b2b_medical_healthcare_storefronts';
 

@@ -7,8 +7,6 @@ use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\ArtisticProjectResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Class ListArtisticProjects

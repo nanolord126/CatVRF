@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class FlowerOrderCancelled
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             public readonly FlowerOrder $order,
@@ -72,3 +73,4 @@ final class FlowerOrderCancelled
     }
 
 }
+

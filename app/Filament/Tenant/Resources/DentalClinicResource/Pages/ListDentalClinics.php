@@ -33,9 +33,9 @@ final class ListDentalClinics extends ListRecords
         {
             parent::mount();
 
-            $this->logger->info('Dental Clinic Directory accessed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Dental Clinic Directory accessed', [
                 'tenant_id' => tenant()->id ?? 'system',
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
                 'correlation_id' => $this->request->header('X-Correlation-ID')
             ]);
         }

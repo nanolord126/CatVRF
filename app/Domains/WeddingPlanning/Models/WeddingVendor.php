@@ -10,9 +10,7 @@ use Illuminate\Support\Str;
 
 final class WeddingVendor extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'wedding_vendors';
 

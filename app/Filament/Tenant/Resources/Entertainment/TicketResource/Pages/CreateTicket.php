@@ -41,7 +41,7 @@ final class CreateTicket extends CreateRecord
             $data['uuid'] = (string) Str::uuid();
             $data['correlation_id'] = (string) Str::uuid();
 
-            $this->logger->info('Entertainment Ticket record mutation', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Ticket record mutation', [
                 'tenant_id' => $data['tenant_id'],
                 'correlation_id' => $data['correlation_id'],
             ]);

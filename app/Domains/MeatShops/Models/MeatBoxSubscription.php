@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MeatBoxSubscription extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

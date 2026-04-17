@@ -30,10 +30,6 @@ use Psr\Log\LoggerInterface;
  */
 final class CalculateAllTenantsEarningsJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Количество попыток.

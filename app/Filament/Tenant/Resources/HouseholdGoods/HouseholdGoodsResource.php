@@ -442,7 +442,7 @@ use Illuminate\Contracts\Auth\Guard;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

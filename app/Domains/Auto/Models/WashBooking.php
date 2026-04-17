@@ -2,12 +2,12 @@
 
 namespace App\Domains\Auto\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class WashBooking extends Model
 {
-    use HasFactory;
 
     protected $table = 'auto_wash_bookings';
 

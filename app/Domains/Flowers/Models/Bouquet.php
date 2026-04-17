@@ -25,7 +25,6 @@ final class Bouquet extends Model
 {
     protected $table = 'flower_bouquets';
 
-    use HasFactory;
 
         protected $fillable = [
             'tenant_id', 'shop_id', 'name', 'description',

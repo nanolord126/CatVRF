@@ -7,6 +7,7 @@ namespace App\Domains\Luxury\Jewelry\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
      */
 final class JewelryCustomOrder extends Model
 {
-        use JewelryDomainTrait;
+        use JewelryDomainTrait, TenantScoped;
 
         protected $table = 'jewelry_custom_orders';
         protected $fillable = [

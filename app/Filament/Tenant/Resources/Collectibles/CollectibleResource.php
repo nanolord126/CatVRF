@@ -4,7 +4,9 @@ namespace App\Filament\Tenant\Resources\Collectibles;
 
 
 use Psr\Log\LoggerInterface;
+    use Filament\Forms;
     use Filament\Resources\Resource;
+    use Filament\Forms\Form;
     use Filament\Tables;
     use Filament\Tables\Columns\{BadgeColumn, IconColumn, ImageColumn, TextColumn, NumericColumn};
     use Filament\Tables\Filters\{SelectFilter, TernaryFilter, TrashedFilter};
@@ -29,7 +31,7 @@ use Psr\Log\LoggerInterface;
         protected static ?string $label = 'Коллекционный предмет';
         protected static ?string $pluralLabel = 'Коллекционные предметы';
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

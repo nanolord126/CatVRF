@@ -18,9 +18,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class VerticalItemDeletedEvent
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * @param int    $itemId        ID удалённого товара

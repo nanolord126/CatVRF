@@ -26,7 +26,7 @@ use Psr\Log\LoggerInterface;
  */
 final class ViewingReminderJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         private readonly ViewingAppointment $appointment,
@@ -50,3 +50,4 @@ final class ViewingReminderJob implements ShouldQueue
         // $this->appointment->client->notify(new ViewingReminderNotification($this->appointment));
     }
 }
+

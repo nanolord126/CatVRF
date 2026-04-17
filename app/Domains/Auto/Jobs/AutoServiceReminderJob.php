@@ -9,14 +9,12 @@ use Illuminate\Queue\SerializesModels;
 
 use Carbon\Carbon;
 
-
-
-use App\Services\FraudControlService;
 use Psr\Log\LoggerInterface;
 final class AutoServiceReminderJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private readonly string $correlationId;
         private readonly string $type; // '24h' or '2h'
@@ -78,3 +76,4 @@ final class AutoServiceReminderJob
             return ['auto', 'service', 'reminder', $this->type, $this->correlationId];
         }
 }
+

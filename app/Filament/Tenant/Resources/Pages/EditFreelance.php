@@ -49,7 +49,7 @@ final class EditFreelance extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Freelance order updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Freelance order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'budget'         => $record->budget_kopecks,

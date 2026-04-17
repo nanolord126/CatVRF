@@ -3,10 +3,15 @@
 namespace App\Domains\ShortTermRentals\Filament\Resources;
 
 use Filament\Resources\Resource;
+use App\Domains\ShortTermRentals\Models\Apartment;
+use Filament\Forms;
+use Filament\Tables;
+use Filament\Tables\Table;
 
 final class ApartmentResource extends Resource
 {
-
+
+
     protected static ?string $model = Apartment::class;
         protected static ?string $navigationGroup = 'Посуточная аренда';
 

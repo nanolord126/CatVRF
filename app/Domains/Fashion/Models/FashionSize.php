@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FashionSize extends Model
 {
-    use HasFactory;
 
     protected $table = 'fashion_sizes';
 

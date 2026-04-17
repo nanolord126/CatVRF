@@ -2,16 +2,17 @@
 
 namespace App\Filament\Tenant\Resources\BooksAndLiterature;
 
-    use Filament\Resources\Resource;
-use Filament\Forms\Form;
-use Filament\Tables\Table;
+use App\Domains\BooksAndLiterature\Models\Book;
 use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
 use Filament\Tables;
-    use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
-    use Filament\Tables\Actions\{EditAction, ViewAction, DeleteAction, RestoreAction, BulkActionGroup, DeleteBulkAction, BulkAction, ActionGroup};
-    use Illuminate\Support\Str;
-    use Illuminate\Support\Facades\Log;
-    use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\BooleanColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
     final class BookResource extends Resource
     {
@@ -96,7 +97,7 @@ use Filament\Tables;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

@@ -14,7 +14,8 @@ final class B2CB2BMiddleware
         private readonly ResponseFactory $response,
     ) {}
 
-
+
+
     public function handle(Request $request, Closure $next): mixed
         {
             $correlationId = $request->attributes->get('correlation_id') ?? $request->header('X-Correlation-ID') ?? Str::uuid()->toString();

@@ -14,7 +14,6 @@ use Illuminate\Foundation\Events\Dispatchable;
      */
 final class ElectronicsOrderProcessed
 {
-        use Dispatchable;
 
         public function __construct(
             public readonly int $orderId,

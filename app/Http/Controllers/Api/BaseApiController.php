@@ -32,9 +32,6 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  */
 abstract class BaseApiController extends Controller
 {
-    use AuthorizesRequests;
-    use DispatchesJobs;
-    use ValidatesRequests;
 
     public function __construct(
         private readonly Request $request,

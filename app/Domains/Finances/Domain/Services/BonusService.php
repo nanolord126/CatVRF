@@ -4,7 +4,6 @@ namespace App\Domains\Finances\Domain\Services;
 
 
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\BonusTransaction;
 use App\Models\Wallet;
@@ -179,10 +178,11 @@ final readonly class BonusService
                             'correlation_id' => $correlationId,
                         ]);
 
-                        // 2. CREDIT на wallet
+                        // 2. CREDIT на wallet (ищем wallet по tenant_id)
                         $this->wallet->credit(
-                            walletId: (int) $bonus->tenant_id,
+                            tenantId: (int) $bonus->tenant_id,
                             amount: $bonus->amount,
+                            type: 'bonus',
                             reason: "Bonus unlock (type: {$bonus->type})",
                             correlationId: $correlationId,
                         );
@@ -260,10 +260,11 @@ final readonly class BonusService
                 'reason' => $reason,
             ]);
 
-            // 2. DEBIT from wallet
+            // 2. DEBIT from wallet (ищем wallet по tenant_id)
             $this->wallet->debit(
-                walletId: (int) $tenantId,
+                tenantId: (int) $tenantId,
                 amount: $amount,
+                type: 'bonus_spend',
                 reason: "Bonus spent: {$reason}",
                 correlationId: $correlationId,
             );
@@ -369,6 +370,6 @@ final readonly class BonusService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction($callback);
+        return $this->db->transaction($callback);
     }
 }

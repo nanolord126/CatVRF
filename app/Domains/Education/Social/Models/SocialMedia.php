@@ -4,12 +4,13 @@ namespace App\Domains\Education\Social\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 final class SocialMedia extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
         protected $table = 'social_media';
 

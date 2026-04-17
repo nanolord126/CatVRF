@@ -26,7 +26,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 {
     public function search(
         ?string $query,
-        ?string $type,
+        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -34,12 +34,13 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         ?float $lat,
         ?float $lon,
         ?int $radiusMeters,
+        int $tenantId,
         int $perPage,
         int $page,
     ): Collection {
         return $this->buildQuery(
             $query, $type, $minPriceKopecks, $maxPriceKopecks,
-            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters,
+            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters, $tenantId,
         )
             ->with(['photos'])
             ->orderByDesc('created_at')
@@ -51,7 +52,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 
     public function count(
         ?string $query,
-        ?string $type,
+        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -59,10 +60,11 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         ?float $lat,
         ?float $lon,
         ?int $radiusMeters,
+        int $tenantId,
     ): int {
         return $this->buildQuery(
             $query, $type, $minPriceKopecks, $maxPriceKopecks,
-            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters,
+            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters, $tenantId,
         )->count();
     }
 
@@ -102,7 +104,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 
     private function buildQuery(
         ?string $query,
-        ?string $type,
+        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -110,8 +112,10 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         ?float $lat,
         ?float $lon,
         ?int $radiusMeters,
+        int $tenantId,
     ): Builder {
         $builder = PropertyModel::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenantId)
             ->where('status', PropertyStatusEnum::Active->value);
 
         if ($query !== null && $query !== '') {
@@ -123,7 +127,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         }
 
         if ($type !== null) {
-            $builder->where('type', $type);
+            $builder->where('type', $type->value);
         }
 
         if ($minPriceKopecks !== null) {

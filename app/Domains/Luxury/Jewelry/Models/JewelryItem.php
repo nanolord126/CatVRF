@@ -24,9 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class JewelryItem extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'jewelry_items';
 

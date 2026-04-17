@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 final class B2BHomeServiceOrder extends Model
 {
-        use SoftDeletes;
 
         protected $table = 'b2b_home_service_orders';
 

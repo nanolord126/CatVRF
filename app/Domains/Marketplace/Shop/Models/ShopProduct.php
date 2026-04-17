@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ShopProduct extends Model
 {
-    use HasFactory;
-        use SoftDeletes;
         
 
         protected $table = 'shop_products';

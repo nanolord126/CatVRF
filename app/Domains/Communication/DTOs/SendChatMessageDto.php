@@ -25,15 +25,16 @@ final readonly class SendChatMessageDto
     public function toArray(): array
     {
         return [
-            'tenant_id'      => $this->tenantId,
-            'room_id'        => $this->roomId,
-            'sender_id'      => $this->senderId,
-            'body'           => $this->body,
-            'type'           => $this->type,
-            'attachment_url' => $this->attachmentUrl,
-            'correlation_id' => $this->correlationId,
-            'metadata'       => $this->metadata,
-            'is_read'        => false,
+            'tenant_id'       => $this->tenantId,
+            'chat_room_id'    => $this->roomId,
+            'sender_user_id'  => $this->senderId,
+            'body'            => $this->body,
+            'type'            => $this->type,
+            'attachment_path' => $this->attachmentUrl,
+            'correlation_id'  => $this->correlationId,
+            'is_read'         => false,
+            'is_deleted'      => false,
+            'delivery_status' => 'sent',
         ];
     }
 

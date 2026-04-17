@@ -8,7 +8,6 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
     use Filament\Resources\Resource;
 use Filament\Forms\Form;
-use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\Filter, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter};
@@ -529,7 +528,7 @@ use Filament\Tables;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', tenant('id'));

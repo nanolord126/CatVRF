@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class TaxiVehicleResource extends Resource
 {
-
+
     protected static ?string $model = TaxiVehicle::class;
 
         protected static ?string $navigationLabel = 'Автомобили';
@@ -119,10 +119,10 @@ final class TaxiVehicleResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListTaxiVehicles::route('/'),
-                'create' => Pages\CreateTaxiVehicle::route('/create'),
-                'edit' => Pages\EditTaxiVehicle::route('/{record}/edit'),
-                'view' => Pages\ViewTaxiVehicle::route('/{record}'),
+                'index' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ListTaxiVehicles::route('/'),
+                'create' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\CreateTaxiVehicle::route('/create'),
+                'edit' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\EditTaxiVehicle::route('/{record}/edit'),
+                'view' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ViewTaxiVehicle::route('/{record}'),
             ];
         }
 }

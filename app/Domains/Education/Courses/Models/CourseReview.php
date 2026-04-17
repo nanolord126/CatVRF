@@ -13,7 +13,6 @@ final class CourseReview extends Model
 {
     protected $table = 'education_course_reviews';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

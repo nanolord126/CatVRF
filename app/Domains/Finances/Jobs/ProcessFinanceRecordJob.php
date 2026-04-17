@@ -26,10 +26,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessFinanceRecordJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * Количество попыток перед окончательным сбоем.

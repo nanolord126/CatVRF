@@ -20,8 +20,6 @@ namespace App\Domains\OfficeCatering\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Traits\TenantScoped;
 
-use App\Models\Traits\HasUuids;
-use App\Models\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,10 +48,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class CateringOrder extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'catering_orders';
     protected $fillable = ['uuid', 'tenant_id', 'catering_company_id', 'client_id', 'correlation_id', 'office_name', 'office_address', 'delivery_datetime', 'person_count', 'status', 'total_kopecks', 'commission_kopecks', 'payout_kopecks', 'payment_status', 'menu_items_json', 'special_requests', 'tags'];

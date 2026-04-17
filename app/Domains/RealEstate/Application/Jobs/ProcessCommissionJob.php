@@ -18,10 +18,6 @@ use Psr\Log\LoggerInterface;
 
 final class ProcessCommissionJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     public int $tries = 5;
 

@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class StrAmenity extends Model
 {
-    use HasFactory;
 
     protected $table = 'str_amenities';
 

@@ -34,7 +34,7 @@ final class EditDentalClinic extends EditRecord
                 $oldName = $record->name;
                 $record = parent::handleRecordUpdate($record, $data);
 
-                $this->logger->info('Dental Clinic Updated', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Dental Clinic Updated', [
                     'clinic_id' => $record->id,
                     'old_name' => $oldName,
                     'new_name' => $record->name,

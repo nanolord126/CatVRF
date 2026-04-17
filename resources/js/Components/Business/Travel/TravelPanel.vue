@@ -1,37 +1,69 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import VTabs from '../../UI/VTabs.vue';
 import VCard from '../../UI/VCard.vue';
 import VBadge from '../../UI/VBadge.vue';
 import TravelDashboard from './TravelDashboard.vue';
 
-const activeTab = ref('dashboard');
-const tabs = [
+interface Tab {
+  key: string;
+  label: string;
+  icon: string;
+}
+
+interface Package {
+  name: string;
+  sales: number;
+  margin: string;
+}
+
+interface Booking {
+  id: string;
+  client: string;
+  route: string;
+  status: 'confirmed' | 'ticketing' | 'pending' | 'cancelled';
+}
+
+interface Event {
+  type: string;
+  text: string;
+  severity: 'warning' | 'danger' | 'info' | 'success';
+}
+
+interface StatusMap {
+  [key: string]: {
+    text: string;
+    variant: 'success' | 'warning' | 'danger' | 'info';
+  };
+}
+
+const activeTab = ref<string>('dashboard');
+const tabs: Tab[] = [
     { key: 'dashboard', label: 'Дашборд', icon: '📊' },
     { key: 'packages', label: 'Пакеты', icon: '🧳' },
     { key: 'bookings', label: 'Бронирования', icon: '✈️' },
     { key: 'alerts', label: 'События', icon: '⚠️' },
 ];
 
-const packages = [
+const packages: Package[] = [
     { name: 'Japan Spring 9d', sales: 44, margin: '22%' },
     { name: 'Istanbul City Break', sales: 71, margin: '18%' },
     { name: 'Dubai Premium 6d', sales: 36, margin: '27%' },
 ];
 
-const bookings = [
+const bookings: Booking[] = [
     { id: 'TV-9021', client: 'Антон С.', route: 'MOW → HND', status: 'confirmed' },
     { id: 'TV-9024', client: 'ООО Альянс', route: 'MOW → IST', status: 'ticketing' },
     { id: 'TV-9028', client: 'Лидия К.', route: 'MOW → DXB', status: 'confirmed' },
 ];
 
-const events = [
+const events: Event[] = [
     { type: 'flight-delay', text: 'TK420 задержан на 1ч 35м', severity: 'warning' },
     { type: 'hotel-overbook', text: 'Hotel Pearl: риск overbooking', severity: 'danger' },
     { type: 'visa-check', text: 'Пакет JP-883 требует проверку виз', severity: 'info' },
 ];
 
-const map = {
+const map: StatusMap = {
     confirmed: { text: 'Подтверждено', variant: 'success' },
     ticketing: { text: 'Билетирование', variant: 'warning' },
     warning: { text: 'Warning', variant: 'warning' },

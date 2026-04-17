@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class ComplianceIntegration extends Model
 {
-    use HasFactory;
 
         protected $table = 'compliance_integrations';
 
@@ -61,11 +60,10 @@ final class ComplianceIntegration extends Model
             try {
                 return $this->crypt->decryptString($this->attributes['api_token_encrypted']);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger?->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
                 ]);
 
                 throw new \DomainException('Unexpected null value');

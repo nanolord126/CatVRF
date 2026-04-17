@@ -22,7 +22,7 @@ final class ReleaseHoldJob implements ShouldQueue
         private readonly DatabaseManager $db,
     ) {}
 
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     public $timeout = 300;
     public $tries = 3;
@@ -53,11 +53,10 @@ final class ReleaseHoldJob implements ShouldQueue
             }
 
         } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
             ]);
 
             $this->logger->channel('audit')->error('ReleaseHoldJob failed', [
@@ -96,11 +95,10 @@ final class ReleaseHoldJob implements ShouldQueue
             });
 
         } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->logger->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'correlation_id' => request()->header('X-Correlation-ID'),
             ]);
 
             $this->logger->channel('audit')->error('Failed to release hold', [
@@ -113,3 +111,4 @@ final class ReleaseHoldJob implements ShouldQueue
         }
     }
 }
+

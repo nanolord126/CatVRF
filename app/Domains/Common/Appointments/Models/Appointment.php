@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Common\Appointments\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Appointment extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

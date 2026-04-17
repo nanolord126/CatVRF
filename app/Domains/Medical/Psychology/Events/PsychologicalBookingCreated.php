@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class PsychologicalBookingCreated
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             public PsychologicalBooking $booking,
@@ -54,3 +55,4 @@ final class PsychologicalBookingCreated
         ];
     }
 }
+

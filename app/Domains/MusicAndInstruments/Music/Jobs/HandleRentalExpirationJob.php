@@ -13,8 +13,9 @@ use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final class HandleRentalExpirationJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * Create a new job instance.
@@ -62,3 +63,4 @@ final class HandleRentalExpirationJob
             return ['music', 'rental', 'expiration', 'booking:' . $this->bookingId];
         }
 }
+

@@ -32,10 +32,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class VideoEditor extends Model
 {
-    use HasFactory;
-    use HasUuids;
-    use SoftDeletes;
-    use TenantScoped;
 
     protected $table = 'video_editors';
 

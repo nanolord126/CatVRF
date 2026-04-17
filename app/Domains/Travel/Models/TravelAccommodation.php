@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 final class TravelAccommodation extends Model
 {
 
-    use HasFactory;
-        use SoftDeletes;
 
         protected $table = 'travel_accommodations';
 

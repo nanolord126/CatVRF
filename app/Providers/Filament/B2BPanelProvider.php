@@ -38,9 +38,9 @@ final class B2BPanelProvider extends PanelProvider
             ->path('b2b')
             ->login()
             ->maxContentWidth('full')
-            ->discoverResources(in: app_path('Domains'), for: 'App\\Domains')
-            ->discoverPages(in: app_path('Filament/B2B/Pages'), for: 'App\\Filament\\B2B\\Pages')
-            ->discoverWidgets(in: app_path('Filament/B2B/Widgets'), for: 'App\\Filament\\B2B\\Widgets')
+            // ->discoverResources(in: app_path('Domains'), for: 'App\Domains')
+            // ->discoverPages(in: app_path('Filament/B2B/Pages'), for: 'App\Filament\B2B\Pages')
+            // ->discoverWidgets(in: app_path('Filament/B2B/Widgets'), for: 'App\Filament\B2B\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

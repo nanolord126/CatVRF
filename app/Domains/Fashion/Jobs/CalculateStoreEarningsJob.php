@@ -15,8 +15,9 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 final class CalculateStoreEarningsJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private string $correlationId = '', private readonly Request $request, private readonly LoggerInterface $logger) {
@@ -81,3 +82,4 @@ final class CalculateStoreEarningsJob
             return Carbon::now()->addHours(6);
         }
 }
+

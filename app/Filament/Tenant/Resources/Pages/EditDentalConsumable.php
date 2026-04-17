@@ -63,7 +63,7 @@ final class EditDentalConsumable extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('DentalConsumable updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalConsumable updated', [
             'consumable_id'  => $this->record->id,
             'name'           => $this->record->name,
             'current_stock'  => $this->record->current_stock,

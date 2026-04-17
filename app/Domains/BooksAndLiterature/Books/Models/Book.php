@@ -9,6 +9,7 @@ namespace App\Domains\BooksAndLiterature\Books\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 /**
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
      */
 final class Book extends Model
 {
-        use BooksDomainTrait, SoftDeletes;
+        use BooksDomainTrait, SoftDeletes, TenantScoped;
         protected $table = 'books';
         protected $fillable = [
             'tenant_id', 'uuid', 'store_id', 'author_id', 'genre_id', 'title', 'isbn',

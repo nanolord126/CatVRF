@@ -35,8 +35,6 @@ use Illuminate\Support\Str;
  */
 final class FinanceRecord extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'finance_records';
 

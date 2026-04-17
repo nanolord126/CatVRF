@@ -5,14 +5,11 @@ namespace App\Domains\Tickets\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Venue extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes, LogsActivity;
 
         protected $table = 'venues';
 
@@ -45,14 +42,7 @@ final class Venue extends Model
             });
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'address', 'capacity', 'is_active'])
-                ->logOnlyDirty()
-                ->dontSubmitEmptyLogs()
-                ->useLogName('audit');
-        }
+        
 
         /**
          * Все эвенты площадки.

@@ -12,7 +12,6 @@ use Illuminate\Mail\Mailer;
 
 final class NotifyMasterOfBooking implements ShouldQueue
 {
-    use InteractsWithQueue;
 
     public function __construct(
         private readonly Mailer $mailer

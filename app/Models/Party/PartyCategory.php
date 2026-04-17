@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 final class PartyCategory extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'party_categories';
 

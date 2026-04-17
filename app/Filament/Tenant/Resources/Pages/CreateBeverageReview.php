@@ -56,7 +56,7 @@ final class CreateBeverageReview extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('BeverageReview created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageReview created', [
             'review_id'      => $this->record->id,
             'rating'         => $this->record->rating,
             'user_id'        => $this->record->user_id,

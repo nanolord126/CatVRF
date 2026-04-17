@@ -43,7 +43,7 @@ final class ListBeverageOrders extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Manually Enter Order')
                     ->icon('heroicon-o-keyboard'),
             ];

@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class PartWarrantyResource extends Resource
 {
-
+
     protected static ?string $model = PartWarranty::class;
 
         protected static ?string $navigationLabel = 'Гарантия на запчасти';
@@ -80,92 +80,92 @@ final class PartWarrantyResource extends Resource
             ]);
         }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    Tables\Columns\TextColumn::make('warranty_number')
-                        ->label('Номер гарантии')
-                        ->searchable()
-                        ->sortable(),
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('warranty_number')
+                    ->label('Номер гарантии')
+                    ->searchable()
+                    ->sortable(),
 
-                    Tables\Columns\TextColumn::make('autoPart.name')
-                        ->label('Запчасть')
-                        ->searchable()
-                        ->limit(30),
+                Tables\Columns\TextColumn::make('autoPart.name')
+                    ->label('Запчасть')
+                    ->searchable()
+                    ->limit(30),
 
-                    Tables\Columns\TextColumn::make('client.name')
-                        ->label('Клиент')
-                        ->searchable(),
+                Tables\Columns\TextColumn::make('client.name')
+                    ->label('Клиент')
+                    ->searchable(),
 
-                    Tables\Columns\TextColumn::make('warranty_type')
-                        ->label('Тип')
-                        ->badge()
-                        ->color(fn (string $state): string => match ($state) {
-                            'dealer' => 'info',
-                            'extended' => 'warning',
-                            default => 'gray',
-                        }),
+                Tables\Columns\TextColumn::make('warranty_type')
+                    ->label('Тип')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'dealer' => 'info',
+                        'extended' => 'warning',
+                        default => 'gray',
+                    }),
 
-                    Tables\Columns\TextColumn::make('start_date')
-                        ->label('Начало')
-                        ->date('d.m.Y')
-                        ->sortable(),
+                Tables\Columns\TextColumn::make('start_date')
+                    ->label('Начало')
+                    ->date('d.m.Y')
+                    ->sortable(),
 
-                    Tables\Columns\TextColumn::make('warranty_months')
-                        ->label('Срок (мес)')
-                        ->sortable(),
+                Tables\Columns\TextColumn::make('warranty_months')
+                    ->label('Срок (мес)')
+                    ->sortable(),
 
-                    Tables\Columns\TextColumn::make('claim_status')
-                        ->label('Претензия')
-                        ->badge()
-                        ->color(fn (string $state): string => match ($state) {
-                            'pending' => 'warning',
-                            'approved' => 'success',
-                            'rejected' => 'danger',
-                            default => 'gray',
-                        }),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('warranty_type')
-                        ->label('Тип гарантии')
-                        ->options([
-                            'manufacturer' => 'Производителя',
-                            'dealer' => 'Дилерская',
-                            'extended' => 'Расширенная',
-                        ]),
-
-                    Tables\Filters\SelectFilter::make('claim_status')
-                        ->label('Статус претензии')
-                        ->options([
-                            'none' => 'Нет претензий',
-                            'pending' => 'Рассматривается',
-                            'approved' => 'Одобрено',
-                            'rejected' => 'Отклонено',
-                        ]),
-                ])
-                ->actions([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
+                Tables\Columns\TextColumn::make('claim_status')
+                    ->label('Претензия')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'gray',
+                    }),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('warranty_type')
+                    ->label('Тип гарантии')
+                    ->options([
+                        'manufacturer' => 'Производителя',
+                        'dealer' => 'Дилерская',
+                        'extended' => 'Расширенная',
                     ]),
-                ]);
-        }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListPartWarranties::route('/'),
-                'create' => Pages\CreatePartWarranty::route('/create'),
-                'edit' => Pages\EditPartWarranty::route('/{record}/edit'),
-            ];
-        }
+                Tables\Filters\SelectFilter::make('claim_status')
+                    ->label('Статус претензии')
+                    ->options([
+                        'none' => 'Нет претензий',
+                        'pending' => 'Рассматривается',
+                        'approved' => 'Одобрено',
+                        'rejected' => 'Отклонено',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
 
-        public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
-        {
-            return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\ListPartWarranties::route('/'),
+            'create' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\CreatePartWarranty::route('/create'),
+            'edit' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\EditPartWarranty::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
 }

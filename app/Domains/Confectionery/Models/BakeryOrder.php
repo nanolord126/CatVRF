@@ -19,28 +19,33 @@
 namespace App\Domains\Confectionery\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
+use Database\Factories\BakeryOrderFactory;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class BakeryOrder extends Model
 {
+    use HasFactory, SoftDeletes, TenantScoped;
+
+    protected $table = 'bakery_orders';
 
     protected $fillable = [
         'uuid',
         'correlation_id',
         'tenant_id',
+        'business_group_id',
+        'customer_id',
+        'status',
+        'total_price',
+        'delivery_date',
+        'notes',
+        'tags',
     ];
-    use HasFactory;
-
-    use HasFactory, SoftDeletes, TenantScoped;
 
-        protected $table = "bakery_orders";
-        protected $guarded = [];
-
-        protected static function newFactory()
+        protected static function newFactory(): BakeryOrderFactory
         {
-            return BakeryOrderFactory::new();
+            return new BakeryOrderFactory();
         }
 
         protected static function booted(): void

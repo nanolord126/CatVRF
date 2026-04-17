@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class HallBooking extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='hall_bookings';protected $fillable=['uuid','tenant_id','hall_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','booking_date','duration_hours','event_type','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','booking_date'=>'datetime','duration_hours'=>'integer','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('hall_bookings.tenant_id',tenant()->id));}
 

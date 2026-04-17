@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class FoodOrder extends Model
 {
-    use HasFactory;
 
         protected $table = 'food_orders';
 

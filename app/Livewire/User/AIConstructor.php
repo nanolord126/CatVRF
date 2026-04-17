@@ -32,7 +32,6 @@ use Illuminate\Database\DatabaseManager;
  */
 final class AIConstructor extends Component
 {
-    use WithFileUploads;
 
     // ── публичные свойства ───────────────────────────────────────────────────
 

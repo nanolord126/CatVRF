@@ -54,7 +54,7 @@ final class EditAppointment extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Appointment updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Appointment updated', [
             'appointment_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

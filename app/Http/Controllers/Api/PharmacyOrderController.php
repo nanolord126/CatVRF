@@ -25,7 +25,7 @@ final class PharmacyOrderController extends Controller
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -53,7 +53,7 @@ final class PharmacyOrderController extends Controller
                 $this->logger->channel('audit')->info('Pharmacy order created', ['order_id' => $order->id]);
                 return $this->successResponse($order, 'Order created successfully', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -78,7 +78,7 @@ final class PharmacyOrderController extends Controller
                 $this->logger->channel('audit')->info('Prescription verified', ['prescription_id' => $request->integer('prescription_id')]);
                 return $this->successResponse($prescription, 'Prescription verified');
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

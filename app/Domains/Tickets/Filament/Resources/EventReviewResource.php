@@ -2,6 +2,7 @@
 
 namespace App\Domains\Tickets\Filament\Resources;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
@@ -10,7 +11,7 @@ use Filament\Tables;
 
 final class EventReviewResource extends Resource
 {
-
+
     protected static ?string $model = EventReview::class;
         protected static ?string $navigationIcon = 'heroicon-o-star';
         protected static ?string $navigationLabel = 'Отзывы событий';
@@ -103,9 +104,9 @@ final class EventReviewResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListEventReviews::route('/'),
-                'create' => Pages\CreateEventReview::route('/create'),
-                'edit' => Pages\EditEventReview::route('/{record}/edit'),
+                'index' => \App\Domains\Tickets\Filament\Resources\EventReviewResource\Pages\ListEventReviews::route('/'),
+                'create' => \App\Domains\Tickets\Filament\Resources\EventReviewResource\Pages\CreateEventReview::route('/create'),
+                'edit' => \App\Domains\Tickets\Filament\Resources\EventReviewResource\Pages\EditEventReview::route('/{record}/edit'),
             ];
         }
 

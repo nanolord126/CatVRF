@@ -113,9 +113,9 @@ final class BookingResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListBookings::route('/'),
-                'create' => Pages\CreateBooking::route('/create'),
-                'edit' => Pages\EditBooking::route('/{record}/edit'),
+                'index' => \App\Domains\Hotels\Filament\Resources\BookingResource\Pages\ListBookings::route('/'),
+                'create' => \App\Domains\Hotels\Filament\Resources\BookingResource\Pages\CreateBooking::route('/create'),
+                'edit' => \App\Domains\Hotels\Filament\Resources\BookingResource\Pages\EditBooking::route('/{record}/edit'),
             ];
         }
 }

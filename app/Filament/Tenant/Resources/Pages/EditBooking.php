@@ -54,7 +54,7 @@ final class EditBooking extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Booking updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Booking updated', [
             'booking_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

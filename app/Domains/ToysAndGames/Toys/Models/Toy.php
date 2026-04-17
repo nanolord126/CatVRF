@@ -8,6 +8,7 @@ namespace App\Domains\ToysAndGames\Toys\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
      */
 final class Toy extends Model
 {
-        use ToysDomainTrait;
+        use ToysDomainTrait, TenantScoped;
         protected $table = 'toys';
         protected $fillable = [
             'uuid', 'tenant_id', 'store_id', 'category_id', 'age_group_id',

@@ -26,9 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ServiceReview extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'service_reviews';
         protected $fillable = [

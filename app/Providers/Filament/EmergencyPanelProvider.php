@@ -42,9 +42,6 @@ final class EmergencyPanelProvider extends PanelProvider
             ->colors([
                 'primary' => \Filament\Support\Colors\Color::Red,
             ])
-            ->discoverResources(in: app_path('Filament/Emergency/Resources'), for: 'App\\Filament\\Emergency\\Resources')
-            ->discoverPages(in: app_path('Filament/Emergency/Pages'), for: 'App\\Filament\\Emergency\\Pages')
-            ->discoverWidgets(in: app_path('Filament/Emergency/Widgets'), for: 'App\\Filament\\Emergency\\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -23,8 +23,9 @@ use Illuminate\Queue\SerializesModels;
 
 final class PropertySold
 {
-
-    use Dispatchable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
             private readonly SaleListing $listing,
@@ -53,3 +54,4 @@ final class PropertySold
         ];
     }
 }
+

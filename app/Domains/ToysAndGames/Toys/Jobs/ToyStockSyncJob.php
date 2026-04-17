@@ -9,14 +9,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 
 final class ToyStockSyncJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         /**
          * @var int $tries Max attempts for inventory sync.
@@ -82,3 +82,4 @@ final class ToyStockSyncJob
             ]);
         }
     }
+

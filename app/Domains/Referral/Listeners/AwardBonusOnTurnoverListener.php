@@ -22,7 +22,6 @@ use Illuminate\Queue\InteractsWithQueue;
  */
 final class AwardBonusOnTurnoverListener implements ShouldQueue
 {
-    use InteractsWithQueue;
 
     /**
      * Внедрение зависимостей для обработки логики.

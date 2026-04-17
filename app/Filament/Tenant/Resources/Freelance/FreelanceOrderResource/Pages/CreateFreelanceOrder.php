@@ -28,17 +28,20 @@ namespace App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource\Pages;
 
 
 use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Freelance\Models\FreelanceOrder;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 final class CreateFreelanceOrder extends CreateRecord
 {
-
-    protected static string $resource = FreelanceOrderResource::class;
+
+
+    protected static string $resource = \App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource::class;
 
         /**
          * КАНОН 2026 — Использование сервиса для создания заказа
          */
-        protected function handleRecordCreation(array $data): FreelanceOrder
+        protected function handleRecordCreation(array $data): Model
         {
             $data['correlation_id'] = (string) Str::uuid();
             $data['tenant_id'] = $this->guard->user()->tenant_id;

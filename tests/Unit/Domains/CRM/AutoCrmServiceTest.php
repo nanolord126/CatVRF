@@ -7,14 +7,14 @@ use PHPUnit\Framework\TestCase;
 /**
  * Unit tests for AutoCrmService.
  *
- * @covers \App\Domains\CRM\Domain\Services\AutoCrmService
+ * @covers \App\Domains\CRM\Services\AutoCrmService
  */
 final class AutoCrmServiceTest extends TestCase
 {
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\AutoCrmService::class
+            \App\Domains\CRM\Services\AutoCrmService::class
         );
         $this->assertTrue($reflection->isFinal(), 'AutoCrmService must be final');
     }
@@ -22,7 +22,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\AutoCrmService::class
+            \App\Domains\CRM\Services\AutoCrmService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'AutoCrmService must be readonly');
     }
@@ -30,7 +30,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\Domain\Services\AutoCrmService::class
+            \App\Domains\CRM\Services\AutoCrmService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'AutoCrmService must have __construct');
@@ -40,7 +40,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_createAutoProfile_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\AutoCrmService::class, 'createAutoProfile'),
+            method_exists(\App\Domains\CRM\Services\AutoCrmService::class, 'createAutoProfile'),
             'AutoCrmService must implement createAutoProfile()'
         );
     }
@@ -48,7 +48,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_recordServiceVisit_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\AutoCrmService::class, 'recordServiceVisit'),
+            method_exists(\App\Domains\CRM\Services\AutoCrmService::class, 'recordServiceVisit'),
             'AutoCrmService must implement recordServiceVisit()'
         );
     }
@@ -56,7 +56,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_updateMileage_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\AutoCrmService::class, 'updateMileage'),
+            method_exists(\App\Domains\CRM\Services\AutoCrmService::class, 'updateMileage'),
             'AutoCrmService must implement updateMileage()'
         );
     }
@@ -64,7 +64,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_scheduleNextService_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\AutoCrmService::class, 'scheduleNextService'),
+            method_exists(\App\Domains\CRM\Services\AutoCrmService::class, 'scheduleNextService'),
             'AutoCrmService must implement scheduleNextService()'
         );
     }
@@ -72,7 +72,7 @@ final class AutoCrmServiceTest extends TestCase
     public function test_updateInsurance_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\CRM\Domain\Services\AutoCrmService::class, 'updateInsurance'),
+            method_exists(\App\Domains\CRM\Services\AutoCrmService::class, 'updateInsurance'),
             'AutoCrmService must implement updateInsurance()'
         );
     }

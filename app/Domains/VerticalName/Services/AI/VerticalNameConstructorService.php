@@ -275,17 +275,19 @@ final readonly class VerticalNameConstructorService
         array $recommendations,
         string $correlationId,
     ): void {
-        $this->db->table('user_ai_designs')->insert([
-            'user_id' => $userId,
-            'vertical' => 'vertical_name',
-            'design_data' => json_encode([
-                'profile' => $profile,
-                'recommendations' => $recommendations,
-            ], JSON_THROW_ON_ERROR),
-            'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->db->transaction(function () use ($userId, $profile, $recommendations, $correlationId) {
+            $this->db->table('user_ai_designs')->insert([
+                'user_id' => $userId,
+                'vertical' => 'vertical_name',
+                'design_data' => json_encode([
+                    'profile' => $profile,
+                    'recommendations' => $recommendations,
+                ], JSON_THROW_ON_ERROR),
+                'correlation_id' => $correlationId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
     }
 
     /**

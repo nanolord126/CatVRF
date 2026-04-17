@@ -25,7 +25,7 @@ final class OfficeCateringOrderController extends Controller
                     ->paginate(20);
                 return $this->successResponse($orders);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -53,7 +53,7 @@ final class OfficeCateringOrderController extends Controller
                 $this->logger->channel('audit')->info('OfficeCatering order created', ['order_id' => $order->id]);
                 return $this->successResponse($order, 'Order placed successfully', 201);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -79,7 +79,7 @@ final class OfficeCateringOrderController extends Controller
                 $this->logger->channel('audit')->info('OfficeCatering recurring setup', ['order_id' => $id]);
                 return $this->successResponse($recurring, 'Recurring order setup');
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+                $this->logger->channel('audit')->error($e->getMessage(), [
                     'exception' => $e::class,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

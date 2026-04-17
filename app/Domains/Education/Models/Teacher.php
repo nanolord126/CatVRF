@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 final class Teacher extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'teachers';
 

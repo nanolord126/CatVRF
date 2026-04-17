@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class UserTasteProfile extends Model
 {
-    use HasFactory;
 
         protected $table = 'user_taste_profiles';
 

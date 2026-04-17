@@ -24,7 +24,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Event extends Model
 {
-    use HasFactory;
 
     use HasFactory, HasUuids;
 

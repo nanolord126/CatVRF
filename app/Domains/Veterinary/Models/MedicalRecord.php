@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 
 final class MedicalRecord extends Model
 {
-    use HasFactory;
 
     protected $table = 'veterinary_medical_records';
 

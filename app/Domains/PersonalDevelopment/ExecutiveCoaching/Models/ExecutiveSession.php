@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ExecutiveSession extends Model
 {
-    use HasFactory;
 
     use HasUuids,SoftDeletes,TenantScoped;protected $table='executive_sessions';protected $fillable=['uuid','tenant_id','coach_id','executive_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','focus_area','session_hours','due_date','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','session_hours'=>'integer','due_date'=>'datetime','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('executive_sessions.tenant_id',tenant()->id));}
 

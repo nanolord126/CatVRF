@@ -23,10 +23,10 @@ final class CreateVenue extends CreateRecord
             $data['uuid'] = (string) Str::uuid();
             $data['correlation_id'] = (string) Str::uuid();
 
-            $this->logger->info('Venue record mutation before creation', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue record mutation before creation', [
                 'tenant_id' => $data['tenant_id'],
                 'correlation_id' => $data['correlation_id'],
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
 
             return $data;
@@ -34,10 +34,10 @@ final class CreateVenue extends CreateRecord
 
         protected function afterCreate(): void
         {
-            $this->logger->info('Venue record created successfully', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue record created successfully', [
                 'venue_id' => $this->record->id,
                 'correlation_id' => $this->record->correlation_id,
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         }
 

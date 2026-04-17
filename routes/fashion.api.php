@@ -6,6 +6,8 @@ use App\Domains\Fashion\Http\Controllers\FashionOrderController;
 use App\Domains\Fashion\Http\Controllers\FashionReviewController;
 use App\Domains\Fashion\Http\Controllers\FashionReturnController;
 use App\Domains\Fashion\Http\Controllers\FashionWishlistController;
+use App\Domains\Fashion\Http\Controllers\FashionOnlineStylistController;
+use App\Domains\Fashion\Http\Controllers\FashionFittingRoomController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/fashion')->name('fashion.')->middleware(['api', 'tenant'])->group(function () {
@@ -25,6 +27,28 @@ Route::prefix('api/fashion')->name('fashion.')->middleware(['api', 'tenant'])->g
     });
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::controller(FashionOnlineStylistController::class)->prefix('stylist')->group(function () {
+            Route::get('/mens-style', 'getMensStyle')->name('stylist.mens');
+            Route::get('/womens-style', 'getWomensStyle')->name('stylist.womens');
+            Route::get('/womens-underwear', 'getWomensUnderwear')->name('stylist.womens-underwear');
+            Route::get('/mens-shoes', 'getMensShoes')->name('stylist.mens-shoes');
+            Route::get('/womens-shoes', 'getWomensShoes')->name('stylist.womens-shoes');
+            Route::get('/childrens-clothing', 'getChildrensClothing')->name('stylist.childrens-clothing');
+            Route::get('/childrens-shoes', 'getChildrensShoes')->name('stylist.childrens-shoes');
+            Route::get('/scarves', 'getScarves')->name('stylist.scarves');
+            Route::get('/headwear', 'getHeadwear')->name('stylist.headwear');
+            Route::get('/care-products', 'getCareProducts')->name('stylist.care-products');
+            Route::get('/umbrellas', 'getUmbrellas')->name('stylist.umbrellas');
+            Route::get('/mens-accessories', 'getMensAccessories')->name('stylist.mens-accessories');
+            Route::get('/womens-accessories', 'getWomensAccessories')->name('stylist.womens-accessories');
+        });
+
+        Route::controller(FashionFittingRoomController::class)->prefix('fitting')->group(function () {
+            Route::post('/check-access', 'checkLingerieAccess')->name('fitting.check-access');
+            Route::post('/recommendations', 'getRecommendations')->name('fitting.recommendations');
+            Route::post('/measurements', 'saveMeasurements')->name('fitting.save-measurements');
+        });
+
         Route::controller(FashionStoreController::class)->group(function () {
             Route::post('/stores', 'store')->name('stores.store');
             Route::get('/my-store', 'myStore')->name('stores.my');

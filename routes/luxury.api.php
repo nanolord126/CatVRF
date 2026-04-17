@@ -16,6 +16,7 @@ Route::prefix('luxury')->group(function () {
 
     // AI-Constructor / Curation
     Route::post('/ai-curate', [LuxuryAIConstructorController::class, 'curate'])
+        ->middleware('throttle:10,1') // max 10 requests per minute
         ->name('v1.luxury.ai-curate');
 
 });

@@ -23,7 +23,6 @@ use Psr\Log\LoggerInterface;
  */
 final class TrackAdImpressionListener implements ShouldQueue
 {
-    use InteractsWithQueue;
 
     /**
      * The queue connection that should handle the job.

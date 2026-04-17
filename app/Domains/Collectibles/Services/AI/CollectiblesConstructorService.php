@@ -2,9 +2,6 @@
 
 namespace App\Domains\Collectibles\Services\AI;
 
-
-
-use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 
@@ -73,7 +70,7 @@ final readonly class CollectiblesConstructorService
      */
     protected function executeInTransaction(callable $callback): mixed
     {
-        return DB::transaction(function () use ($callback) {
+        return $this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

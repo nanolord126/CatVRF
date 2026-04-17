@@ -65,7 +65,7 @@ final class EditFarmDirect extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Farm product updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Farm product updated', [
             'product_id'     => $record->id,
             'name'           => $record->name,
             'correlation_id' => $record->correlation_id,

@@ -24,6 +24,8 @@ use App\Domains\Food\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Food\Domain\Repositories\RestaurantRepositoryInterface;
 use App\Domains\Food\Infrastructure\Persistence\Eloquent\Repositories\EloquentOrderRepository;
 use App\Domains\Food\Infrastructure\Persistence\Eloquent\Repositories\EloquentRestaurantRepository;
+use App\Domains\Food\Policies\DeliveryOrderPolicy;
+use App\Domains\Food\Models\DeliveryOrder;
 use Illuminate\Support\ServiceProvider;
 
 /**

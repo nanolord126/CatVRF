@@ -2,15 +2,21 @@
 
 namespace App\Filament\Tenant\Resources\ShortTermRentals;
 
-
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables\Table;
+use Filament\Tables;
+use App\Domains\ShortTermRentals\Models\Property;
 final class PropertyResource extends Resource
 {
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
 
-
+
+
     protected static ?string $model = Property::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-home';

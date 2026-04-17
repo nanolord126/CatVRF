@@ -34,10 +34,10 @@ final class ListFurniture extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Furniture ListRecords accessed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -59,10 +59,9 @@ final class ListFurniture extends ListRecords
         ];
     }
 
-    public function render()
-    {
-        $this->logger->info('ListFurniture page rendered', [
-            'user_id' => $this->guard->id(),
+    public function render(): \Illuminate\Contracts\View\View {
+        \Illuminate\Support\Facades\Log::channel('audit')->info('ListFurniture page rendered', [
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

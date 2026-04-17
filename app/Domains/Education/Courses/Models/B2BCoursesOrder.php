@@ -26,9 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 final class B2BCoursesOrder extends Model
 {
 
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'b2b_courses_orders';
 

@@ -32,10 +32,10 @@ final class CreateEventVenue extends CreateRecord
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            $this->logger->info('EventVenues creation form submitted', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('EventVenues creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         });
 
@@ -44,11 +44,11 @@ final class CreateEventVenue extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('EventVenues record created successfully', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('EventVenues record created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);

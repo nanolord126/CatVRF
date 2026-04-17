@@ -15,8 +15,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class PayoutInitiated
 {
-    use Dispatchable;
-    use SerializesModels;
 
     /**
      * @param int    $tenantId       Тенант-получатель

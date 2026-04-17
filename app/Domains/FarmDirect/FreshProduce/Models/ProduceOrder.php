@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ProduceOrder extends Model
 {
-    use HasFactory;
 
     use HasUuids, SoftDeletes, TenantScoped;
 

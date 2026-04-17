@@ -13,8 +13,9 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 final class EnrollmentReminderJob
 {
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         private ?string $correlationId;
 
@@ -74,3 +75,4 @@ final class EnrollmentReminderJob
             return Carbon::now()->addHours(6);
         }
 }
+

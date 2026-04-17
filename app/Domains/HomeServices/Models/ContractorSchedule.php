@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ContractorSchedule extends Model
 {
-    use HasFactory;
 
     protected $table = 'contractor_schedules';
         protected $fillable = [

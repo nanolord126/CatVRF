@@ -31,7 +31,6 @@ final class VaultAccessLog extends Model
         'correlation_id',
         'tenant_id',
     ];
-    use HasFactory;
 
 
 

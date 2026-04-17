@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class GroceryOrder extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
     protected $table = 'grocery_orders';
 

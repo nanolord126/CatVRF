@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceOrder extends Model
 {
-    use HasFactory;
 
         protected $table = 'freelance_orders';
 

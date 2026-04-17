@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\EventPlanning\Entertainment\Listeners;
+
+use App\Domains\EventPlanning\Entertainment\Events\BookingCreated;
+use App\Services\FraudControlService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -11,19 +14,28 @@ use Carbon\Carbon;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+
 final class DeductBookingCommissionListener
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+    ) {}
 
-
-    use InteractsWithQueue;
-use App\Services\FraudControlService;
+
+
 
         public function handle(BookingCreated $event): void
         {
             try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->fraud->check(
+                    userId: $this->guard->id() ?? 0,
+                    operationType: 'mutation',
+                    amount: 0,
+                    correlationId: $event->correlationId,
+                );
                 $this->db->transaction(function () use ($event) {
                     $commissionAmount = (int) ($event->booking->commission_amount * 100);
                     $wallet = \App\Models\Wallet::lockForUpdate()->where('tenant_id', $event->booking->tenant_id)->firstOrFail();

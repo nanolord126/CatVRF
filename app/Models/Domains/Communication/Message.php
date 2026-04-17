@@ -37,9 +37,7 @@ final class Message extends Model
         'tenant_id',
     ];
 
-    use HasFactory;
         protected $table = "messages";
-        protected $guarded = [];
         protected $casts = ["tags" => "json"];
 
         protected static function newFactory()

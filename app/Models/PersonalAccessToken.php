@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class PersonalAccessToken extends Model
 {
-    use HasFactory;
 
     protected $table = 'personal_access_tokens';
 

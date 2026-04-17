@@ -49,7 +49,7 @@ final class EditFurniture extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
-        $this->logger->info('Furniture item updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture item updated', [
             'item_id'        => $record->id,
             'name'           => $record->name,
             'status'         => $record->status,

@@ -16,6 +16,7 @@ final readonly class NotificationPreferencesService
     public function __construct(
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
     ) {}
 
 
@@ -88,21 +89,33 @@ final readonly class NotificationPreferencesService
             $correlationId = Str::uuid()->toString();
 
             try {
-                $this->fraud->check(new \stdClass());
-                $this->db->transaction(function () use ($userId, $channel, $preferences) {
-                    cache()->put(
-                        "notif:channel:{$userId}:{$channel}:enabled",
-                        $preferences['enabled'] ?? true,
-                        86400 * 365 // 1 year
-                    );
-
-                    if (isset($preferences['categories'])) {
-                        cache()->put(
-                            "notif:channel:{$userId}:{$channel}:categories",
-                            $preferences['categories'],
-                            86400 * 365
+                $this->fraud->check(
+                    userId: $userId,
+                    operationType: 'notification_preferences_update',
+                    amount: 0,
+                    correlationId: $correlationId,
+                );
+                $this->db->transaction(function () use ($userId, $channel, $preferences, $correlationId) {
+                    $this->db->table('notification_preferences')
+                        ->upsert(
+                            [
+                                'user_id'            => $userId,
+                                'notification_type'  => $preferences['notification_type'] ?? 'general',
+                                'channel'            => $channel,
+                                'is_enabled'         => $preferences['enabled'] ?? true,
+                                'quiet_from'         => $preferences['quiet_from'] ?? null,
+                                'quiet_to'           => $preferences['quiet_to'] ?? null,
+                                'frequency'          => $preferences['frequency'] ?? 'instant',
+                                'correlation_id'     => $correlationId,
+                                'created_at'         => now(),
+                                'updated_at'         => now(),
+                            ],
+                            ['user_id', 'notification_type', 'channel'],
+                            ['is_enabled', 'quiet_from', 'quiet_to', 'frequency', 'correlation_id', 'updated_at']
                         );
-                    }
+
+                    // cache invalidation
+                    cache()->forget("notif:prefs:{$userId}:{$channel}");
                 });
 
                 $this->logger->channel('audit')->info('Notification preferences updated', [

@@ -22,8 +22,7 @@ namespace App\Filament\Tenant\Resources\Auto\Pages;
 
 
 
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\View\View;
 use App\Filament\Tenant\Resources\Auto\AutoResource;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Log;
@@ -39,19 +38,15 @@ use Illuminate\Support\Facades\Log;
  */
 final class ViewAuto extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = AutoResource::class;
 
     protected function afterLoad(): void
     {
-        $this->logger->info('Auto record viewed', [
+        Log::channel('audit')->info('Auto record viewed', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);
@@ -62,11 +57,11 @@ final class ViewAuto extends ViewRecord
      *
      * @throws \DomainException
      */
-    public function render()
+    public function render(): \Illuminate\Contracts\View\View
     {
-        $this->logger->debug('ViewAuto page rendered', [
+        Log::channel('audit')->debug('ViewAuto page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
         ]);
 
         return parent::render();

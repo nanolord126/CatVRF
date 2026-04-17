@@ -27,10 +27,6 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessAIModelJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
-    use Queueable;
-    use SerializesModels;
 
     /**
      * The number of times the job may be attempted.

@@ -7,6 +7,7 @@ namespace App\Filament\Tenant\Resources\CrmClientResource\Pages;
 use App\Filament\Tenant\Resources\CrmClientResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Notifications\Notification;
 
 /**
  * ListCrmClients — список CRM-клиентов в Tenant Panel.

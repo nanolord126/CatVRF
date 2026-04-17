@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FashionReturn extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'fashion_returns';
 

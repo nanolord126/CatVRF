@@ -17,9 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class CrmAutoProfile extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
-    use HasFactory;
 
     protected static function newFactory(): \Database\Factories\CRM\CrmAutoProfileFactory
     {

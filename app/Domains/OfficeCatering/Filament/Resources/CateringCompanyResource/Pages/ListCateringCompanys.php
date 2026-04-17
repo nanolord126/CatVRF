@@ -19,31 +19,17 @@
 namespace App\Domains\OfficeCatering\Filament\Resources\CateringCompanyResource\Pages;
 
 use App\Domains\OfficeCatering\Filament\Resources\CateringCompanyResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-/**
- * Class ListCateringCompanys
- *
- * Part of the OfficeCatering vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\OfficeCatering\Filament\Resources\CateringCompanyResource\Pages
- */
 final class ListCateringCompanys extends ListRecords
 {
     protected static string $resource = CateringCompanyResource::class;
-/**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 
-    /**
-     * Maximum number of retry attempts for operations.
-     */
-    private const MAX_RETRIES = 3;
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

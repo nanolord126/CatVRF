@@ -38,9 +38,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class RentalBookingUpdated
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
 
     /**
      * Create a new event instance.

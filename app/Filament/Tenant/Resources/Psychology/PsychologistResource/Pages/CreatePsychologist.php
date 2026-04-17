@@ -32,7 +32,7 @@ final class CreatePsychologist extends CreateRecord
     {
         $correlationId = (string) Str::uuid();
 
-        $this->logger->info('Creating Psychologist via Filament', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Creating Psychologist via Filament', [
             'data' => $data,
             'correlation_id' => $correlationId,
         ]);

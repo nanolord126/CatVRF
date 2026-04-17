@@ -27,7 +27,6 @@ final class Certificate extends Model
 {
     protected $table = 'education_certificates';
 
-    use HasFactory;
 
     use HasUuids, SoftDeletes;
 

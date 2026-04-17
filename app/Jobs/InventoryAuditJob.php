@@ -29,7 +29,7 @@ use Illuminate\Database\DatabaseManager;
  */
 final class InventoryAuditJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
     /** @var int Количество попыток перед провалом */
     public int $tries = 2;
@@ -116,3 +116,4 @@ final class InventoryAuditJob implements ShouldQueue
         return $query->select('id', 'tenant_id', 'name')->get();
     }
 }
+

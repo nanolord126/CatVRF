@@ -6,9 +6,10 @@ use App\Domains\Finances\Domain\Enums\PayoutStatus;
 use App\Domains\Finances\Domain\Events\PayoutInitiated;
 use App\Domains\Finances\Domain\Interfaces\EarningCalculatorInterface;
 use App\Domains\Finances\Domain\Interfaces\PayoutRepositoryInterface;
+use App\Models\Wallet;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use App\Services\WalletService;
+use App\Services\Wallet\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Illuminate\Database\DatabaseManager;
@@ -88,11 +89,15 @@ final readonly class PayoutService
         );
 
         $this->db->transaction(function () use ($tenantId, $totalEarnings, $periodStart, $periodEnd, $correlationId): void {
+            /** @var \App\Models\Wallet $wallet */
+            $wallet = Wallet::where('tenant_id', $tenantId)->lockForUpdate()->firstOrFail();
+
             $this->walletService->debit(
-                walletId: $tenantId,
+                tenantId: $tenantId,
                 amount: $totalEarnings,
-                reason: 'payout',
+                type: 'payout',
                 correlationId: $correlationId,
+                walletId: $wallet->id,
             );
 
             $this->events->dispatch(new PayoutInitiated(

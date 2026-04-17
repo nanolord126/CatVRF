@@ -10,8 +10,6 @@ use Illuminate\Support\Str;
 
 final class PartyGiftSet extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
 
         protected $table = 'party_gift_sets';
 

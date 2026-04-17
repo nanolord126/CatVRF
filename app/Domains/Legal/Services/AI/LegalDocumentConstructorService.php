@@ -15,8 +15,8 @@ use Illuminate\Http\Request;
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
+use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
-use OpenAI\Client as OpenAIClient;
 
 /**
  * Генерация договоров + правовой анализ + выявление рисков + рекомендации
@@ -28,12 +28,16 @@ use OpenAI\Client as OpenAIClient;
  */
 final readonly class LegalDocumentConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
+    public function __construct(
+        private OpenAIClientService $openai,
         private RecommendationService $recommendation,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
+        private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
@@ -57,16 +61,27 @@ final readonly class LegalDocumentConstructorService
         }
 
         // 1. AI — анализ данных
-        $analysis = $this->openai->chat()->create([
-            'model'    => 'gpt-4o',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Генерация юридических документов и правовых рекомендаций. Определи: тип документа, стороны, предмет договора, особые условия. Составь проект документа и укажи ключевые риски.'],
-                ['role' => 'user', 'content' => json_encode(array_merge($this->getInputData($legalData, $userId), ['legal_profile' => true]))],
-            ],
-            'max_tokens' => 1024,
-        ]);
+        $inputData = array_merge($this->getInputData($legalData, $userId), ['legal_profile' => true]);
+        $inputJson = json_encode($inputData);
 
-        $analysisText = $analysis->choices[0]->message->content ?? '';
+        // Критично: анонимизация юридических данных перед отправкой в OpenAI
+        $anonymizedInput = $this->anonymizeLegalData($inputJson);
+
+        try {
+            $response = $this->openai->chat([
+                ['role' => 'system', 'content' => 'Генерация юридических документов и правовых рекомендаций. Определи: тип документа, стороны, предмет договора, особые условия. Составь проект документа и укажи ключевые риски.'],
+                ['role' => 'user', 'content' => $anonymizedInput],
+            ], 0.2, 'text');
+        } catch (\Throwable $e) {
+            $this->logger->error('OpenAI API call failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            throw new \RuntimeException('Failed to get legal analysis. Please try again later.');
+        }
+
+        $analysisText = $response['content'] ?? '';
 
         // 2. UserTasteProfile — персонализация через ML-вкусы пользователя
         $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -144,5 +159,33 @@ final readonly class LegalDocumentConstructorService
                 'created_at'     => Carbon::now(),
             ]
         );
+    }
+
+    private function anonymizeLegalData(string $data): string
+    {
+        // Критично для юридической вертикали - строгая анонимизация ПДн
+        $patterns = [
+            '/\b[A-ZА-Я][a-zа-я]+\s+[A-ZА-Я][a-zа-я]+\b/' => '[СТОРОНА]',
+            '/\b\d{2}\/\d{2}\/\d{4}\b/' => '[ДАТА]',
+            '/\b\d{2}\.\d{2}\.\d{4}\b/' => '[ДАТА]',
+            '/\b\d{11}\b/' => '[ТЕЛЕФОН]',
+            '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/' => '[EMAIL]',
+            '/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/' => '[КАРТА]',
+            '/\b\d{10}\b/' => '[ИНН]',
+            '/\b\d{12}\b/' => '[КПП]',
+            '/\b\d{20}\b/' => '[СЧЕТ]',
+            '/\b\d{9}\b/' => '[ОГРН]',
+        ];
+
+        return preg_replace(array_keys($patterns), array_values($patterns), $data);
+    }
+
+    private function getInputData(array $legalData, int $userId): array
+    {
+        return [
+            'document_type' => $legalData['document_type'] ?? null,
+            'parties' => $legalData['parties'] ?? [],
+            'subject' => $legalData['subject'] ?? null,
+        ];
     }
 }

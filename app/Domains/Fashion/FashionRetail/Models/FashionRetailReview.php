@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FashionRetailReview extends Model
 {
-    use HasFactory;
 
-    use SoftDeletes;
 
         protected $table = 'fashion_retail_reviews';
 

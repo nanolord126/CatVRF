@@ -47,7 +47,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class TranslationJob extends Model
 {
-    use HasFactory;
 
     protected $table = 'translation_jobs';
 

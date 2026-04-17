@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ServiceDispute extends Model
 {
-    use HasFactory;
 
     protected $table = 'service_disputes';
         protected $fillable = [

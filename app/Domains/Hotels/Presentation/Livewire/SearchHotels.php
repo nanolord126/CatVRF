@@ -25,7 +25,6 @@ use Livewire\WithPagination;
  */
 final class SearchHotels extends Component
 {
-    use WithPagination;
 
     // ===== Параметры поиска (сохраняются в URL) =====
 

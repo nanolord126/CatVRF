@@ -18,6 +18,7 @@
 
 namespace App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListVehicleRentals extends ListRecords

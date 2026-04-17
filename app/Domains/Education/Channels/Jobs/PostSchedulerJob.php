@@ -18,8 +18,9 @@ final class PostSchedulerJob
     public function __construct(
         private readonly LoggerInterface $logger) {}
 
-
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+
+    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public int $tries = 3;
 
@@ -68,3 +69,4 @@ final class PostSchedulerJob
             return ['channel', 'posts', 'scheduler'];
         }
 }
+

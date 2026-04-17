@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class StrReview extends Model
 {
-    use HasFactory;
 
     protected $table = 'str_reviews';
 

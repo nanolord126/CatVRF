@@ -3,6 +3,8 @@
 namespace App\Domains\Flowers\Jobs;
 
 use Carbon\Carbon;
+use App\Domains\Flowers\Models\FlowerOrder;
+use App\Services\FraudControlService;
 
 
 
@@ -13,11 +15,16 @@ use Illuminate\Http\Request;
 final class ProcessFlowerOrderStatusJob
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+    ) {}
 
-
-    use Queueable;
-use App\Services\FraudControlService;
+
+
+    use \Illuminate\Bus\Queueable;
 
         public $tries = 3;
         public $backoff = [60, 300, 900];
@@ -25,7 +32,12 @@ use App\Services\FraudControlService;
         public function handle(): void
         {
             try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+                $this->fraud->check(
+                    userId: $this->guard->id() ?? 0,
+                    operationType: 'mutation',
+                    amount: 0,
+                    correlationId: $this->request->header('X-Correlation-ID', ''),
+                );
                 $this->db->transaction(function () {
                     $orders = FlowerOrder::query()
                         ->where('status', 'confirmed')

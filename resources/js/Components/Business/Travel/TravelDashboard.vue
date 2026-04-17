@@ -1,5 +1,12 @@
-<script setup>
-const metrics = [
+<script setup lang="ts">
+interface Metric {
+  label: string;
+  value: string;
+  trend: string;
+  icon: string;
+}
+
+const metrics: Metric[] = [
     { label: 'Бронирований', value: '842', trend: '+11.1%', icon: '✈️' },
     { label: 'Средний пакет', value: '68 900 ₽', trend: '+4.3%', icon: '🧳' },
     { label: 'Подтверждение', value: '97.1%', trend: '+0.6%', icon: '✅' },

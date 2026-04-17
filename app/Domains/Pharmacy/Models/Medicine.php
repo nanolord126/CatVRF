@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Medicine extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes, TenantScoped;
 

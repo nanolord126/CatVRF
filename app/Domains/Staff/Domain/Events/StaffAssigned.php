@@ -41,7 +41,7 @@ use Ramsey\Uuid\UuidInterface;
  */
 final class StaffAssigned
 {
-    use Dispatchable, SerializesModels;
+    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
 
     public function __construct(
         private readonly StaffId $staffId,
@@ -52,3 +52,4 @@ final class StaffAssigned
 
     }
 }
+

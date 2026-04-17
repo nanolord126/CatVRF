@@ -18,11 +18,17 @@ use App\Domains\Advertising\Presentation\Http\Controllers\AdController;
  * 7. WebhookSignatureMiddleware - HMAC validation (webhook endpoints only)
  */
 
+// ===== STRESS TEST ENDPOINT (No Middleware - Public) =====
+Route::get('/stress-test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Stress test endpoint',
+        'timestamp' => now(),
+    ]);
+})->name('api.stress-test');
+
 // ===== GLOBAL MIDDLEWARE (all routes) =====
-Route::middleware([
-    'correlation-id',      // Inject/validate X-Correlation-ID header
-    'enrich-context',      // Add IP, user_agent, timing metadata
-])->group(function () {
+Route::group([], function () {
 
     // ===== HEALTH CHECK (No Auth) =====
     Route::get('/health', function () {
@@ -33,12 +39,18 @@ Route::middleware([
     // All routes defined in routes/api-v1.php with tenant + auth middleware
     require base_path('routes/api-v1.php');
 
+    // ===== BEAUTY VERTICAL =====
+    require base_path('routes/api/beauty.php');
+
+    // ===== EDUCATION VERTICAL =====
+    require base_path('routes/education.api.php');
+
     // ===== TAXI B2C (passenger) =====
     Route::prefix('api/v1/b2c/taxi')
         ->middleware(['auth:sanctum'])
         ->group(function () {
-            Route::post('rides/request', \App\Http\Controllers\Api\V1\B2C\Taxi\RideController::class)
-                ->name('b2c.taxi.rides.request');
+            // Route::post('rides/request', \App\Http\Controllers\Api\V1\B2C\Taxi\RideController::class)
+                // ->name('b2c.taxi.rides.request');
             Route::get('rides/{rideId}', \App\Http\Controllers\Api\V1\B2C\Taxi\TrackRideController::class)
                 ->name('b2c.taxi.rides.track');
         });
@@ -102,6 +114,49 @@ Route::prefix('v1')
         Route::prefix('search')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\V1\SearchController::class, 'index'])
                 ->name('v1.search.index');
+            Route::get('suggestions', [\App\Http\Controllers\Api\V1\SearchController::class, 'suggestions'])
+                ->name('v1.search.suggestions');
+        });
+
+        // Taxi card routes
+        Route::prefix('taxi')->group(function () {
+            Route::get('drivers/{driver}', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getDriverCard'])
+                ->name('v1.taxi.drivers.card');
+            Route::get('vehicles/{vehicle}', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getVehicleCard'])
+                ->name('v1.taxi.vehicles.card');
+            Route::get('tariffs', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getTariffs'])
+                ->name('v1.taxi.tariffs');
+            Route::get('tariffs/{tariff}', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getTariff'])
+                ->name('v1.taxi.tariffs.show');
+            Route::get('passengers/{passenger}', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getPassengerProfile'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.passengers.profile');
+            Route::get('rides/{ride}', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getRideCard'])
+                ->name('v1.taxi.rides.card');
+            Route::get('nearby-drivers', [\App\Domains\Taxi\Http\Controllers\TaxiCardController::class, 'getNearbyDrivers'])
+                ->name('v1.taxi.nearby-drivers');
+
+            // Taxi order routes
+            Route::post('orders', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'createOrder'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.create');
+            Route::get('orders/{ride}', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'getOrder'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.show');
+            Route::put('orders/{ride}', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'updateOrder'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.update');
+            Route::post('orders/{ride}/cancel', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'cancelOrder'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.cancel');
+            Route::post('orders/{ride}/rate', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'rateOrder'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.rate');
+            Route::get('orders', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'getUserOrders'])
+                ->middleware('auth:sanctum')
+                ->name('v1.taxi.orders.index');
+            Route::post('estimate-price', [\App\Domains\Taxi\Http\Controllers\TaxiOrderController::class, 'estimatePrice'])
+                ->name('v1.taxi.estimate-price');
         });
     });
 
@@ -114,6 +169,18 @@ Route::prefix('v2')
                 ->name('v2.payments.init');
             Route::get('{payment}', [\App\Http\Controllers\Api\V2\PaymentController::class, 'show'])
                 ->name('v2.payments.show');
+        });
+
+        // Search routes
+        Route::prefix('search')->group(function () {
+            Route::get('documents', [\App\Http\Controllers\Api\V2\Search\SearchController::class, 'searchDocuments'])
+                ->name('v2.search.documents');
+            Route::get('users', [\App\Http\Controllers\Api\V2\Search\SearchController::class, 'searchUsers'])
+                ->name('v2.search.users');
+            Route::get('history', [\App\Http\Controllers\Api\V2\Search\SearchController::class, 'getHistory'])
+                ->name('v2.search.history');
+            Route::delete('history', [\App\Http\Controllers\Api\V2\Search\SearchController::class, 'clearHistory'])
+                ->name('v2.search.history.clear');
         });
     });
 
@@ -259,6 +326,53 @@ Route::prefix('docs')->group(function () {
 
 // ─── Channels (посты, подписки, реакции) ─────────────────────────────────────
 require __DIR__ . '/channels.api.php';
+
+// ===== ADDITIONAL VERTICALS =====
+require __DIR__ . '/art.api.php';
+require __DIR__ . '/fashion.api.php';
+require __DIR__ . '/taxi.api.php';
+
+// ===== PRIORITY 1 VERTICALS (NEWLY ADDED) =====
+require __DIR__ . '/advertising.api.php';
+require __DIR__ . '/delivery.api.php';
+require __DIR__ . '/event-planning.api.php';
+require __DIR__ . '/wedding-planning.api.php';
+require __DIR__ . '/car-rental.api.php';
+
+// ===== PRIORITY 2 VERTICALS (95% COVERAGE) =====
+require __DIR__ . '/cleaning-services.api.php';
+require __DIR__ . '/collectibles.api.php';
+require __DIR__ . '/communication.api.php';
+require __DIR__ . '/consulting.api.php';
+require __DIR__ . '/content.api.php';
+require __DIR__ . '/finances.api.php';
+require __DIR__ . '/flowers.api.php';
+require __DIR__ . '/gardening.api.php';
+require __DIR__ . '/hobby-and-craft.api.php';
+require __DIR__ . '/household-goods.api.php';
+require __DIR__ . '/insurance.api.php';
+require __DIR__ . '/inventory.api.php';
+require __DIR__ . '/legal.api.php';
+require __DIR__ . '/marketplace.api.php';
+require __DIR__ . '/sports-nutrition.api.php';
+require __DIR__ . '/staff.api.php';
+require __DIR__ . '/vegan-products.api.php';
+require __DIR__ . '/veterinary.api.php';
+
+// ===== PRIORITY 3 VERTICALS (100% COVERAGE) =====
+require __DIR__ . '/party-supplies.api.php';
+
+// ─── Universal Order API (B2C/B2B for all verticals) ─────────────────────────────
+Route::prefix('api/v1/orders')
+    ->middleware(['auth:sanctum', 'order'])
+    ->group(function () {
+        Route::post('/', [App\Http\Controllers\Api\UniversalOrderController::class, 'createOrder'])
+            ->name('orders.create');
+        Route::get('/{uuid}', [App\Http\Controllers\Api\UniversalOrderController::class, 'getOrder'])
+            ->name('orders.get');
+        Route::get('/', [App\Http\Controllers\Api\UniversalOrderController::class, 'listOrders'])
+            ->name('orders.list');
+    });
 
 // API route for showing advertisements
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

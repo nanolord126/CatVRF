@@ -6,14 +6,11 @@ use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Str;
 
 final class Excursion extends Model
 {
-    use HasFactory;
 
-    use LogsActivity;
 
         protected $table = 'excursions';
 
@@ -58,12 +55,5 @@ final class Excursion extends Model
             return $this->morphMany(Booking::class, 'bookable');
         }
 
-        public function getActivitylogOptions(): LogOptions
-        {
-            return LogOptions::defaults()
-                ->logOnly(['name', 'price', 'duration_minutes'])
-                ->logOnlyDirty()
-                ->useLogName('travel_domain')
-                ->dontSubmitEmptyLogs();
-        }
+        
 }

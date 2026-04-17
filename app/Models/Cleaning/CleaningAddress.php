@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class CleaningAddress extends Model
 {
-    use HasFactory;
 
     protected $table = 'cleaning_addresses';
 

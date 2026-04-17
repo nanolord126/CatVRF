@@ -30,7 +30,6 @@ use Illuminate\Support\Str;
  */
 final class InventoryItem extends Model
 {
-    use HasFactory;
 
     protected $table = 'inventories';
 

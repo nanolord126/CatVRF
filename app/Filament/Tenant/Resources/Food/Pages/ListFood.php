@@ -34,10 +34,10 @@ final class ListFood extends ListRecords
     protected function getTableQuery(): Builder
     {
         $tenantId = filament()->getTenant()->id;
-        $userId = $this->guard->id();
+        $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Food ListRecords accessed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Food ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -59,10 +59,9 @@ final class ListFood extends ListRecords
         ];
     }
 
-    public function render()
-    {
-        $this->logger->info('ListFood page rendered', [
-            'user_id' => $this->guard->id(),
+    public function render(): \Illuminate\Contracts\View\View {
+        \Illuminate\Support\Facades\Log::channel('audit')->info('ListFood page rendered', [
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);
 

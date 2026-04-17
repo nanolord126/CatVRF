@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
@@ -13,6 +15,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Domains\Beauty\Http\Requests\StaffStoreRequest;
+use App\Domains\Beauty\Http\Requests\StaffUpdateRequest;
+use App\Domains\Beauty\Http\Requests\PromoStoreRequest;
+use App\Domains\Beauty\Http\Requests\LoyaltyUpdateRequest;
+use App\Domains\Beauty\Actions\Staff\CreateMasterAction;
+use App\Domains\Beauty\Actions\Staff\UpdateMasterAction;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -34,6 +43,9 @@ final class BeautyPanelController extends Controller
         private FraudControlService $fraud,
         private LoggerInterface $logger,
         private Guard $guard,
+        private ResponseFactory $response,
+        private CreateMasterAction $createMaster,
+        private UpdateMasterAction $updateMaster,
     ) {}
 
     /* ═══════════════════════════════════════════════════
@@ -89,7 +101,7 @@ final class BeautyPanelController extends Controller
 
         $this->audit->log('beauty_dashboard_loaded', self::class, auth()->user()->id, [], [], $correlationId);
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'revenue_today' => (float) $revenueToday,
                 'revenue_week' => (float) $revenueWeek,
@@ -161,7 +173,7 @@ final class BeautyPanelController extends Controller
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'revenue' => (float) $revenue,
                 'expenses' => 0,
@@ -202,13 +214,13 @@ final class BeautyPanelController extends Controller
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return $this->response->json([
             'data' => $staff,
             'correlation_id' => $correlationId,
         ]);
     }
 
-    public function staffStore(Request $request): JsonResponse
+    public function staffStore(StaffStoreRequest $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
@@ -221,50 +233,29 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
-        $master = $this->db->transaction(function () use ($request, $correlationId) {
-            $created = Master::create([
-                'salon_id' => $request->input('salon_id'),
-                'full_name' => $request->input('full_name'),
-                'specialization' => $request->input('specialization'),
-                'rating' => 5.0,
-                'is_active' => true,
-                'tags' => $request->input('tags', []),
-            ]);
+        $validated = $request->validated();
 
-            $this->audit->record(
-                action: 'staff_created',
-                subjectType: Master::class,
-                subjectId: $created->id,
-                newValues: $created->toArray(),
-                correlationId: $correlationId
-            );
+        // add correlation id into data for audit
+        $validated['correlation_id'] = $correlationId;
 
-            return $created;
-        });
+        $master = $this->createMaster->execute($request->user()->tenant_id, $validated);
 
-        return response()->json(['data' => $master, 'correlation_id' => $correlationId], 201);
+        return $this->response->json(['data' => $master, 'correlation_id' => $correlationId], 201);
     }
 
-    public function staffUpdate(Request $request, int $id): JsonResponse
+    public function staffUpdate(StaffUpdateRequest $request, int $id): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
         $master = Master::findOrFail($id);
         $old = $master->toArray();
 
-        $this->db->transaction(function () use ($master, $request, $correlationId, $old) {
-            $master->update($request->only(['full_name', 'specialization', 'is_active', 'tags']));
-            $this->audit->record(
-                action: 'staff_updated',
-                subjectType: Master::class,
-                subjectId: $master->id,
-                oldValues: $old,
-                newValues: $master->fresh()->toArray(),
-                correlationId: $correlationId
-            );
-        });
+        $validated = $request->validated();
+        $validated['correlation_id'] = $correlationId;
 
-        return response()->json(['data' => $master->fresh(), 'correlation_id' => $correlationId]);
+        $updated = $this->updateMaster->execute($request->user()->tenant_id, $id, $validated);
+
+        return $this->response->json(['data' => $updated, 'correlation_id' => $correlationId]);
     }
 
     public function staffPayout(Request $request, int $id): JsonResponse
@@ -294,7 +285,7 @@ final class BeautyPanelController extends Controller
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return $this->response->json([
             'data' => ['status' => 'processed', 'master_id' => $id],
             'correlation_id' => $correlationId,
         ]);
@@ -307,7 +298,7 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'tiers' => config('bonuses.beauty_tiers', []),
                 'referral_bonus' => config('bonuses.referral_bonus', 500),
@@ -318,7 +309,7 @@ final class BeautyPanelController extends Controller
         ]);
     }
 
-    public function loyaltyUpdate(Request $request): JsonResponse
+    public function loyaltyUpdate(LoyaltyUpdateRequest $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
@@ -329,15 +320,17 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
+        $validated = $request->validated();
+
         $this->audit->record(
             action: 'loyalty_config_updated',
             subjectType: 'LoyaltyConfig',
             subjectId: null,
-            newValues: $request->all(),
+            newValues: $validated,
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
     }
 
     public function loyaltyAward(Request $request): JsonResponse
@@ -370,7 +363,7 @@ final class BeautyPanelController extends Controller
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json(['data' => ['status' => 'awarded'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'awarded'], 'correlation_id' => $correlationId]);
     }
 
     public function loyaltyDeduct(Request $request): JsonResponse
@@ -397,7 +390,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
-        return response()->json(['data' => ['status' => 'deducted'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'deducted'], 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -422,7 +415,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'sent'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'sent'], 'correlation_id' => $correlationId]);
     }
 
     public function notificationBulk(Request $request): JsonResponse
@@ -444,7 +437,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'status' => 'queued',
                 'recipients_count' => $request->input('recipients_count', 0),
@@ -457,7 +450,7 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     public function notificationTemplateStore(Request $request): JsonResponse
@@ -472,7 +465,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'saved'], 'correlation_id' => $correlationId], 201);
+        return $this->response->json(['data' => ['status' => 'saved'], 'correlation_id' => $correlationId], 201);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -482,14 +475,14 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     public function chatMessages(Request $request, int $chatId): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     public function chatSendMessage(Request $request, int $chatId): JsonResponse
@@ -508,7 +501,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
-        return response()->json(['data' => ['status' => 'sent'], 'correlation_id' => $correlationId], 201);
+        return $this->response->json(['data' => ['status' => 'sent'], 'correlation_id' => $correlationId], 201);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -533,7 +526,7 @@ final class BeautyPanelController extends Controller
             ->orderByDesc('visits_count')
             ->paginate($request->input('per_page', 20));
 
-        return response()->json([
+        return $this->response->json([
             'data' => $clients->items(),
             'meta' => [
                 'total' => $clients->total(),
@@ -548,20 +541,28 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        $client = $this->db->table('users')->where('id', $id)->first();
+        $tenantId = $request->user()?->tenant_id;
+
+        // Only allow viewing clients who have appointments for this tenant
+        $client = $this->db->table('users')
+            ->join('beauty_appointments', 'users.id', '=', 'beauty_appointments.user_id')
+            ->where('users.id', $id)
+            ->where('beauty_appointments.tenant_id', $tenantId)
+            ->select('users.*')
+            ->first();
 
         if ($client === null) {
-            return response()->json(['message' => 'Client not found', 'correlation_id' => $correlationId], 404);
+            return $this->response->json(['message' => 'Client not found', 'correlation_id' => $correlationId], 404);
         }
 
-        return response()->json(['data' => $client, 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => $client, 'correlation_id' => $correlationId]);
     }
 
     public function clientSegments(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -571,7 +572,7 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     public function pageStore(Request $request): JsonResponse
@@ -586,7 +587,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'created'], 'correlation_id' => $correlationId], 201);
+        return $this->response->json(['data' => ['status' => 'created'], 'correlation_id' => $correlationId], 201);
     }
 
     public function pageUpdate(Request $request, int $id): JsonResponse
@@ -601,7 +602,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
     }
 
     public function pageDestroy(Request $request, int $id): JsonResponse
@@ -616,14 +617,14 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'deleted'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'deleted'], 'correlation_id' => $correlationId]);
     }
 
     public function pageStats(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -633,10 +634,10 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'correlation_id' => $correlationId]);
     }
 
-    public function promoStore(Request $request): JsonResponse
+    public function promoStore(PromoStoreRequest $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
@@ -647,15 +648,17 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
+        $validated = $request->validated();
+
         $this->audit->record(
             action: 'promo_created',
             subjectType: 'Promo',
             subjectId: null,
-            newValues: $request->all(),
+            newValues: $validated,
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'created'], 'correlation_id' => $correlationId], 201);
+        return $this->response->json(['data' => ['status' => 'created'], 'correlation_id' => $correlationId], 201);
     }
 
     public function promoUpdate(Request $request, int $id): JsonResponse
@@ -670,7 +673,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'updated'], 'correlation_id' => $correlationId]);
     }
 
     public function promoDestroy(Request $request, int $id): JsonResponse
@@ -685,7 +688,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => ['status' => 'deleted'], 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => ['status' => 'deleted'], 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -715,7 +718,7 @@ final class BeautyPanelController extends Controller
 
         $this->audit->log('beauty_analytics_loaded', self::class, (int) (auth()->id() ?? 0), ['period' => $period], [], $correlationId);
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'revenue_by_day' => $revenueByDay,
             ],
@@ -727,7 +730,7 @@ final class BeautyPanelController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        return response()->json(['data' => [], 'type' => $type, 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'type' => $type, 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -745,7 +748,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        return response()->json(['data' => [], 'type' => $type, 'correlation_id' => $correlationId]);
+        return $this->response->json(['data' => [], 'type' => $type, 'correlation_id' => $correlationId]);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -778,7 +781,7 @@ final class BeautyPanelController extends Controller
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return $this->response->json([
             'data' => [
                 'status' => 'processing',
                 'message' => 'AI-анализ запущен. Результат будет готов через несколько секунд.',
@@ -787,3 +790,4 @@ final class BeautyPanelController extends Controller
         ]);
     }
 }
+

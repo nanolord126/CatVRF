@@ -46,7 +46,6 @@ use Illuminate\Database\Eloquent\Model;
 final class PortfolioItem extends Model
 {
     /** @use HasFactory<\Database\Factories\Domains\Beauty\Models\PortfolioItemFactory> */
-    use HasFactory;
 
     protected $table = 'portfolio_items';
 

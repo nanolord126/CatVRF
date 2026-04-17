@@ -2,11 +2,16 @@
 
 namespace App\Filament\Tenant\Resources\Medical;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
+use Filament\Forms;
+use Filament\Tables;
+use App\Domains\Medical\Models\Appointment;
 
 final class AppointmentResource extends Resource
 {
-
+
+
     protected static ?string $model = Appointment::class;
 
         protected static ?string $navigationIcon = 'heroicon-o-calendar';
@@ -102,7 +107,7 @@ final class AppointmentResource extends Resource
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()
                 ->where('tenant_id', filament()->getTenant()->id)

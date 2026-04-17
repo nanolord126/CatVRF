@@ -7,7 +7,6 @@ namespace App\Domains\AI\Services;
 
 use App\Domains\Inventory\Services\InventoryManagementService;
 use App\Domains\Recommendation\Services\RecommendationService;
-use OpenAI\Client as OpenAIClient;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,7 +17,6 @@ final readonly class AIConstructorService
 {
     public function __construct(
         private OpenAIClient $openai,
-        private RecommendationService $recommendationService,
         private InventoryManagementService $inventoryService,
         private LoggerInterface $logger,
     ) {}

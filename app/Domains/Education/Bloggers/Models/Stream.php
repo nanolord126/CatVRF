@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class Stream extends Model
 {
-    use HasFactory;
 
     use HasFactory, SoftDeletes;
 

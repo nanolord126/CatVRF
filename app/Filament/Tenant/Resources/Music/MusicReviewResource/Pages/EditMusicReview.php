@@ -46,11 +46,11 @@ final class EditMusicReview extends EditRecord
             return $this->db->transaction(function () use ($record, $data) {
                 $record->update($data);
 
-                $this->logger->info('Music review updated via UI', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Music review updated via UI', [
                     'review_id' => $record->id,
                     'tenant_id' => $record->tenant_id,
                     'correlation_id' => $record->correlation_id,
-                    'updated_by' => $this->guard->id(),
+                    'updated_by' => auth()->id(),
                 ]);
 
                 return $record;

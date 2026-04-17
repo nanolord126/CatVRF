@@ -45,9 +45,9 @@ final class AnalyticsEventResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAnalyticsEvents::route('/'),
-            'create' => Pages\CreateAnalyticsEvent::route('/create'),
-            'edit' => Pages\EditAnalyticsEvent::route('/{record}/edit'),
+            'index' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\ListAnalyticsEvents::route('/'),
+            'create' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\CreateAnalyticsEvent::route('/create'),
+            'edit' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\EditAnalyticsEvent::route('/{record}/edit'),
         ];
     }
 }

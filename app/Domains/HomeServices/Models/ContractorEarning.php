@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ContractorEarning extends Model
 {
-    use HasFactory;
 
     protected $table = 'contractor_earnings';
         protected $fillable = [

@@ -39,8 +39,8 @@ final class EditManufacturing extends EditRecord
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            $this->logger->info('Manufacturing updated', [
-                'user_id' => $this->guard->id(),
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Manufacturing updated', [
+                'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
                 'record_id' => $this->record->id,
@@ -52,9 +52,9 @@ final class EditManufacturing extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Manufacturing edit page saved', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Manufacturing edit page saved', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'timestamp' => now()->toIso8601String(),
         ]);
     }

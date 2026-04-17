@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class PaymentTransaction extends Model
 {
-    use HasFactory;
     protected $table = 'payment_transactions';
 
     protected $fillable = [

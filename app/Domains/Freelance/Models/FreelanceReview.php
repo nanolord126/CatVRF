@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceReview extends Model
 {
-    use HasFactory;
 
     protected $table = 'freelance_reviews';
 

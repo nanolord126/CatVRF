@@ -2,12 +2,12 @@
 
 namespace App\Domains\HomeServices\Ritual\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class MemorialProduct extends Model
 {
-    use HasFactory;
 
     protected $table = 'ritual_memorial_products';
 

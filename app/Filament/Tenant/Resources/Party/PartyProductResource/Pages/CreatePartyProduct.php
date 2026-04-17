@@ -55,7 +55,7 @@ final class CreatePartyProduct extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('New PartyProduct created', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('New PartyProduct created', [
             'product_id' => $this->record->id,
             'sku' => $this->record->sku,
             'correlation_id' => $this->record->correlation_id,

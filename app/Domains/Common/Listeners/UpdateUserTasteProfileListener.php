@@ -13,7 +13,6 @@ use Psr\Log\LoggerInterface;
 
 final class UpdateUserTasteProfileListener
 {
-    use InteractsWithQueue;
 
         public int $tries = 3;
 

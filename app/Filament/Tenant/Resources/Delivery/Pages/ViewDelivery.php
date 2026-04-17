@@ -47,11 +47,11 @@ final class ViewDelivery extends ViewRecord
 
     protected function afterLoad(): void
     {
-        $this->logger->info('Delivery record viewed', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('Delivery record viewed', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);
@@ -62,11 +62,10 @@ final class ViewDelivery extends ViewRecord
      *
      * @throws \DomainException
      */
-    public function render()
-    {
+    public function render(): \Illuminate\Contracts\View\View {
         $this->logger->debug('ViewDelivery page rendered', [
             'record_id' => $this->record->id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
         ]);
 
         return parent::render();

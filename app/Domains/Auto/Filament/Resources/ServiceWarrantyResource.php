@@ -10,7 +10,7 @@ use Filament\Tables;
 
 final class ServiceWarrantyResource extends Resource
 {
-
+
     protected static ?string $model = ServiceWarranty::class;
 
         protected static ?string $navigationLabel = 'Гарантия на ремонт';
@@ -148,9 +148,9 @@ final class ServiceWarrantyResource extends Resource
         public static function getPages(): array
         {
             return [
-                'index' => Pages\ListServiceWarranties::route('/'),
-                'create' => Pages\CreateServiceWarranty::route('/create'),
-                'edit' => Pages\EditServiceWarranty::route('/{record}/edit'),
+                'index' => \App\Domains\Auto\Filament\Resources\ServiceWarrantyResource\Pages\ListServiceWarranties::route('/'),
+                'create' => \App\Domains\Auto\Filament\Resources\ServiceWarrantyResource\Pages\CreateServiceWarranty::route('/create'),
+                'edit' => \App\Domains\Auto\Filament\Resources\ServiceWarrantyResource\Pages\EditServiceWarranty::route('/{record}/edit'),
             ];
         }
 

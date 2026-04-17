@@ -51,7 +51,7 @@ final class EditDentalService extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('DentalService updated', [
+        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalService updated', [
             'service_id'     => $this->record->id,
             'name'           => $this->record->name,
             'base_price'     => $this->record->base_price,

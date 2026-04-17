@@ -2,14 +2,13 @@
 
 namespace App\Domains\Education\Models;
 
-
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class CorporateContract extends Model
 {
 
-    use HasFactory;
 
     protected $table = 'corporate_contracts';
 

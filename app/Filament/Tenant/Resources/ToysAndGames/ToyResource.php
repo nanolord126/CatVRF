@@ -4,7 +4,6 @@ namespace App\Filament\Tenant\Resources\ToysAndGames;
 
     use Filament\Resources\Resource;
 use Filament\Forms\Form;
-use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
     use Filament\Tables\{Table, Columns\TextColumn, Columns\BadgeColumn, Columns\BooleanColumn, Filters\SelectFilter, Filters\TernaryFilter, Filters\TrashedFilter, Filters\Filter};
@@ -69,7 +68,7 @@ use Filament\Tables;
                 TextColumn::make('name')->label('Игрушка')->searchable()->sortable()->icon('heroicon-m-cube')->limit(40),
                 BadgeColumn::make('category')->label('Категория')->color(fn ($state) => match($state) { 'action_figures' => 'blue', 'building_blocks' => 'orange', 'dolls' => 'pink', 'puzzles' => 'purple', 'games' => 'green', default => 'gray' }),
                 TextColumn::make('price')->label('Цена')->money('RUB', divideBy: 100)->sortable(),
-                TextColumn::make('age_from')->label('Возраст')->formatStateUsing(fn ($state, $record) => "{$state}+{$record->age_to ? ' -'.$record->age_to : ''}")->alignment('center'),
+                TextColumn::make('age_from')->label('Возраст')->formatStateUsing(fn ($state, $record) => $record->age_to ? "{$state} - {$record->age_to}" : "{$state}+")->alignment('center'),
                 TextColumn::make('rating')->label('★')->formatStateUsing(fn ($state) => '★ ' . number_format($state, 1))->badge()->color(fn ($state) => $state >= 4 ? 'success' : 'warning'),
                 BooleanColumn::make('is_educational')->label('📚')->toggleable(),
                 BooleanColumn::make('is_featured')->label('⭐')->toggleable(),
@@ -94,7 +93,7 @@ use Filament\Tables;
             ];
         }
 
-        protected static function getEloquentQuery(): Builder
+        public static function getEloquentQuery(): Builder
         {
             return parent::getEloquentQuery()->where('tenant_id', tenant('id'));
         }

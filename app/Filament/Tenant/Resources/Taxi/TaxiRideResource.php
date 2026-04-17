@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\Taxi;
 
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
@@ -34,7 +35,7 @@ final class TaxiRideResource extends Resource
         /**
          * Форма создания/редактирования (подробная валидация).
          */
-        public function form(Form $form): Form
+        public static function form(Form $form): Form
         {
             return $form
                 ->schema([
@@ -96,7 +97,7 @@ final class TaxiRideResource extends Resource
         /**
          * Таблица списка поездок (мощная фильтрация).
          */
-        public function table(Table $table): Table
+        public static function table(Table $table): Table
         {
             return $table
                 ->columns([

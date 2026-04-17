@@ -27,6 +27,35 @@ Route::prefix('electronics')
             Route::get('/{id}', [\App\Domains\Electronics\Http\Controllers\ElectronicsProductController::class, 'show']);
             Route::put('/{id}', [\App\Domains\Electronics\Http\Controllers\ElectronicsProductController::class, 'update']);
             Route::delete('/{id}', [\App\Domains\Electronics\Http\Controllers\ElectronicsProductController::class, 'destroy']);
+
+            Route::prefix('vision')->group(function () {
+                Route::post('/analyze', [\App\Domains\Electronics\Http\Controllers\GadgetVisionController::class, 'analyze']);
+                Route::post('/video-call', [\App\Domains\Electronics\Http\Controllers\GadgetVisionController::class, 'initiateVideoCall']);
+            });
+
+            Route::get('/products/{productId}/ar-model', [\App\Domains\Electronics\Http\Controllers\GadgetVisionController::class, 'getARModel']);
+            Route::get('/products/{productId}/ar-qr', [\App\Domains\Electronics\Http\Controllers\GadgetVisionController::class, 'generateARQR']);
+
+            Route::prefix('fraud')->group(function () {
+                Route::post('/serial/validate', [\App\Domains\Electronics\Http\Controllers\FraudDetectionController::class, 'validateSerialNumber']);
+                Route::post('/return/detect', [\App\Domains\Electronics\Http\Controllers\FraudDetectionController::class, 'detectReturnFraud']);
+                Route::get('/statistics', [\App\Domains\Electronics\Http\Controllers\FraudDetectionController::class, 'getFraudStatistics']);
+            });
+
+            Route::prefix('wallet')->group(function () {
+                Route::post('/split-payment', [\App\Domains\Electronics\Http\Controllers\WalletController::class, 'processSplitPayment']);
+                Route::post('/escrow/release', [\App\Domains\Electronics\Http\Controllers\WalletController::class, 'releaseEscrow']);
+                Route::get('/balance', [\App\Domains\Electronics\Http\Controllers\WalletController::class, 'getWalletBalance']);
+                Route::get('/payments', [\App\Domains\Electronics\Http\Controllers\WalletController::class, 'getPaymentHistory']);
+                Route::get('/escrow-holds', [\App\Domains\Electronics\Http\Controllers\WalletController::class, 'getEscrowHolds']);
+            });
+
+            Route::prefix('search')->group(function () {
+                Route::get('/', [\App\Domains\Electronics\Http\Controllers\SearchController::class, 'search']);
+                Route::get('/filters', [\App\Domains\Electronics\Http\Controllers\SearchController::class, 'getFilters']);
+                Route::get('/suggestions', [\App\Domains\Electronics\Http\Controllers\SearchController::class, 'getSuggestions']);
+                Route::get('/popular', [\App\Domains\Electronics\Http\Controllers\SearchController::class, 'getPopularSearches']);
+            });
         });
 
         Route::prefix('b2b/v1')

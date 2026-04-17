@@ -43,7 +43,7 @@ final class ListBeverageItems extends ListRecords
         protected function getHeaderActions(): array
         {
             return [
-                Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->label('Introduce Drink Item')
                     ->icon('heroicon-o-sparkles'),
             ];

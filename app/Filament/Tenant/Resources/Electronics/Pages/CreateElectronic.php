@@ -10,9 +10,6 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Electronics\ElectronicsResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class CreateElectronic extends CreateRecord
 {
@@ -32,10 +29,10 @@ final class CreateElectronic extends CreateRecord
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            $this->logger->info('Electronics creation form submitted', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Electronics creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
-                'user_id' => $this->guard->id(),
+                'user_id' => auth()->id(),
             ]);
         });
 
@@ -48,7 +45,7 @@ final class CreateElectronic extends CreateRecord
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
-            'user_id' => $this->guard->id(),
+            'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
             'timestamp' => now()->toIso8601String(),
         ]);

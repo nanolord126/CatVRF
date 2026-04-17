@@ -7,6 +7,7 @@ use App\Domains\RealEstate\Presentation\Http\Controllers\B2C\PropertySearchContr
 use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\ContractController;
 use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\PropertyController;
 use App\Domains\RealEstate\Presentation\Http\Controllers\B2B\ViewingController;
+use App\Http\Controllers\Api\V1\RealEstate\PropertyTransactionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,4 +57,41 @@ Route::middleware(['api', 'auth:sanctum', 'throttle:60,1'])
 
         Route::post('/contracts/{id}/sign', [ContractController::class, 'sign'])
             ->name('realestate.b2b.contracts.sign');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| TRANSACTION ENDPOINTS — AI-powered real estate transactions
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['api', 'auth:sanctum', 'throttle:100,1'])
+    ->prefix('api/v1/real-estate/transactions')
+    ->group(function (): void {
+
+        // ── Property Creation with AI ───────────────────────────────────
+        Route::post('/properties', [PropertyTransactionController::class, 'createProperty'])
+            ->name('realestate.transactions.properties.create');
+
+        // ── Viewing Booking with Hold Slots ─────────────────────────────
+        Route::post('/viewings/book', [PropertyTransactionController::class, 'bookViewing'])
+            ->name('realestate.transactions.viewings.book');
+
+        // ── Predictive Scoring ─────────────────────────────────────────
+        Route::get('/properties/{propertyId}/scoring', [PropertyTransactionController::class, 'calculatePredictiveScoring'])
+            ->name('realestate.transactions.properties.scoring');
+
+        // ── Dynamic Pricing ────────────────────────────────────────────
+        Route::get('/properties/{propertyId}/pricing', [PropertyTransactionController::class, 'calculateDynamicPrice'])
+            ->name('realestate.transactions.properties.pricing');
+
+        // ── Blockchain Verification ────────────────────────────────────
+        Route::post('/properties/{propertyId}/verify-blockchain', [PropertyTransactionController::class, 'verifyDocumentsOnBlockchain'])
+            ->name('realestate.transactions.properties.verify-blockchain');
+
+        // ── Escrow Payments ────────────────────────────────────────────
+        Route::post('/properties/{propertyId}/escrow/initiate', [PropertyTransactionController::class, 'initiateEscrowPayment'])
+            ->name('realestate.transactions.properties.escrow.initiate');
+
+        Route::post('/properties/{propertyId}/escrow/release', [PropertyTransactionController::class, 'releaseEscrowPayment'])
+            ->name('realestate.transactions.properties.escrow.release');
     });

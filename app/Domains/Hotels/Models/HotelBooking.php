@@ -12,7 +12,6 @@ use App\Models\User;
 
 final class HotelBooking extends Model
 {
-use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = "hotels_bookings";
 

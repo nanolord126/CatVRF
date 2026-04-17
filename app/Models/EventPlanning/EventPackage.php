@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 final class EventPackage extends Model
 {
-    use HasFactory;
 
         protected $table = 'event_packages';
 
