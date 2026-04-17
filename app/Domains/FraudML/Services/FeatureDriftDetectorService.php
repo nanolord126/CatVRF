@@ -162,7 +162,7 @@ final readonly class FeatureDriftDetectorService
         // For large samples, we use the Kolmogorov-Smirnov distribution
         $n = count($expected);
         $m = count($actual);
-        $effectiveN = ($n * $m) / ($n + $m);
+        $effectiveN = (int) (($n * $m) / ($n + $m));
         
         // Approximate p-value (simplified for production)
         $pValue = $this->calculateKSPValue($ksStatistic, $effectiveN);
@@ -592,10 +592,10 @@ final readonly class FeatureDriftDetectorService
      * Calculate p-value for KS statistic (simplified approximation)
      * 
      * @param float $ksStatistic KS statistic
-     * @param int $n Effective sample size
+     * @param float $n Effective sample size
      * @return float Approximate p-value
      */
-    private function calculateKSPValue(float $ksStatistic, int $n): float
+    private function calculateKSPValue(float $ksStatistic, float $n): float
     {
         // Simplified approximation for production
         // For accurate results, use scipy.stats.ks_2samp in Python

@@ -48,6 +48,8 @@ return [
         'redis:ml-retrain-high-priority' => 300,
         'redis:delivery' => 20,
         'redis:marketing' => 60,
+        'redis:fraud-check-payment' => 30,
+        'redis:payment-fraud-check' => 30,
     ],
 
     /*
@@ -123,13 +125,23 @@ return [
         'production' => [
             'supervisor-critical' => [
                 'connection' => 'redis',
-                'queue' => ['fraud-notifications', 'payments'],
+                'queue' => ['fraud-notifications', 'payments', 'fraud-check-payment'],
                 'balance' => 'auto',
                 'maxProcesses' => 20,
                 'memory' => 256,
                 'tries' => 5,
                 'timeout' => 60,
                 'nice' => 0,
+            ],
+            'supervisor-fraud-payment' => [
+                'connection' => 'redis',
+                'queue' => ['fraud-check-payment', 'payment-fraud-check'],
+                'balance' => 'auto',
+                'maxProcesses' => 4,
+                'memory' => 512,
+                'tries' => 3,
+                'timeout' => 30,
+                'nice' => -5,
             ],
             'supervisor-default' => [
                 'connection' => 'redis',
@@ -176,7 +188,7 @@ return [
         'local' => [
             'supervisor-default' => [
                 'connection' => 'redis',
-                'queue' => ['default', 'fraud-notifications', 'payments', 'audit-logs', 'delivery', 'ml', 'marketing'],
+                'queue' => ['default', 'fraud-notifications', 'payments', 'audit-logs', 'delivery', 'ml', 'marketing', 'fraud-check-payment', 'payment-fraud-high-priority', 'payment-fraud-check'],
                 'balance' => 'auto',
                 'maxProcesses' => 3,
                 'memory' => 128,

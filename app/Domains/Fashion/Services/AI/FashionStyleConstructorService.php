@@ -72,7 +72,7 @@ final readonly class FashionStyleConstructorService
         private InventoryService $inventory,
         private WalletService $wallet,
         private BonusService $bonus,
-        private PaymentService $payment,
+        private PaymentServiceAdapter $payment,
         private CRMIntegrationService $crm,
         private OpenAIClient $openai,
         private \Illuminate\Contracts\Cache\Repository $cache,

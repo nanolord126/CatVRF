@@ -19,6 +19,10 @@ final class AppointmentService
     public function __construct(
         private FraudControlService $fraud,
         private PaymentService $payment,
+        private CircuitBreakerService $circuitBreaker,
+        private PaymentMetricsService $paymentMetrics,
+        private AtomicWalletOperationsService $atomicWallet,
+        private PricingEngineService $pricingEngine,
         private DatabaseManager $db,
     ) {
     }
@@ -90,10 +94,50 @@ final class AppointmentService
             }
 
             $doctor = Doctor::findOrFail($doctorId);
-            $finalPrice = $calculatePrice($doctor, 'medium', $paymentData['is_b2b'] ?? false);
 
-            // TODO: Интегрировать платежный шлюз
-            $paymentTransactionId = null;
+            // Use unified PricingEngine instead of local calculatePrice callback
+            $pricingResult = $this->pricingEngine->calculatePrice(
+                'medical',
+                $doctor->base_price ?? 500000,
+                [
+                    'business_group_id' => $paymentData['business_group_id'] ?? null,
+                    'demand_factor' => $paymentData['demand_factor'] ?? 1.0,
+                    'supply_factor' => $paymentData['supply_factor'] ?? 1.0,
+                    'timestamp' => now(),
+                ]
+            );
+            $finalPrice = $pricingResult['final_price'];
+
+            // Check circuit breaker before payment
+            $provider = $paymentData['provider'] ?? 'tinkoff';
+            if ($this->circuitBreaker->isOpen($provider)) {
+                throw new \RuntimeException('Payment gateway temporarily unavailable. Please try again later.');
+            }
+
+            $startTime = microtime(true);
+
+            // Initiate payment through PaymentService (now async)
+            $payment = $this->payment->initPayment(
+                amount: $finalPrice,
+                tenantId: $this->getTenantId(),
+                userId: $userId,
+                paymentMethod: $paymentData['payment_method'] ?? 'card',
+                hold: true,
+                idempotencyKey: $paymentData['idempotency_key'] ?? null,
+                correlationId: $correlationId,
+                metadata: array_merge($paymentData, [
+                    'doctor_id' => $doctorId,
+                    'appointment_datetime' => $dateTime,
+                    'provider' => $provider,
+                ])
+            );
+
+            $duration = microtime(true) - $startTime;
+
+            // Record metrics
+            $this->paymentMetrics->recordPaymentAttempt($provider);
+            $this->paymentMetrics->recordPaymentLatency($provider, 'init', $duration);
+            $this->circuitBreaker->recordSuccess($provider);
 
             $appointment = MedicalAppointment::create([
                 'uuid' => Str::uuid()->toString(),
@@ -106,7 +150,7 @@ final class AppointmentService
                 'status' => 'confirmed',
                 'consultation_type' => $paymentData['consultation_type'] ?? 'in_person',
                 'price' => $finalPrice,
-                'payment_transaction_id' => $paymentResult['transaction_id'] ?? null,
+                'payment_transaction_id' => $payment->id,
                 'correlation_id' => $correlationId,
                 'tags' => json_encode(['ai_diagnostic_flow', 'dynamic_pricing']),
             ]);
@@ -114,11 +158,13 @@ final class AppointmentService
             Redis::del($holdKey);
 
             Log::channel('audit')->info('Appointment confirmed with payment', [
-                'appointment_id' => $appointment->idTI
+                'appointment_id' => $appointment->id,
                 'user_id' => $userId,
                 'doctor_id' => $doctorId,
                 'amount' => $finalPrice,
+                'payment_uuid' => $payment->uuid,
                 'correlation_id' => $correlationId,
+                'pricing_rules' => $pricingResult['applied_rules'],
             ]);
 
             return $appointment;

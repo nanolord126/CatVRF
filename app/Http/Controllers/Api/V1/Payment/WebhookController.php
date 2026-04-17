@@ -126,8 +126,24 @@ final class WebhookController extends Controller
 
         try {
             $payload = $request->all();
+            $rawPayload = $request->getContent();
+            $signature = $request->header('X-Signature') ?? $request->header('Sber-Signature', '');
 
-            $this->logger->channel('audit')->info('Sber webhook received', [
+            // Verify HMAC signature
+            if (!$this->webhookSignature->verify('sber', $rawPayload, $signature)) {
+                $this->logger->channel('fraud_alert')->warning('Sber webhook signature verification failed', [
+                    'correlation_id' => $correlationId,
+                    'ip' => $request->ip(),
+                ]);
+
+                return $this->response->json([
+                    'success' => false,
+                    'message' => 'Invalid signature',
+                    'correlation_id' => $correlationId,
+                ], 401);
+            }
+
+            $this->logger->channel('audit')->info('Sber webhook received and verified', [
                 'correlation_id' => $correlationId,
                 'order_number' => $payload['orderNumber'] ?? 'unknown',
                 'operation' => $payload['operation'] ?? 'unknown',

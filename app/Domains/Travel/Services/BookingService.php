@@ -5,10 +5,12 @@ namespace App\Domains\Travel\Services;
 
 
 use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Wallet\Services\AtomicWalletService;
 use Psr\Log\LoggerInterface;
 final readonly class BookingService
 {
-
+
+
     public function __construct(private WalletService $wallet,
             private FraudControlService $fraud,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
@@ -110,11 +112,14 @@ final readonly class BookingService
 
                 // Возврат
                 if ($booking->payment_status === 'paid') {
-                    $this->wallet->credit($booking->user_id, $booking->total_price, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
-                        'booking_id' => $booking->id,
-                        'reason' => $reason,
-                        'correlation_id' => $correlationId
-                    ]);
+                    $this->atomicWallet->credit(
+                        walletId: $booking->user_id,
+                        amount: $booking->total_price,
+                        type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                        correlationId: $correlationId,
+                        sourceType: 'travel_booking',
+                        sourceId: $booking->id,
+                    );
                 }
 
                 // Слоты

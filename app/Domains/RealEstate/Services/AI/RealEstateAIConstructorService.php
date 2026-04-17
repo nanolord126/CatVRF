@@ -167,6 +167,7 @@ final readonly class RealEstateAIConstructorService
 
         return $this->cache->tags(['realestate', 'ai', 'investment'])->remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): array {
             $price = (float) ($property->price ?? 0);
+use App\Services\AI\Prompts\RealEstatePromptBuilder;
             $area = (float) ($property->area_sqm ?? 0);
             $type = $property->type ?? '';
 

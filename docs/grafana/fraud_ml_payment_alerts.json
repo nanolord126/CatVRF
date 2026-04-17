@@ -1,0 +1,91 @@
+{
+  "alert": {
+    "condition": "B",
+    "executionErrorState": "alerting",
+    "frequency": "1m",
+    "handler": 1,
+    "name": "FraudML Payment Health Monitor",
+    "noDataState": "no_data",
+    "notifications": [
+      "fraud_ml_alerts"
+    ]
+  },
+  "conditions": [
+    {
+      "evaluator": {
+        "params": [
+          3
+        ],
+        "type": "gt"
+      },
+      "operator": {
+        "type": "and"
+      },
+      "query": {
+        "datasourceId": 1,
+        "model": {
+          "alias": "medical_block_rate",
+          "expr": "rate(fraud_ml_payment_block_rate{vertical_code=\"medical\"}[5m]) * 100",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              }
+            ]
+          ]
+        },
+        "refId": "A",
+        "type": "query"
+      },
+      "reducer": {
+        "params": [],
+        "type": "avg"
+      },
+      "type": "query"
+    },
+    {
+      "evaluator": {
+        "params": [
+          50
+        ],
+        "type": "gt"
+      },
+      "operator": {
+        "type": "or"
+      },
+      "query": {
+        "datasourceId": 1,
+        "model": {
+          "alias": "latency_p95",
+          "expr": "histogram_quantile(0.95, rate(fraud_ml_payment_latency_ms_bucket[5m]))",
+          "refId": "B",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              }
+            ]
+          ]
+        },
+        "refId": "B",
+        "type": "query"
+      },
+      "reducer": {
+        "params": [],
+        "type": "avg"
+      },
+      "type": "query"
+    }
+  ],
+  "description": "Alerts when:\n1. Medical payment fraud block rate exceeds 3% (high false-positive risk)\n2. FraudML inference latency P95 exceeds 50ms (performance degradation)\n\nCritical for:\n- Patient experience (Medical false-positives)\n- Payment UX (latency)\n- Fraud detection effectiveness",
+  "id": null,
+  "message": "FraudML Payment Alert Triggered:\n\n{{ $alertName }}\n\nCondition: {{ $condition }}\n\nMedical Block Rate: {{ $values.A }}%\nLatency P95: {{ $values.B }}ms\n\nTime: {{ $time }}\n\nLabels:\n{{ range $key, $value := $labels }}\n  {{ $key }}: {{ $value }}\n{{ end }}",
+  "title": "FraudML Payment Health Alert"
+}

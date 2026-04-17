@@ -19,9 +19,7 @@ final readonly class FoodOrderingService
         private AuditService $audit,
         private DatabaseManager $db,
         private LogManager $log,
-        private FoodDeliveryService $deliveryService
-    ) {}
-
+    ) {} 
     public function placeOrder(CreateFoodOrderDto $dto): FoodOrder
     {
         $this->fraud->check(
@@ -34,7 +32,43 @@ final readonly class FoodOrderingService
         return $this->db->transaction(function () use ($dto): FoodOrder {
             $restaurant = Restaurant::findOrFail($dto->restaurantId);
             
-            $totalPrice = $this->calculateTotal($dto->items);
+            // Use unified PricingEngine for dynamic pricing
+            $basePrice = (int) ($this->calculateTotal($dto->items) * 100); // Convert to kopecks
+            
+            // ML-based fraud check for payment
+            try {
+                $this->paymentFraudML->checkPaymentFraud(
+                    tenantId: $restaurant->tenant_id,
+                    userId: $dto->customerId,
+                    amountKopecks: $basePrice,
+                    idempotencyKey: "food_order_{$dto->restaurantId}_{$dto->customerId}_" . time(),
+                    correlationId: $dto->correlationId,
+                    verticalCode: 'food',
+                    urgencyLevel: 'low',
+                    isEmergency: false,
+                );
+            } catch (\RuntimeException $e) {
+                $this->log->channel("audit")->warning('Food order payment blocked by ML fraud detection', [
+                    'customer_id' => $dto->customerId,
+                    'restaurant_id' => $dto->restaurantId,
+                    'amount' => $basePrice,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $dto->correlationId,
+                ]);
+                throw new FoodPaymentFraudException($e->getMessage());
+            }
+            $pricingResult = $this->pricingEngine->calculatePrice(
+                'food',
+                $basePrice,
+                [
+                    'business_group_id' => $dto->businessGroupId ?? null,
+                    'demand_factor' => $dto->demandFactor ?? 1.0,
+                    'supply_factor' => $dto->supplyFactor ?? 1.0,
+                    'timestamp' => now(),
+                    'restaurant_id' => $dto->restaurantId,
+                ]
+            );
+            $totalPrice = $pricingResult['final_price'] / 100; // Convert back to rubles
             
             $order = FoodOrder::create([
                 "restaurant_id" => $restaurant->id,
@@ -52,25 +86,6 @@ final readonly class FoodOrderingService
 
             // Dispatch event for Delivery Integration to assign a courier
             event(new \App\Events\FoodOrderPlacedEvent($order));
-
-            // Automatically create delivery record for the order
-            if ($dto->deliveryAddress) {
-                try {
-                    $this->deliveryService->createDeliveryForOrder($order);
-                    $this->log->channel("audit")->info("Food delivery created for order", [
-                        "order_id" => $order->id,
-                        "delivery_address" => $dto->deliveryAddress,
-                        "correlation_id" => $dto->correlationId,
-                    ]);
-                } catch (\Throwable $e) {
-                    $this->log->channel("audit")->error("Failed to create delivery for food order", [
-                        "order_id" => $order->id,
-                        "error" => $e->getMessage(),
-                        "correlation_id" => $dto->correlationId,
-                    ]);
-                    // Don't fail the order if delivery creation fails
-                }
-            }
 
             $this->audit->log(
                 'created',

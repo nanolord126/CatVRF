@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace Modules\Payments\Services;
 
 use App\Models\Tenant;
+use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Common\Services\AbstractTechnicalVerticalService;
 use Modules\Payments\Gateways\PaymentGatewayInterface;
 use App\Models\PaymentTransaction;
+use DomainException;
 
 final class PaymentsService extends AbstractTechnicalVerticalService
 {
     public function __construct(
         private readonly PaymentGatewayInterface $gateway,
-        private readonly IdempotencyService $idempotencyService
+        private readonly IdempotencyService $idempotencyService,
+        private readonly PaymentFraudMLService $fraudMl,
     ) {}
 
     public function initPayment(
@@ -26,6 +31,41 @@ final class PaymentsService extends AbstractTechnicalVerticalService
         array $metadata = []
     ): PaymentTransaction {
         $this->logInfo('Initializing payment', compact('amount', 'currency', 'description'));
+
+        // 0. FRAUD CHECK - ML-based
+        try {
+            $fraudDto = new PaymentFraudMLDto(
+                tenant_id: $this->tenant->id,
+                user_id: $this->userId ?? 0,
+                operation_type: 'payment_init',
+                amount_kopecks: $amount * 100,
+                ip_address: request()->ip() ?? '127.0.0.1',
+                device_fingerprint: request()->header('User-Agent') ?? 'unknown',
+                correlation_id: $this->correlationId,
+                idempotency_key: $this->idempotencyService->generateKey(compact('amount', 'currency', 'metadata')),
+                vertical_code: $metadata['vertical_code'] ?? 'payment',
+            );
+
+            $fraudResult = $this->fraudMl->scorePayment($fraudDto);
+
+            if ($fraudResult['decision'] === 'block') {
+                Log::warning('Payment blocked by fraud detection', [
+                    'tenant_id' => $this->tenant->id,
+                    'fraud_score' => $fraudResult['score'],
+                    'explanation' => $fraudResult['explanation'] ?? null,
+                    'correlation_id' => $this->correlationId,
+                ]);
+                throw new DomainException('Payment blocked by fraud detection system');
+            }
+        } catch (DomainException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Fraud check failed', [
+                'tenant_id' => $this->tenant->id,
+                'error' => $e->getMessage(),
+            ]);
+            // Fail-open for reliability
+        }
 
         // 1. Idempotency check
         $idempotencyKey = $this->idempotencyService->generateKey(compact('amount', 'currency', 'metadata'));

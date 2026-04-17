@@ -9,6 +9,10 @@ use App\Domains\Content\Channels\Services\ChannelSubscriptionService;
 use App\Domains\Content\Channels\Services\ChannelTariffService;
 use App\Domains\Content\Channels\Services\PostService;
 use App\Domains\Content\Channels\Services\ReactionService;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
+use App\Domains\FraudML\Services\PaymentFraudMLHelper;
+use App\Domains\FraudML\Services\PaymentFraudMLShadowService;
+use App\Providers\Prometheus\PaymentFraudMLMetricsCollector;
 use App\Domains\Medical\Psychology\Services\AITherapyConstructorService;
 use App\Domains\Medical\Psychology\Services\PsychologicalPricingService;
 use App\Domains\Medical\Psychology\Services\PsychologicalService;
@@ -63,7 +67,13 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AITherapyConstructorService::class);
         $this->app->singleton(PsychologicalPricingService::class);
 
-        // Fraud Detection
+        // Fraud DeFraud ML Services
+        $this->app->singleton(PaymentFraudMLService::class);
+        $this->app->singleton(PaymentFraudMLHelper::class);
+        $this->app->singleton(PaymentFraudMLShadowService::class);
+        $this->app->singleton(PaymentFraudMLMetricsCollector::class);
+
+        // Payment tection
         $this->app->singleton(FraudControlService::class);
         $this->app->singleton(WishlistAntiFraudService::class);
 

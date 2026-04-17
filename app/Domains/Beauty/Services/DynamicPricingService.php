@@ -74,11 +74,9 @@ final readonly class DynamicPricingService
                 'success' => true,
                 'base_price' => $basePrice,
                 'demand_score' => $demandScore,
-                'surge_multiplier' => $surgeMultiplier,
-                'flash_discount_percent' => $flashDiscount,
                 'final_price' => $finalPrice,
-                'is_surge_pricing' => $surgeMultiplier > 1.0,
-                'is_flash_discount' => $flashDiscount > 0,
+                'applied_rules' => $pricingResult['applied_rules'],
+                'discount_amount' => $pricingResult['discount_amount'],
                 'correlation_id' => $dto->correlationId,
             ];
 

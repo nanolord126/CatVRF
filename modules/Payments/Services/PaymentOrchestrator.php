@@ -5,12 +5,16 @@ namespace Modules\Payments\Services;
 use App\Models\PaymentTransaction;
 use App\Models\Tenant;
 use App\Services\FraudControlService;
+use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
 use App\Services\WalletService;
 use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Common\Services\AbstractTechnicalVerticalService;
 use Modules\Payments\Gateways\PaymentGatewayInterface;
+use DomainException;
 
 final class PaymentOrchestrator extends AbstractTechnicalVerticalService
 {
@@ -21,6 +25,7 @@ final class PaymentOrchestrator extends AbstractTechnicalVerticalService
         private readonly WalletService $wallet,
         private readonly IdempotencyService $idempotency,
         private readonly PaymentGatewayInterface $gateway,
+        private readonly PaymentFraudMLService $fraudMl,
     ) {}
 
     public function isEnabled(): bool
@@ -60,17 +65,39 @@ final class PaymentOrchestrator extends AbstractTechnicalVerticalService
             return $hit['response'];
         }
 
-        $fraud = $this->fraud->check(
-            userId: auth()->id() ?? 0,
-            operationType: 'payment_init',
-            amount: $amount,
-            ipAddress: $ip,
-            deviceFingerprint: $device,
-            correlationId: $correlationId,
-        );
+        // FRAUD CHECK - ML-based (replaces rule-based)
+        try {
+            $fraudDto = new PaymentFraudMLDto(
+                tenant_id: $tenantId,
+                user_id: auth()->id() ?? 0,
+                operation_type: 'payment_orchestrator_init',
+                amount_kopecks: $amount * 100,
+                ip_address: $ip ?? request()->ip() ?? '127.0.0.1',
+                device_fingerprint: $device ?? request()->header('User-Agent') ?? 'unknown',
+                correlation_id: $correlationId,
+                idempotency_key: $idempotencyKey,
+                vertical_code: $metadata['vertical_code'] ?? 'payment',
+            );
 
-        if (($fraud['decision'] ?? 'block') === 'block') {
-            throw new \RuntimeException('Fraud check blocked the payment');
+            $fraudResult = $this->fraudMl->scorePayment($fraudDto);
+
+            if ($fraudResult['decision'] === 'block') {
+                Log::warning('Payment blocked by fraud detection', [
+                    'tenant_id' => $tenantId,
+                    'fraud_score' => $fraudResult['score'],
+                    'explanation' => $fraudResult['explanation'] ?? null,
+                    'correlation_id' => $correlationId,
+                ]);
+                throw new \RuntimeException('Payment blocked by fraud detection system');
+            }
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Fraud check failed', [
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+            ]);
+            // Fail-open for reliability
         }
 
         $transaction = $this->db->transaction(function () use ($amount, $currency, $paymentMethod, $walletId, $idempotencyKey, $description, $metadata, $recurrent, $correlationId) {

@@ -1,0 +1,276 @@
+# Prometheus Alert Rules for CatVRF ML Pipeline
+# 
+# This file defines alerting rules for:
+# - Feature drift detection (PSI, KS, JS divergence)
+# - Quota usage monitoring
+# - ML model performance (AUC, latency)
+# - Fraud detection anomalies
+#
+# Load this in prometheus.yml:
+#   rule_files:
+#     - '/etc/prometheus/rules/catvrf-ml-rules.yml'
+#
+# @author CatVRF Team
+# @version 2026.04.17
+
+groups:
+  - name: catvrf_ml_feature_drift
+    interval: 30s
+    rules:
+      # Critical: PSI > 0.25 - Significant feature drift detected
+      - alert: FeatureDriftCritical
+        expr: catvrf_feature_drift_psi > 0.25
+        for: 5m
+        labels:
+          severity: critical
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+          feature: '{{ $labels.feature }}'
+        annotations:
+          summary: "Critical feature drift detected for {{ $labels.feature }} in {{ $labels.vertical }}"
+          description: "PSI score is {{ $value }} (threshold: 0.25). Immediate model retraining required."
+          runbook_url: "https://docs.catvrf.internal/runbooks/feature-drift-critical"
+          
+      # High: PSI > 0.20 - High feature drift
+      - alert: FeatureDriftHigh
+        expr: catvrf_feature_drift_psi > 0.20
+        for: 10m
+        labels:
+          severity: high
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+          feature: '{{ $labels.feature }}'
+        annotations:
+          summary: "High feature drift detected for {{ $labels.feature }} in {{ $labels.vertical }}"
+          description: "PSI score is {{ $value }} (threshold: 0.20). Consider model retraining."
+          runbook_url: "https://docs.catvrf.internal/runbooks/feature-drift-high"
+          
+      # Medium: PSI > 0.10 - Moderate feature drift
+      - alert: FeatureDriftMedium
+        expr: catvrf_feature_drift_psi > 0.10
+        for: 30m
+        labels:
+          severity: medium
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+          feature: '{{ $labels.feature }}'
+        annotations:
+          summary: "Moderate feature drift detected for {{ $labels.feature }} in {{ $labels.vertical }}"
+          description: "PSI score is {{ $value }} (threshold: 0.10). Monitor closely."
+          
+      # Critical: Combined drift score > 0.7
+      - alert: CombinedDriftCritical
+        expr: catvrf_feature_drift_combined > 0.7
+        for: 5m
+        labels:
+          severity: critical
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+          feature: '{{ $labels.feature }}'
+        annotations:
+          summary: "Critical combined drift score for {{ $labels.feature }} in {{ $labels.vertical }}"
+          description: "Combined drift score is {{ $value }} (threshold: 0.7). Immediate action required."
+          
+      # High: Vertical drift detected
+      - alert: VerticalDriftHigh
+        expr: rate(catvrf_vertical_drift_detected_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: high
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+        annotations:
+          summary: "Vertical drift detected in {{ $labels.vertical }}"
+          description: "Vertical drift score indicates significant distribution changes."
+
+  - name: catvrf_ml_quota_monitoring
+    interval: 30s
+    rules:
+      # Critical: Quota usage > 95%
+      - alert: QuotaExceededCritical
+        expr: catvrf_quota_usage_ratio > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+          resource_type: '{{ $labels.resource_type }}'
+        annotations:
+          summary: "Critical quota usage for {{ $labels.resource_type }}"
+          description: "Quota usage is {{ $value | humanizePercentage }} (threshold: 95%). Immediate action required."
+          runbook_url: "https://docs.catvrf.internal/runbooks/quota-critical"
+          
+      # High: Quota usage > 90%
+      - alert: QuotaExceededHigh
+        expr: catvrf_quota_usage_ratio > 0.90
+        for: 10m
+        labels:
+          severity: high
+          team: infrastructure
+          resource_type: '{{ $labels.resource_type }}'
+        annotations:
+          summary: "High quota usage for {{ $labels.resource_type }}"
+          description: "Quota usage is {{ $value | humanizePercentage }} (threshold: 90%). Consider scaling."
+          
+      # Medium: Quota usage > 75%
+      - alert: QuotaExceededMedium
+        expr: catvrf_quota_usage_ratio > 0.75
+        for: 30m
+        labels:
+          severity: medium
+          team: infrastructure
+          resource_type: '{{ $labels.resource_type }}'
+        annotations:
+          summary: "Moderate quota usage for {{ $labels.resource_type }}"
+          description: "Quota usage is {{ $value | humanizePercentage }} (threshold: 75%). Monitor closely."
+          
+      # High: Quota exceeded events spike
+      - alert: QuotaExceededSpike
+        expr: rate(catvrf_quota_exceeded_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: high
+          team: infrastructure
+          resource_type: '{{ $labels.resource_type }}'
+        annotations:
+          summary: "Spike in quota exceeded events for {{ $labels.resource_type }}"
+          description: "Rate of quota exceeded events is {{ $value }}/s (threshold: 10/s). Possible abuse or misconfiguration."
+
+  - name: catvrf_ml_model_performance
+    interval: 30s
+    rules:
+      # Critical: Model AUC < 0.85
+      - alert: ModelAUCDropCritical
+        expr: catvrf_ml_model_auc_current < 0.85
+        for: 10m
+        labels:
+          severity: critical
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Critical model AUC drop for {{ $labels.model_version }}"
+          description: "Model AUC is {{ $value }} (threshold: 0.85). Model performance severely degraded."
+          runbook_url: "https://docs.catvrf.internal/runbooks/model-auc-critical"
+          
+      # High: Model AUC < 0.90
+      - alert: ModelAUCDropHigh
+        expr: catvrf_ml_model_auc_current < 0.90
+        for: 30m
+        labels:
+          severity: high
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Model AUC dropped for {{ $labels.model_version }}"
+          description: "Model AUC is {{ $value }} (threshold: 0.90). Investigate model performance."
+          
+      # Medium: Model in shadow mode too long (> 48h)
+      - alert: ModelShadowModeTooLong
+        expr: catvrf_ml_model_shadow_mode == 1
+        for: 48h
+        labels:
+          severity: medium
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Model {{ $labels.model_version }} in shadow mode for > 48h"
+          description: "Model has been in shadow mode for too long. Consider promotion or rollback."
+          
+      # High: Retrain duration > 1 hour
+      - alert: RetrainDurationHigh
+        expr: rate(catvrf_ml_retrain_duration_seconds_sum[5m]) > 3600
+        for: 10m
+        labels:
+          severity: high
+          team: ml
+        annotations:
+          summary: "ML retrain duration exceeded 1 hour"
+          description: "Retrain duration is {{ $value }}s (threshold: 3600s). Investigate performance issues."
+
+  - name: catvrf_ml_fraud_detection
+    interval: 30s
+    rules:
+      # High: Fraud ML inference latency P99 > 1s
+      - alert: FraudMLLatencyHigh
+        expr: histogram_quantile(0.99, rate(catvrf_fraud_ml_inference_latency_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: high
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Fraud ML inference latency P99 exceeded 1s"
+          description: "P99 latency is {{ $value }}s (threshold: 1s). Investigate performance degradation."
+          
+      # Critical: Fraud ML inference latency P99 > 5s
+      - alert: FraudMLLatencyCritical
+        expr: histogram_quantile(0.99, rate(catvrf_fraud_ml_inference_latency_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Critical fraud ML inference latency P99 exceeded 5s"
+          description: "P99 latency is {{ $value }}s (threshold: 5s). Immediate investigation required."
+          
+      # High: Fraud score average spike
+      - alert: FraudScoreSpike
+        expr: catvrf_fraud_score_avg > 0.5
+        for: 10m
+        labels:
+          severity: high
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+        annotations:
+          summary: "Fraud score spike detected in {{ $labels.vertical }}"
+          description: "Average fraud score is {{ $value }} (threshold: 0.5). Possible fraud attack."
+          
+      # Medium: Fraud blocked by ML spike
+      - alert: FraudBlockedSpike
+        expr: rate(catvrf_fraud_blocked_by_ml_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: medium
+          team: ml
+          vertical: '{{ $labels.vertical }}'
+        annotations:
+          summary: "Spike in fraud blocked by ML in {{ $labels.vertical }}"
+          description: "Rate of blocked fraud is {{ $value }}/s (threshold: 100/s). Monitor for fraud attack."
+
+  - name: catvrf_ml_retrain_health
+    interval: 30s
+    rules:
+      # Critical: Retrain failed
+      - alert: RetrainFailed
+        expr: rate(catvrf_ml_retrain_success_total{status="failed"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: ml
+        annotations:
+          summary: "ML retrain failed"
+          description: "Rate of failed retrains is {{ $value }}/s. Investigate retrain pipeline."
+          runbook_url: "https://docs.catvrf.internal/runbooks/retrain-failed"
+          
+      # High: No successful retrains in 24h
+      - alert: NoRetrainIn24h
+        expr: time() - max(catvrf_ml_model_trained_at_timestamp) > 86400
+        for: 5m
+        labels:
+          severity: high
+          team: ml
+        annotations:
+          summary: "No successful ML retrain in 24 hours"
+          description: "Last successful retrain was {{ $value | humanizeDuration }} ago. Check retrain schedule."
+          
+      # Medium: Shadow predictions count too low
+      - alert: ShadowPredictionsLow
+        expr: catvrf_ml_model_shadow_predictions_count < 100
+        for: 1h
+        labels:
+          severity: medium
+          team: ml
+          model_version: '{{ $labels.model_version }}'
+        annotations:
+          summary: "Shadow model predictions count too low for {{ $labels.model_version }}"
+          description: "Only {{ $value }} shadow predictions (threshold: 100). Cannot validate model properly."

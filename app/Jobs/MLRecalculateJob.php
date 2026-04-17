@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 
 use App\Services\ML\UserTasteAnalyzerService;
+use App\Domains\FraudML\Services\PrometheusMetricsService;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
+use Ramsey\Uuid\Uuid;
 
 
 /**
@@ -23,6 +25,7 @@ use Illuminate\Log\LogManager;
  *  - Обрабатываем только returning-пользователей (у новых нет истории)
  *  - correlation_id сквозной
  *  - Не блокируем основной поток (queue: 'ml')
+ *  - Prometheus metrics for monitoring duration, success, and feature drift
  */
 final class MLRecalculateJob implements ShouldQueue
 {
@@ -35,10 +38,14 @@ final class MLRecalculateJob implements ShouldQueue
         private readonly int  $userId,
         private readonly bool $isNewUser,
         private readonly LogManager $logger,
+        private readonly PrometheusMetricsService $prometheus,
     ) {}
 
     public function handle(UserTasteAnalyzerService $tasteAnalyzer): void
     {
+        $correlationId = Uuid::uuid4()->toString();
+        $startTime = microtime(true);
+
         // Новых пользователей пропускаем — нет истории для аггрегации
         if ($this->isNewUser) {
             return;
@@ -49,16 +56,39 @@ final class MLRecalculateJob implements ShouldQueue
         if ($user === null) {
             $this->logger->channel('audit')->warning('MLRecalculateJob: user not found', [
                 'user_id' => $this->userId,
+                'correlation_id' => $correlationId,
             ]);
+
+            $this->prometheus->recordRetrainSuccess('failed', $correlationId);
             return;
         }
 
-        $tasteAnalyzer->analyzeAndSaveUserProfile($user);
+        try {
+            $tasteAnalyzer->analyzeAndSaveUserProfile($user);
 
-        $this->logger->channel('audit')->info('MLRecalculateJob completed', [
-            'user_id'  => $this->userId,
-            'user_type' => 'returning',
-        ]);
+            $duration = microtime(true) - $startTime;
+
+            // Record Prometheus metrics
+            $this->prometheus->recordRetrainDuration($duration, $correlationId);
+            $this->prometheus->recordRetrainSuccess('completed', $correlationId);
+
+            $this->logger->channel('audit')->info('MLRecalculateJob completed', [
+                'user_id'  => $this->userId,
+                'user_type' => 'returning',
+                'duration_seconds' => round($duration, 3),
+                'correlation_id' => $correlationId,
+            ]);
+
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('MLRecalculateJob failed', [
+                'user_id' => $this->userId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->prometheus->recordRetrainSuccess('failed', $correlationId);
+            throw $e;
+        }
     }
 
     /**

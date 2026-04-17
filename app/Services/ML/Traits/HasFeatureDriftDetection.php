@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Services\ML\Traits;
 
-use App\Services\ML\FeatureDriftDetectorService;
-use App\Services\ML\FeatureDriftMetricsService;
-use Illuminate\Support\Facades\Log;
+use App\Domains\FraudML\Events\SignificantFeatureDriftDetected;
+use App\Domains\FraudML\Services\FeatureDriftDetectorService;
+use App\Domains\FraudML\Services\PrometheusMetricsService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+use Ramsey\Uuid\Uuid;
 
 /**
- * Feature Drift Detection Trait
+ * HasFeatureDriftDetection — Trait для автоматического detection feature drift
  * 
- * Reusable trait for adding drift detection to any vertical's ML service.
- * Provides methods for runtime drift checking and reporting.
+ * Используется в AI сервисах всех вертикалей для автоматического мониторинга
+ * дрифта критичных фич. Интегрируется через use в AI сервисах.
  * 
- * Usage in vertical services:
+ * Пример использования:
  * ```php
  * use App\Services\ML\Traits\HasFeatureDriftDetection;
  * 
@@ -25,18 +28,20 @@ use Illuminate\Support\Facades\Config;
  *     
  *     public function __construct(
  *         private readonly FeatureDriftDetectorService $driftDetector,
- *         private readonly FeatureDriftMetricsService $driftMetrics,
  *         private readonly string $verticalCode = 'medical'
  *     ) {
  *         $this->initializeDriftDetection();
  *     }
  * }
  * ```
+ * 
+ * @author CatVRF Team
+ * @version 2026.04.17
  */
 trait HasFeatureDriftDetection
 {
-    protected FeatureDriftDetectorService $driftDetector;
-    protected FeatureDriftMetricsService $driftMetrics;
+    protected ?FeatureDriftDetectorService $driftDetector = null;
+    protected ?PrometheusMetricsService $prometheus = null;
     protected string $verticalCode = 'default';
     protected array $monitoredFeatures = [];
     protected bool $driftDetectionEnabled = true;
@@ -46,14 +51,19 @@ trait HasFeatureDriftDetection
      */
     protected function initializeDriftDetection(): void
     {
-        $this->driftDetectionEnabled = Config::get('fraud.drift_detection.enabled', true);
+        $this->driftDetectionEnabled = Config::get('feature_drift.enabled', true);
         
         // Load vertical-specific monitored features from config
-        $this->monitoredFeatures = Config::get("fraud.drift_detection.monitored_features.{$this->verticalCode}", []);
+        $config = Config::get("feature_drift.verticals.{$this->verticalCode}", []);
+        $this->monitoredFeatures = $config['features'] ?? [];
         
         if (empty($this->monitoredFeatures)) {
             // Use default monitored features if vertical-specific not configured
-            $this->monitoredFeatures = Config::get('fraud.monitored_features', []);
+            $this->monitoredFeatures = Config::get('feature_drift.default_features', [
+                'frequency',
+                'value_avg',
+                'duration_avg',
+            ]);
         }
 
         Log::debug('Drift detection initialized', [
@@ -64,13 +74,68 @@ trait HasFeatureDriftDetection
     }
 
     /**
-     * Check drift for a single feature value during inference
+     * Check drift for all features in batch
+     * 
+     * @param array $featuresData ['feature_name' => ['expected' => [], 'actual' => []]]
+     * @return array Drift detection result
+     */
+    protected function checkAllFeaturesDrift(array $featuresData): array
+    {
+        if (!$this->driftDetectionEnabled) {
+            return [
+                'vertical_code' => $this->verticalCode,
+                'overall_drift_detected' => false,
+                'reason' => 'disabled',
+            ];
+        }
+
+        if ($this->driftDetector === null) {
+            $this->driftDetector = app(FeatureDriftDetectorService::class);
+        }
+
+        $correlationId = Uuid::uuid4()->toString();
+
+        try {
+            $result = $this->driftDetector->detectAllFeatures($this->verticalCode, $featuresData);
+
+            // Dispatch event if significant drift detected
+            if ($result['summary']['overall_drift_detected'] ?? false) {
+                event(new SignificantFeatureDriftDetected($result, $correlationId));
+                
+                Log::warning('Significant feature drift detected', [
+                    'vertical' => $this->verticalCode,
+                    'max_severity' => $result['summary']['max_severity'] ?? 'UNKNOWN',
+                    'drift_detected_features' => $result['summary']['drift_detected_features'] ?? 0,
+                    'correlation_id' => $correlationId,
+                ]);
+            }
+
+            return $result;
+
+        } catch (\Throwable $e) {
+            Log::error('Feature drift detection failed', [
+                'vertical' => $this->verticalCode,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return [
+                'vertical_code' => $this->verticalCode,
+                'overall_drift_detected' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Check drift for a single feature
      * 
      * @param string $featureName Feature name
-     * @param mixed $featureValue Current feature value
+     * @param array $expected Reference distribution
+     * @param array $actual Current distribution
      * @return array Drift check result
      */
-    protected function checkFeatureDrift(string $featureName, mixed $featureValue): array
+    protected function checkFeatureDrift(string $featureName, array $expected, array $actual): array
     {
         if (!$this->driftDetectionEnabled) {
             return [
@@ -80,181 +145,89 @@ trait HasFeatureDriftDetection
             ];
         }
 
-        // Get active model version (simplified - in production would query DB)
-        $modelVersion = $this->getCurrentModelVersion();
-        if ($modelVersion === null) {
-            return [
-                'drift_detected' => false,
-                'drift_score' => 0.0,
-                'reason' => 'no_active_model',
-            ];
+        if ($this->driftDetector === null) {
+            $this->driftDetector = app(FeatureDriftDetectorService::class);
         }
 
-        // Get reference distribution
-        $referenceDist = $this->driftDetector->getReferenceDistribution(
-            $modelVersion,
-            $featureName,
-            $this->verticalCode
-        );
+        try {
+            $result = $this->driftDetector->detectDriftForFeature(
+                $featureName,
+                $this->verticalCode,
+                $expected,
+                $actual
+            );
 
-        if ($referenceDist === null) {
-            return [
-                'drift_detected' => false,
-                'drift_score' => 0.0,
-                'reason' => 'no_reference_distribution',
-            ];
-        }
-
-        // Simple drift check for categorical features
-        if ($this->isCategoricalDistribution($referenceDist)) {
-            $driftDetected = !array_key_exists((string)$featureValue, $referenceDist);
-
-            if ($driftDetected) {
-                Log::warning('Feature drift detected - unknown category', [
-                    'vertical' => $this->verticalCode,
-                    'feature' => $featureName,
-                    'value' => $featureValue,
-                    'model_version' => $modelVersion,
-                ]);
-
-                $this->driftMetrics->recordFeatureDrift($featureName, 'psi', 1.0, $this->verticalCode);
+            if ($result['combined']['drift_detected'] ?? false) {
+                event(new SignificantFeatureDriftDetected($result, Uuid::uuid4()->toString()));
             }
 
-            return [
-                'drift_detected' => $driftDetected,
-                'drift_score' => $driftDetected ? 1.0 : 0.0,
-                'threshold' => 0.0,
-                'reason' => $driftDetected ? 'unknown_category' : 'ok',
-            ];
-        }
+            return $result;
 
-        // For continuous features - simple outlier detection
-        $referenceValues = array_keys($referenceDist);
-        $mean = array_sum($referenceValues) / count($referenceValues);
-        $variance = array_sum(array_map(function($x) use ($mean) {
-            return pow($x - $mean, 2);
-        }, $referenceValues)) / count($referenceValues);
-        $stdDev = sqrt($variance) ?: 1;
-
-        $zScore = abs(($featureValue - $mean) / $stdDev);
-        $driftDetected = $zScore > 3.0;
-
-        if ($driftDetected) {
-            Log::warning('Feature drift detected - outlier value', [
+        } catch (\Throwable $e) {
+            Log::error('Single feature drift detection failed', [
                 'vertical' => $this->verticalCode,
                 'feature' => $featureName,
-                'value' => $featureValue,
-                'z_score' => $zScore,
-                'model_version' => $modelVersion,
+                'error' => $e->getMessage(),
             ]);
 
-            $this->driftMetrics->recordFeatureDrift($featureName, 'ks', $zScore / 3.0, $this->verticalCode);
+            return [
+                'drift_detected' => false,
+                'error' => $e->getMessage(),
+            ];
         }
-
-        return [
-            'drift_detected' => $driftDetected,
-            'drift_score' => $zScore / 3.0,
-            'threshold' => 1.0,
-            'z_score' => $zScore,
-            'mean' => $mean,
-            'std_dev' => $stdDev,
-            'reason' => $driftDetected ? 'outlier' : 'ok',
-        ];
-    }
-
-    /**
-     * Check drift for multiple features (batch check)
-     * 
-     * @param array $features ['feature_name' => value]
-     * @return array Drift report
-     */
-    protected function checkMultipleFeaturesDrift(array $features): array
-    {
-        $driftReport = [
-            'vertical_code' => $this->verticalCode,
-            'features_checked' => count($features),
-            'drifted_features' => [],
-            'max_drift_score' => 0.0,
-            'overall_drift_detected' => false,
-            'timestamp' => now()->toIso8601String(),
-        ];
-
-        foreach ($features as $featureName => $featureValue) {
-            $result = $this->checkFeatureDrift($featureName, $featureValue);
-            
-            if ($result['drift_detected']) {
-                $driftReport['drifted_features'][] = [
-                    'feature' => $featureName,
-                    'value' => $featureValue,
-                    'drift_score' => $result['drift_score'],
-                    'reason' => $result['reason'],
-                ];
-                $driftReport['max_drift_score'] = max($driftReport['max_drift_score'], $result['drift_score']);
-                $driftReport['overall_drift_detected'] = true;
-            }
-        }
-
-        if ($driftReport['overall_drift_detected']) {
-            Log::warning('Multiple features drift detected', [
-                'vertical' => $this->verticalCode,
-                'drifted_features_count' => count($driftReport['drifted_features']),
-                'max_drift_score' => $driftReport['max_drift_score'],
-            ]);
-        }
-
-        return $driftReport;
     }
 
     /**
      * Store reference distribution for a feature
      * 
-     * @param string $modelVersion Model version
      * @param string $featureName Feature name
      * @param array $distribution Reference distribution
      * @return bool Success status
      */
-    protected function storeReferenceDistribution(
-        string $modelVersion,
-        string $featureName,
-        array $distribution
-    ): bool {
+    protected function storeReferenceDistribution(string $featureName, array $distribution): bool
+    {
+        if ($this->driftDetector === null) {
+            $this->driftDetector = app(FeatureDriftDetectorService::class);
+        }
+
         return $this->driftDetector->storeReferenceDistribution(
-            $modelVersion,
             $featureName,
-            $distribution,
-            $this->verticalCode
+            $this->verticalCode,
+            $distribution
         );
     }
 
     /**
-     * Get current model version for the vertical
-     * Override in vertical service if needed
+     * Get reference distribution for a feature
      * 
-     * @return string|null Model version
+     * @param string $featureName Feature name
+     * @return array|null Reference distribution or null if not found
      */
-    protected function getCurrentModelVersion(): ?string
+    protected function getReferenceDistribution(string $featureName): ?array
     {
-        // Default implementation - override in vertical services
-        return cache("{$this->verticalCode}_model_active_version");
+        if ($this->driftDetector === null) {
+            $this->driftDetector = app(FeatureDriftDetectorService::class);
+        }
+
+        return $this->driftDetector->getReferenceDistribution($featureName, $this->verticalCode);
     }
 
     /**
-     * Check if distribution is categorical
+     * Invalidate reference cache for this vertical
      * 
-     * @param array $distribution Distribution
-     * @return bool
+     * Вызывать при значительных изменениях в бизнес-логике вертикали
      */
-    private function isCategoricalDistribution(array $distribution): bool
+    protected function invalidateReferenceCache(): void
     {
-        $keys = array_keys($distribution);
-        
-        foreach ($keys as $key) {
-            if (!is_numeric($key)) {
-                return true;
-            }
+        if ($this->driftDetector === null) {
+            $this->driftDetector = app(FeatureDriftDetectorService::class);
         }
 
-        return count($keys) < 20;
+        $this->driftDetector->invalidateReferenceCache($this->verticalCode);
+        
+        Log::info('Reference cache invalidated', [
+            'vertical' => $this->verticalCode,
+        ]);
     }
 
     /**
@@ -264,12 +237,16 @@ trait HasFeatureDriftDetection
      */
     protected function getDriftThresholds(): array
     {
-        return Config::get("fraud.drift_thresholds.{$this->verticalCode}", [
+        $config = Config::get("feature_drift.verticals.{$this->verticalCode}", []);
+        $defaultThresholds = Config::get('feature_drift.default_thresholds', [
             'psi_critical' => 0.25,
             'psi_moderate' => 0.1,
-            'ks_critical' => 0.1,
-            'ks_moderate' => 0.05,
+            'ks_alpha' => 0.05,
+            'js_critical' => 0.3,
+            'js_moderate' => 0.1,
         ]);
+
+        return array_merge($defaultThresholds, $config['thresholds'] ?? []);
     }
 
     /**
@@ -295,5 +272,15 @@ trait HasFeatureDriftDetection
     public function isDriftDetectionEnabled(): bool
     {
         return $this->driftDetectionEnabled;
+    }
+
+    /**
+     * Get monitored features for this vertical
+     * 
+     * @return array
+     */
+    public function getMonitoredFeatures(): array
+    {
+        return $this->monitoredFeatures;
     }
 }

@@ -62,14 +62,14 @@ final readonly class FraudMLService
         // Generate SHAP explanation for high-risk predictions
         $explanation = null;
         if ($activeScore > 0.7) {
-            $explanation = $this->explainer->exppainPredictien(
+            $explanation = $this->explainer->explainPrediction(
                 $features,
                 $activeScore,
                 $activeModel?->version
             );
         }
 
-        $this->lorformShadowInference($features, $dto);
+        $this->performShadowInference($features, $dto);
 
         $this->logger->info('Fraud ML Score calculated', [
             'correlation_id' => $dto->correlation_id,
@@ -77,8 +77,8 @@ final readonly class FraudMLService
             'vertical_code' => $dto->vertical_code,
             'quota_usage_ratio' => $dto->current_quota_usage_ratio,
             'score' => $activeScore,
-            'model_version' => $activeModel?->version,',
-            'shap_explanation => $explanation,
+            'model_version' => $activeModel?->version,
+            'shap_explanation' => $explanation,
             'feature_source' => 'feature_store',
             'decision' => $this->shouldBlock($activeScore, $dto->operation_type) ? 'block' : 'allow'
         ]);

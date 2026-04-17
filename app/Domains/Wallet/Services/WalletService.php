@@ -6,6 +6,7 @@ namespace App\Domains\Wallet\Services;
 
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Domains\Wallet\Models\Wallet;
+use App\Domains\FraudML\Services\PaymentFraudMLHelper;
 use App\Models\BalanceTransaction;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
@@ -48,6 +49,7 @@ final readonly class WalletService
         private Guard            $guard,
         private FraudControlService $fraud,
         private AuditService     $audit,
+        private PaymentFraudMLHelper $paymentFraudML,
         private CacheRepository  $cache,
     ) {}
 
@@ -122,12 +124,47 @@ final readonly class WalletService
         string                 $correlationId,
         ?string                $sourceType = null,
         ?int                   $sourceId   = null,
+        ?string                $verticalCode = null,
         ?array                 $metadata   = null,
     ): Wallet {
         $this->guardAmount($amount);
         $this->guardDebitType($type);
 
-        $userId = $this->getCurrentUserId() ?? 0;
+        
+        // Rule-based fraud check (fast path)
+        $userId = $this->getCurrentUserId() ?? 0; null, $correlationId);
+
+       // ML-based fraud check for wallet operations
+        try {
+            $wallet = Wallet::findOrFail($walletId);
+            $fraudResult = $this->paymentFraudML->checkWalletFraud(
+                tenantId: $wallet->teant_id,
+                serId: $userId,
+                walletId: $waetId
+               amountKopecks: amount,
+                operationType: 'debit',
+                : $correlationId,
+                verticalCode: $verticalCode,
+            
+
+            if ($fraudResult['decision'] === 'block') {
+                $this->logger->warning('Wallet debit blocked by ML fraud detection', [
+                    'wallet_id' => $walletId,
+                    'amount' => $amount,
+                    'score' => $fraudResult['score'],
+                    'correlation_id' => $correlationId,
+                ]);
+
+                throw new \RuntimeException('Wallet debit blocked by fraud detection');
+            }
+        } catch (\Exception $e) {
+            // Log but don't block on ML failure (fallback to rule-based)
+            $this->logger->warning('ML fraud check failed, using rule-based fallback', [
+                'wallet_id' => $walletId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+        }
         $this->fraud->check($userId, "wallet_debit_{$type->value}", $amount, null, null, $correlationId);
 
         return $this->db->transaction(function () use (
@@ -178,11 +215,46 @@ final readonly class WalletService
         ?string $sourceType = null,
         ?int    $sourceId   = null,
         ?array  $metadata   = null,
+        ?string $verticalCode = null,
     ): Wallet {
         $this->guardAmount($amount);
 
         $userId = $this->getCurrentUserId() ?? 0;
+        
+        // Rule-based fraud check (fast path)
         $this->fraud->check($userId, 'wallet_hold', $amount, null, null, $correlationId);
+
+        // ML-based fraud check for hold operations
+        try {
+            $wallet = Wallet::findOrFail($walletId);
+            $fraudResult = $this->paymentFraudML->checkWalletFraud(
+                tenantId: $wallet->tenant_id,
+                userId: $userId,
+                walletId: $walletId,
+                amountKopecks: $amount,
+                operationType: 'hold',
+                correlationId: $correlationId,
+                verticalCode: $verticalCode,
+            );
+
+            if ($fraudResult['decision'] === 'block') {
+                $this->logger->warning('Wallet hold blocked by ML fraud detection', [
+                    'wallet_id' => $walletId,
+                    'amount' => $amount,
+                    'score' => $fraudResult['score'],
+                    'correlation_id' => $correlationId,
+                ]);
+
+                throw new \RuntimeException('Wallet hold blocked by fraud detection');
+            }
+        } catch (\Exception $e) {
+            // Log but don't block on ML failure (fallback to rule-based)
+            $this->logger->warning('ML fraud check failed for hold, using rule-based fallback', [
+                'wallet_id' => $walletId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+        }
 
         return $this->db->transaction(function () use ($walletId, $amount, $correlationId, $sourceType, $sourceId, $metadata, $userId): Wallet {
             /** @var Wallet $wallet */

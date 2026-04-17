@@ -3,6 +3,8 @@
 namespace App\Domains\Travel\Services;
 
 
+use App\Domains\Payment\Services\PaymentServiceAdapter;
+use App\Domains\Payment\Services\PaymentService;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -11,7 +13,7 @@ final readonly class TravelBookingService
 
 
     public function __construct(private readonly FraudControlService $fraud,
-            private readonly PaymentService $payment,
+            private readonly PaymentServiceAdapter $payment,
             private readonly WalletService $wallet,
             private readonly DemandForecastService $forecast,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,

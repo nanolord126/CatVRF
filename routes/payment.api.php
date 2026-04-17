@@ -27,6 +27,7 @@ Route::prefix('payments')
         'idempotency-check',   // Prevent duplicate payments
         'b2c-b2b',             // B2C/B2B mode
         'fraud-check',         // STRICT fraud detection
+        'payment.fraud.rate_limit', // Payment-specific rate limiting
         'rate-limit:10,1',     // 10 requests per minute MAX
     ])
     ->group(function () {

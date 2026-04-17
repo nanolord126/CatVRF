@@ -6,6 +6,7 @@ namespace App\Domains\Medical\Psychology\Services;
 
 use App\Domains\Medical\Psychology\Models\PsychologicalBooking;
 use App\Domains\Medical\Psychology\Models\PsychologicalService;
+use App\Services\Pricing\PricingEngineService;
 
 /**
  * Сервис ценообразования для психологических консультаций.
@@ -47,13 +48,19 @@ final readonly class PsychologicalPricingService
         $service = PsychologicalService::findOrFail($serviceId);
         $basePrice = (int) $service->price;
 
-        $discount = $this->resolveDiscountPercent($clientId);
+        // Use unified PricingEngine for dynamic pricing
+        $result = $this->pricingEngine->calculatePrice(
+            'psychology',
+            $basePrice,
+            [
+                'client_id' => $clientId,
+                'is_first_visit' => $this->isFirstVisit($clientId),
+                'sessions_count' => $this->getTotalVisits($clientId),
+                'timestamp' => now(),
+            ]
+        );
 
-        if ($discount > 0) {
-            return (int) round($basePrice * (1 - $discount / 100));
-        }
-
-        return $basePrice;
+        return $result['final_price'];
     }
 
     /**
@@ -106,5 +113,9 @@ final readonly class PsychologicalPricingService
         }
 
         return $totalBeforeDiscount;
+    }
+}
+    {
+        return PsychologicalBooking::where('client_id', $clientId)->count();
     }
 }

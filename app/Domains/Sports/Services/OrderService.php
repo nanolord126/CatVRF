@@ -42,9 +42,39 @@ final readonly class OrderService
         return ['valid' => true, 'fraud_score' => $fraudScore];
     }
 
-    public function processPayment(int $userId, int $amount, string $paymentMethod, string $correlationId): bool
+    public function processPayment(int $userId, int $tenantId, int $amount, string $paymentMethod, string $correlationId): bool
     {
-        return $this->walletService->deduct($userId, $amount, $paymentMethod, $correlationId);
+        $wallet = \App\Models\Wallet::where('user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->first();
+        
+        if ($wallet === null) {
+            $this->logger->error('Wallet not found for payment', [
+                'user_id' => $userId,
+                'tenant_id' => $tenantId,
+                'correlation_id' => $correlationId,
+            ]);
+            return false;
+        }
+
+        try {
+            $this->atomicWallet->debit(
+                walletId: $wallet->id,
+                amount: $amount,
+                type: \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL,
+                correlationId: $correlationId,
+                sourceType: 'sports_order',
+                sourceId: null,
+            );
+            return true;
+        } catch (\Throwable $e) {
+            $this->logger->error('Payment processing failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+            return false;
+        }
     }
 
     public function sendOrderConfirmation(int $userId, int $orderId, string $correlationId): void

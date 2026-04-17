@@ -1,0 +1,126 @@
+# Alertmanager Configuration for CatVRF ML Pipeline
+# 
+# This configuration defines alerting rules for:
+# - Feature drift detection (PSI, KS, JS divergence)
+# - Quota usage monitoring
+# - ML model performance (AUC, latency)
+# - Fraud detection anomalies
+#
+# @author CatVRF Team
+# @version 2026.04.17
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Route configuration - how alerts are routed
+route:
+  group_by: ['alertname', 'severity', 'vertical']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default'
+  
+  routes:
+    # Critical alerts go to PagerDuty + Slack
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      continue: true
+      
+    # High severity alerts go to Slack
+    - match:
+        severity: high
+      receiver: 'slack-high'
+      
+    # Medium severity alerts go to Slack
+    - match:
+        severity: medium
+      receiver: 'slack-medium'
+      
+    # Low severity alerts go to email
+    - match:
+        severity: low
+      receiver: 'email-low'
+
+# Receivers - where alerts are sent
+receivers:
+  - name: 'default'
+    slack_configs:
+      - channel: '#catvrf-alerts'
+        send_resolved: true
+        title: '{{ .Status | toUpper }}: {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Severity:* {{ .Labels.severity }}
+          *Vertical:* {{ .Labels.vertical }}
+          *Description:* {{ .Annotations.description }}
+          *Details:* {{ .Annotations.summary }}
+          {{ end }}
+          
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        description: '{{ .CommonLabels.alertname }}'
+        severity: 'critical'
+        
+  - name: 'slack-high'
+    slack_configs:
+      - channel: '#catvrf-ml-alerts'
+        send_resolved: true
+        color: 'danger'
+        title: '🚨 HIGH: {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Severity:* {{ .Labels.severity }}
+          *Vertical:* {{ .Labels.vertical }}
+          *Feature:* {{ .Labels.feature | default "N/A" }}
+          *Description:* {{ .Annotations.description }}
+          *Summary:* {{ .Annotations.summary }}
+          *Runbook:* {{ .Annotations.runbook_url | default "https://docs.catvrf.internal/runbooks/ml" }}
+          {{ end }}
+          
+  - name: 'slack-medium'
+    slack_configs:
+      - channel: '#catvrf-ml-alerts'
+        send_resolved: true
+        color: 'warning'
+        title: '⚠️ MEDIUM: {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Severity:* {{ .Labels.severity }}
+          *Vertical:* {{ .Labels.vertical }}
+          *Feature:* {{ .Labels.feature | default "N/A" }}
+          *Description:* {{ .Annotations.description }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+          
+  - name: 'email-low'
+    email_configs:
+      - to: 'ml-team@catvrf.internal'
+        headers:
+          Subject: '[CatVRF ML] LOW: {{ .CommonLabels.alertname }}'
+
+# Inhibition rules - suppress certain alerts when others are firing
+inhibit_rules:
+  # Inhibit medium drift alerts if critical drift is already firing
+  - source_match:
+      alertname: 'FeatureDriftCritical'
+    target_match_re:
+      alertname: 'FeatureDrift(Warning|Medium)'
+    equal: ['vertical', 'feature']
+    
+  # Inhibit quota warning if quota critical is firing
+  - source_match:
+      alertname: 'QuotaExceededCritical'
+    target_match_re:
+      alertname: 'QuotaExceeded(Warning|High)'
+    equal: ['resource_type']
+
+# Templates for alert formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\V1\Food\OrderController;
 use App\Domains\Food\Http\Controllers\DeliveryOrderController;
+use App\Domains\Food\Http\Controllers\RestaurantOrderController;
+use App\Domains\Food\Http\Controllers\DishController;
+use App\Domains\Food\Http\Controllers\RestaurantController;
 use Illuminate\Support\Facades\Route;
 
 /**

@@ -2,14 +2,12 @@
 
 namespace App\Services\Payment;
 
-
 use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
 use App\Models\Wallet;
 use App\Services\FraudControlService;
-use App\Services\Security\IdempotencyService;
-use App\Services\Wallet\WalletService;
-
+use App\Domains\Payment\Jobs\ProcessGatewayPaymentJob;
+use App\Domains\Payment\Jobs\ProcessCaptureJob;
 
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
@@ -147,39 +145,32 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use ($paymentUuid, $amount, $correlationId) {
-            $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
+        $payment = PaymentTransaction::where('uuid', $paymentUuid)->firstOrFail();
 
-            if ($payment->status !== PaymentTransaction::STATUS_AUTHORIZED) {
-                throw new \RuntimeException("Payment must be in authorized status to capture, current: {$payment->status}");
-            }
+        if ($payment->status !== PaymentTransaction::STATUS_AUTHORIZED) {
+            throw new \RuntimeException("Payment must be in authorized status to capture, current: {$payment->status}");
+        }
 
-            $captureAmount = $amount ?? $payment->hold_amount;
+        $captureAmount = $amount ?? $payment->hold_amount;
 
-            if ($captureAmount > $payment->hold_amount) {
-                throw new \RuntimeException("Capture amount {$captureAmount} exceeds hold amount {$payment->hold_amount}");
-            }
+        if ($captureAmount > $payment->hold_amount) {
+            throw new \RuntimeException("Capture amount {$captureAmount} exceeds hold amount {$payment->hold_amount}");
+        }
 
-            // Зачисление на wallet
-            $this->walletService->credit(
-                tenantId: $payment->tenant_id,
-                amount: $captureAmount,
-                type: 'payment_capture',
-                sourceId: $payment->id,
-                correlationId: $correlationId,
-                reason: "Payment capture {$payment->uuid}",
-                sourceType: 'payment',
-                walletId: $payment->wallet_id,
-            );
+        // Dispatch async job for capture
+        ProcessCaptureJob::dispatch(
+            $paymentUuid,
+            $captureAmount,
+            $correlationId,
+        );
 
-            $payment->update([
-                'status' => PaymentTransaction::STATUS_CAPTURED,
-                'captured_amount' => $captureAmount,
-                'correlation_id' => $correlationId,
-            ]);
+        $this->logger->channel('audit')->info('Capture job dispatched', [
+            'correlation_id' => $correlationId,
+            'payment_uuid' => $paymentUuid,
+            'amount' => $captureAmount,
+        ]);
 
-            return $payment->fresh();
-        });
+        return $payment;
     }
 
     /**

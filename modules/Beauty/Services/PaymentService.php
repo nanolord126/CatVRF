@@ -4,6 +4,11 @@ namespace Modules\Beauty\Services;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use DomainException;
 
 final class PaymentService extends Model
 {
@@ -14,6 +19,7 @@ final class PaymentService extends Model
             private DatabaseManager $database,
             private TinkoffGateway $tinkoff,
             private LoggerInterface $logger,
+            private PaymentFraudMLService $fraudMl,
         ) {}
     
         public function initiatePayment(Booking $booking): array
@@ -29,7 +35,42 @@ final class PaymentService extends Model
     
             $correlationId = Str::uuid();
             $amount = (int)($service->price * 100); // В копейках для Tinkoff
-    
+
+            // FRAUD CHECK - ML-based
+            try {
+                $fraudDto = new PaymentFraudMLDto(
+                    tenant_id: $booking->tenant_id,
+                    user_id: $booking->user_id,
+                    operation_type: 'beauty_payment_init',
+                    amount_kopecks: $amount,
+                    ip_address: request()->ip() ?? '127.0.0.1',
+                    device_fingerprint: request()->header('User-Agent') ?? 'unknown',
+                    correlation_id: $correlationId,
+                    idempotency_key: 'beauty_payment_' . $booking->id,
+                    vertical_code: 'beauty',
+                );
+
+                $fraudResult = $this->fraudMl->scorePayment($fraudDto);
+
+                if ($fraudResult['decision'] === 'block') {
+                    Log::warning('Beauty payment blocked by fraud detection', [
+                        'booking_id' => $booking->id,
+                        'fraud_score' => $fraudResult['score'],
+                        'explanation' => $fraudResult['explanation'] ?? null,
+                        'correlation_id' => $correlationId,
+                    ]);
+                    throw new DomainException('Payment blocked by fraud detection system');
+                }
+            } catch (DomainException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                Log::error('Beauty fraud check failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Fail-open for reliability
+            }
+
             try {
                 $payment = $this->database->transaction(function () use (
                     $booking,

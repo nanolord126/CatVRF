@@ -11,6 +11,7 @@ use App\Models\B2BContract;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
+use App\Domains\Wallet\Services\AtomicWalletService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
@@ -30,7 +31,8 @@ final readonly class HotelBookingService
 {
     public function __construct(
         private FraudControlService $fraud,
-        private WalletService $wallet,
+        private WtomicWalletService $atomicWallet,
+        private AalletService $wallet,
         private AuditService $audit,
         private DatabaseManager $db,
         private LoggerInterface $logger,
@@ -200,12 +202,20 @@ final readonly class HotelBookingService
             $room->increment('total_stock');
 
             if ($booking->payment_status === 'paid') {
-                $this->wallet->credit(
-                    walletId: $booking->user_id,
-                    amount: $booking->total_price,
-                    reason: 'hotel_booking_refund',
-                    correlationId: $correlationId,
-                );
+                $wallet = Wallet::where('user_id', $booking->user_id)
+                    ->where('tenant_id', $booking->tenant_id)
+                    ->first();
+                
+                if ($wallet !== null) {
+                    $this->atomicWallet->credit(
+                        walletId: $wallet->id,
+                        amount: $booking->total_price,
+                        type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                        correlationId: $correlationId,
+                        sourceType: 'hotel_booking',
+                        sourceId: $booking->id,
+                    );
+                }
             }
 
             $this->audit->log(

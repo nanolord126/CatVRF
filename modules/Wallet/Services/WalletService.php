@@ -4,9 +4,12 @@ namespace Modules\Wallet\Services;
 
 use App\Modules\Wallet\Models\WalletTransaction;
 use App\Services\FraudControlService;
+use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
 use DomainException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -28,6 +31,7 @@ final class WalletService
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
+        private readonly PaymentFraudMLService $fraudMl,
     ) {}
 
     /**
@@ -72,7 +76,7 @@ final class WalletService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            // 1. FRAUD CHECK BEFORE transaction
+            // 1. RULE-BASED FRAUD CHECK (legacy, still required)
             $this->fraud->check([
                 'operation_type' => 'wallet_deposit',
                 'amount' => $amountCents,
@@ -80,6 +84,26 @@ final class WalletService
                 'ip_address' => request()->ip(),
                 'correlation_id' => $correlationId,
             ]);
+
+            // 2. ML-BASED FRAUD CHECK (payment-specific for wallet-drain protection)
+            $fraudMlResult = $this->performWalletFraudCheck(
+                $userId,
+                $tenantId,
+                $amountCents,
+                'wallet_deposit',
+                $correlationId,
+            );
+
+            if ($fraudMlResult['decision'] === 'block') {
+                Log::channel('audit')->warning('Wallet: Deposit blocked by ML fraud detection', [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $userId,
+                    'amount' => $amountCents,
+                    'fraud_score' => $fraudMlResult['score'],
+                    'explanation' => $fraudMlResult['explanation'] ?? null,
+                ]);
+                throw new DomainException('Deposit blocked by fraud detection system');
+            }
 
             Log::channel('audit')->info('Wallet: Deposit initiated', [
                 'correlation_id' => $correlationId,
@@ -107,8 +131,12 @@ final class WalletService
                     'status' => 'completed',
                     'currency' => $currency,
                     'correlation_id' => $correlationId,
-                    'tags' => ['deposit', 'completed'],
-                    'metadata' => $metadata ?? [],
+                    'tags' => array_merge(['deposit', 'completed'], $fraudMlResult['cached'] ? ['fraud_cached'] : []),
+                    'metadata' => array_merge($metadata ?? [], [
+                        'fraud_score' => $fraudMlResult['score'],
+                        'fraud_decision' => $fraudMlResult['decision'],
+                        'fraud_cached' => $fraudMlResult['cached'],
+                    ]),
                     'description' => $description,
                 ]);
             });
@@ -168,7 +196,7 @@ final class WalletService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            // 1. FRAUD CHECK BEFORE transaction
+            // 1. RULE-BASED FRAUD CHECK (legacy, still required)
             $this->fraud->check([
                 'operation_type' => 'wallet_withdrawal',
                 'amount' => $amountCents,
@@ -176,6 +204,26 @@ final class WalletService
                 'ip_address' => request()->ip(),
                 'correlation_id' => $correlationId,
             ]);
+
+            // 2. ML-BASED FRAUD CHECK (payment-specific for wallet-drain protection)
+            $fraudMlResult = $this->performWalletFraudCheck(
+                $userId,
+                $tenantId,
+                $amountCents,
+                'wallet_withdrawal',
+                $correlationId,
+            );
+
+            if ($fraudMlResult['decision'] === 'block') {
+                Log::channel('audit')->warning('Wallet: Withdrawal blocked by ML fraud detection', [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $userId,
+                    'amount' => $amountCents,
+                    'fraud_score' => $fraudMlResult['score'],
+                    'explanation' => $fraudMlResult['explanation'] ?? null,
+                ]);
+                throw new DomainException('Withdrawal blocked by fraud detection system');
+            }
 
             Log::channel('audit')->info('Wallet: Withdrawal initiated', [
                 'correlation_id' => $correlationId,
@@ -219,8 +267,12 @@ final class WalletService
                     'status' => 'completed',
                     'currency' => $currency,
                     'correlation_id' => $correlationId,
-                    'tags' => ['withdrawal', 'completed'],
-                    'metadata' => $metadata ?? [],
+                    'tags' => array_merge(['withdrawal', 'completed'], $fraudMlResult['cached'] ? ['fraud_cached'] : []),
+                    'metadata' => array_merge($metadata ?? [], [
+                        'fraud_score' => $fraudMlResult['score'],
+                        'fraud_decision' => $fraudMlResult['decision'],
+                        'fraud_cached' => $fraudMlResult['cached'],
+                    ]),
                     'description' => $description,
                 ]);
             });
@@ -527,6 +579,65 @@ final class WalletService
             ]);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Perform ML-based fraud check for wallet operations
+     * 
+     * Critical for wallet-drain attack detection
+     */
+    private function performWalletFraudCheck(
+        int $userId,
+        int $tenantId,
+        int $amountCents,
+        string $operationType,
+        string $correlationId,
+    ): array {
+        $startTime = microtime(true);
+
+        try {
+            $currentBalance = $this->getBalance($userId, $tenantId);
+
+            $dto = new PaymentFraudMLDto(
+                tenant_id: $tenantId,
+                user_id: $userId,
+                operation_type: $operationType,
+                amount_kopecks: $amountCents,
+                ip_address: request()->ip() ?? '127.0.0.1',
+                device_fingerprint: request()->header('User-Agent') ?? 'unknown',
+                correlation_id: $correlationId,
+                idempotency_key: $correlationId,
+                vertical_code: 'wallet',
+                wallet_balance_kopecks: $currentBalance,
+            );
+
+            $result = $this->fraudMl->scorePayment($dto);
+            
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+            
+            if ($latencyMs > 30) {
+                Log::warning('wallet.fraud.check.high_latency', [
+                    'correlation_id' => $correlationId,
+                    'latency_ms' => $latencyMs,
+                ]);
+            }
+
+            return $result;
+            
+        } catch (Throwable $e) {
+            Log::error('wallet.fraud.check.failed', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
+            
+            // Fail-open for reliability
+            return [
+                'score' => 0.0,
+                'decision' => 'allow',
+                'explanation' => ['error' => 'fraud_check_failed'],
+                'cached' => false,
+            ];
         }
     }
 }

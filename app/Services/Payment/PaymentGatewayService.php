@@ -2,243 +2,339 @@
 
 namespace App\Services\Payment;
 
-
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
-use App\Services\Fraud\FraudControlService;
 use App\Services\Payment\Gateways\SberGateway;
 use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
-use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
 
 /**
- * PaymentGatewayService
+ * PaymentGatewayService - Isolated payment gateway operations.
  *
- * Обрабатывает инициацию, захват и возврат платежей через различные платёжные системы
- * (Tinkoff, Tochka, Sberbank). Все операции атомарны ($this->db->transaction), отслеживаются
- * по correlation_id и защищены от мошенничества (FraudControlService::check).
+ * CRITICAL: Gateway calls are NEVER wrapped in DB::transaction to prevent
+ * connection holding during timeouts. Uses circuit breaker for resilience.
  *
  * @final
  */
 final class PaymentGatewayService
 {
+    private const CIRCUIT_BREAKER_THRESHOLD = 5; // Failures before opening
+    private const CIRCUIT_BREAKER_TIMEOUT = 60; // Seconds before trying again
+
     public function __construct(
         private readonly Request $request,
         private readonly TinkoffGateway $tinkoff,
         private readonly TochkaGateway $tochka,
         private readonly SberGateway $sber,
-        private readonly ConnectionInterface $db,
-        private readonly LogManager $log,
-        private readonly FraudControlService $fraud,
         private readonly LogManager $logger,
         private readonly Guard $guard,
+        private readonly RedisFactory $redis,
+        private readonly LoggerInterface $log,
     ) {}
 
     /**
-     * Инициировать платёж (создать PaymentTransaction и отправить на шлюз)
+     * Инициировать платёж через шлюз (без DB::transaction).
      *
-     * @param array $data Данные платежа: amount, provider, currency, idempotency_key
-     * @param int|string $tenantId
+     * CRITICAL: Gateway call is NOT wrapped in DB transaction to prevent
+     * connection holding during timeouts. Caller must handle transaction.
+     *
+     * @param array $data Данные платежа: amount, provider, currency
      * @param string $correlationId
-     * @return PaymentTransaction
-     * @throws \App\Exceptions\FraudException
-     * @throws \Throwable
+     * @return array Gateway response
+     * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
-    public function initPayment(array $data, int|string $tenantId, string $correlationId): PaymentTransaction
+    public function initiatePayment(array $data, string $correlationId): array
     {
-        // 1. FRAUD CHECK ПЕРЕД ТРАНЗАКЦИЕЙ
-        $this->fraud->check([
-            'operation_type' => 'payment_init',
-            'amount' => $data['amount'],
-            'provider' => $data['provider'] ?? 'tinkoff',
-            'ip_address' => $this->request->ip(),
-            'user_agent' => $this->request->userAgent(),
+        $provider = $data['provider'] ?? 'tinkoff';
+        
+        $this->checkCircuitBreaker($provider);
+
+        $this->logger->channel('audit')->info('Payment gateway initiation started', [
             'correlation_id' => $correlationId,
+            'provider' => $provider,
+            'amount' => $data['amount'],
         ]);
 
+        $startTime = microtime(true);
+
         try {
-            return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
-                // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->logger->channel('audit')->info('Payment initialization started', [
-                    'correlation_id' => $correlationId,
-                    'amount' => $data['amount'],
-                    'provider' => $data['provider'] ?? 'tinkoff',
-                    'currency' => $data['currency'] ?? 'RUB',
-                    'tenant_id' => $tenantId,
-                ]);
+            $response = match ($provider) {
+                'tinkoff' => $this->tinkoff->initiate($data, $correlationId),
+                'tochka' => $this->tochka->initiate($data, $correlationId),
+                'sber' => $this->sber->initiate($data, $correlationId),
+                default => throw new \InvalidArgumentException("Unsupported provider: {$provider}"),
+            };
 
-                // 3. СОЗДАТЬ ТРАНЗАКЦИЮ С ИДЕМПОТЕНТНОСТЬЮ
-                $idempotencyKey = $data['idempotency_key'] ?? Str::uuid()->toString();
-                $transaction = PaymentTransaction::create([
-                    'tenant_id' => $tenantId,
-                    'idempotency_key' => $idempotencyKey,
-                    'provider' => $data['provider'] ?? 'tinkoff',
-                    'amount' => $data['amount'],
-                    'currency' => $data['currency'] ?? 'RUB',
-                    'status' => 'pending',
-                    'correlation_id' => $correlationId,
-                    'user_id' => $this->guard->id(),
-                ]);
+            $latencyMs = (microtime(true) - $startTime) * 1000;
 
-                $this->logger->channel('audit')->info('Payment transaction created', [
-                    'correlation_id' => $correlationId,
-                    'payment_id' => $transaction->id,
-                    'idempotency_key' => $idempotencyKey,
-                ]);
+            $this->recordSuccess($provider, $latencyMs);
 
-                return $transaction;
-            });
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Payment initialization failed', [
+            $this->logger->channel('audit')->info('Payment gateway initiation successful', [
                 'correlation_id' => $correlationId,
-                'amount' => $data['amount'],
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'provider' => $provider,
+                'latency_ms' => $latencyMs,
             ]);
 
-            throw $e;
+            return $response;
+        } catch (\Throwable $e) {
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+
+            $this->recordFailure($provider, $latencyMs);
+
+            $this->logger->channel('audit')->error('Payment gateway initiation failed', [
+                'correlation_id' => $correlationId,
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+                'latency_ms' => $latencyMs,
+            ]);
+
+            throw new \RuntimeException(
+                sprintf('Gateway %s failed: %s', $provider, $e->getMessage()),
+                previous: $e,
+            );
         }
     }
 
     /**
-     * Захватить (списать) платёж
+     * Захватить (списать) платёж через шлюз (без DB::transaction).
+     *
+     * CRITICAL: Gateway call is NOT wrapped in DB transaction.
      *
      * @param PaymentTransaction $transaction
      * @param string $correlationId
-     * @return bool
-     * @throws \App\Exceptions\FraudException
-     * @throws \Throwable
+     * @return array Gateway response
+     * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
-    public function capture(PaymentTransaction $transaction, string $correlationId): bool
+    public function capture(PaymentTransaction $transaction, string $correlationId): array
     {
-        // 1. FRAUD CHECK ПЕРЕД ТРАНЗАКЦИЕЙ
-        $this->fraud->check([
-            'operation_type' => 'payment_capture',
-            'amount' => $transaction->amount,
-            'user_id' => $transaction->user_id,
-            'ip_address' => $this->request->ip(),
+        $provider = $transaction->provider;
+        
+        $this->checkCircuitBreaker($provider);
+
+        $this->logger->channel('audit')->info('Payment gateway capture started', [
             'correlation_id' => $correlationId,
+            'payment_id' => $transaction->id,
+            'provider' => $provider,
         ]);
 
+        $startTime = microtime(true);
+
         try {
-            return $this->db->transaction(function () use ($transaction, $correlationId) {
-                // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->logger->channel('audit')->info('Payment capture started', [
-                    'correlation_id' => $correlationId,
-                    'payment_id' => $transaction->id,
-                    'amount' => $transaction->amount,
-                    'user_id' => $transaction->user_id,
-                    'provider' => $transaction->provider,
-                ]);
+            $response = match ($provider) {
+                'tinkoff' => $this->tinkoff->capture($transaction, $correlationId),
+                'tochka' => $this->tochka->capture($transaction, $correlationId),
+                'sber' => $this->sber->capture($transaction, $correlationId),
+                default => throw new \InvalidArgumentException("Unsupported provider: {$provider}"),
+            };
 
-                // 3. ВЫПОЛНИТЬ ЗАХВАТ ЧЕРЕЗ ШЛЮЗ
-                $result = match ($transaction->provider) {
-                    'tochka' => $this->tochka->capture($transaction, $correlationId),
-                    'sber' => $this->sber->capture($transaction, $correlationId),
-                    default => throw new \InvalidArgumentException("Unknown payment provider: {$transaction->provider}"),
-                };
+            $latencyMs = (microtime(true) - $startTime) * 1000;
 
-                // 4. ОБНОВИТЬ СТАТУС
-                if ($result) {
-                    $transaction->update([
-                        'status' => 'captured',
-                        'captured_at' => now(),
-                        'correlation_id' => $correlationId,
-                    ]);
+            $this->recordSuccess($provider, $latencyMs);
 
-                    $this->logger->channel('audit')->info('Payment captured successfully', [
-                        'correlation_id' => $correlationId,
-                        'payment_id' => $transaction->id,
-                        'gateway' => $transaction->provider,
-                    ]);
-                }
-
-                return $result;
-            });
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Payment capture failed', [
+            $this->logger->channel('audit')->info('Payment gateway capture successful', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'provider' => $provider,
+                'latency_ms' => $latencyMs,
             ]);
 
-            throw $e;
+            return $response;
+        } catch (\Throwable $e) {
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+
+            $this->recordFailure($provider, $latencyMs);
+
+            $this->logger->channel('audit')->error('Payment gateway capture failed', [
+                'correlation_id' => $correlationId,
+                'payment_id' => $transaction->id,
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+                'latency_ms' => $latencyMs,
+            ]);
+
+            throw new \RuntimeException(
+                sprintf('Capture failed for provider %s: %s', $provider, $e->getMessage()),
+                previous: $e,
+            );
         }
     }
 
     /**
-     * Возвратить платёж (рефанд)
+     * Возвратить платёж через шлюз (без DB::transaction).
+     *
+     * CRITICAL: Gateway call is NOT wrapped in DB transaction.
      *
      * @param PaymentTransaction $transaction
      * @param int $amount Сумма в копейках
+     * @param string $reason Причина возврата
      * @param string $correlationId
-     * @return bool
-     * @throws \App\Exceptions\FraudException
-     * @throws \Throwable
+     * @return array Gateway response
+     * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
-    public function refund(PaymentTransaction $transaction, int $amount, string $correlationId): bool
+    public function refund(PaymentTransaction $transaction, int $amount, string $reason, string $correlationId): array
     {
-        // 1. FRAUD CHECK ПЕРЕД ТРАНЗАКЦИЕЙ
-        $this->fraud->check([
-            'operation_type' => 'payment_refund',
-            'amount' => $amount,
-            'user_id' => $transaction->user_id,
-            'ip_address' => $this->request->ip(),
+        $provider = $transaction->provider;
+        
+        $this->checkCircuitBreaker($provider);
+
+        $this->logger->channel('audit')->info('Payment gateway refund started', [
             'correlation_id' => $correlationId,
+            'payment_id' => $transaction->id,
+            'provider' => $provider,
+            'refund_amount' => $amount,
         ]);
 
+        $startTime = microtime(true);
+
         try {
-            return $this->db->transaction(function () use ($transaction, $amount, $correlationId) {
-                // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->logger->channel('audit')->info('Payment refund initiated', [
-                    'correlation_id' => $correlationId,
-                    'payment_id' => $transaction->id,
-                    'refund_amount' => $amount,
-                    'original_amount' => $transaction->amount,
-                    'user_id' => $transaction->user_id,
-                    'provider' => $transaction->provider,
-                ]);
+            $response = match ($provider) {
+                'tinkoff' => $this->tinkoff->refund($transaction, $amount, $reason, $correlationId),
+                'tochka' => $this->tochka->refund($transaction, $amount, $reason, $correlationId),
+                'sber' => $this->sber->refund($transaction, $amount, $reason, $correlationId),
+                default => throw new \InvalidArgumentException("Unsupported provider: {$provider}"),
+            };
 
-                // 3. ВЫПОЛНИТЬ ВОЗВРАТ ЧЕРЕЗ ШЛЮЗ
-                $result = match ($transaction->provider) {
-                    'tochka' => $this->tochka->refund($transaction, $amount, $correlationId),
-                    'sber' => $this->sber->refund($transaction, $amount, $correlationId),
-                    default => throw new \InvalidArgumentException("Unknown payment provider: {$transaction->provider}"),
-                };
+            $latencyMs = (microtime(true) - $startTime) * 1000;
 
-                // 4. ОБНОВИТЬ СТАТУС И СУММЫ
-                if ($result) {
-                    $transaction->update([
-                        'status' => 'refunded',
-                        'refunded_at' => now(),
-                        'refunded_amount' => ($transaction->refunded_amount ?? 0) + $amount,
-                        'correlation_id' => $correlationId,
-                    ]);
+            $this->recordSuccess($provider, $latencyMs);
 
-                    $this->logger->channel('audit')->info('Payment refunded successfully', [
-                        'correlation_id' => $correlationId,
-                        'payment_id' => $transaction->id,
-                        'refunded_amount' => $amount,
-                        'gateway' => $transaction->provider,
-                    ]);
-                }
-
-                return $result;
-            });
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Payment refund failed', [
+            $this->logger->channel('audit')->info('Payment gateway refund successful', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
+                'provider' => $provider,
                 'refund_amount' => $amount,
+                'latency_ms' => $latencyMs,
+            ]);
+
+            return $response;
+        } catch (\Throwable $e) {
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+
+            $this->recordFailure($provider, $latencyMs);
+
+            $this->logger->channel('audit')->error('Payment gateway refund failed', [
+                'correlation_id' => $correlationId,
+                'payment_id' => $transaction->id,
+                'provider' => $provider,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'latency_ms' => $latencyMs,
+            ]);
+
+            throw new \RuntimeException(
+                sprintf('Refund failed for provider %s: %s', $provider, $e->getMessage()),
+                previous: $e,
+            );
+        }
+    }
+
+    /**
+     * Get payment status from gateway.
+     *
+     * @param PaymentTransaction $transaction
+     * @param string $correlationId
+     * @return array Gateway response
+     */
+    public function getStatus(PaymentTransaction $transaction, string $correlationId): array
+    {
+        $provider = $transaction->provider;
+
+        try {
+            $response = match ($provider) {
+                'tinkoff' => $this->tinkoff->getStatus($transaction, $correlationId),
+                'tochka' => $this->tochka->getStatus($transaction, $correlationId),
+                'sber' => $this->sber->getStatus($transaction, $correlationId),
+                default => throw new \InvalidArgumentException("Unsupported provider: {$provider}"),
+            };
+
+            return $response;
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Payment gateway status check failed', [
+                'correlation_id' => $correlationId,
+                'payment_id' => $transaction->id,
+                'provider' => $provider,
+                'error' => $e->getMessage(),
             ]);
 
             throw $e;
         }
+    }
+
+    // ─── Circuit Breaker ────────────────────────────────────────────────
+
+    /**
+     * Check if circuit breaker is open for a provider.
+     *
+     * @throws \RuntimeException If circuit is open
+     */
+    private function checkCircuitBreaker(string $provider): void
+    {
+        $key = $this->circuitBreakerKey($provider);
+        $state = $this->redis->connection()->get($key);
+
+        if ($state === 'open') {
+            throw new \RuntimeException(
+                sprintf('Circuit breaker open for provider %s - gateway unavailable', $provider),
+            );
+        }
+    }
+
+    /**
+     * Record successful gateway call.
+     */
+    private function recordSuccess(string $provider, float $latencyMs): void
+    {
+        $key = $this->failureCountKey($provider);
+        $this->redis->connection()->del($key);
+
+        // Record metrics for Prometheus
+        $this->log->info('payment_gateway_success', [
+            'provider' => $provider,
+            'latency_ms' => $latencyMs,
+        ]);
+    }
+
+    /**
+     * Record failed gateway call and open circuit if threshold reached.
+     */
+    private function recordFailure(string $provider, float $latencyMs): void
+    {
+        $key = $this->failureCountKey($provider);
+        $count = $this->redis->connection()->incr($key);
+
+        if ($count === 1) {
+            $this->redis->connection()->expire($key, self::CIRCUIT_BREAKER_TIMEOUT);
+        }
+
+        if ($count >= self::CIRCUIT_BREAKER_THRESHOLD) {
+            $circuitKey = $this->circuitBreakerKey($provider);
+            $this->redis->connection()->setex($circuitKey, self::CIRCUIT_BREAKER_TIMEOUT, 'open');
+
+            $this->logger->warning('Circuit breaker opened', [
+                'provider' => $provider,
+                'failure_count' => $count,
+            ]);
+        }
+
+        // Record metrics for Prometheus
+        $this->log->warning('payment_gateway_failure', [
+            'provider' => $provider,
+            'latency_ms' => $latencyMs,
+            'failure_count' => $count,
+        ]);
+    }
+
+    private function failureCountKey(string $provider): string
+    {
+        return "payment:circuit:{$provider}:failures";
+    }
+
+    private function circuitBreakerKey(string $provider): string
+    {
+        return "payment:circuit:{$provider}:state";
     }
 }

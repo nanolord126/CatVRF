@@ -180,6 +180,7 @@ return [
         App\Domains\Delivery\Providers\DeliveryServiceProvider::class,
         App\Domains\Staff\Providers\StaffServiceProvider::class,
         App\Providers\ModelBootServiceProvider::class,
+        App\Providers\PaymentServiceProvider::class,
 
         /*
          * Taxi Service Providers...

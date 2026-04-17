@@ -46,6 +46,7 @@ final readonly class MLModelRetrainService
         private readonly TenantQuotaService $quotaService,
         private readonly LogManager $logger,
         private readonly MLModelValidationService $validationService,
+        private readonly PrometheusMetricsService $prometheus,
     ) {}
 
     /**

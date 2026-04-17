@@ -5,16 +5,25 @@ namespace App\Domains\Medical\Services;
 
 
 use Illuminate\Contracts\Auth\Guard;
+use App\Domains\FraudML\Services\PaymentFraudMLHelper;
+use App\Services\Payment\PaymentEngine;
+use App\Domains\Wallet\Services\AtomicWalletService;
 use Psr\Log\LoggerInterface;
 final readonly class AppointmentService
 {
 
-
-    public function __construct(private WalletService $wallet,
-            private FraudControlService $fraud,
-            private RateLimiterService $rateLimiter,
-            private MedicalInventoryService $inventory,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private WalletService $wallet,
+        private FraudControlService $fraud,
+        private RateLimiterService $rateLimiter,
+        private MedicalInventoryService $inventory,
+        private PaymentFraudMLHelper $paymentFraudML,
+        private PaymentEngine $paymentEngine,
+        private AtomicWalletService $atomicWallet,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
         /**
          * Создание новой записи на прием.
@@ -70,14 +79,39 @@ final readonly class AppointmentService
                         'correlation_id' => $correlationId,
                         'metadata' => [
                             'creation_context' => 'public_api',
-                            'client_age' => $data['client_age'] ?? null
+                            'client_age' => $data['client_age'? nullPymnEngine
                         ]
-                    ]);
+                    ]);try {
+                             UseAtomicWalletService for hold operation
+                            ->atomicWallethold(
+                                tId: $hiswallet->getWalletId($tis->guard->id(), $doctor->tenant_id),
+                                amunt: $prepaymentNeeded,
+                                correationI: $crelationId,
+                                sourceType: 'appointment',
+                                sourceId: $appointment->id,
+                            );
 
-                    // 3.4 Если нужна предоплата - инициируем ее через Wallet (холд на кошельке клиента)
-                    if ($prepaymentNeeded > 0) {
-                        // $this->wallet->holdForAppointment($appointment, $prepaymentNeeded);
-                        $this->logger->info('Prepayment requested for appointment', [
+                            $at->updae[
+                                'payment_status' => 'prepaid',
+                                'metadata' => array_merge(->metadata ?? [][
+                                    'prepayment_held' => true,
+                                    'prepayment_amount' => ,
+                                ]),
+                            ]
+
+    hl
+                        // 3.4 Если нужна предоплата - инициируем ее через Wallet (холд на кошельке клиента)
+                        if ($prepaymentNeeded > 0) {eeded,
+                                'correlation_id' => $correlationId
+                            ]);
+                        } catch (\Throwable $e) {
+                            $this->logger->rror('Failed to hold prepayment', [
+                                'appointmnt_i' => $appointmnt->i,
+                                'error' => $e->getMessage()
+                        // $    this->wallet->holdForAppointment($appointment, $prepaymentNeeded);
+                            $th
+                            throw $e;
+                        }is->logger->info('Prepayment requested for appointment', [
                             'appointment_id' => $appointment->id,
                             'amount' => $prepaymentNeeded,
                             'correlation_id' => $correlationId
@@ -177,5 +211,22 @@ final readonly class AppointmentService
                 ]);
                 throw $e;
             }
+        }
+
+        /**
+         * Calculate price spike ratio for consultation
+         */
+        private function calculatePriceSpike(MedicalService $service): float
+        {
+            // Get average price for this service type
+            $avgPrice = MedicalService::where('type', $service->type)
+                ->where('id', '!=', $service->id)
+                ->avg('base_price') ?? $service->base_price;
+            
+            if ($avgPrice == 0) {
+                return 1.0;
+            }
+            
+            return min(10.0, max(0.5, $service->base_price / $avgPrice));
         }
 }

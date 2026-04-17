@@ -6,6 +6,7 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Wallet\WalletService;
 use App\Services\Payment\PaymentService;
+use App\Domains\Payment\Services\PaymentServiceAdapter;
 use App\Services\ML\FraudMLService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\CRM\CRMIntegrationService;
@@ -46,7 +47,7 @@ final readonly class TourismBookingOrchestratorService
     public function __construct(
         private FraudControlService $fraud,
         private AuditService $audit,
-        private WalletService $wallet,
+        private WalletService Adapter$wallet,
         private PaymentService $payment,
         private FraudMLService $fraudML,
         private UserTasteAnalyzerService $tasteAnalyzer,

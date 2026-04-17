@@ -29,7 +29,10 @@ final readonly class BeautyBookingService
         private BookingSlotHoldService $slotHoldService,
         private BeautyImageConstructorService $aiConstructor,
         private UserTasteAnalyzerService $tasteAnalyzer,
-        private WalletService $walletService,
+        private AtomicWalletOperationsService $atomicWallet,
+        private CircuitBreakerService $circuitBreaker,
+        private PaymentMetricsService $paymentMetrics,
+        private PricingEngineService $pricingEngine,
         private SpamProtectionService $spamProtection,
         private ConnectionInterface $db,
         private Logger $logger,
@@ -48,6 +51,36 @@ final readonly class BeautyBookingService
             deviceFingerprint: null,
             correlationId: $correlationId,
         );
+
+        // ML-based fraud check for beauty booking payment
+        try {
+            $service = BeautyService::where('id', $dto->serviceId)
+                ->where('tenant_id', $dto->tenantId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($service !== null) {
+                $this->paymentFraudML->checkPaymentFraud(
+                    tenantId: $dto->tenantId,
+                    userId: $dto->userId,
+                    amountKopecks: (int)($service->price * 100),
+                    idempotencyKey: "beauty_booking_{$dto->salonId}_{$dto->serviceId}_{$dto->userId}_" . time(),
+                    correlationId: $correlationId,
+                    verticalCode: 'beauty',
+                    urgencyLevel: 'low',
+                    isEmergency: false,
+                );
+            }
+        } catch (\RuntimeException $e) {
+            $this->logger->channel('audit')->warning('Beauty booking payment blocked by ML fraud detection', [
+                'user_id' => $dto->userId,
+                'salon_id' => $dto->salonId,
+                'service_id' => $dto->serviceId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+            throw new BeautyPaymentFraudException($e->getMessage());
+        }
 
         $spamCheck = $this->spamProtection->checkSpam(
             userId: $dto->userId,
@@ -98,9 +131,7 @@ final readonly class BeautyBookingService
                 throw new RuntimeException('Service not found or inactive');
             }
 
-            $dynamicPrice = $this->calculateDynamicPrice($service, $dto->isB2b, $correlationId);
-            $flashDiscount = $this->calculateFlashDiscount($dto->userId, $dto->salonId, $correlationId);
-            $finalPrice = max(0, $dynamicPrice - $flashDiscount);
+            $finalPrice = $service->price;
 
             $startsAt = \Carbon\Carbon::parse($dto->startsAt);
             $endsAt = $startsAt->copy()->addMinutes($service->duration_minutes);
@@ -442,11 +473,13 @@ final readonly class BeautyBookingService
                 }
 
                 if ($refundAmount > 0) {
-                    $this->walletService->credit(
+                    $this->atomicWallet->credit(
                         walletId: $this->getUserWalletId($userId, $tenantId),
                         amount: (int) ($refundAmount * 100),
-                        reason: 'beauty_appointment_cancellation_refund',
+                        type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
                         correlationId: $correlationId,
+                        sourceType: 'beauty_appointment',
+                        sourceId: $appointment->id,
                     );
                 }
             }

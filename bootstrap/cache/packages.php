@@ -200,6 +200,17 @@
       0 => 'Spatie\\Permission\\PermissionServiceProvider',
     ),
   ),
+  'spatie/laravel-prometheus' => 
+  array (
+    'aliases' => 
+    array (
+      'Prometheus' => 'Spatie\\Prometheus\\Facades\\Prometheus',
+    ),
+    'providers' => 
+    array (
+      0 => 'Spatie\\Prometheus\\PrometheusServiceProvider',
+    ),
+  ),
   'spatie/laravel-query-builder' => 
   array (
     'providers' => 

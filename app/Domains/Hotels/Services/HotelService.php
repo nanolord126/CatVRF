@@ -32,7 +32,7 @@ final readonly class HotelService
     public function __construct(
         private FraudControlService $fraud,
         private InventoryManagementService $inventory,
-        private PaymentService $payment,
+        private PaymentServiceAdapter $payment,
         private WalletService $wallet,
         private AuditService $audit,
         private DatabaseManager $db,

@@ -14,7 +14,9 @@ use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\AI\OpenAIClientService;
+use App\Services\AI\Prompts\TaxiRoutePromptBuilder;
 use Illuminate\Support\Str;
+use App\Services\AI\Prompts\TaxiPromptBuilder;
 
 /**
  * Оптимизация маршрута + динамическое ценообразование + подбор водителя
@@ -67,7 +69,10 @@ final readonly class TaxiAIConstructorService
 
         try {
             $response = $this->openai->chat([
-                ['role' => 'system', 'content' => 'Оптимизация маршрута и подбор тарифа для поездки. Определи: пункт отправления, назначение, тип поездки, количество пассажиров. Рекомендуй оптимальный маршрут, тариф, водителя.'],
+                ['role' => 'system', 'content' => $this->promptBuilder->getSystemPrompt([
+                'vertical' => 'Taxi',
+                'type' => 'ai_constructor',
+            ])],
                 ['role' => 'user', 'content' => $anonymizedInput],
             ], 0.3, 'text');
         } catch (\Throwable $e) {

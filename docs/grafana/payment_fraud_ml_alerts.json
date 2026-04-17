@@ -1,0 +1,234 @@
+{
+  "alerts": [
+    {
+      "name": "PaymentFraudML_MedicalFalsePositiveRate_High",
+      "title": "High Medical Payment False-Positive Rate",
+      "message": "Medical payment false-positive rate is above 3% threshold. This indicates the model is blocking legitimate emergency payments.",
+      "severity": "critical",
+      "query": "rate(fraud_ml_payment_false_positive_rate_medical[5m]) > 0.03",
+      "duration": "5m",
+      "labels": {
+        "team": "fraud",
+        "vertical": "medical",
+        "priority": "P1"
+      },
+      "annotations": {
+        "description": "Medical vertical false-positive rate has exceeded 3%. Immediate action required to prevent patient impact.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/medical-false-positive",
+        "impact": "Patients unable to complete emergency payments"
+      }
+    },
+    {
+      "name": "PaymentFraudML_Latency_High",
+      "title": "Payment Fraud ML Inference Latency High",
+      "message": "Payment fraud ML inference latency is above 50ms threshold. This impacts payment UX.",
+      "severity": "warning",
+      "query": "histogram_quantile(0.95, rate(fraud_ml_payment_latency_ms_bucket[5m])) > 50",
+      "duration": "5m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P2"
+      },
+      "annotations": {
+        "description": "P95 latency for payment fraud inference is above 50ms. Consider scaling ML infrastructure or optimizing model.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/latency-optimization",
+        "impact": "Degraded payment checkout experience"
+      }
+    },
+    {
+      "name": "PaymentFraudML_Latency_Critical",
+      "title": "Payment Fraud ML Inference Latency Critical",
+      "message": "Payment fraud ML inference latency is above 100ms threshold. Critical payment path degradation.",
+      "severity": "critical",
+      "query": "histogram_quantile(0.95, rate(fraud_ml_payment_latency_ms_bucket[5m])) > 100",
+      "duration": "2m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P1"
+      },
+      "annotations": {
+        "description": "P95 latency for payment fraud inference is above 100ms. Immediate action required.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/latency-critical",
+        "impact": "Severe payment checkout degradation, potential revenue loss"
+      }
+    },
+    {
+      "name": "PaymentFraudML_BlockRate_Medical_High",
+      "title": "Medical Payment Block Rate High",
+      "message": "Medical payment block rate is above 5% threshold. May indicate model degradation.",
+      "severity": "warning",
+      "query": "rate(fraud_ml_payment_block_rate{vertical_code=\"medical\"}[5m]) > 0.05",
+      "duration": "5m",
+      "labels": {
+        "team": "fraud",
+        "vertical": "medical",
+        "priority": "P2"
+      },
+      "annotations": {
+        "description": "Medical payment block rate has exceeded 5%. Review model performance and consider threshold adjustment.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/block-rate-high",
+        "impact": "Increased payment rejections in medical vertical"
+      }
+    },
+    {
+      "name": "PaymentFraudML_CacheHitRate_Low",
+      "title": "Payment Fraud Cache Hit Rate Low",
+      "message": "Payment fraud cache hit rate is below 50%. Idempotency optimization not working effectively.",
+      "severity": "warning",
+      "query": "rate(fraud_ml_payment_cache_hit_total[5m]) / (rate(fraud_ml_payment_cache_hit_total[5m]) + rate(fraud_ml_payment_cache_miss_total[5m])) < 0.5",
+      "duration": "10m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P3"
+      },
+      "annotations": {
+        "description": "Cache hit rate for payment fraud checks is below 50%. Check Redis configuration and TTL settings.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/cache-optimization",
+        "impact": "Increased ML inference load and latency"
+      }
+    },
+    {
+      "name": "PaymentFraudML_EmergencyBlockRate_High",
+      "title": "Emergency Payment Block Rate High",
+      "message": "Emergency payment block rate is above 2%. Critical for patient safety.",
+      "severity": "critical",
+      "query": "rate(fraud_ml_payment_emergency_total{decision=\"block\"}[5m]) / rate(fraud_ml_payment_emergency_total[5m]) > 0.02",
+      "duration": "3m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P0"
+      },
+      "annotations": {
+        "description": "Emergency payment block rate has exceeded 2%. This is a patient safety issue.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/emergency-block-rate",
+        "impact": "CRITICAL: Patients unable to complete emergency payments"
+      }
+    },
+    {
+      "name": "PaymentFraudML_ShadowModel_Stale",
+      "title": "Payment Fraud Shadow Model Stale",
+      "message": "Payment fraud shadow model has been running for more than 48h without promotion.",
+      "severity": "info",
+      "query": "time() - fraud_ml_shadow_model_created_timestamp > 172800",
+      "duration": "1h",
+      "labels": {
+        "team": "fraud",
+        "priority": "P4"
+      },
+      "annotations": {
+        "description": "Shadow model has been running for more than 48 hours. Consider promotion or retirement.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/shadow-model-management",
+        "impact": "Stale A/B testing configuration"
+      }
+    },
+    {
+      "name": "PaymentFraudML_QueueBacklog_High",
+      "title": "Payment Fraud Check Queue Backlog High",
+      "message": "Payment fraud check queue backlog is above 1000 jobs. Processing delay.",
+      "severity": "warning",
+      "query": "horizon_jobs_total{queue=\"fraud-check-payment\",status=\"pending\"} > 1000",
+      "duration": "5m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P2"
+      },
+      "annotations": {
+        "description": "Payment fraud check queue has more than 1000 pending jobs. Scale workers or investigate processing bottlenecks.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/queue-scaling",
+        "impact": "Increased payment processing time"
+      }
+    },
+    {
+      "name": "PaymentFraudML_QueueBacklog_Critical",
+      "title": "Payment Fraud Check Queue Backlog Critical",
+      "message": "Payment fraud check queue backlog is above 5000 jobs. Critical processing delay.",
+      "severity": "critical",
+      "query": "horizon_jobs_total{queue=\"fraud-check-payment\",status=\"pending\"} > 5000",
+      "duration": "2m",
+      "labels": {
+        "team": "fraud",
+        "priority": "P1"
+      },
+      "annotations": {
+        "description": "Payment fraud check queue has more than 5000 pending jobs. Immediate scaling required.",
+        "runbook": "https://docs.catvrf.internal/runbooks/fraud-ml/queue-critical",
+        "impact": "Severe payment processing delays, potential service disruption"
+      }
+    }
+  ],
+  "dashboard": {
+    "title": "Payment Fraud ML Monitoring",
+    "panels": [
+      {
+        "title": "Medical False-Positive Rate",
+        "targets": [
+          {
+            "expr": "rate(fraud_ml_payment_false_positive_rate_medical[5m])",
+            "legendFormat": "False-Positive Rate"
+          }
+        ],
+        "alert": {
+          "name": "PaymentFraudML_MedicalFalsePositiveRate_High",
+          "threshold": 0.03
+        }
+      },
+      {
+        "title": "Inference Latency (P95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(fraud_ml_payment_latency_ms_bucket[5m]))",
+            "legendFormat": "P95 Latency (ms)"
+          }
+        ],
+        "alert": {
+          "name": "PaymentFraudML_Latency_High",
+          "threshold": 50
+        }
+      },
+      {
+        "title": "Block Rate by Vertical",
+        "targets": [
+          {
+            "expr": "rate(fraud_ml_payment_block_rate[5m])",
+            "legendFormat": "{{vertical_code}}"
+          }
+        ]
+      },
+      {
+        "title": "Cache Hit Rate",
+        "targets": [
+          {
+            "expr": "rate(fraud_ml_payment_cache_hit_total[5m]) / (rate(fraud_ml_payment_cache_hit_total[5m]) + rate(fraud_ml_payment_cache_miss_total[5m]))",
+            "legendFormat": "Cache Hit Rate"
+          }
+        ]
+      },
+      {
+        "title": "Emergency Payment Block Rate",
+        "targets": [
+          {
+            "expr": "rate(fraud_ml_payment_emergency_total{decision=\"block\"}[5m]) / rate(fraud_ml_payment_emergency_total[5m])",
+            "legendFormat": "Emergency Block Rate"
+          }
+        ],
+        "alert": {
+          "name": "PaymentFraudML_EmergencyBlockRate_High",
+          "threshold": 0.02
+        }
+      },
+      {
+        "title": "Queue Backlog",
+        "targets": [
+          {
+            "expr": "horizon_jobs_total{queue=\"fraud-check-payment\",status=\"pending\"}",
+            "legendFormat": "Pending Jobs"
+          }
+        ],
+        "alert": {
+          "name": "PaymentFraudML_QueueBacklog_High",
+          "threshold": 1000
+        }
+      }
+    ]
+  }
+}

@@ -73,6 +73,15 @@ return [
             'after_commit' => false,
         ],
 
+        'payment-fraud-high-priority' => [
+            'driver' => 'redis',
+            'connection' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE', 'default') . ':payment-fraud-high',
+            'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

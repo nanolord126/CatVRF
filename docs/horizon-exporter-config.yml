@@ -1,0 +1,178 @@
+# Laravel Horizon Exporter Configuration for Prometheus
+# 
+# This configuration enables Prometheus metrics export for Laravel Horizon queues.
+# 
+# The horizon-exporter exposes metrics about:
+# - Queue throughput (jobs processed, failed, pending)
+# - Worker status and count
+# - Memory usage per worker
+# - Job duration histograms
+# 
+# @author CatVRF Team
+# @version 2026.04.17
+
+# Installation
+# ============
+# 
+# Install the horizon-exporter package:
+# composer require laravel/horizon-exporter
+# 
+# Or use the standalone exporter:
+# docker pull laravel/horizon-exporter
+# 
+# Configuration
+# =============
+# 
+# Add to config/horizon.php:
+# 
+# return [
+#     'metrics' => [
+#         'enabled' => env('HORIZON_METRICS_ENABLED', true),
+#         'path' => env('HORIZON_METRICS_PATH', '/horizon/metrics'),
+#         'middleware' => env('HORIZON_METRICS_MIDDLEWARE', ['auth:landlord', 'throttle:metrics']),
+#     ],
+#     // ... other horizon config
+# ];
+# 
+# Environment Variables
+# =====================
+# 
+# HORIZON_METRICS_ENABLED=true
+# HORIZON_METRICS_PATH=/horizon/metrics
+# HORIZON_METRICS_MIDDLEWARE=auth:landlord,throttle:metrics
+# 
+# Prometheus Scraping Configuration
+# =================================
+# 
+# Add to prometheus.yml:
+# 
+# scrape_configs:
+#   - job_name: 'catvrf-horizon'
+#     scrape_interval: 30s
+#     metrics_path: '/horizon/metrics'
+#     static_configs:
+#       - targets:
+#           - 'catvrf-app.catvrf.internal:443'
+#         labels:
+#           service: 'horizon'
+#           environment: 'production'
+#     basic_auth:
+#       username: 'prometheus'
+#       password: '${PROMETHEUS_SCRAPING_PASSWORD}'
+# 
+# Metrics Exported
+# ================
+# 
+# Horizon Queue Metrics:
+# - horizon_jobs_processed_total - Total jobs processed per queue
+# - horizon_jobs_failed_total - Total jobs failed per queue
+# - horizon_jobs_pending - Current pending jobs per queue
+# - horizon_jobs_completed - Current completed jobs per queue
+# - horizon_jobs_failed - Current failed jobs per queue
+# - horizon_jobs_released - Current released jobs per queue
+# 
+# Horizon Worker Metrics:
+# - horizon_workers_total - Total workers per queue
+# - horizon_workers_busy - Busy workers per queue
+# - horizon_workers_idle - Idle workers per queue
+# 
+# Horizon Process Metrics:
+# - horizon_process_memory_bytes - Memory usage per process
+# - horizon_process_cpu_seconds_total - CPU time per process
+# - horizon_process_uptime_seconds - Uptime per process
+# 
+# Horizon Job Duration:
+# - horizon_job_duration_seconds_bucket - Job duration histogram
+# - horizon_job_duration_seconds_sum - Sum of job durations
+# - horizon_job_duration_seconds_count - Count of job durations
+# 
+# Horizon Master Status:
+# - horizon_master_status - Master process status (1 = running, 0 = stopped)
+# - horizon_master_paused - Master pause status (1 = paused, 0 = running)
+# 
+# Docker Deployment
+# ================
+# 
+# Using docker-compose:
+# 
+# services:
+#   horizon-exporter:
+#     image: laravel/horizon-exporter:latest
+#     container_name: catvrf-horizon-exporter
+#     restart: unless-stopped
+#     ports:
+#       - "4040:4040"
+#     environment:
+#       - HORIZON_METRICS_ENABLED=true
+#       - HORIZON_METRICS_PATH=/metrics
+#       - APP_KEY=${APP_KEY}
+#       - CACHE_DRIVER=redis
+#       - REDIS_HOST=redis
+#       - REDIS_PORT=6379
+#       - REDIS_PASSWORD=${REDIS_PASSWORD}
+#     volumes:
+#       - ./config/horizon.php:/etc/horizon/config.php:ro
+#     networks:
+#       - monitoring
+#     depends_on:
+#       - redis
+# 
+# Grafana Dashboard
+# =================
+# 
+# Import the Laravel Horizon dashboard from Grafana.com:
+# - Dashboard ID: 12125
+# - Or create custom dashboard using horizon metrics
+# 
+# Alert Rules
+# ===========
+# 
+# Add to prometheus-alert-rules.yml:
+# 
+# groups:
+#   - name: catvrf_horizon
+#     interval: 30s
+#     rules:
+#       # Critical: Queue backlog
+#       - alert: HorizonQueueBacklogCritical
+#         expr: horizon_jobs_pending > 1000
+#         for: 5m
+#         labels:
+#           severity: critical
+#           team: devops
+#         annotations:
+#           summary: "Critical queue backlog detected"
+#           description: "Queue {{ $labels.queue }} has {{ $value }} pending jobs (threshold: 1000)"
+#       
+#       # High: High failure rate
+#       - alert: HorizonJobFailureRateHigh
+#         expr: rate(horizon_jobs_failed_total[5m]) > 10
+#         for: 5m
+#         labels:
+#           severity: high
+#           team: devops
+#         annotations:
+#           summary: "High job failure rate detected"
+#           description: "Queue {{ $labels.queue }} has failure rate of {{ $value }}/s (threshold: 10/s)"
+#       
+#       # Medium: Workers exhausted
+#       - alert: HorizonWorkersExhausted
+#         expr: horizon_workers_busy == horizon_workers_total
+#         for: 10m
+#         labels:
+#           severity: medium
+#           team: devops
+#         annotations:
+#           summary: "All workers busy on queue {{ $labels.queue }}"
+#           description: "No idle workers available. Consider scaling up."
+#       
+#       # Critical: Master stopped
+#       - alert: HorizonMasterStopped
+#         expr: horizon_master_status == 0
+#         for: 1m
+#         labels:
+#           severity: critical
+#           team: devops
+#         annotations:
+#           summary: "Horizon master process stopped"
+#           description: "Horizon master process is not running. Restart Horizon immediately."
