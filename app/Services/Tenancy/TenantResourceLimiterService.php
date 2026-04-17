@@ -188,15 +188,6 @@ final readonly class TenantResourceLimiterService
     }
 
     /**
-     * Get current usage
-     */
-    private function getUsage(string $resourceType, int $tenantId, int $ttl): int
-    {
-        $key = self::QUOTA_PREFIX . "{$resourceType}:{$tenantId}";
-        return (int) $this->redis->connection()->get($key) ?: 0;
-    }
-
-    /**
      * Atomic increment with quota check using Lua script
      *
      * @throws TenantQuotaExceededException

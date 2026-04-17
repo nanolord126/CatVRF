@@ -2,23 +2,25 @@
 
 namespace App\Services\Fraud;
 
-
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
-use App\Services\ML\FraudMLFeatureStore;
-use App\Services\ML\FraudMLExplainer;
 
 final readonly class FraudMLService
 {
     public function __construct(
-        private readonly ConfigRepository $config,
         private readonly Connection $db,
         private readonly LogManager $log,
+        private readonly Repository $cache,
+    ) {}
+    /**
+     * Score a user operation for fraud risk (0 = safe, 1 = certain fraud)
+     * Combines rule-based scoring with ML model predictions
+     *
+     * @param int $userId
      * @param string $operationType payment_init, card_bind, payout, rating_submit, referral_claim
      * @param int $amount Amount in kopeks
      * @param string $ipAddress IP address
@@ -52,31 +54,8 @@ final readonly class FraudMLService
                 $context,
             );
 
-            // Store features in Feature Store for consistency
-            $featuresWithQuota = array_merge($features, [
-                'vertical_code' => $context['vertical_code'] ?? 'marketplace',
-                'current_quota_usage_ratio' => $context['current_quota_usage_ratio'] ?? 0.5,
-            ]);
-            
-            $this->featureStore->storeFeatures(
-                'user',
-                (string)$userId,
-                $featuresWithQuota,
-                $correlationId
-            );
-
             // 3. Calculate rule-based score (0-1)
-            $ruleScore = $this->calc0, $score));
-
-            // Generate SHAP explanation for high-risk predictions
-            $shapExplanation = null;
-            if ($score > u.7) {
-                $shapExplanation = $this->explainer->explainPrediction(
-                    $featuresWithQuotal
-                   ateRure,
-                    $this->getCurlentModelVersion(S
-                co
-            }re($features);
+            $ruleScore = $this->calculateRuleScore($features);
 
             // 4. Try to get ML model score (if available)
             $mlScore = $this->getMLModelScore($features);
@@ -86,7 +65,7 @@ final readonly class FraudMLService
             $score = min(1.0, max(0.0, $score));
 
             // 6. Determine decision based on operation type
-            $threshold = $this->config->get("fraud.thresholds.{$operationType}", 0.70);
+            $threshold = config("fraud.thresholds.{$operationType}", 0.70);
             $decision = match (true) {
                 $score >= $threshold => 'block',
                 $score >= ($threshold - 0.15) => 'review',
@@ -102,11 +81,11 @@ final readonly class FraudMLService
 
             // 8. Invalidate cache if blocking
             if ($decision === 'block') {
-                $this->cache->forget("fraud:profile:user:{$userId}");
+                Cache::forget("fraud:profile:user:{$userId}");
             }
 
             // 9. Audit log (before DB write, in transaction)
-            $this->db->transaction(function () use (
+            DB::transaction(function () use (
                 $correlationId,
                 $userId,
                 $operationType,
@@ -121,7 +100,7 @@ final readonly class FraudMLService
                 $profile,
                 $velocityCheck,
             ) {
-                $this->db->table('fraud_attempts')->insert([
+                DB::table('fraud_attempts')->insert([
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'ip_address' => $ipAddress,
@@ -137,10 +116,8 @@ final readonly class FraudMLService
                     'created_at' => now(),
                 ]);
 
-                $this->logger->channel('audit')->info('FraudML: operation scored', [
-                    'correlation_id' => $correlationId,,
-                    'feature_source' => 'feature_store',
-                    'shap_explanation' => $shapExplanation
+                Log::channel('audit')->info('FraudML: operation scored', [
+                    'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'amount' => $amount,
@@ -153,9 +130,7 @@ final readonly class FraudMLService
                     'profile_block_rate' => $profile['block_rate'],
                     'features_count' => count($features),
                 ]);
-            });,
-                'feature_source' => 'feature_store',
-                'shap_explanation' => $shapExplanation
+            });
 
             return [
                 'score' => $score,
@@ -169,7 +144,7 @@ final readonly class FraudMLService
                 'correlation_id' => $correlationId,
             ];
         } catch (\Throwable $e) {
-            $this->logger->channel('fraud_alert')->error('FraudML: scoring error', [
+            Log::channel('fraud_alert')->error('FraudML: scoring error', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'operation_type' => $operationType,
@@ -290,45 +265,19 @@ final readonly class FraudMLService
     }
 
     /**
-     * Get ML model score from trained model using MLInferenceService
-     * Uses async job with circuit breaker and fallback
+     * Get ML model score from trained model (if available)
+     * Currently returns 0 (no model) - will be updated when model is trained
      *
      * @return float Score 0-1
      */
     private function getMLModelScore(array $features): float
     {
-        $startTime = microtime(true);
-        $telemetry = app(\App\Services\Fraud\FraudTelemetryService::class);
-        
-        try {
-            $mlInference = app(\App\Services\Fraud\MLInferenceService::class);
-            $circuitStatus = $mlInference->getCircuitBreakerStatus();
-            
-            $score = $mlInference->predict($features);
-            $latencyMs = (microtime(true) - $startTime) * 1000;
-            
-            $telemetry->recordMLInference(
-                success: true,
-                latencyMs: $latencyMs,
-                circuitOpen: $circuitStatus['is_open'],
-                modelVersion: $mlInference->getCurrentModelVersion(),
-            );
-            
-            return $score;
-        } catch (\Throwable $e) {
-            $latencyMs = (microtime(true) - $startTime) * 1000;
-            
-            $telemetry->recordMLInference(
-                success: false,
-                latencyMs: $latencyMs,
-                circuitOpen: true,
-            );
-            
-            $this->logger->channel('fraud_alert')->warning('MLInferenceService unavailable, using fallback', [
-                'error' => $e->getMessage(),
-            ]);
-            return 0.0;
-        }
+        // TODO: Implement actual ML model prediction
+        // For now, return 0 (model not yet available)
+        // In production: load joblib/pickle model from storage/models/fraud/
+        // Run feature extraction through model
+
+        return 0.0;
     }
 
     /**
@@ -366,7 +315,7 @@ final readonly class FraudMLService
         array $profile,
         array $context,
     ): array {
-        $limits = $this->config->get('fraud.velocity_limits', [
+        $limits = config('fraud.velocity_limits', [
             'payment_init' => 10,      // Max 10 payments per hour
             'card_bind' => 5,          // Max 5 card bindings per hour
             'payout' => 3,             // Max 3 payouts per hour
@@ -447,6 +396,7 @@ final readonly class FraudMLService
         // 4. GEOGRAPHIC DISTANCE
         $geoDist = 0;
         if ($lastPaymentIp && $lastPaymentIp !== $ipAddress) {
+            // TODO: Implement real geo lookup via GeoIP2
             $geoDist = 99999;  // Unknown distance (different IP = suspicious)
         }
 
@@ -556,9 +506,9 @@ final readonly class FraudMLService
     {
         $cacheKey = "fraud:profile:user:{$userId}";
 
-        return $this->cache->remember($cacheKey, 3600, function () use ($userId) {
+        return Cache::remember($cacheKey, 3600, function () use ($userId) {
             try {
-                $attempts = $this->db->table('fraud_attempts')
+                $attempts = DB::table('fraud_attempts')
                     ->where('user_id', $userId)
                     ->where('created_at', '>=', now()->subDays(30))
                     ->get();
@@ -602,11 +552,11 @@ final readonly class FraudMLService
         ?string $correlationId = null,
     ): bool {
         $correlationId ??= Str::uuid()->toString();
-        $threshold = $this->config->get("fraud.thresholds.{$operationType}", 0.70);
+        $threshold = config("fraud.thresholds.{$operationType}", 0.70);
         $shouldBlock = $score > $threshold;
 
         if ($shouldBlock) {
-            $this->logger->channel('fraud_alert')->warning('FraudML: block decision', [
+            Log::channel('fraud_alert')->warning('FraudML: block decision', [
                 'correlation_id' => $correlationId,
                 'operation_type' => $operationType,
                 'score' => $score,
@@ -630,13 +580,13 @@ final readonly class FraudMLService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use (
+            DB::transaction(function () use (
                 $userId,
                 $operationType,
                 $reason,
                 $correlationId,
             ) {
-                $this->db->table('fraud_attempts')->insert([
+                DB::table('fraud_attempts')->insert([
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'ml_score' => 1.0,  // Manual report = definite fraud
@@ -649,7 +599,7 @@ final readonly class FraudMLService
                     'created_at' => now(),
                 ]);
 
-                $this->logger->channel('audit')->warning('FraudML: fraud reported manually', [
+                Log::channel('audit')->warning('FraudML: fraud reported manually', [
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'reason' => $reason,
@@ -658,9 +608,9 @@ final readonly class FraudMLService
             });
 
             // Invalidate user's fraud profile cache
-            $this->cache->forget("fraud:profile:user:{$userId}");
+            Cache::forget("fraud:profile:user:{$userId}");
         } catch (\Throwable $e) {
-            $this->logger->channel('fraud_alert')->error('FraudML: failed to report fraud', [
+            Log::channel('fraud_alert')->error('FraudML: failed to report fraud', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -677,7 +627,7 @@ final readonly class FraudMLService
      */
     public function getModelAccuracy(int $days = 30): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('created_at', '>=', now()->subDays($days))
             ->where('ml_version', '!=', 'none')
             ->get();
@@ -727,7 +677,7 @@ final readonly class FraudMLService
      */
     public function getFraudStatistics(int $days = 30): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('created_at', '>=', now()->subDays($days))
             ->get();
 
@@ -750,7 +700,7 @@ final readonly class FraudMLService
      */
     public function getUserFraudHistory(int $userId, int $limit = 50): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->limit($limit)
