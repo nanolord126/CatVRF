@@ -1,4 +1,4 @@
-name: Cache Layer Tests
+name: Cache Layer Tests & Migration
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - 'app/Services/Cache/**'
       - 'app/Observers/**'
       - 'tests/Unit/Services/Cache/**'
+      - 'app/Console/Commands/UpdateVerticalsCacheService.php'
       - '.github/workflows/cache-layer-tests.yml'
   pull_request:
     branches: [main, develop]
@@ -14,8 +15,26 @@ on:
       - 'app/Services/Cache/**'
       - 'app/Observers/**'
       - 'tests/Unit/Services/Cache/**'
+      - 'app/Console/Commands/UpdateVerticalsCacheService.php'
       - '.github/workflows/cache-layer-tests.yml'
   workflow_dispatch:
+    inputs:
+      migrate_all:
+        description: 'Run migration for all 64 verticals'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      dry_run:
+        description: 'Dry run mode (preview changes)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 env:
   PHP_VERSION: '8.3'
@@ -126,6 +145,24 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           DB_PORT: 5432
+
+      - name: Run vertical cache migration (dry-run)
+        if: github.event.inputs.migrate_all == 'true'
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            php artisan cache:update-verticals --dry-run
+          else
+            php artisan cache:update-verticals
+          fi
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
 
       - name: Upload test results
         if: always()
