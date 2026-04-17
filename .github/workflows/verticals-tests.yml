@@ -1,47 +1,34 @@
-name: Cache Layer Tests & Migration
+name: Verticals Tests - All 64 Business Verticals
 
 on:
   push:
     branches: [main, develop]
     paths:
-      - 'app/Services/Cache/**'
-      - 'app/Observers/**'
-      - 'tests/Unit/Services/Cache/**'
-      - 'app/Console/Commands/UpdateVerticalsCacheService.php'
-      - '.github/workflows/cache-layer-tests.yml'
+      - 'app/Domains/**'
+      - 'tests/Feature/Domains/**'
+      - 'tests/Unit/Domains/**'
+      - '.github/workflows/verticals-tests.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'app/Services/Cache/**'
-      - 'app/Observers/**'
-      - 'tests/Unit/Services/Cache/**'
-      - 'app/Console/Commands/UpdateVerticalsCacheService.php'
-      - '.github/workflows/cache-layer-tests.yml'
+      - 'app/Domains/**'
+      - 'tests/Feature/Domains/**'
+      - 'tests/Unit/Domains/**'
+      - '.github/workflows/verticals-tests.yml'
   workflow_dispatch:
     inputs:
-      migrate_all:
-        description: 'Run migration for all 64 verticals'
+      vertical:
+        description: 'Run tests for specific vertical (leave empty for all)'
         required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      dry_run:
-        description: 'Dry run mode (preview changes)'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+        default: ''
+        type: string
 
 env:
   PHP_VERSION: '8.3'
 
 jobs:
-  cache-layer-tests:
-    name: Cache Layer Tests with Horizon
+  verticals-tests:
+    name: Verticals Tests
     runs-on: ubuntu-latest
 
     services:
@@ -88,10 +75,7 @@ jobs:
             ${{ runner.os }}-php-
 
       - name: Install dependencies
-        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist
-
-      - name: Install Laravel Horizon
-        run: composer require laravel/horizon --dev --no-interaction --ignore-platform-reqs
+        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
 
       - name: Copy .env.testing
         run: cp .env.example .env.testing
@@ -115,7 +99,7 @@ jobs:
           echo "REDIS_PORT=6379" >> .env.testing
 
       - name: Run migrations
-        run: php artisan migrate --env=testing --database=pgsql --force
+        run: php artisan migrate --env=testing --database=pgsql --seed --force
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -124,8 +108,9 @@ jobs:
           DB_PASSWORD: postgres
           DB_PORT: 5432
 
-      - name: Run Cache Layer tests
-        run: php artisan test --filter CacheServiceTest --env=testing
+      - name: Run all verticals feature tests
+        if: github.event.inputs.vertical == ''
+        run: php artisan test --filter "*VerticalFeatureTest" --env=testing --parallel
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -136,8 +121,9 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
-      - name: Run Cache Layer simple tests
-        run: php artisan test --filter CacheServiceSimpleTest --env=testing
+      - name: Run specific vertical tests
+        if: github.event.inputs.vertical != ''
+        run: php artisan test --filter "*${{ github.event.inputs.vertical }}*VerticalFeatureTest" --env=testing
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -145,9 +131,12 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           DB_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
 
-      - name: Run vertical cache migration
-        run: php artisan cache:update-verticals --dry-run
+      - name: Run all verticals unit tests
+        if: github.event.inputs.vertical == ''
+        run: php artisan test --filter "*VerticalTest" --env=testing --parallel
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -162,7 +151,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cache-layer-test-results
+          name: verticals-test-results
           path: |
             storage/logs/
             coverage/
