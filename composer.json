@@ -12,7 +12,7 @@
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.9",
+        "laravel/tinker": "^3.0",
         "predis/predis": "^3.4",
         "promphp/prometheus_client_php": "^2.15",
         "smi2/phpclickhouse": "^1.5",
