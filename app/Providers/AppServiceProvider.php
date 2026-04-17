@@ -18,6 +18,8 @@ use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
 use App\Services\Payment\PaymentGatewayService;
 use App\Services\Payment\PaymentIdempotencyService;
+use App\Services\Tenancy\TenantCacheService;
+use App\Services\Tenancy\TenantResourceLimiterService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Database\Eloquent\Model;
@@ -33,9 +35,12 @@ final class AppServiceProvider extends ServiceProvider
         // (допустимо в ServiceProvider как infrastructure config)
         $this->app->bind(\Psr\Log\LoggerInterface::class, fn () => $this->app->make('log')->channel('audit'));
 
-        // Core Security Services (singleton)
-        $this->app->singleton(IdempotencyService::class);
-        $this->app->singleton(WebhookSignatureService::class);
+        // Multi-Tenant Services (singleton)
+        $this->app->singleton(TenantCacheService::class);
+        $this->app->singleton(TenantResourceLimiterService::class);
+        $this->app->singleton(TenantQuotaPlanService::class);
+        $this->app->singleton(TenantQuotaPersistenceService::class);
+        $this->app->singleton(TenantQuotaNotificationService::class);
         $this->app->singleton(RateLimiterService::class);
         $this->app->singleton(TenantAwareRateLimiter::class);
 

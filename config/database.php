@@ -121,6 +121,20 @@ return [
             // 'trust_server_certificate' => App\Services\Infrastructure\DopplerService::get('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'clickhouse' => [
+            'driver' => 'clickhouse',
+            'host' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_HOST', '127.0.0.1'),
+            'port' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_PORT', '8123'),
+            'database' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_DATABASE', 'catvrf_analytics'),
+            'username' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_USERNAME', 'default'),
+            'password' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_PASSWORD', ''),
+            'options' => [
+                'timeout' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_TIMEOUT', 30),
+                'connect_timeout' => App\Services\Infrastructure\DopplerService::get('CLICKHOUSE_CONNECT_TIMEOUT', 10),
+            ],
+            'prefix' => '',
+        ],
+
     ],
 
     /*

@@ -17,7 +17,7 @@ declare(strict_types=1);
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
  * @package App\Domains\FraudML\DTOs
  */
-final readonly class OperationDto
+final readonly class FraudMLOperationDto
 {
     public function __construct(
         public int $tenant_id,
@@ -26,5 +26,8 @@ final readonly class OperationDto
         public int $amount,
         public string $ip_address,
         public string $device_fingerprint,
-        public string $correlation_id) {}
+        public string $correlation_id,
+        public ?string $vertical_code = null,
+        public ?float $current_quota_usage_ratio = null,
+        public array $additional_context = []) {}
 }

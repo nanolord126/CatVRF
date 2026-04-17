@@ -8,7 +8,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
-use App\Domains\FraudML\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\FraudMLOperationDto;
 use Modules\Fraud\Application\Services\FraudMLService;
 use Modules\Fraud\Domain\Enums\OperationType;
 use Modules\Fraud\Presentation\Http\Requests\CheckFraudRequest;
@@ -38,7 +38,7 @@ final class FraudController extends Controller
     public function check(CheckFraudRequest $request): JsonResponse
     {
         try {
-            $dto = new OperationDto(
+            $dto = new FraudMLOperationDto(
                 (int) $request->input('tenant_id'),
                 $request->input('user_id') ? (int) $request->input('user_id') : null,
                 $request->input('correlation_id'),

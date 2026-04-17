@@ -18,6 +18,8 @@ use App\Jobs\Payments\BatchPayoutJob;
 use App\Jobs\Payments\DailyPayoutJob;
 use App\Jobs\RecommendationQualityJob;
 use App\Jobs\AnnualAnonymizationJob;
+use App\Jobs\Analytics\CheckQuotaThresholdsJob;
+use App\Jobs\Analytics\ReconcileQuotaUsageJob;
 use App\Jobs\InventoryAuditJob;
 use App\Jobs\RouteOptimizationJob;
 use App\Domains\Logistics\Models\Courier;
@@ -106,6 +108,28 @@ final class Kernel extends ConsoleKernel
             ->withoutOverlapping(120)
             ->name('ml-recalculate')
             ->description('Train fraud detection ML model on last 30 days');
+
+        // ML Model Retrain with shadow mode and validation (weekly)
+        $schedule->command('ml:retrain')
+            ->weekly()
+            ->sundays()
+            ->at('03:00')
+            ->timezone('UTC')
+            ->withoutOverlapping(120)
+            ->onOneServer()
+            ->name('ml-model-retrain-weekly')
+            ->description('Weekly ML model retrain with shadow mode and validation');
+
+        // Promote shadow model to active (24h after retrain)
+        $schedule->command('ml:retrain --promote')
+            ->weekly()
+            ->mondays()
+            ->at('03:00')
+            ->timezone('UTC')
+            ->withoutOverlapping(30)
+            ->onOneServer()
+            ->name('ml-model-promote-shadow')
+            ->description('Promote shadow model to active if validation passes');
 
         $schedule->job(new DemandForecastJob())
             ->dailyAt('04:00')
@@ -218,6 +242,22 @@ final class Kernel extends ConsoleKernel
             ->timezone('UTC')
             ->withoutOverlapping(120)
             ->onOneServer()
+
+        // ClickHouse Quota Analytics - Redis/ClickHouse reconciliation (every minute)
+        $schedule->job(new ReconcileQuotaUsageJob())
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer()
+            ->name('quota-reconciliation')
+            ->description('Reconcile Redis and ClickHouse quota usage (correct drift >1%)');
+
+        // ClickHouse Quota Analytics - Threshold checking (every minute)
+        $schedule->job(new CheckQuotaThresholdsJob())
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer()
+            ->name('quota-threshold-check')
+            ->description('Check tenant quota thresholds (85%/95%/100%) and send alerts');
             ->name('annual-anonymization')
             ->description('Annual GDPR/FZ-152 PII anonymization (users inactive 365+ days)');
     }

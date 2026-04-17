@@ -249,6 +249,14 @@ final class EventServiceProvider extends ServiceProvider
             FraudDetectedEvent::class => [
                 FraudDetectedListener::class,
             ],
+
+            // ── FraudML ───────────────────────────────────────────────────
+            \App\Domains\FraudML\Events\ModelVersionUpdated::class => [
+                \App\Domains\FraudML\Listeners\ModelVersionUpdatedListener::class,
+            ],
+            \App\Domains\FraudML\Events\SignificantFeatureDriftDetected::class => [
+                \App\Domains\FraudML\Listeners\HandleSignificantFeatureDrift::class,
+            ],
         ];
 
         public function boot(): void {}

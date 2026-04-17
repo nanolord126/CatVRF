@@ -147,6 +147,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
                     require $path;
                 }
             }
+
+            // ML metrics routes (for drift detection monitoring)
+            require __DIR__ . '/../routes/ml-metrics.php';
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -162,6 +165,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\TenantQuotaMiddleware::class,
         ]);
 
         $middleware->alias([

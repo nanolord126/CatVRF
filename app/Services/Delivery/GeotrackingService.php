@@ -10,6 +10,9 @@ use App\Domains\Logistics\Models\DeliveryTrack;
 use App\Events\CourierLocationUpdated;
 use App\Services\FraudControlService;
 use App\Services\ML\BigDataAggregatorService;
+use App\Services\Geo\GeoPrivacyService;
+use App\Services\Geo\GeoTrackingStreamService;
+use App\Services\Geo\GeoTelemetryService;
 use Illuminate\Support\Collection;
 
 
@@ -27,6 +30,8 @@ use Illuminate\Contracts\Auth\Guard;
  *  - Все координаты логируются в delivery_tracks с correlation_id
  *  - Fraud-check + rate-limit на все обновления позиции
  *  - Tenant-scoping: курьер видит только свои заказы
+ *  - Redis Streams для гарантированной доставки событий
+ *  - Privacy control для 152-ФЗ compliance
  */
 final readonly class GeotrackingService
 {
@@ -34,6 +39,9 @@ final readonly class GeotrackingService
         private readonly Request $request,
         private FraudControlService    $fraud,
         private BigDataAggregatorService $bigData,
+        private GeoPrivacyService $geoPrivacy,
+        private GeoTrackingStreamService $trackingStream,
+        private GeoTelemetryService $geoTelemetry,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
@@ -50,21 +58,31 @@ final readonly class GeotrackingService
         float  $bearing = 0.0,
     ): DeliveryTrack {
         $correlationId = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        $startTime = microtime(true);
 
-        $this->fraud->check((int) $this->guard->id(), 'courier_location_update', 0, $this->request->ip(), null, $correlationId);
+        $this->fraud->check(
+            userId: (int) $this->guard->id(),
+            operationType: 'courier_location_update',
+            amount: 0,
+            ipAddress: $this->request->ip(),
+            deviceFingerprint: null,
+            correlationId: $correlationId,
+        );
 
-        return $this->db->transaction(function () use ($courierId, $lat, $lon, $speed, $bearing, $correlationId): DeliveryTrack {
+        return $this->db->transaction(function () use ($courierId, $lat, $lon, $speed, $bearing, $correlationId, $startTime): DeliveryTrack {
             // 1. Находим активный заказ курьера
             $activeOrder = DeliveryOrder::where('courier_id', $courierId)
                 ->whereIn('status', ['assigned', 'picked_up', 'in_transit'])
                 ->first();
 
-            // 2. Пишем трек в PostgreSQL
+            // 2. Пишем трек в PostgreSQL с анонимизацией
+            $anonymizedCoords = $this->geoPrivacy->anonymizeCoordinates($lat, $lon, 'courier_tracking');
+            
             $track = DeliveryTrack::create([
                 'delivery_order_id' => $activeOrder?->id,
                 'courier_id'        => $courierId,
-                'lat'               => $lat,
-                'lon'               => $lon,
+                'lat'               => $anonymizedCoords['lat'],
+                'lon'               => $anonymizedCoords['lon'],
                 'speed'             => $speed,
                 'bearing'           => $bearing,
                 'correlation_id'    => $correlationId,
@@ -72,36 +90,53 @@ final readonly class GeotrackingService
 
             // 3. Обновляем текущую позицию курьера
             Courier::where('id', $courierId)->update([
-                'current_location'      => json_encode(['lat' => $lat, 'lon' => $lon]),
+                'current_location'      => json_encode($anonymizedCoords),
                 'last_location_update'  => now(),
             ]);
 
-            // 4. Пишем в ClickHouse для аналитики (анонимизированно)
+            // 4. Добавляем в Redis Stream для гарантированной доставки
+            $this->trackingStream->addLocationUpdate(
+                entityId: $courierId,
+                entityType: 'courier',
+                lat: $anonymizedCoords['lat'],
+                lon: $anonymizedCoords['lon'],
+                speed: $speed,
+                bearing: $bearing,
+                correlationId: $correlationId,
+            );
+
+            // 5. Пишем в ClickHouse для аналитики (анонимизированно)
             $this->bigData->insertGeoEvent([
                 'courier_id'        => $courierId,
-                'lat'               => round($lat, 3), // generalization: 3 знака = ~111 метров
-                'lon'               => round($lon, 3),
+                'lat'               => round($anonymizedCoords['lat'], 3),
+                'lon'               => round($anonymizedCoords['lon'], 3),
                 'speed'             => $speed,
                 'delivery_order_id' => $activeOrder?->id,
                 'correlation_id'    => $correlationId,
                 'tracked_at'        => now()->toDateTimeString(),
             ]);
 
-            // 5. Broadcast реал-тайм всем подписчикам
+            // 6. Broadcast реал-тайм всем подписчикам
             broadcast(new CourierLocationUpdated(
                 courierId:       $courierId,
-                lat:             $lat,
-                lon:             $lon,
+                lat:             $anonymizedCoords['lat'],
+                lon:             $anonymizedCoords['lon'],
                 speed:           $speed,
                 bearing:         $bearing,
                 deliveryOrderId: $activeOrder?->id,
                 correlationId:   $correlationId,
             ))->toOthers();
 
+            // 7. Record telemetry
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+            $this->geoTelemetry->recordTrackingUpdate('courier');
+
             $this->logger->channel('audit')->info('Courier location updated', [
                 'courier_id'        => $courierId,
                 'delivery_order_id' => $activeOrder?->id,
                 'correlation_id'    => $correlationId,
+                'privacy_precision' => $anonymizedCoords['precision'],
+                'latency_ms'        => round($latencyMs, 2),
             ]);
 
             return $track;
@@ -132,6 +167,9 @@ final readonly class GeotrackingService
             'courier_id'        => $order->courier_id,
             'correlation_id'    => $order->correlation_id ?? Str::uuid()->toString(),
         ]);
+
+        // Создаём consumer group для Redis Streams
+        $this->trackingStream->createConsumerGroup('delivery_worker');
 
         // GeotrackingJob запускается с мобильного приложения курьера каждые 3 сек.
         // Серверная часть только хранит и ретранслирует.

@@ -23,20 +23,9 @@ use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
-final readonly class AIConstructorService
-{
     public function __construct(
         private readonly Request $request,
-        private ImageAnalysisService $imageAnalysis,
-        private InteriorConstructor $interiorConstructor,
-        private BeautyLookConstructor $beautyLookConstructor,
-        private OutfitConstructor $outfitConstructor,
-        private CakeConstructor $cakeConstructor,
-        private MenuConstructor $menuConstructor,
-        private FraudControlService $fraud,
-        private InventoryManagementService $inventory,
-        private RecommendationService $recommendation,
-        private WalletService $wallet,
+    SmrBtr vate WalletService $wallet,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
     ) {}
@@ -50,7 +39,6 @@ final readonly class AIConstructorService
          * @param array $params Дополнительные параметры
          * @return array {success: bool, construction: AIConstruction, result: array, taste_used: array, confidence: float}
          */
-        public function run(
             User $user,
             string $type,
             UploadedFile $photo,
@@ -80,24 +68,6 @@ final readonly class AIConstructorService
                     'correlation_id' => $correlationId,
                     'user_id' => $user->id,
                     'type' => $type,
-                    'error' => $e->getMessage(),
-                ]);
-                throw new \RuntimeException('Failed to analyze photo. Please try again later.');
-            }
-
-            // 4. Получить используемые вкусы (вне транзакции)
-            [$explicitPrefs, $implicitPrefs] = $this->extractUsedPreferences(
-                $tasteProfile,
-                $type,
-                $analysis,
-                $params,
-            );
-
-            // 5. Запустить конкретный конструктор (бизнес-логика)
-            $constructorResult = $this->runConstructor(
-                $type,
-                $analysis,
-                $explicitPrefs,
                 $implicitPrefs,
                 $params,
             );
@@ -114,8 +84,8 @@ final readonly class AIConstructorService
                     $construction = AIConstruction::create([
                         'uuid' => Str::uuid(),
                         'user_id' => $user->id,
-                        'tenant_id' => $user->current_tenant_id,
-                        'type' => $type,
+                       'tenant_id' => $user->current_tenant_id,
+               5        'type' => $type,
                         'correlation_id' => $correlationId,
                         'input_data' => [
                             'params' => $params,
@@ -123,7 +93,7 @@ final readonly class AIConstructorService
                         'photo_path' => $photoPath,
                         'analysis_result' => $analysis,
                         'construction_data' => $constructorResult['data'],
-                        'recommended_items' => $constructorResult['items'],
+               6        'recommended_items' => $constructorResult['items'],
                         'taste_profile_used' => $tasteProfile->getAllPreferences(),
                         'explicit_preferences_used' => $explicitPrefs,
                         'implicit_preferences_used' => $implicitPrefs,
@@ -134,6 +104,7 @@ final readonly class AIConstructorService
                     $this->logger->channel('audit')->info("AI Constructor completed successfully", [
                         'correlation_id' => $correlationId,
                         'user_id' => $user->id,
+                        'tenant_id' => $tenantId,
                         'type' => $type,
                         'construction_id' => $construction->id,
                         'confidence' => $construction->confidence_score,

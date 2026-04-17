@@ -6,7 +6,7 @@ namespace Modules\Wallet\Infrastructure\Adapters\System;
 
 use Modules\Wallet\Application\Ports\FraudCheckPort;
 use App\Services\FraudMLService; // Assuming the existing core AI service architecture
-use App\Domains\FraudML\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\FraudMLOperationDto;
 use RuntimeException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -52,7 +52,7 @@ final readonly class WalletFraudCheckAdapter implements FraudCheckPort
     ): void {
         try {
             // Build the standard Core Platform operation transfer object for the ML analysis
-            $operationDto = new OperationDto(
+            $operationDto = new FraudMLOperationDto(
                 tenantId: $tenantId,
                 userId: $walletId, // Using wallet identity as the acting subject
                 operationType: 'wallet_' . $operationType,

@@ -5,6 +5,8 @@ namespace App\Services\ML;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Psr\Log\LoggerInterface;
+use App\Services\ML\FraudMLFeatureStore;
+use App\Services\ML\FraudMLExplainer;
 
 /**
  * Fraud ML Service
@@ -37,24 +39,7 @@ final readonly class FraudMLService
 
         $userCancellationHistory = $this->getUserCancellationHistory($userId);
         $timeUntilDeparture = $this->getTimeUntilDeparture($bookingId);
-        $reasonRiskScore = $this->getReasonRiskScore($reason);
-
-        $fraudScore = $this->calculateFraudScore(
-            userCancellationHistory: $userCancellationHistory,
-            timeUntilDeparture: $timeUntilDeparture,
-            reasonRiskScore: $reasonRiskScore,
-        );
-
-        Redis::setex($cacheKey, 3600, (string) $fraudScore);
-
-        $this->logger->info('Fraud ML prediction completed', [
-            'user_id' => $userId,
-            'booking_id' => $bookingId,
-            'fraud_score' => $fraudScore,
-            'correlation_id' => request()?->header('X-Correlation-ID'),
-        ]);
-
-        return $fraudScore;
+        $reasonRiskScore = $this->getReteing) $frat_return $fraudScore;
     }
 
     /**
@@ -62,16 +47,26 @@ final readonly class FraudMLService
      */
     public function predictNoShowProbability(int $userId, int $bookingId): float
     {
-        $cacheKey = "fraud_ml:noshow:{$userId}:{$bookingId}";
-        $cached = Redis::get($cacheKey);
-        
-        if ($cached !== null) {
-            return (float) $cached;
-        }
+        $cacheKey = "fraud_ml:noshow:{$userId}:{$bookingId}"
 
-        $userNoShowHistory = $this->getUserNoShowHistory($userId);
+      t $cachedowHistory = $this->getUserNoShowHistory($userId);
         $bookingValue = $this->getBookingValue($bookingId);
         $userLoyalty = $this->getUserLoyaltyScore($userId);
+
+        // Store features in Feature Store
+            'booking_id' => $bookingId,
+            'no_show_rate' => $userNoShowHistory['no_show_rate'],
+            'booking_value' => $bookingValue,
+            'loyalty_score' => $userLoyalty,
+            'vertical_code' => 'travel',
+        ];
+        
+        $this->featureStore->storeFeatures(
+            'user',
+            (string)$userId,
+            $features,
+            request()?->header('X-Correlation-ID')
+        );
 
         $noShowScore = $this->calculateNoShowScore(
             userNoShowHistory: $userNoShowHistory,
@@ -233,6 +228,50 @@ final readonly class FraudMLService
         } elseif ($totalSpent > 50000) {
             return 0.5;
         }
+
+        return 0.2;
+    }
+
+    /**
+     * Calculate no-sho
+        }
+
+        return 0.2;
+    }
+
+    /**w score.
+     * Calculate no-show score.
+     */
+    private function calculateNoShowScore(array $userNoShowHistory, float $bookingValue,*float/$userLoyalty):float
+    {
+        $noShowRate = $userNoShowHistory['no_show_rate'];
+        
+        $historyScore = min($noShowRate * 3, 1.0);
+        
+        $valueScore = $bookingValue < 10000 ? 0.8 : 0.3;
+        
+        $loyaltyScore = 1 - $userLoyalty;
+
+        $noShowScore = ($historyScore * 0.5) + ($valueScore * 0.3) + ($loyaltyScore * 0.2);
+
+        return min(max($noShowScore, 0), 1);
+    }
+
+    private function calculateNoShowScore(array $userNoShowHistory, float $bookingValue, float $userLoyalty): float
+    {
+        $noShowRate = $userNoShowHistory['no_show_rate'];
+        
+        $historyScore = min($noShowRate * 3, 1.0);
+        
+        $valueScore = $bookingValue < 10000 ? 0.8 : 0.3;
+        
+        $loyaltyScore = 1 - $userLoyalty;
+
+        $noShowScore = ($historyScore * 0.5) + ($valueScore * 0.3) + ($loyaltyScore * 0.2);
+
+        return min(max($noShowScore, 0), 1);
+    }
+}
 
         return 0.2;
     }

@@ -2,7 +2,7 @@
 
 namespace Tests\Integration\Fraud;
 
-use App\Domains\FraudML\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\FraudMLFraudMLOperationDto;
 use App\Models\FraudAttempt;
 use App\Models\Tenant;
 use App\Models\User;
@@ -45,7 +45,7 @@ final class FraudDetectionFlowTest extends TestCase
 
         $scores = [];
         foreach (array_combine($ips, $devices) as $ip => $device) {
-            $operation = new OperationDTO(
+            $operation = new FraudMLOperationDto(
                 type: 'card_bind',
                 amount: 0,
                 userId: $this->user->id,
@@ -85,7 +85,7 @@ final class FraudDetectionFlowTest extends TestCase
         // Moscow → Tokyo in 1 hour = impossible
         
         // First operation: Moscow
-        $operation1 = new OperationDTO(
+        $operation1 = new FraudMLFraudMLOperationDto(
             type: 'payment_init',
             amount: 50000,
             userId: $this->user->id,
@@ -106,7 +106,7 @@ final class FraudDetectionFlowTest extends TestCase
             ]);
 
         // Second operation: Tokyo IP (3 hours later)
-        $operation2 = new OperationDTO(
+        $operation2 = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 100000,
             userId: $this->user->id,
@@ -140,7 +140,7 @@ final class FraudDetectionFlowTest extends TestCase
     /** @test */
     public function it_detects_new_device_large_amount_fraud(): void
     {
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 500000, // Very large amount
             userId: $this->user->id,
@@ -175,7 +175,7 @@ final class FraudDetectionFlowTest extends TestCase
         // Build up suspicious activity over time
         $operations = [
             // Attempt 1: Moderate risk
-            new OperationDTO(
+            new FraudMLOperationDto(
                 type: 'card_bind',
                 amount: 0,
                 userId: $this->user->id,
@@ -183,7 +183,7 @@ final class FraudDetectionFlowTest extends TestCase
                 deviceFingerprint: 'device-unknown-1',
             ),
             // Attempt 2: Increasing risk
-            new OperationDTO(
+            new FraudMLOperationDto(
                 type: 'card_bind',
                 amount: 0,
                 userId: $this->user->id,
@@ -191,7 +191,7 @@ final class FraudDetectionFlowTest extends TestCase
                 deviceFingerprint: 'device-unknown-2',
             ),
             // Attempt 3: High risk → Block
-            new OperationDTO(
+            new FraudMLOperationDto(
                 type: 'card_bind',
                 amount: 0,
                 userId: $this->user->id,
@@ -240,7 +240,7 @@ final class FraudDetectionFlowTest extends TestCase
                 ]);
         }
 
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 50000,
             userId: $this->user->id,
@@ -257,7 +257,7 @@ final class FraudDetectionFlowTest extends TestCase
     /** @test */
     public function it_caches_fraud_scores(): void
     {
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 50000,
             userId: $this->user->id,
@@ -277,7 +277,7 @@ final class FraudDetectionFlowTest extends TestCase
     /** @test */
     public function it_logs_fraud_alerts(): void
     {
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 500000, // Very large
             userId: $this->user->id,
@@ -351,7 +351,7 @@ final class FraudDetectionFlowTest extends TestCase
     /** @test */
     public function it_tracks_fraud_attempt_features(): void
     {
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 50000,
             userId: $this->user->id,
@@ -391,7 +391,7 @@ final class FraudDetectionFlowTest extends TestCase
         ]);
 
         // Next operation should be allowed
-        $operation = new OperationDTO(
+        $operation = new FraudMLOperationDto(
             type: 'payment_init',
             amount: 100000,
             userId: $this->user->id,

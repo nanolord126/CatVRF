@@ -9,6 +9,8 @@ use App\Domains\Logistics\Models\DeliveryOrder;
 use App\Services\FraudControlService;
 use App\Services\ML\TrafficPredictionService;
 use App\Services\WalletService;
+use App\Services\Geo\GeoService;
+use App\Services\Geo\GeoTelemetryService;
 use Illuminate\Support\Collection;
 
 
@@ -33,11 +35,12 @@ final readonly class RouteOptimizationService
 {
     public function __construct(
         private readonly Request $request,
-        private MapService               $mapService,
+        private GeoService $geo,
         private TrafficPredictionService $trafficML,
-        private GeotrackingService       $geo,
-        private WalletService            $wallet,
-        private FraudControlService      $fraud,
+        private GeotrackingService $geoTracking,
+        private WalletService $wallet,
+        private FraudControlService $fraud,
+        private GeoTelemetryService $geoTelemetry,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
@@ -83,6 +86,9 @@ final readonly class RouteOptimizationService
         $times  = $this->trafficML->predictTimes($routes);
 
         $finalRoute = $this->assembleFinalRoute($optimizedPoints, $times);
+
+        // Record telemetry
+        $this->geoTelemetry->recordRoute('osm', true, 0, $finalRoute['total_distance_km']);
 
         // Сохраняем маршрут в каждый заказ
         $previousTotalMin = $this->getPreviousTotalMinutes($courierId);

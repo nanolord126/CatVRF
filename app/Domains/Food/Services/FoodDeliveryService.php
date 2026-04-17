@@ -7,6 +7,7 @@ use App\Domains\Food\Models\FoodOrder;
 use App\Domains\Food\Infrastructure\Gateways\FakeDeliveryServiceGateway;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
+use App\Services\Tenancy\TenantResourceLimiterService;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
@@ -15,7 +16,8 @@ final readonly class FoodDeliveryService
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
-        private readonly FakeDeliveryServiceGateway $deliveryGateway,
+        private readonly FakeDeliveryServiceGate,
+        private readonly TenantResourceLimiterService $quotaLimiterway $deliveryGateway,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -32,6 +34,9 @@ final readonly class FoodDeliveryService
             amount: (float) $order->total_price,
             correlationId: $correlationId
         );
+
+        // Check vertical quota for delivery creation
+        $this->quotaLimiter->checkVerticalQuota($order->tenant_id, 'delivery', 'create', 1);
 
         // Вызов внешнего сервиса доставки
         $deliveryResult = $this->deliveryGateway->scheduleDelivery(
@@ -85,6 +90,9 @@ final readonly class FoodDeliveryService
             userId: $delivery->order->customer_id ?? 0,
             operationType: 'food_delivery_update',
             amount: 0,
+        // Check vertical quota for delivery updates
+        $this->quotaLimiter->checkVerticalQuota($delivery->tenant_id, 'delivery', 'update', 1);
+
             correlationId: $correlationId
         );
 
@@ -119,7 +127,10 @@ final readonly class FoodDeliveryService
         return $delivery->fresh();
     }
 
-    /**
+    /**// Check vertical quota for delivery sync (route optimization)
+        $this->quotaLimiter->checkVerticalQuota($delivery->tenant_id, 'delivery', 'sync', 1);
+
+        
      * Получение статуса доставки из внешнего сервиса
      */
     public function syncDeliveryStatus(DeliveryOrder $delivery): array

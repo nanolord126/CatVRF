@@ -10,6 +10,8 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use App\Services\ML\FraudMLFeatureStore;
+use App\Services\ML\FraudMLExplainer;
 
 final readonly class FraudMLService
 {
@@ -17,14 +19,6 @@ final readonly class FraudMLService
         private readonly ConfigRepository $config,
         private readonly Connection $db,
         private readonly LogManager $log,
-        private readonly Repository $cache,
-        private readonly LogManager $logger,
-    ) {}
-    /**
-     * Score a user operation for fraud risk (0 = safe, 1 = certain fraud)
-     * Combines rule-based scoring with ML model predictions
-     *
-     * @param int $userId
      * @param string $operationType payment_init, card_bind, payout, rating_submit, referral_claim
      * @param int $amount Amount in kopeks
      * @param string $ipAddress IP address
@@ -58,8 +52,31 @@ final readonly class FraudMLService
                 $context,
             );
 
+            // Store features in Feature Store for consistency
+            $featuresWithQuota = array_merge($features, [
+                'vertical_code' => $context['vertical_code'] ?? 'marketplace',
+                'current_quota_usage_ratio' => $context['current_quota_usage_ratio'] ?? 0.5,
+            ]);
+            
+            $this->featureStore->storeFeatures(
+                'user',
+                (string)$userId,
+                $featuresWithQuota,
+                $correlationId
+            );
+
             // 3. Calculate rule-based score (0-1)
-            $ruleScore = $this->calculateRuleScore($features);
+            $ruleScore = $this->calc0, $score));
+
+            // Generate SHAP explanation for high-risk predictions
+            $shapExplanation = null;
+            if ($score > u.7) {
+                $shapExplanation = $this->explainer->explainPrediction(
+                    $featuresWithQuotal
+                   ateRure,
+                    $this->getCurlentModelVersion(S
+                co
+            }re($features);
 
             // 4. Try to get ML model score (if available)
             $mlScore = $this->getMLModelScore($features);
@@ -121,7 +138,9 @@ final readonly class FraudMLService
                 ]);
 
                 $this->logger->channel('audit')->info('FraudML: operation scored', [
-                    'correlation_id' => $correlationId,
+                    'correlation_id' => $correlationId,,
+                    'feature_source' => 'feature_store',
+                    'shap_explanation' => $shapExplanation
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'amount' => $amount,
@@ -134,7 +153,9 @@ final readonly class FraudMLService
                     'profile_block_rate' => $profile['block_rate'],
                     'features_count' => count($features),
                 ]);
-            });
+            });,
+                'feature_source' => 'feature_store',
+                'shap_explanation' => $shapExplanation
 
             return [
                 'score' => $score,
@@ -269,18 +290,45 @@ final readonly class FraudMLService
     }
 
     /**
-     * Get ML model score from trained model (if available)
-     * Currently returns 0 (no model) - will be updated when model is trained
+     * Get ML model score from trained model using MLInferenceService
+     * Uses async job with circuit breaker and fallback
      *
      * @return float Score 0-1
      */
     private function getMLModelScore(array $features): float
     {
-        // For now, return 0 (model not yet available)
-        // In production: load joblib/pickle model from storage/models/fraud/
-        // Run feature extraction through model
-
-        return 0.0;
+        $startTime = microtime(true);
+        $telemetry = app(\App\Services\Fraud\FraudTelemetryService::class);
+        
+        try {
+            $mlInference = app(\App\Services\Fraud\MLInferenceService::class);
+            $circuitStatus = $mlInference->getCircuitBreakerStatus();
+            
+            $score = $mlInference->predict($features);
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+            
+            $telemetry->recordMLInference(
+                success: true,
+                latencyMs: $latencyMs,
+                circuitOpen: $circuitStatus['is_open'],
+                modelVersion: $mlInference->getCurrentModelVersion(),
+            );
+            
+            return $score;
+        } catch (\Throwable $e) {
+            $latencyMs = (microtime(true) - $startTime) * 1000;
+            
+            $telemetry->recordMLInference(
+                success: false,
+                latencyMs: $latencyMs,
+                circuitOpen: true,
+            );
+            
+            $this->logger->channel('fraud_alert')->warning('MLInferenceService unavailable, using fallback', [
+                'error' => $e->getMessage(),
+            ]);
+            return 0.0;
+        }
     }
 
     /**

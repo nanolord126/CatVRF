@@ -12,6 +12,8 @@ final readonly class FraudMLService
 {
     public function __construct(
         private readonly LogManager $logger,
+        private readonly FraudMLFeatureStore $featureStore,
+        private readonly FraudMLExplainer $explainer,
     ) {}
 
 

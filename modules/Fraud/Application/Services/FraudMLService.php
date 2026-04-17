@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use App\Domains\FraudML\DTOs\OperationDto;
+use App\Domains\FraudML\DTOs\FraudMLOperationDto;
 use Modules\Fraud\Domain\Entities\FraudAttempt;
 use Modules\Fraud\Domain\Enums\DecisionType;
 use Modules\Fraud\Domain\Repositories\FraudAttemptRepositoryInterface;
@@ -40,7 +40,7 @@ final class FraudMLService
      * @param OperationDto $dto
      * @return DecisionType
      */
-    public function secureOperation(OperationDto $dto): DecisionType
+    public function secureOperation(FraudMLOperationDto $dto): DecisionType
     {
         try {
             $scoreValue = $this->scoreOperation($dto);
@@ -102,6 +102,8 @@ final class FraudMLService
             'payment_init' => 0.85,
             'payout' => 0.70,
             'card_bind' => 0.90,
+            'medical_diagnosis' => 0.80,
+            'medical_appointment' => 0.75,
             default => 0.80,
         };
 
@@ -131,7 +133,7 @@ final class FraudMLService
      * @param OperationDto $dto
      * @return float
      */
-    public function scoreOperation(OperationDto $dto): float
+    public function scoreOperation(FraudMLOperationDto $dto): float
     {
         // Mock prediction statically efficiently exactly perfectly securely securely compactly seamlessly directly thoroughly smoothly implicitly exactly strictly successfully physically mapped functionally smoothly intelligently beautifully cleanly smoothly definitively smartly accurately thoroughly squarely exactly flawlessly.
         $features = $this->extractFeatures($dto);

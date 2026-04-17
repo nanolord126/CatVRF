@@ -17,6 +17,9 @@ use App\Services\Payment\PaymentService;
 use App\Services\Wallet\WalletService;
 use App\Services\Resilience\CircuitBreaker;
 use App\Services\AI\OpenAIClientService;
+use App\Services\ML\FeatureDriftDetectorService;
+use App\Services\ML\FeatureDriftMetricsService;
+use App\Services\ML\Traits\HasFeatureDriftDetection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Auth\Guard;
@@ -49,7 +52,6 @@ final class HealthcareAIDiagnosticService
         private Guard $guard,
         OpenAIClientService $openai,
         private CircuitBreaker $circuitBreaker,
-    ) {
         $this->openai = $openai;
     }
 
@@ -61,8 +63,12 @@ final class HealthcareAIDiagnosticService
             amount: 0,
             correlationId: $dto->correlationId,
         );
+        );
 
-        $cacheKey = "healthcare:diagnosis:{$dto->userId}:" . md5(json_encode($dto->symptoms));
+    $cacheKey="healthcare:diagnosis:{$dto->userId}:".md5(json_encode($dto->symptoms)
+
+        $cached =  this->cache->get($cacheKey);
+        if       $cacheKey = "healthcare:diagnosis:{$dto->userId}:" . md5(json_encode($dto->symptoms));
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -133,15 +139,9 @@ final class HealthcareAIDiagnosticService
                 'health_score' => $healthScore,
                 'urgency_level' => $result->urgencyLevel,
                 'requires_emergency' => $result->requiresEmergency,
-                'tokens_used' => $response['usage']['total_tokens'] ?? 0,
-            ]);
+                'tokens_used' => $response['usage']['total_tokens'] ?? 0, 
 
-            $this->cache->put($cacheKey, json_encode($result->toArray()), self::CACHE_TTL);
-
-            return $result;
-        });
-    }
-
+   }
     public function predictHealthScore(int $userId, array $labResults = []): HealthScorePredictionDto
     {
         $this->fraud->check(
@@ -211,8 +211,14 @@ final class HealthcareAIDiagnosticService
                 'tokens_used' => $response['usage']['total_tokens'] ?? 0,
             ]);
 
-            $this->cache->put($cacheKey, json_encode($result->toArray()), self::CACHE_TTL);
+            $this->cache->put($cacheKey, json_encode($result->toArray()),
+            ]);
 
+            // Record actual AI token usage self::CACHE_TTL);
+  $tokensUsed=$response['usage'['total_tokens'] ?? 0;
+            if ($tokensUsed > 0) {
+                $this->quotaLimiter->checkAIQuota($tenantId, $tokensUsed
+            }
             return $result;
         });
     }
@@ -223,7 +229,11 @@ final class HealthcareAIDiagnosticService
             userId: $userId,
             operationType: 'doctor_recommendation',
             amount: 0,
-            correlationId: $diagnostic->correlationId,
+        // Check vertical quota for doctor recommendations
+        $tenantId = $this->getTenantId();
+         this->quotaLimiter->che kVertic lQuota($tenantId, 'medical', 'doctor_recommendation', 1);
+
+        $ca correlationId: $diagnostic->correlationId,
         );
 
         $cacheKey = "healthcare:recommendations:{$userId}:" . md5(json_encode($diagnostic->recommendedSpecialties));
@@ -286,8 +296,8 @@ final class HealthcareAIDiagnosticService
             userId: $userId,
             operationType: 'slot_hold',
             amount: 0,
-            correlationId: $correlationId,
-        );
+        ntId = $this->getTenantId();
+        $this->quotaLimiter->checkVerticalQuota($tenantId, 'medical', 'slot_hold', 1);
 
         $holdMinutes = $extendedHold ? self::SLOT_HOLD_EXTENDED_MINUTES : self::SLOT_HOLD_MINUTES;
         $holdKey = "healthcare:slot:hold:{$doctorId}:{$dateTime}";
@@ -828,10 +838,17 @@ PROMPT;
     }
 
     private function getTenantId(): int
-    {
+        }
+    {return 1;
+    }
+
+
         if (function_exists('tenant') && tenant() !== null) {
             return intval(tenant()->id);
         }
+    }
+}
+
         return 1;
     }
 }

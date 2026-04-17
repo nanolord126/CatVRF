@@ -87,6 +87,19 @@ final class BusinessGroup extends Model
         return $query->where('tenant_id', $tenantId);
     }
 
+    /**
+     * Scope to filter by business group ID (for B2B reports/analytics)
+     * This prevents data leakage when querying from B2B context
+     */
+    public function scopeByBusinessGroup($query, ?int $businessGroupId)
+    {
+        if ($businessGroupId === null) {
+            return $query;
+        }
+
+        return $query->where('id', $businessGroupId);
+    }
+
     // ========================
     // ATTRIBUTES & MUTATORS
     // ========================
@@ -107,10 +120,7 @@ final class BusinessGroup extends Model
             $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
         });
 
-        static::addGlobalScope('tenant_id', function ($query) {
-            if (function_exists('tenant') && tenant('id')) {
-                $query->where('tenant_id', tenant('id'));
-            }
-        });
+        // Global scope for tenant_id is handled by trait
+        // This ensures consistency across all tenant-scoped models
     }
 }

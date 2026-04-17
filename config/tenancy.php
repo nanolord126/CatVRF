@@ -84,6 +84,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Security Settings
+    |--------------------------------------------------------------------------
+    | Security hardening for tenant identification and access.
+    */
+    'security' => [
+        // Signature secret for header-based tenant identification
+        // Each tenant can have its own secret in meta.api_secret
+        'header_signature_secret' => env('TENANT_HEADER_SIGNATURE_SECRET'),
+
+        // IP whitelist for header-based tenant identification
+        // Array of allowed IPs or CIDR ranges
+        'ip_whitelist_enabled' => env('TENANT_IP_WHITELIST_ENABLED', false),
+        'ip_whitelist' => array_filter(explode(',', env('TENANT_IP_WHITELIST', ''))),
+
+        // Rate limiting for tenant resolution attempts
+        'rate_limit_enabled' => env('TENANT_RATE_LIMIT_ENABLED', true),
+        'rate_limit_max_attempts' => env('TENANT_RATE_LIMIT_MAX_ATTEMPTS', 100),
+        'rate_limit_decay_minutes' => env('TENANT_RATE_LIMIT_DECAY_MINUTES', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Bootstrappers
     |--------------------------------------------------------------------------
     | Tasks that should be performed when a tenant is identified.
