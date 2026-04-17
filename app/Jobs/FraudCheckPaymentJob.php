@@ -28,13 +28,13 @@ use Throwable;
  * 
  * CANON 2026 - Production Ready
  */
-final readonly class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
+final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, SerializesModels;
 
     public int $timeout = 30; // 30 seconds timeout
     public int $tries = 3; // 3 retries
-    public int $backoff = [5, 10, 20]; // Exponential backoff
+    public array $backoff = [5, 10, 20]; // Exponential backoff
 
     /**
      * The unique ID for the job (based on idempotency key)

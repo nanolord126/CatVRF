@@ -8,7 +8,7 @@ use App\Domains\FraudML\Services\PaymentFraudMLHelper;
 use Tests\TestCase;
 use Illuminate\Support\Str;
 
-final readonly class PaymentFraudMLHelperTest extends TestCase
+final class PaymentFraudMLHelperTest extends TestCase
 {
     public function test_check_payment_fraud_allows_low_risk(): void
     {

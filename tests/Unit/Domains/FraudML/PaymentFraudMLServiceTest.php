@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
-final readonly class PaymentFraudMLServiceTest extends TestCase
+final class PaymentFraudMLServiceTest extends TestCase
 {
     public function test_score_payment_returns_valid_result(): void
     {
