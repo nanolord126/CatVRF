@@ -118,6 +118,9 @@ final class AppServiceProvider extends ServiceProvider
 
         JsonResource::withoutWrapping();
 
+        // Register Job Middleware for Horizon queues
+        // Note: Queue middleware is registered in config/horizon.php
+
         // Livewire — Channels
         Livewire::component('channels.business-news-feed', \App\Livewire\Channels\BusinessNewsFeed::class);
         Livewire::component('channels.post-card',          \App\Livewire\Channels\PostCard::class);

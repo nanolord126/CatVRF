@@ -1,0 +1,137 @@
+name: Cache Layer Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'app/Services/Cache/**'
+      - 'app/Observers/**'
+      - 'tests/Unit/Services/Cache/**'
+      - '.github/workflows/cache-layer-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'app/Services/Cache/**'
+      - 'app/Observers/**'
+      - 'tests/Unit/Services/Cache/**'
+      - '.github/workflows/cache-layer-tests.yml'
+  workflow_dispatch:
+
+env:
+  PHP_VERSION: '8.3'
+
+jobs:
+  cache-layer-tests:
+    name: Cache Layer Tests with Horizon
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catvrf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, posix, gd, curl, bcmath
+          tools: composer
+
+      - name: Cache Composer packages
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist
+
+      - name: Install Laravel Horizon
+        run: composer require laravel/horizon --dev --no-interaction
+
+      - name: Copy .env.testing
+        run: cp .env.example .env.testing
+
+      - name: Generate app key
+        run: php artisan key:generate --env=testing
+
+      - name: Configure environment for testing
+        run: |
+          echo "APP_ENV=testing" >> .env.testing
+          echo "CACHE_DRIVER=redis" >> .env.testing
+          echo "QUEUE_CONNECTION=redis" >> .env.testing
+          echo "SESSION_DRIVER=redis" >> .env.testing
+          echo "DB_CONNECTION=pgsql" >> .env.testing
+          echo "DB_HOST=localhost" >> .env.testing
+          echo "DB_DATABASE=catvrf_test" >> .env.testing
+          echo "DB_USERNAME=postgres" >> .env.testing
+          echo "DB_PASSWORD=postgres" >> .env.testing
+          echo "DB_PORT=5432" >> .env.testing
+          echo "REDIS_HOST=localhost" >> .env.testing
+          echo "REDIS_PORT=6379" >> .env.testing
+
+      - name: Run migrations
+        run: php artisan migrate --env=testing --database=pgsql --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+
+      - name: Run Cache Layer tests
+        run: php artisan test --filter CacheServiceTest --env=testing
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Run Cache Layer simple tests
+        run: php artisan test --filter CacheServiceSimpleTest --env=testing
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cache-layer-test-results
+          path: |
+            storage/logs/
+            coverage/
