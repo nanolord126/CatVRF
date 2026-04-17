@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('tenant_verticals', function (Blueprint $table) {
             $table->id();
-            $table->string('tenant_id');
             $table->string('vertical'); // Medical, Beauty, Food, etc.
             $table->boolean('is_enabled')->default(true);
             $table->json('configuration')->nullable();

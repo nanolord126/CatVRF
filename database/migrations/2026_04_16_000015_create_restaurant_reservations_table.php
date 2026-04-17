@@ -43,9 +43,12 @@ return new class extends Migration
             $table->index(['tenant_id', 'status']);
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "COMMENT ON TABLE restaurant_reservations IS 'Бронирования столов в ресторанах (вертикаль Restaurant)'"
-        );
+        // SQLite doesn't support COMMENT ON TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "COMMENT ON TABLE restaurant_reservations IS 'Бронирования столов в ресторанах (вертикаль Restaurant)'"
+            );
+        }
     }
 
     public function down(): void

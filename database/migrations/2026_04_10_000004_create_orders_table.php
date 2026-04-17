@@ -96,7 +96,6 @@ return new class extends Migration
             $table->string('correlation_id', 64)->nullable()->index();
             $table->timestamps();
 
-            $table->index(['order_id']);
             $table->index(['product_type', 'product_id']);
             $table->comment('Order line items — individual products per order');
         });

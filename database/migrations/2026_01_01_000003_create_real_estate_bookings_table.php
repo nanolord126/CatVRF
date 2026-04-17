@@ -48,9 +48,12 @@ return new class extends Migration
             $table->index(['hold_until', 'status']);
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "ALTER TABLE real_estate_bookings COMMENT = 'Бронирования просмотров недвижимости с AI-скорингом и escrow'"
-        );
+        // SQLite doesn't support table comments via ALTER TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "ALTER TABLE real_estate_bookings COMMENT = 'Бронирования просмотров недвижимости с AI-скорингом и escrow'"
+            );
+        }
     }
 
     public function down(): void

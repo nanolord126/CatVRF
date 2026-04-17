@@ -9,8 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('crm_sync_queue', function (Blueprint $table) {
-            $table->id();
-            $table->string('id', 64)->unique();
+            $table->string('id', 64)->primary();
             $table->string('correlation_id', 64)->nullable();
             $table->string('event_type', 64);
             $table->integer('status_code');

@@ -49,7 +49,8 @@ return new class extends Migration
         }
 
         // Заполнение предустановленными критериями
-        $this->seedSearchCriteria();
+        // Disabled: seeding should be done in database seeders, not migrations
+        // $this->seedSearchCriteria();
     }
 
     /**

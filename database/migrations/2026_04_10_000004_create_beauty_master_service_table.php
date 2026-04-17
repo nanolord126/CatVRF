@@ -13,6 +13,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('beauty_master_service')) {
+            return;
+        }
+
         Schema::create('beauty_master_service', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('master_id')->constrained('beauty_masters')->cascadeOnDelete();

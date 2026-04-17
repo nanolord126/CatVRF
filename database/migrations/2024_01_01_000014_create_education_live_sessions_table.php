@@ -9,8 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('education_live_sessions', function (Blueprint $table) {
-            $table->id();
-            $table->string('id', 64)->unique();
+            $table->string('id', 64)->primary();
             $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
             $table->foreignId('business_group_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('slot_id')->nullable()->constrained('education_slots')->onDelete('set null');

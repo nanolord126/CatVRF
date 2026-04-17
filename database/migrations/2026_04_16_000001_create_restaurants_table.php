@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('restaurants')) {
+            return;
+        }
+
         Schema::create('restaurants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->onDelete('cascade');

@@ -15,6 +15,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('beauty_services')) {
+            return;
+        }
+
         Schema::create('beauty_services', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();

@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('fraud_model_versions')) {
+            return;
+        }
+
         Schema::create('fraud_model_versions', function (Blueprint $table): void {
             $table->id();
             $table->string('version')->unique()->comment('Version identifier (e.g., 2026-04-17-v1)');

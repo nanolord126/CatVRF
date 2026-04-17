@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if tables already exist
+        if (Schema::hasTable('carts')) {
+            return;
+        }
+
         Schema::create('carts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
@@ -26,20 +31,23 @@ return new class extends Migration
             $table->index(['reserved_until']);
         });
 
-        Schema::create('cart_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('cart_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->string('uuid')->unique();
-            $table->integer('quantity')->default(1);
-            $table->unsignedBigInteger('price_at_add');     // цена в момент добавления (копейки)
-            $table->unsignedBigInteger('current_price');    // актуальная цена (копейки)
-            $table->string('correlation_id')->nullable()->index();
-            $table->json('tags')->nullable();
-            $table->timestamps();
+        // Skip if table already exists
+        if (!Schema::hasTable('cart_items')) {
+            Schema::create('cart_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('cart_id')->constrained()->onDelete('cascade');
+                $table->foreignId('product_id')->constrained()->onDelete('cascade');
+                $table->string('uuid')->unique();
+                $table->integer('quantity')->default(1);
+                $table->unsignedBigInteger('price_at_add');     // цена в момент добавления (копейки)
+                $table->unsignedBigInteger('current_price');    // актуальная цена (копейки)
+                $table->string('correlation_id')->nullable()->index();
+                $table->json('tags')->nullable();
+                $table->timestamps();
 
-            $table->unique(['cart_id', 'product_id']);
-        });
+                $table->unique(['cart_id', 'product_id']);
+            });
+        }
     }
 
     public function down(): void

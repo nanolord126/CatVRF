@@ -29,9 +29,12 @@ return new class extends Migration
             $table->index(['property_id', 'sort_order'], 'real_estate_photos_property_sort_idx');
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "ALTER TABLE real_estate_property_photos COMMENT = 'Фотографии объектов недвижимости'"
-        );
+        // SQLite doesn't support table comments via ALTER TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "ALTER TABLE real_estate_property_photos COMMENT = 'Фотографии объектов недвижимости'"
+            );
+        }
     }
 
     public function down(): void

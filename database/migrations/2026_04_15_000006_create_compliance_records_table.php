@@ -17,6 +17,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('compliance_records')) {
+            return;
+        }
+
         Schema::create('compliance_records', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();

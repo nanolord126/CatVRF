@@ -8,95 +8,106 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Beauty salons table
-        Schema::dropIfExists('appointments');
-        Schema::create('beauty_salons', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->string('name');
-            $table->text('address');
-            $table->string('geo_point', 255)->nullable();
-            $table->json('schedule')->nullable();
-            $table->float('rating')->default(0);
-            $table->integer('review_count')->default(0);
-            $table->boolean('is_verified')->default(false);
-            $table->timestamps();
-            $table->index(['tenant_id']);
-            $table->comment('Beauty salons');
-        });
+        // Beauty salons table - skip if already exists
+        if (!Schema::hasTable('beauty_salons')) {
+            Schema::create('beauty_salons', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
+                $table->string('name');
+                $table->text('address');
+                $table->string('geo_point', 255)->nullable();
+                $table->json('schedule')->nullable();
+                $table->float('rating')->default(0);
+                $table->integer('review_count')->default(0);
+                $table->boolean('is_verified')->default(false);
+                $table->timestamps();
+                $table->index(['tenant_id']);
+                $table->comment('Beauty salons');
+            });
+        }
 
-        // Masters table
-        Schema::create('masters', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('salon_id')->nullable()->constrained('beauty_salons')->onDelete('cascade');
-            $table->string('full_name');
-            $table->json('specialization')->nullable();
-            $table->integer('experience_years')->default(0);
-            $table->float('rating')->default(0);
-            $table->integer('review_count')->default(0);
-            $table->timestamps();
-            $table->index(['salon_id']);
-            $table->comment('Beauty masters/stylists');
-        });
+        // Masters table - skip if already exists
+        if (!Schema::hasTable('masters')) {
+            Schema::create('masters', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('salon_id')->nullable()->constrained('beauty_salons')->onDelete('cascade');
+                $table->string('full_name');
+                $table->json('specialization')->nullable();
+                $table->integer('experience_years')->default(0);
+                $table->float('rating')->default(0);
+                $table->integer('review_count')->default(0);
+                $table->timestamps();
+                $table->index(['salon_id']);
+                $table->comment('Beauty masters/stylists');
+            });
+        }
 
-        // Services table
-        Schema::create('services', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('master_id')->nullable()->constrained('masters')->onDelete('cascade');
-            $table->foreignId('salon_id')->nullable()->constrained('beauty_salons')->onDelete('cascade');
-            $table->string('name');
-            $table->integer('duration_minutes');
-            $table->bigInteger('price')->comment('Price in kopeks');
-            $table->json('consumables')->nullable();
-            $table->timestamps();
-            $table->index(['master_id', 'salon_id']);
-            $table->comment('Beauty services');
-        });
+        // Services table - skip if already exists
+        if (!Schema::hasTable('services')) {
+            Schema::create('services', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('master_id')->nullable()->constrained('masters')->onDelete('cascade');
+                $table->foreignId('salon_id')->nullable()->constrained('beauty_salons')->onDelete('cascade');
+                $table->string('name');
+                $table->integer('duration_minutes');
+                $table->bigInteger('price')->comment('Price in kopeks');
+                $table->json('consumables')->nullable();
+                $table->timestamps();
+                $table->index(['master_id', 'salon_id']);
+                $table->comment('Beauty services');
+            });
+        }
 
-        // Appointments table
-        Schema::create('appointments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->foreignId('master_id')->constrained('masters')->onDelete('cascade');
-            $table->foreignId('service_id')->constrained('services')->onDelete('cascade');
-            $table->dateTime('datetime_start');
-            $table->enum('status', ['pending', 'confirmed', 'completed', 'cancelled'])->default('pending');
-            $table->bigInteger('price')->comment('Price in kopeks');
-            $table->enum('payment_status', ['pending', 'paid'])->default('pending');
-            $table->string('correlation_id')->index();
-            $table->timestamps();
-            $table->index(['user_id', 'status']);
-            $table->comment('Beauty appointments');
-        });
+        // Appointments table - skip if already exists
+        if (!Schema::hasTable('appointments')) {
+            Schema::create('appointments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+                $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
+                $table->foreignId('master_id')->constrained('masters')->onDelete('cascade');
+                $table->foreignId('service_id')->constrained('services')->onDelete('cascade');
+                $table->dateTime('datetime_start');
+                $table->enum('status', ['pending', 'confirmed', 'completed', 'cancelled'])->default('pending');
+                $table->bigInteger('price')->comment('Price in kopeks');
+                $table->enum('payment_status', ['pending', 'paid'])->default('pending');
+                $table->string('correlation_id')->index();
+                $table->timestamps();
+                $table->index(['user_id', 'status']);
+                $table->comment('Beauty appointments');
+            });
+        }
 
-        // Restaurants table
-        Schema::create('restaurants', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->string('name');
-            $table->text('address');
-            $table->string('geo_point', 255)->nullable();
-            $table->json('cuisine_type')->nullable();
-            $table->json('schedule')->nullable();
-            $table->float('rating')->default(0);
-            $table->integer('review_count')->default(0);
-            $table->boolean('is_verified')->default(false);
-            $table->timestamps();
-            $table->index(['tenant_id']);
-            $table->comment('Restaurants and cafes');
-        });
+        // Restaurants table - skip if already exists
+        if (!Schema::hasTable('restaurants')) {
+            Schema::create('restaurants', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
+                $table->string('name');
+                $table->text('address');
+                $table->string('geo_point', 255)->nullable();
+                $table->json('cuisine_type')->nullable();
+                $table->json('schedule')->nullable();
+                $table->float('rating')->default(0);
+                $table->integer('review_count')->default(0);
+                $table->boolean('is_verified')->default(false);
+                $table->timestamps();
+                $table->index(['tenant_id']);
+                $table->comment('Restaurants and cafes');
+            });
+        }
 
-        // Restaurant menus table
-        Schema::create('restaurant_menus', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('restaurant_id')->constrained('restaurants')->onDelete('cascade');
-            $table->string('name');
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->index(['restaurant_id']);
-            $table->comment('Restaurant menus');
-        });
+        // Restaurant menus table - skip if already exists
+        if (!Schema::hasTable('restaurant_menus')) {
+            Schema::create('restaurant_menus', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('restaurant_id')->constrained('restaurants')->onDelete('cascade');
+                $table->string('name');
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+                $table->index(['restaurant_id']);
+                $table->comment('Restaurant menus');
+            });
+        }
 
         // Dishes table
         Schema::create('dishes', function (Blueprint $table) {

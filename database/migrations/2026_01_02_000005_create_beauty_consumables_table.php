@@ -36,9 +36,12 @@ return new class extends Migration
             $table->index(['tenant_id', 'current_stock']);
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "COMMENT ON TABLE beauty_consumables IS 'Расходные материалы для услуг Beauty (перчатки, краска, масло и т.д.)'"
-        );
+        // SQLite doesn't support COMMENT ON TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "COMMENT ON TABLE beauty_consumables IS 'Расходные материалы для услуг Beauty (перчатки, краска, масло и т.д.)'"
+            );
+        }
     }
 
     public function down(): void

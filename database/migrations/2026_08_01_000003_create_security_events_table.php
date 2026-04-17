@@ -15,6 +15,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('security_events')) {
+            return;
+        }
+
         Schema::create('security_events', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();

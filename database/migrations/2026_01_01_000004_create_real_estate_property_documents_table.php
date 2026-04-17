@@ -29,9 +29,12 @@ return new class extends Migration
             $table->index(['property_id', 'doc_type'], 'real_estate_docs_property_type_idx');
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "ALTER TABLE real_estate_property_documents COMMENT = 'Документы объектов недвижимости'"
-        );
+        // SQLite doesn't support table comments via ALTER TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "ALTER TABLE real_estate_property_documents COMMENT = 'Документы объектов недвижимости'"
+            );
+        }
     }
 
     public function down(): void

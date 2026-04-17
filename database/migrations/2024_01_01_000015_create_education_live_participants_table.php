@@ -9,8 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('education_live_participants', function (Blueprint $table) {
-            $table->id();
-            $table->string('id', 64)->unique();
+            $table->string('id', 64)->primary();
             $table->foreignId('session_id')->constrained('education_live_sessions')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->enum('role', ['teacher', 'student'])->default('student');

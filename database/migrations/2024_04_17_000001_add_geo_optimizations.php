@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip this migration for SQLite - tables created in later migrations
+        if (config('database.default') === 'sqlite') {
+            return;
+        }
+
         // Add spatial index to delivery_tracks if not exists
         Schema::table('delivery_tracks', function (Blueprint $table) {
             $table->index(['courier_id', 'tracked_at'], 'idx_courier_time');
@@ -56,6 +61,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Skip for SQLite
+        if (config('database.default') === 'sqlite') {
+            return;
+        }
+
         Schema::table('delivery_tracks', function (Blueprint $table) {
             $table->dropIndex('idx_courier_time');
             $table->dropSpatialIndex('idx_location_spatial');

@@ -10,6 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('bonus_transactions')) {
+            return;
+        }
+
         Schema::create('bonus_transactions', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();

@@ -49,7 +49,8 @@ return new class extends Migration
         }
 
         // Вставляем предустановленные типы размещения
-        $this->seedPropertyTypes();
+        // Disabled: seeding should be done in database seeders, not migrations
+        // $this->seedPropertyTypes();
     }
 
     /**

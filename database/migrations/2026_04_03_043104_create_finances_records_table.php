@@ -23,7 +23,6 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['tenant_id', 'status']);
-            $table->index('correlation_id');
         });
     }
 

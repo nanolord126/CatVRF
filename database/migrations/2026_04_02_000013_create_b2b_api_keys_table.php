@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('b2b_api_keys')) {
+            return;
+        }
+
         Schema::create('b2b_api_keys', static function (Blueprint $table): void {
             $table->id();
             $table->foreignId('business_group_id')->constrained('business_groups')->cascadeOnDelete();

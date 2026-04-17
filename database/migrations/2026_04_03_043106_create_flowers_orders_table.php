@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('flower_orders')) {
+            return;
+        }
+
         Schema::create('flower_orders', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
@@ -23,7 +28,6 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['tenant_id', 'status']);
-            $table->index('correlation_id');
         });
     }
 

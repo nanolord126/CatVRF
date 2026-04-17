@@ -45,9 +45,12 @@ return new class extends Migration
             $table->index(['salon_id', 'status']);
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "COMMENT ON TABLE beauty_appointments IS 'Записи клиентов в салоны красоты (вертикаль Beauty)'"
-        );
+        // SQLite doesn't support COMMENT ON TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "COMMENT ON TABLE beauty_appointments IS 'Записи клиентов в салоны красоты (вертикаль Beauty)'"
+            );
+        }
     }
 
     public function down(): void

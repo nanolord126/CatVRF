@@ -46,9 +46,12 @@ return new class extends Migration
             $table->index(['tenant_id', 'type', 'status'], 'real_estate_properties_tenant_type_status_idx');
         });
 
-        \Illuminate\Support\Facades\DB::statement(
-            "ALTER TABLE real_estate_properties COMMENT = 'Объекты недвижимости для аренды и продажи'"
-        );
+        // SQLite doesn't support table comments via ALTER TABLE
+        if (config('database.default') !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement(
+                "ALTER TABLE real_estate_properties COMMENT = 'Объекты недвижимости для аренды и продажи'"
+            );
+        }
     }
 
     public function down(): void
