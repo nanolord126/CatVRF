@@ -5603,16 +5603,16 @@
         },
         {
             "name": "smi2/phpclickhouse",
-            "version": "1.26.417",
+            "version": "1.26.423",
             "source": {
                 "type": "git",
                 "url": "https://github.com/smi2/phpClickHouse.git",
-                "reference": "9e0cebbba20b462ca172e8c49bfccdf980a30dc4"
+                "reference": "ab164a69d5755ae91c77fdd196c5de4ffb1893a2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/smi2/phpClickHouse/zipball/9e0cebbba20b462ca172e8c49bfccdf980a30dc4",
-                "reference": "9e0cebbba20b462ca172e8c49bfccdf980a30dc4",
+                "url": "https://api.github.com/repos/smi2/phpClickHouse/zipball/ab164a69d5755ae91c77fdd196c5de4ffb1893a2",
+                "reference": "ab164a69d5755ae91c77fdd196c5de4ffb1893a2",
                 "shasum": ""
             },
             "require": {
@@ -5656,9 +5656,9 @@
             ],
             "support": {
                 "issues": "https://github.com/smi2/phpClickHouse/issues",
-                "source": "https://github.com/smi2/phpClickHouse/tree/1.26.417"
+                "source": "https://github.com/smi2/phpClickHouse/tree/1.26.423"
             },
-            "time": "2026-04-16T21:02:31+00:00"
+            "time": "2026-04-23T18:02:52+00:00"
         },
         {
             "name": "spatie/color",
