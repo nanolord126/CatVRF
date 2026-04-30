@@ -1,0 +1,14 @@
+# PodDisruptionBudget for Redis Cluster
+# Ensures minimum availability during voluntary disruptions
+# Production 2026 - CatVRF
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-cluster-pdb
+  namespace: catvrf-prod
+spec:
+  minAvailable: 4  # At least 4 pods must be available (2 masters + 2 replicas)
+  selector:
+    matchLabels:
+      app: redis-cluster

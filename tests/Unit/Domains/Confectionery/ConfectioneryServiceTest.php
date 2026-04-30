@@ -1,72 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Confectionery;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ConfectioneryService.
- *
- * @covers \App\Domains\Confectionery\Domain\Services\ConfectioneryService
- */
-final class ConfectioneryServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Confectionery\Domain\Services\ConfectioneryService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ConfectioneryService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Confectionery\Domain\Services\ConfectioneryService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ConfectioneryService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Confectionery');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Confectionery\Domain\Services\ConfectioneryService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ConfectioneryService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ConfectioneryService exists and is instantiable', function () {
+    $this->assertServiceExists('ConfectioneryService');
+});
 
-    public function test_listShops_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Confectionery\Domain\Services\ConfectioneryService::class, 'listShops'),
-            'ConfectioneryService must implement listShops()'
-        );
-    }
+test('ConfectioneryService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ConfectioneryService');
+});
 
-    public function test_getShopById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Confectionery\Domain\Services\ConfectioneryService::class, 'getShopById'),
-            'ConfectioneryService must implement getShopById()'
-        );
-    }
+test('ConfectioneryService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ConfectioneryService', 'process', []);
+});
 
-    public function test_listProducts_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Confectionery\Domain\Services\ConfectioneryService::class, 'listProducts'),
-            'ConfectioneryService must implement listProducts()'
-        );
-    }
+test('ConfectioneryService enforces quota limits', function () {
+    $this->testServiceWithQuota('ConfectioneryService', 'process', 1, 10, []);
+});
 
-    public function test_createOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Confectionery\Domain\Services\ConfectioneryService::class, 'createOrder'),
-            'ConfectioneryService must implement createOrder()'
-        );
-    }
+test('ConfectioneryService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ConfectioneryService'));
+        $service->process([]);
+    }, 10);
+});
 
-}
+test('ConfectioneryService has proper caching', function () {
+    $cacheKey = 'confectionery:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ConfectioneryService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ConfectioneryService dispatches proper events', function () {
+    $eventClass = "App\Domains\Confectionery\Events\ConfectioneryProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ConfectioneryService'));
+        $service->process([]);
+    });
+});
+
+test('ConfectioneryService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Confectionery\Jobs\ProcessConfectioneryJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ConfectioneryService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ConfectioneryService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ConfectioneryService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ConfectioneryService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ConfectioneryService'));
+        $service->process([]);
+    }, 'ConfectioneryService processed');
+});
+
+test('ConfectioneryService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

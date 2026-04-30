@@ -72,7 +72,7 @@ final class InventoryEventsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  StockReserved                                                      */
+    /*  StockReserved */
     /* ================================================================== */
 
     #[Test]
@@ -110,7 +110,7 @@ final class InventoryEventsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  StockReleased                                                      */
+    /*  StockReleased */
     /* ================================================================== */
 
     #[Test]
@@ -137,7 +137,7 @@ final class InventoryEventsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  StockUpdated                                                       */
+    /*  StockUpdated */
     /* ================================================================== */
 
     #[Test]
@@ -167,7 +167,7 @@ final class InventoryEventsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  InventoryCheckCreated                                              */
+    /*  InventoryCheckCreated */
     /* ================================================================== */
 
     #[Test]
@@ -192,7 +192,7 @@ final class InventoryEventsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  InventoryCheckUpdated                                              */
+    /*  InventoryCheckUpdated */
     /* ================================================================== */
 
     #[Test]

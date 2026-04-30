@@ -1,1 +1,34 @@
-<?php declare(strict_types=1); namespace Database\Factories; use App\Models\Domains\Education\Course; use Illuminate\Database\Eloquent\Factories\Factory; use Illuminate\Support\Str; final class CourseFactory extends Factory { protected $model = Course::class; public function definition(): array { return [ "title" => fake()->sentence(), "description" => fake()->paragraph(), "category" => fake()->word(), "price" => fake()->numberBetween(100, 10000), "correlation_id" => (string) Str::uuid() ]; } public function draft(): static { return $this->state(fn () => []); } public function published(): static { return $this->state(fn () => []); } public function archived(): static { return $this->state(fn () => []); } }
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Models\Domains\Education\Course;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+
+final class CourseFactory extends Factory
+{
+    protected $model = Course::class;
+
+    public function definition(): array
+    {
+        return ['title' => fake()->sentence(), 'description' => fake()->paragraph(), 'category' => fake()->word(), 'price' => fake()->numberBetween(100, 10000), 'correlation_id' => (string) Str::uuid()];
+    }
+
+    public function draft(): static
+    {
+        return $this->state(fn () => []);
+    }
+
+    public function published(): static
+    {
+        return $this->state(fn () => []);
+    }
+
+    public function archived(): static
+    {
+        return $this->state(fn () => []);
+    }
+}

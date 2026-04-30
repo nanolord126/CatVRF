@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * RideCompleted — CatVRF 2026 Component.
@@ -7,30 +9,31 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/ridecompleted
  */
 
-
 namespace App\Domains\Taxi\Events;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 final class RideCompleted
 {
+    use Dispatchable;
+    use SerializesModels;
 
-
-    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
-
-        public function __construct(
-            readonly public TaxiRide $ride,
-            readonly public string $correlationId = '') {
-        }
+    public function __construct(
+        public readonly TaxiRide $ride,
+        public readonly string $correlationId = ''
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -39,7 +42,7 @@ final class RideCompleted
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -50,9 +53,8 @@ final class RideCompleted
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }
-

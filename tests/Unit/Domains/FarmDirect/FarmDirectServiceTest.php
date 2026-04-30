@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FarmDirect;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for FarmDirectService.
- *
- * @covers \App\Domains\FarmDirect\Domain\Services\FarmDirectService
- */
-final class FarmDirectServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FarmDirect\Domain\Services\FarmDirectService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'FarmDirectService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FarmDirect\Domain\Services\FarmDirectService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'FarmDirectService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('FarmDirect');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FarmDirect\Domain\Services\FarmDirectService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'FarmDirectService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('FarmDirectService exists and is instantiable', function () {
+    $this->assertServiceExists('FarmDirectService');
+});
 
-    public function test_createOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FarmDirect\Domain\Services\FarmDirectService::class, 'createOrder'),
-            'FarmDirectService must implement createOrder()'
-        );
-    }
+test('FarmDirectService follows clean architecture', function () {
+    $this->assertCleanArchitecture('FarmDirectService');
+});
 
-    public function test_markShipped_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FarmDirect\Domain\Services\FarmDirectService::class, 'markShipped'),
-            'FarmDirectService must implement markShipped()'
-        );
-    }
+test('FarmDirectService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('FarmDirectService', 'process', []);
+});
 
-    public function test_markDelivered_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FarmDirect\Domain\Services\FarmDirectService::class, 'markDelivered'),
-            'FarmDirectService must implement markDelivered()'
-        );
-    }
+test('FarmDirectService enforces quota limits', function () {
+    $this->testServiceWithQuota('FarmDirectService', 'process', 1, 10, []);
+});
 
-    public function test_getProductsBySeason_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FarmDirect\Domain\Services\FarmDirectService::class, 'getProductsBySeason'),
-            'FarmDirectService must implement getProductsBySeason()'
-        );
-    }
+test('FarmDirectService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('FarmDirectService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getVerifiedFarms_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FarmDirect\Domain\Services\FarmDirectService::class, 'getVerifiedFarms'),
-            'FarmDirectService must implement getVerifiedFarms()'
-        );
-    }
+test('FarmDirectService has proper caching', function () {
+    $cacheKey = 'farmdirect:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('FarmDirectService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('FarmDirectService dispatches proper events', function () {
+    $eventClass = "App\Domains\FarmDirect\Events\FarmDirectProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('FarmDirectService'));
+        $service->process([]);
+    });
+});
+
+test('FarmDirectService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\FarmDirect\Jobs\ProcessFarmDirectJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('FarmDirectService'));
+        $service->processAsync([]);
+    });
+});
+
+test('FarmDirectService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('FarmDirectService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('FarmDirectService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('FarmDirectService'));
+        $service->process([]);
+    }, 'FarmDirectService processed');
+});
+
+test('FarmDirectService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

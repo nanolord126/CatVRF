@@ -1,20 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
+
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use App\Services\Fraud\FraudControlService;
 
 use App\Models\Tenant;
 use App\Models\BusinessGroup;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
-use App\Services\Tenancy\TenantQuotaPlanService;
-use App\Services\Tenancy\TenantResourceLimiterService;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Artisan;
+use App\Jobs\TenantCleanupJob;
+use Carbon\CarbonImmutable;
 
 /**
  * Tenant Onboarding Service
- * 
+ *
  * Handles automatic tenant creation with:
  * - Database migrations
  * - Vertical-specific setup
@@ -24,18 +32,22 @@ use Illuminate\Support\Facades\Artisan;
  */
 final readonly class TenantOnboardingService
 {
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudControlService,
         private readonly DatabaseManager $db,
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
         private readonly TenantQuotaPlanService $quotaPlanService,
-    ) {}
+        private readonly ConsoleKernel $artisan,
+        private readonly TenantResourceLimiterService $resourceLimiter,) {}
 
     /**
      * Create new tenant with full setup
      */
     public function createTenant(array $data): Tenant
     {
+        $this->fraudControlService->check('create', ['context' => __CLASS__]);
         return $this->db->transaction(function () use ($data): Tenant {
             // Determine quota plan
             $quotaPlan = $data['quota_plan'] ?? 'free';
@@ -62,7 +74,7 @@ final readonly class TenantOnboardingService
                 'tags' => $data['tags'] ?? [],
                 'meta' => array_merge($data['meta'] ?? [], [
                     'quota_plan' => $quotaPlan,
-                    'onboarded_at' => now()->toIso8601String(),
+                    'onboarded_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -76,7 +88,7 @@ final readonly class TenantOnboardingService
             $this->createDefaultWallet($tenant->id);
 
             // 5. Set custom quotas if provided (overrides plan)
-            if (!empty($data['quotas'])) {
+            if (! empty($data['quotas'])) {
                 $this->setCustomQuotas($tenant->id, $data['quotas']);
             }
 
@@ -84,11 +96,11 @@ final readonly class TenantOnboardingService
             $this->initializeVerticals($tenant->id, $data['verticals'] ?? []);
 
             // 7. Create business group if B2B
-            if (!empty($data['business_group'])) {
+            if (! empty($data['business_group'])) {
                 $this->createBusinessGroup($tenant->id, $data['business_group']);
             }
 
-            $this->logger->channel('tenant')->info('Tenant created successfully', [
+            $this->logger->channel('tenant')->$this->logger->info('Tenant created successfully', [
                 'tenant_id' => $tenant->id,
                 'name' => $tenant->name,
                 'type' => $tenant->type,
@@ -101,35 +113,96 @@ final readonly class TenantOnboardingService
     }
 
     /**
+     * Upgrade tenant quota plan
+     */
+    public function upgradeQuotaPlan(string $tenantId, string $newPlan): bool
+    {
+        return $this->quotaPlanService->upgradePlan($tenantId, $newPlan);
+    }
+
+    /**
+     * Deactivate tenant with data retention
+     */
+    public function deactivateTenant(string $tenantId, int $retentionDays = 90): bool
+    {
+        $tenant = Tenant::find($tenantId);
+
+        if (! $tenant) {
+            return false;
+        }
+
+        $tenant->update([
+            'is_active' => false,
+            'deactivated_at' => CarbonImmutable::now(),
+            'retention_until' => CarbonImmutable::now()->addDays($retentionDays),
+        ]);
+
+        // Schedule cleanup job
+        TenantCleanupJob::$this->bus->dispatch($tenantId)
+            ->delay(CarbonImmutable::now()->addDays($retentionDays));
+
+        $this->logger->channel('tenant')->$this->logger->info('Tenant deactivated', [
+            'tenant_id' => $tenantId,
+            'retention_days' => $retentionDays,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Permanently delete tenant (GDPR compliance)
+     */
+    public function permanentlyDeleteTenant(string $tenantId): bool
+    {
+        $tenant = Tenant::withTrashed()->find($tenantId);
+
+        if (! $tenant) {
+            return false;
+        }
+
+        // Anonymize all data before deletion (152-ФЗ compliance)
+        $this->anonymizeTenantData($tenantId);
+
+        // Delete tenant (soft delete first, then hard delete)
+        $tenant->forceDelete();
+
+        $this->logger->channel('tenant')->warning('Tenant permanently deleted', [
+            'tenant_id' => $tenantId,
+        ]);
+
+        return true;
+    }
+
+    /**
      * Run migrations for new tenant
      */
     private function runTenantMigrations(string $tenantId): void
     {
         try {
             // Set tenant context
-            app('tenant.context')->setTenant($tenantId);
+            app('tenant.context')->setTenant($tenantId);  // static context — acceptable
 
             // Run shared migrations
-            Artisan::call('migrate', [
+            $this->artisan->call('migrate', [
                 '--force' => true,
                 '--path' => 'database/migrations',
             ]);
 
             // Run vertical-specific migrations
             $verticals = $this->config->get('tenant.verticals', ['Medical', 'Beauty', 'Food', 'Delivery']);
-            
+
             foreach ($verticals as $vertical) {
                 $migrationPath = "database/migrations/verticals/{$strtolower($vertical)}";
-                
+
                 if (is_dir(database_path($migrationPath))) {
-                    Artisan::call('migrate', [
+                    $this->artisan->call('migrate', [
                         '--force' => true,
                         '--path' => $migrationPath,
                     ]);
                 }
             }
 
-            $this->logger->channel('tenant')->info('Tenant migrations completed', [
+            $this->logger->channel('tenant')->$this->logger->info('Tenant migrations completed', [
                 'tenant_id' => $tenantId,
                 'verticals' => $verticals,
             ]);
@@ -141,7 +214,7 @@ final readonly class TenantOnboardingService
             throw $e;
         } finally {
             // Clear tenant context
-            app('tenant.context')->clearTenant();
+            app('tenant.context')->clearTenant();  // static context — acceptable
         }
     }
 
@@ -160,11 +233,11 @@ final readonly class TenantOnboardingService
             'currency' => 'RUB',
             'is_active' => true,
             'metadata' => json_encode(['is_default' => true]),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
-        $this->logger->channel('tenant')->info('Default wallet created', [
+        $this->logger->channel('tenant')->$this->logger->info('Default wallet created', [
             'tenant_id' => $tenantId,
         ]);
     }
@@ -174,24 +247,14 @@ final readonly class TenantOnboardingService
      */
     private function setCustomQuotas(string $tenantId, array $customQuotas): void
     {
-        $limiter = app(TenantResourceLimiterService::class);
-
         foreach ($customQuotas as $resource => $quota) {
-            $limiter->setCustomQuota($resource, $tenantId, $quota);
+            $this->resourceLimiter->setCustomQuota($resource, $tenantId, $quota);
         }
 
-        $this->logger->channel('tenant')->info('Custom quotas set (overrides plan)', [
+        $this->logger->channel('tenant')->$this->logger->info('Custom quotas set (overrides plan)', [
             'tenant_id' => $tenantId,
             'custom_quotas' => $customQuotas,
         ]);
-    }
-
-    /**
-     * Upgrade tenant quota plan
-     */
-    public function upgradeQuotaPlan(string $tenantId, string $newPlan): bool
-    {
-        return $this->quotaPlanService->upgradePlan($tenantId, $newPlan);
     }
 
     /**
@@ -209,12 +272,12 @@ final readonly class TenantOnboardingService
                 'vertical' => $vertical,
                 'is_enabled' => true,
                 'configuration' => json_encode($this->getVerticalDefaultConfig($vertical)),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         }
 
-        $this->logger->channel('tenant')->info('Verticals initialized', [
+        $this->logger->channel('tenant')->$this->logger->info('Verticals initialized', [
             'tenant_id' => $tenantId,
             'verticals' => $enabledVerticals,
         ]);
@@ -250,63 +313,10 @@ final readonly class TenantOnboardingService
             'metadata' => $groupData['metadata'] ?? [],
         ]);
 
-        $this->logger->channel('tenant')->info('Business group created', [
+        $this->logger->channel('tenant')->$this->logger->info('Business group created', [
             'tenant_id' => $tenantId,
             'group_name' => $groupData['name'],
         ]);
-    }
-
-    /**
-     * Deactivate tenant with data retention
-     */
-    public function deactivateTenant(string $tenantId, int $retentionDays = 90): bool
-    {
-        $tenant = Tenant::find($tenantId);
-
-        if (!$tenant) {
-            return false;
-        }
-
-        $tenant->update([
-            'is_active' => false,
-            'deactivated_at' => now(),
-            'retention_until' => now()->addDays($retentionDays),
-        ]);
-
-        // Schedule cleanup job
-        \App\Jobs\TenantCleanupJob::dispatch($tenantId)
-            ->delay(now()->addDays($retentionDays));
-
-        $this->logger->channel('tenant')->info('Tenant deactivated', [
-            'tenant_id' => $tenantId,
-            'retention_days' => $retentionDays,
-        ]);
-
-        return true;
-    }
-
-    /**
-     * Permanently delete tenant (GDPR compliance)
-     */
-    public function permanentlyDeleteTenant(string $tenantId): bool
-    {
-        $tenant = Tenant::withTrashed()->find($tenantId);
-
-        if (!$tenant) {
-            return false;
-        }
-
-        // Anonymize all data before deletion (152-ФЗ compliance)
-        $this->anonymizeTenantData($tenantId);
-
-        // Delete tenant (soft delete first, then hard delete)
-        $tenant->forceDelete();
-
-        $this->logger->channel('tenant')->warning('Tenant permanently deleted', [
-            'tenant_id' => $tenantId,
-        ]);
-
-        return true;
     }
 
     /**
@@ -337,7 +347,7 @@ final readonly class TenantOnboardingService
                 'phone' => null,
             ]);
 
-        $this->logger->channel('tenant')->info('Tenant data anonymized', [
+        $this->logger->channel('tenant')->$this->logger->info('Tenant data anonymized', [
             'tenant_id' => $tenantId,
         ]);
     }

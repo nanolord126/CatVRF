@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\LanguageLearning;
 
@@ -19,14 +21,8 @@ final class LanguageLearningIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-    private int $tenantId = 101;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
-        $this->actingAs($this->user);
-    }
+    private int $tenantId = 101;
 
     /** @test */
     public function it_can_generate_ai_learning_path(): void
@@ -95,5 +91,12 @@ final class LanguageLearningIntegrationTest extends TestCase
             'student_id' => $this->user->id,
             'status' => 'active',
         ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
+        $this->actingAs($this->user);
     }
 }

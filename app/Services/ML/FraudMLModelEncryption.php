@@ -1,11 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Str;
 
 /**
  * FraudML Model Encryption Service
@@ -13,13 +12,15 @@ use Illuminate\Support\Str;
  *
  * Encrypts ML model files with AES-256-GCM and adds digital signatures.
  * Prevents model tampering and unauthorized access.
- * 
+ *
  * Critical for security: models contain fraud detection patterns that could be exploited.
  */
 final readonly class FraudMLModelEncryption
 {
     private const SIGNATURE_ALGORITHM = 'sha256';
+
     private const ENCRYPTION_KEY_ENV = 'FRAUDML_ENCRYPTION_KEY';
+
     private const SIGNATURE_KEY_ENV = 'FRAUDML_SIGNATURE_KEY';
 
     public function __construct(
@@ -31,11 +32,11 @@ final readonly class FraudMLModelEncryption
      */
     public function encryptModel(string $modelPath): array
     {
-        if (!file_exists($modelPath)) {
+        if (! file_exists($modelPath)) {
             throw new \RuntimeException("Model file not found: {$modelPath}");
         }
 
-        $this->logger->info('Encrypting FraudML model', [
+        $this->logger->$this->logger->info('Encrypting FraudML model', [
             'model_path' => $modelPath,
         ]);
 
@@ -52,13 +53,13 @@ final readonly class FraudMLModelEncryption
         $signature = $this->generateSignature($encryptedContent);
 
         // Write encrypted model
-        $encryptedPath = $modelPath . '.enc';
+        $encryptedPath = $modelPath.'.enc';
         if (file_put_contents($encryptedPath, $encryptedContent) === false) {
             throw new \RuntimeException("Failed to write encrypted model: {$encryptedPath}");
         }
 
         // Write signature file
-        $signaturePath = $modelPath . '.sig';
+        $signaturePath = $modelPath.'.sig';
         if (file_put_contents($signaturePath, $signature) === false) {
             throw new \RuntimeException("Failed to write signature: {$signaturePath}");
         }
@@ -66,7 +67,7 @@ final readonly class FraudMLModelEncryption
         // Calculate file hash for integrity verification
         $fileHash = hash_file(self::SIGNATURE_ALGORITHM, $encryptedPath);
 
-        $this->logger->info('FraudML model encrypted successfully', [
+        $this->logger->$this->logger->info('FraudML model encrypted successfully', [
             'model_path' => $modelPath,
             'encrypted_path' => $encryptedPath,
             'signature_path' => $signaturePath,
@@ -89,15 +90,15 @@ final readonly class FraudMLModelEncryption
      */
     public function decryptModel(string $encryptedPath, string $signaturePath): string
     {
-        if (!file_exists($encryptedPath)) {
+        if (! file_exists($encryptedPath)) {
             throw new \RuntimeException("Encrypted model file not found: {$encryptedPath}");
         }
 
-        if (!file_exists($signaturePath)) {
+        if (! file_exists($signaturePath)) {
             throw new \RuntimeException("Signature file not found: {$signaturePath}");
         }
 
-        $this->logger->info('Decrypting FraudML model', [
+        $this->logger->$this->logger->info('Decrypting FraudML model', [
             'encrypted_path' => $encryptedPath,
         ]);
 
@@ -114,14 +115,14 @@ final readonly class FraudMLModelEncryption
         }
 
         // Verify signature
-        if (!$this->verifySignature($encryptedContent, $signature)) {
+        if (! $this->verifySignature($encryptedContent, $signature)) {
             throw new \RuntimeException('Model signature verification failed - possible tampering');
         }
 
         // Decrypt content
         $decryptedContent = $this->decrypt($encryptedContent);
 
-        $this->logger->info('FraudML model decrypted successfully', [
+        $this->logger->$this->logger->info('FraudML model decrypted successfully', [
             'encrypted_path' => $encryptedPath,
         ]);
 
@@ -133,7 +134,7 @@ final readonly class FraudMLModelEncryption
      */
     public function verifyModelIntegrity(string $encryptedPath, string $signaturePath, string $expectedHash): bool
     {
-        if (!file_exists($encryptedPath) || !file_exists($signaturePath)) {
+        if (! file_exists($encryptedPath) || ! file_exists($signaturePath)) {
             return false;
         }
 
@@ -144,6 +145,7 @@ final readonly class FraudMLModelEncryption
                 'expected' => $expectedHash,
                 'actual' => $actualHash,
             ]);
+
             return false;
         }
 
@@ -151,12 +153,24 @@ final readonly class FraudMLModelEncryption
         $encryptedContent = file_get_contents($encryptedPath);
         $signature = file_get_contents($signaturePath);
 
-        if (!$this->verifySignature($encryptedContent, $signature)) {
+        if (! $this->verifySignature($encryptedContent, $signature)) {
             $this->logger->warning('Model signature verification failed');
+
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Generate encryption keys for environment setup
+     */
+    public static function generateKeys(): array
+    {
+        return [
+            'encryption_key' => bin2hex(random_bytes(32)),
+            'signature_key' => bin2hex(random_bytes(32)),
+        ];
     }
 
     /**
@@ -178,11 +192,11 @@ final readonly class FraudMLModelEncryption
         );
 
         if ($encrypted === false) {
-            throw new \RuntimeException('Encryption failed: ' . openssl_error_string());
+            throw new \RuntimeException('Encryption failed: '.openssl_error_string());
         }
 
         // Combine nonce + tag + encrypted content
-        return $nonce . $tag . $encrypted;
+        return $nonce.$tag.$encrypted;
     }
 
     /**
@@ -191,7 +205,7 @@ final readonly class FraudMLModelEncryption
     private function decrypt(string $encryptedContent): string
     {
         $key = $this->getEncryptionKey();
-        
+
         // Extract nonce (12 bytes), tag (16 bytes), and ciphertext
         $nonce = substr($encryptedContent, 0, 12);
         $tag = substr($encryptedContent, 12, 16);
@@ -207,7 +221,7 @@ final readonly class FraudMLModelEncryption
         );
 
         if ($decrypted === false) {
-            throw new \RuntimeException('Decryption failed: ' . openssl_error_string());
+            throw new \RuntimeException('Decryption failed: '.openssl_error_string());
         }
 
         return $decrypted;
@@ -219,6 +233,7 @@ final readonly class FraudMLModelEncryption
     private function generateSignature(string $content): string
     {
         $key = $this->getSignatureKey();
+
         return hash_hmac(self::SIGNATURE_ALGORITHM, $content, $key);
     }
 
@@ -229,7 +244,7 @@ final readonly class FraudMLModelEncryption
     {
         $key = $this->getSignatureKey();
         $expectedSignature = hash_hmac(self::SIGNATURE_ALGORITHM, $content, $key);
-        
+
         return hash_equals($expectedSignature, $signature);
     }
 
@@ -238,11 +253,11 @@ final readonly class FraudMLModelEncryption
      */
     private function getEncryptionKey(): string
     {
-        $key = env(self::ENCRYPTION_KEY_ENV);
-        
+        $key = config(self::ENCRYPTION_KEY_ENV);
+
         if ($key === null) {
             throw new \RuntimeException(
-                'Encryption key not set. Set ' . self::ENCRYPTION_KEY_ENV . ' in environment'
+                'Encryption key not set. Set '.self::ENCRYPTION_KEY_ENV.' in environment'
             );
         }
 
@@ -261,25 +276,14 @@ final readonly class FraudMLModelEncryption
      */
     private function getSignatureKey(): string
     {
-        $key = env(self::SIGNATURE_KEY_ENV);
-        
+        $key = config(self::SIGNATURE_KEY_ENV);
+
         if ($key === null) {
             throw new \RuntimeException(
-                'Signature key not set. Set ' . self::SIGNATURE_KEY_ENV . ' in environment'
+                'Signature key not set. Set '.self::SIGNATURE_KEY_ENV.' in environment'
             );
         }
 
         return $key;
-    }
-
-    /**
-     * Generate encryption keys for environment setup
-     */
-    public static function generateKeys(): array
-    {
-        return [
-            'encryption_key' => bin2hex(random_bytes(32)),
-            'signature_key' => bin2hex(random_bytes(32)),
-        ];
     }
 }

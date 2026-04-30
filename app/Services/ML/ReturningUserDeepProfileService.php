@@ -1,13 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * ReturningUserDeepProfileService — глубокая персонализация для постоянных пользователей.
@@ -24,20 +29,22 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class ReturningUserDeepProfileService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AnonymizationService     $anonymizer,
-        private readonly LogManager $logger,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly AnonymizationService $anonymizer,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Генерировать персонализированные рекомендации для постоянного пользователя.
      *
      * @param  array  $behaviorPattern  — из UserBehaviorAnalyzerService::getReturningUserPattern()
-     * @param  string $vertical
-     * @return array
      */
     public function generate(array $behaviorPattern, string $vertical): array
     {
@@ -57,7 +64,7 @@ final readonly class ReturningUserDeepProfileService
             pattern: $behaviorPattern
         );
 
-        $this->logger->channel('audit')->info('ReturningUser deep recommendations generated', [
+        $this->logger->channel('audit')->$this->logger->info('ReturningUser deep recommendations generated', [
             'vertical'         => $vertical,
             'count'            => count($recommendations),
             'churn_risk'       => $behaviorPattern['is_churn_risk'] ?? false,
@@ -92,7 +99,7 @@ final readonly class ReturningUserDeepProfileService
             ->whereIn('status', ['completed', 'delivered'])
             ->avg('total_amount');
 
-        $daysActive = (int) now()->diffInDays($user->created_at);
+        $daysActive = (int) CarbonImmutable::now()->diffInDays($user->created_at);
         $ordersPerDay = $daysActive > 0
             ? $user->orders()->count() / $daysActive
             : 0;
@@ -134,10 +141,10 @@ final readonly class ReturningUserDeepProfileService
     // ─── Private helpers ─────────────────────────────────────────────────────
 
     private function buildPersonalizedRecommendations(
-        int    $userId,
+        int $userId,
         string $vertical,
-        mixed  $tasteVector,
-        array  $pattern
+        mixed $tasteVector,
+        array $pattern
     ): array {
         // Строим на основе истории + taste_profile + LTV-сегмента
         $tasteArray = is_array($tasteVector) ? $tasteVector : (method_exists($tasteVector, 'toArray') ? $tasteVector->toArray() : []);

@@ -1,10 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,7 @@ use Illuminate\Support\Str;
 
 final class Project extends Model
 {
+    use TenantScoped;
 
     protected $table = 'projects';
 
@@ -41,22 +43,6 @@ final class Project extends Model
         'tags' => 'array',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            $builder->where('tenant_id', self::resolveTenantId());
-        });
-
-        static::creating(static function (Project $project): void {
-            $project->uuid = $project->uuid ?: (string) Str::uuid();
-            $project->correlation_id = $project->correlation_id ?: (string) Str::uuid();
-            $project->tenant_id = $project->tenant_id ?: self::resolveTenantId();
-            $project->business_group_id = $project->business_group_id ?? self::resolveBusinessGroupId();
-            $project->status = $project->status ?: 'draft';
-            $project->mode = $project->mode ?: 'b2c';
-        });
-    }
-
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
@@ -80,6 +66,22 @@ final class Project extends Model
     public function scopeActive(Builder $builder): Builder
     {
         return $builder->where('status', 'active');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            $builder->where('tenant_id', self::resolveTenantId());
+        });
+
+        self::creating(static function (Project $project): void {
+            $project->uuid = $project->uuid ?: (string) Str::uuid();
+            $project->correlation_id = $project->correlation_id ?: (string) Str::uuid();
+            $project->tenant_id = $project->tenant_id ?: self::resolveTenantId();
+            $project->business_group_id = $project->business_group_id ?? self::resolveBusinessGroupId();
+            $project->status = $project->status ?: 'draft';
+            $project->mode = $project->mode ?: 'b2c';
+        });
     }
 
     private static function resolveTenantId(): int

@@ -9,12 +9,7 @@ use App\Domains\Payment\DTOs\CreatePaymentRecordDto;
 use App\Domains\Payment\DTOs\UpdatePaymentRecordDto;
 use App\Domains\Payment\Services\PaymentCoordinatorService;
 use App\Domains\Payment\Services\PaymentService;
-use App\Services\AuditService;
-use App\Services\FraudControlService;
-use Illuminate\Contracts\Auth\Guard;
-use Illuminate\Database\DatabaseManager;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 
 /**
  * Unit-тесты для PaymentService + PaymentCoordinatorService.
@@ -38,7 +33,7 @@ final class PaymentServiceTest extends TestCase
         $params = $ctor->getParameters();
         $this->assertGreaterThanOrEqual(5, count($params));
 
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
         $this->assertContains('db', $names);
         $this->assertContains('logger', $names);
         $this->assertContains('fraud', $names);
@@ -76,7 +71,7 @@ final class PaymentServiceTest extends TestCase
 
     public function test_payment_service_no_facade_imports(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Services/PaymentService.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Services/PaymentService.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
         $this->assertStringNotContainsString('DB::', $src);
@@ -87,7 +82,7 @@ final class PaymentServiceTest extends TestCase
 
     public function test_payment_service_has_strict_types(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Services/PaymentService.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Services/PaymentService.php');
         $this->assertIsString($src);
         $this->assertStringContainsString('declare(strict_types=1);', $src);
     }
@@ -109,7 +104,7 @@ final class PaymentServiceTest extends TestCase
         $params = $ctor->getParameters();
         $this->assertGreaterThanOrEqual(4, count($params));
 
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
         $this->assertContains('db', $names);
         $this->assertContains('logger', $names);
         $this->assertContains('fraud', $names);
@@ -127,7 +122,7 @@ final class PaymentServiceTest extends TestCase
 
         // Должен принимать DTO + gateway
         $typeNames = array_map(
-            fn(\ReflectionParameter $p) => $p->getType()?->getName(),
+            fn (\ReflectionParameter $p) => $p->getType()?->getName(),
             $params,
         );
         $this->assertContains(CreatePaymentRecordDto::class, $typeNames);
@@ -154,7 +149,7 @@ final class PaymentServiceTest extends TestCase
 
     public function test_coordinator_no_facade_imports(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Services/PaymentCoordinatorService.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Services/PaymentCoordinatorService.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
         $this->assertStringNotContainsString('DB::', $src);
@@ -184,7 +179,7 @@ final class PaymentServiceTest extends TestCase
         foreach (['initPayment', 'capture', 'refund'] as $methodName) {
             $method = $ref->getMethod($methodName);
             $paramNames = array_map(
-                fn(\ReflectionParameter $p) => $p->getName(),
+                fn (\ReflectionParameter $p) => $p->getName(),
                 $method->getParameters(),
             );
             $this->assertContains(

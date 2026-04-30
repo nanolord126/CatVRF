@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\Pet\Http\Controllers\PetAppointmentController;
 use App\Domains\Pet\Http\Controllers\PetBoardingController;

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Class CreateRecommendationDto
@@ -17,18 +20,18 @@ use Illuminate\Http\Request;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Recommendation\DTOs
  */
 final readonly class CreateRecommendationDto
 {
     public function __construct(
-        public int     $tenantId,
-        public ?int    $businessGroupId,
-        public string  $name,
+        public int $tenantId,
+        public ?int $businessGroupId,
+        public string $name,
         public ?string $description,
-        public string  $status,
-        public string  $correlationId,
-        private ?string $idempotencyKey = null) {}
+        public string $status,
+        public string $correlationId,
+        private readonly ?string $idempotencyKey = null
+    ) {}
 
     public static function from(Request $request): self
     {
@@ -38,7 +41,7 @@ final readonly class CreateRecommendationDto
             name:            $request->string('name')->toString(),
             description:     $request->string('description')->toString() ?: null,
             status:          $request->string('status', 'active')->toString(),
-            correlationId:   $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+            correlationId:   $request->header('X-Correlation-ID', (string) Str::uuid()),
             idempotencyKey:  $request->header('X-Idempotency-Key'),
         );
     }

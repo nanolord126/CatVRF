@@ -1,32 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
-
-
 
 use Illuminate\Cache\CacheManager;
 use Psr\Log\LoggerInterface;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class FlushCacheCommand extends Command
 {
-    public function __construct(
-        private readonly CacheManager $cache,
-        private readonly LoggerInterface $logger,
-    ) {
-        parent::__construct();
-    }
-
     protected $signature = 'cache:flush-tags
         {--tag= : Cache tag to flush}
         {--all : Flush all cache stores}
         {--correlation-id= : Correlation identifier for audit logs}';
 
     protected $description = 'Flush cache by tag or entirely (Redis tags aware)';
+
+    public function __construct(
+        private readonly CacheManager $cache,
+        private readonly LoggerInterface $logger,
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -41,6 +39,7 @@ final class FlushCacheCommand extends Command
             ]);
 
             $this->info('All cache flushed successfully');
+
             return self::SUCCESS;
         }
 
@@ -62,10 +61,12 @@ final class FlushCacheCommand extends Command
             ]);
 
             $this->info("Cache flushed for tag: {$tag}");
+
             return self::SUCCESS;
         }
 
         $this->error('Specify --tag or --all option');
+
         return self::FAILURE;
     }
 }

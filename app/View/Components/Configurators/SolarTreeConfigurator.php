@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * SolarTreeConfigurator — CatVRF 2026 Component.
@@ -7,18 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/solartreeconfigurator
  * @see https://catvrf.ru/docs/solartreeconfigurator
  * @see https://catvrf.ru/docs/solartreeconfigurator
  */
 
-
 namespace App\View\Components\Configurators;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\Component;
 use Illuminate\Contracts\View\View;
@@ -32,15 +36,12 @@ use Illuminate\Contracts\View\View;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\View\Components\Configurators
  */
 final class SolarTreeConfigurator extends Component
 {
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         public string $uuid = 'solar-tree-99-neo',
-        public array $options = []
-    ) {}
+        public array $options = []) {}
 
     /**
      * Handle render operation.
@@ -49,23 +50,19 @@ final class SolarTreeConfigurator extends Component
      */
     public function render(): View
     {
-        return view('components.configurators.solar-tree-configurator');
+        return $this->viewFactory->make('components.configurators.solar-tree-configurator');
     }
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {

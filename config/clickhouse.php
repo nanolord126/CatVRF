@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     /**
      * ClickHouse server connection settings
@@ -8,7 +10,7 @@ return [
     'port' => env('CLICKHOUSE_PORT', 8123),
     'username' => env('CLICKHOUSE_USERNAME', 'default'),
     'password' => env('CLICKHOUSE_PASSWORD', ''),
-    'database' => env('CLICKHOUSE_DATABASE', 'analytics'),
+    'database' => env('CLICKHOUSE_DATABASE', 'catvrf_bigdata'),
 
     /**
      * Connection pool settings

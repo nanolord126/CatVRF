@@ -1,4 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+use App\Http\Middleware\CorrelationIdMiddleware;
+use App\Http\Middleware\EnrichRequestContextMiddleware;
+use App\Http\Middleware\FraudCheckMiddleware;
+use App\Http\Middleware\RateLimitMiddleware;
+use App\Http\Middleware\TenantMiddleware;
+use App\Http\Middleware\WebhookSignatureMiddleware;
 
 /**
  * Middleware Configuration
@@ -14,18 +22,19 @@
  * 7. WebhookSignatureMiddleware - validate payment gateway webhooks
  *
  * @author CatVRF Team
+ *
  * @version 2026.03.25
  */
 
 return [
     // Middleware aliases
     'aliases' => [
-        'correlation-id' => \App\Http\Middleware\CorrelationIdMiddleware::class,
-        'enrich-context' => \App\Http\Middleware\EnrichRequestContextMiddleware::class,
-        'tenant' => \App\Http\Middleware\TenantMiddleware::class,
-        'rate-limit' => \App\Http\Middleware\RateLimitMiddleware::class,
-        'fraud-check' => \App\Http\Middleware\FraudCheckMiddleware::class,
-        'webhook-signature' => \App\Http\Middleware\WebhookSignatureMiddleware::class,
+        'correlation-id' => CorrelationIdMiddleware::class,
+        'enrich-context' => EnrichRequestContextMiddleware::class,
+        'tenant' => TenantMiddleware::class,
+        'rate-limit' => RateLimitMiddleware::class,
+        'fraud-check' => FraudCheckMiddleware::class,
+        'webhook-signature' => WebhookSignatureMiddleware::class,
     ],
 
     // Groups for common use

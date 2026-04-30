@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\EventPlanning;
 
@@ -23,38 +25,8 @@ final class EventPlanningIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private User $plannerUser;
+
     private Tenant $activeTenant;
-
-    /**
-     * Пре-конфигурация окружения (Prepare)
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // 1. Мокаем внешние сервисы
-        $this->mock(WalletService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('hold')->andReturn(true);
-            $mock->shouldReceive('release')->andReturn(true);
-            $mock->shouldReceive('getOrCreateWallet')->andReturn(new \stdClass());
-        });
-
-        $this->mock(FraudControlService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('check')->andReturn(true);
-            $mock->shouldReceive('scoreOperation')->andReturn(0.1);
-        });
-
-        // 2. Создаем тенента
-        $this->activeTenant = Tenant::factory()->create();
-
-        // 3. Создаем пользователя-планировщика в этом тененте
-        $this->plannerUser = User::factory()->create([
-            'tenant_id' => $this->activeTenant->id,
-            'role' => 'event_planner'
-        ]);
-
-        $this->actingAs($this->plannerUser);
-    }
 
     /**
      * Сценарий 1: Успешная генерация плана через AI (Happy Path)
@@ -93,7 +65,7 @@ final class EventPlanningIntegrationTest extends TestCase
         // Assert: Проверка Layer 3
         $this->assertNotNull($plan['timeline']);
         $this->assertNotNull($plan['budget_breakdown']);
-        
+
         // Assert: Проверка логирования
         $this->assertDatabaseHas('events', [
             'uuid' => $event->uuid,
@@ -113,7 +85,7 @@ final class EventPlanningIntegrationTest extends TestCase
             'tenant_id' => $this->activeTenant->id,
             'event_date' => now()->addDay(),
             'total_budget_kopecks' => 10000000, // 100 000 руб
-            'status' => 'confirmed'
+            'status' => 'confirmed',
         ]);
 
         $service->cancelEvent($urgentEvent, 'Client changed mind last minute');
@@ -129,7 +101,7 @@ final class EventPlanningIntegrationTest extends TestCase
             'tenant_id' => $this->activeTenant->id,
             'event_date' => now()->addDays(40),
             'total_budget_kopecks' => 10000000,
-            'status' => 'confirmed'
+            'status' => 'confirmed',
         ]);
 
         $service->cancelEvent($longTermEvent, 'Early cancellation');
@@ -157,5 +129,36 @@ final class EventPlanningIntegrationTest extends TestCase
 
         $this->assertCount(0, $events);
         $this->assertFalse($events->contains('uuid', $otherEvent->uuid));
+    }
+
+    /**
+     * Пре-конфигурация окружения (Prepare)
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // 1. Мокаем внешние сервисы
+        $this->mock(WalletService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('hold')->andReturn(true);
+            $mock->shouldReceive('release')->andReturn(true);
+            $mock->shouldReceive('getOrCreateWallet')->andReturn(new \stdClass());
+        });
+
+        $this->mock(FraudControlService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('check')->andReturn(true);
+            $mock->shouldReceive('scoreOperation')->andReturn(0.1);
+        });
+
+        // 2. Создаем тенента
+        $this->activeTenant = Tenant::factory()->create();
+
+        // 3. Создаем пользователя-планировщика в этом тененте
+        $this->plannerUser = User::factory()->create([
+            'tenant_id' => $this->activeTenant->id,
+            'role' => 'event_planner',
+        ]);
+
+        $this->actingAs($this->plannerUser);
     }
 }

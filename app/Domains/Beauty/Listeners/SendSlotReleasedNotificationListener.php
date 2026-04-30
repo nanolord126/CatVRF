@@ -1,20 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\Events\SlotReleasedEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Log\Logger;
-use Illuminate\Support\Facades\Log;
 
-final readonly class SendSlotReleasedNotificationListener implements ShouldQueue
+final class SendSlotReleasedNotificationListener implements ShouldQueue
 {
     public int $delay = 5;
 
     public function __construct(
-        private NotificationService $notificationService,
-        private Logger $logger,
+        private readonly LoggerInterface $logger,
+        private readonly NotificationService $notificationService,
     ) {
         $this->onQueue('beauty-notifications');
     }
@@ -33,6 +35,7 @@ final readonly class SendSlotReleasedNotificationListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                     'booking_slot_id' => $event->slot->id,
                 ]);
+
                 return;
             }
 

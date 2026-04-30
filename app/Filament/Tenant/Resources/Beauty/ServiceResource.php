@@ -126,12 +126,12 @@ final class ServiceResource extends Resource
                 Tables\Columns\TextColumn::make('price_kopecks')
                     ->label('Цена B2C')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 0, '.', ' ') . ' ₽'),
+                    ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 0, '.', ' ').' ₽'),
 
                 Tables\Columns\TextColumn::make('price_b2b_kopecks')
                     ->label('Цена B2B')
                     ->formatStateUsing(fn ($state) => $state
-                        ? number_format((int) $state / 100, 0, '.', ' ') . ' ₽'
+                        ? number_format((int) $state / 100, 0, '.', ' ').' ₽'
                         : '—'),
 
                 Tables\Columns\IconColumn::make('is_active')

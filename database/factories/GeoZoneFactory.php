@@ -15,26 +15,26 @@ final class GeoZoneFactory extends Factory
     public function definition(): array
     {
         return [
-            "tenant_id" => DB::table("tenants")->value("id") ?? 1,
-            "name" => fake()->unique()->city() . " Zone",
-            "latitude" => fake()->latitude(),
-            "longitude" => fake()->longitude(),
-            "radius_km" => fake()->numberBetween(1, 50),
-            "status" => "active",
+            'tenant_id' => DB::table('tenants')->value('id') ?? 1,
+            'name' => fake()->unique()->city().' Zone',
+            'latitude' => fake()->latitude(),
+            'longitude' => fake()->longitude(),
+            'radius_km' => fake()->numberBetween(1, 50),
+            'status' => 'active',
         ];
     }
 
     public function active(): static
     {
         return $this->state(fn (array $attributes) => [
-            "status" => "active",
+            'status' => 'active',
         ]);
     }
 
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [
-            "status" => "inactive",
+            'status' => 'inactive',
         ]);
     }
 }

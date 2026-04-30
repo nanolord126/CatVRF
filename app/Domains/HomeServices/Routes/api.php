@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  *  — CatVRF 2026 Component.
@@ -7,16 +9,19 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  */
 
 
 use Illuminate\Support\Facades\Route;
+use App\Domains\HomeServices\Http\Controllers\B2BHomeServiceJobController;
+use App\Domains\HomeServices\Http\Controllers\HomeServiceJobController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,18 +40,18 @@ Route::prefix('home-services')
 
         // B2C endpoints
         Route::prefix('v1')->group(function () {
-            Route::get('/', [\App\Domains\HomeServices\Http\Controllers\HomeServiceJobController::class, 'index']);
-            Route::post('/', [\App\Domains\HomeServices\Http\Controllers\HomeServiceJobController::class, 'store']);
-            Route::get('/{id}', [\App\Domains\HomeServices\Http\Controllers\HomeServiceJobController::class, 'show']);
-            Route::put('/{id}', [\App\Domains\HomeServices\Http\Controllers\HomeServiceJobController::class, 'update']);
-            Route::delete('/{id}', [\App\Domains\HomeServices\Http\Controllers\HomeServiceJobController::class, 'destroy']);
+            Route::get('/', [HomeServiceJobController::class, 'index']);
+            Route::post('/', [HomeServiceJobController::class, 'store']);
+            Route::get('/{id}', [HomeServiceJobController::class, 'show']);
+            Route::put('/{id}', [HomeServiceJobController::class, 'update']);
+            Route::delete('/{id}', [HomeServiceJobController::class, 'destroy']);
         });
 
         // B2B endpoints
         Route::prefix('b2b/v1')
             ->middleware(['b2b.api'])
             ->group(function () {
-                Route::get('/catalog', [\App\Domains\HomeServices\Http\Controllers\B2BHomeServiceJobController::class, 'catalog']);
-                Route::post('/bulk-order', [\App\Domains\HomeServices\Http\Controllers\B2BHomeServiceJobController::class, 'bulkOrder']);
+                Route::get('/catalog', [B2BHomeServiceJobController::class, 'catalog']);
+                Route::post('/bulk-order', [B2BHomeServiceJobController::class, 'bulkOrder']);
             });
     });

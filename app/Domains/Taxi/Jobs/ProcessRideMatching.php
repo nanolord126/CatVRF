@@ -23,28 +23,26 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class ProcessRideMatching
+
+final class ProcessRideMatching implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * Конструктор с инъекцией (по канону 2026).
+     */
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly TaxiRide $ride,
+        private readonly string $correlationId,
+    ) {
+    }
 
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
-
-        /**
-         * Конструктор с инъекцией (по канону 2026).
-         */
-        public function __construct(
-            private readonly TaxiRide $ride,
-            private readonly string $correlationId, private readonly LoggerInterface $logger
-        ) {}
-
-        /**
-         * Масштабируемая обработка поиска водителя.
-         */
-        public function handle(TaxiService $taxiService): void
-        {
-            $this->logger->info('Processing ride matching for ride', [
+    public function handle(TaxiService $taxiService): void
+    {
+        $this->logger->info('Processing ride matching for ride', [
                 'ride_id' => $this->ride->id,
                 'correlation_id' => $this->correlationId
             ]);
@@ -76,5 +74,11 @@ final class ProcessRideMatching
                 $this->logger->warning('Ride auto-cancelled: No drivers found', ['ride_uuid' => $this->ride->uuid]);
             }
         }
-}
 
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('taxi job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

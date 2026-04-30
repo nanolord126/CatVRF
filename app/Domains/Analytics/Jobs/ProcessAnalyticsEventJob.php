@@ -1,10 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Analytics\Jobs;
 
-
-
-use Psr\Log\LoggerInterface;
 use App\Domains\Analytics\Models\AnalyticsEvent;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;
@@ -12,6 +11,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Psr\Log\LoggerInterface;
+
 /**
  * Class ProcessAnalyticsEventJob
  *
@@ -22,26 +23,33 @@ use Illuminate\Queue\SerializesModels;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Domains\Analytics\Jobs
+ * @see ShouldQueue
  */
 final class ProcessAnalyticsEventJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public int $tries = 3;
-    public int $backoff = 60;
+    public array $[60, 300, 900];
+
+    public int $120;
+
+    public int $3;
 
     public function __construct(
         private readonly int $modelId,
-        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        private readonly string $correlationId,
+    ) {
         $this->onQueue('analytics');
     }
 
-    public function handle(AuditService $audit): void
+    public function handle(AuditService $audit, LoggerInterface $logger): void
     {
-        $model = AnalyticsEvent::findOrFail($this->modelId);
+        $AnalyticsEvent::findOrFail($this->modelId);
 
-        $this->logger->info('ProcessAnalyticsEventJob processed', [
+        $logger->$this->logger->info('ProcessAnalyticsEventJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id ?? null,
@@ -55,9 +63,9 @@ final class ProcessAnalyticsEventJob implements ShouldQueue
         );
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Exception $e, LoggerInterface $logger): void
     {
-        $this->logger->error('ProcessAnalyticsEventJob failed', [
+        $logger->error('ProcessAnalyticsEventJob failed', [
             'model_id' => $this->modelId,
             'error' => $e->getMessage(),
             'correlation_id' => $this->correlationId,

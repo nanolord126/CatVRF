@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  */
-
 
 namespace App\Domains\RealEstate\Domain\Repository;
 
@@ -51,9 +51,9 @@ interface ViewingRepositoryInterface
      * Check for scheduling conflicts on the same property at the same time.
      */
     public function hasConflict(
-        PropertyId         $propertyId,
+        PropertyId $propertyId,
         \DateTimeImmutable $scheduledAt,
-        ?ViewingId         $excludeId = null,
+        ?ViewingId $excludeId = null,
     ): bool;
 
     public function save(ViewingAppointment $viewing): void;

@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Logging;
 
-use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 
 /**
  * Sensitive Data Masker
- * 
+ *
  * Masks sensitive data in logs to prevent PII/PCI exposure.
  * Handles:
  * - Credit card numbers
@@ -20,13 +22,13 @@ final readonly class SensitiveDataMasker
 {
     /**
      * Mask sensitive data in log context
-     * 
-     * @param array $context Log context
+     *
+     * @param  array  $context  Log context
      * @return array Sanitized context
      */
     public function maskContext(array $context): array
     {
-        return collect($context)->map(function ($value, $key) {
+        return new Collection($context)->map(function ($value, $key) {
             if (is_array($value)) {
                 return $this->maskContext($value);
             }
@@ -54,7 +56,8 @@ final readonly class SensitiveDataMasker
         }
 
         $lastFour = substr($cleaned, -4);
-        return str_repeat('*', strlen($cleaned) - 4) . $lastFour;
+
+        return str_repeat('*', strlen($cleaned) - 4).$lastFour;
     }
 
     /**
@@ -68,7 +71,8 @@ final readonly class SensitiveDataMasker
         }
 
         $lastFour = substr($cleaned, -4);
-        return '****' . $lastFour;
+
+        return '****'.$lastFour;
     }
 
     /**
@@ -76,14 +80,14 @@ final readonly class SensitiveDataMasker
      */
     private function maskEmail(string $value): string
     {
-        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        if (! filter_var($value, FILTER_VALIDATE_EMAIL)) {
             return $value;
         }
 
         [$local, $domain] = explode('@', $value);
-        $maskedLocal = substr($local, 0, 2) . str_repeat('*', strlen($local) - 2);
-        
-        return $maskedLocal . '@' . $domain;
+        $maskedLocal = substr($local, 0, 2).str_repeat('*', strlen($local) - 2);
+
+        return $maskedLocal.'@'.$domain;
     }
 
     /**
@@ -97,7 +101,8 @@ final readonly class SensitiveDataMasker
         }
 
         $lastFour = substr($cleaned, -4);
-        return '+' . str_repeat('*', strlen($cleaned) - 4) . $lastFour;
+
+        return '+'.str_repeat('*', strlen($cleaned) - 4).$lastFour;
     }
 
     /**
@@ -110,7 +115,8 @@ final readonly class SensitiveDataMasker
         }
 
         $lastTwo = substr($value, -2);
-        return str_repeat('*', strlen($value) - 2) . $lastTwo;
+
+        return str_repeat('*', strlen($value) - 2).$lastTwo;
     }
 
     /**
@@ -119,7 +125,7 @@ final readonly class SensitiveDataMasker
     private function maskAmount(string $value): string
     {
         $amount = (int) $value;
-        
+
         if ($amount < 1000) {
             return '<1000';
         } elseif ($amount < 10000) {
@@ -139,6 +145,7 @@ final readonly class SensitiveDataMasker
     private function isCreditCardField(string $key): bool
     {
         $patterns = ['card', 'pan', 'credit', 'cvv', 'cvc'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -148,6 +155,7 @@ final readonly class SensitiveDataMasker
     private function isBankAccountField(string $key): bool
     {
         $patterns = ['account', 'iban', 'bic', 'swift', 'bank'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -157,6 +165,7 @@ final readonly class SensitiveDataMasker
     private function isEmailField(string $key): bool
     {
         $patterns = ['email', 'mail'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -166,6 +175,7 @@ final readonly class SensitiveDataMasker
     private function isPhoneField(string $key): bool
     {
         $patterns = ['phone', 'mobile', 'tel'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -175,6 +185,7 @@ final readonly class SensitiveDataMasker
     private function isUserIdField(string $key): bool
     {
         $patterns = ['user_id', 'customer_id', 'client_id', 'tenant_id'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -184,6 +195,7 @@ final readonly class SensitiveDataMasker
     private function isAmountField(string $key): bool
     {
         $patterns = ['amount', 'price', 'sum', 'total', 'balance'];
+
         return $this->matchesPattern($key, $patterns);
     }
 
@@ -193,7 +205,7 @@ final readonly class SensitiveDataMasker
     private function matchesPattern(string $key, array $patterns): bool
     {
         $lowerKey = strtolower($key);
-        
+
         foreach ($patterns as $pattern) {
             if (str_contains($lowerKey, $pattern)) {
                 return true;

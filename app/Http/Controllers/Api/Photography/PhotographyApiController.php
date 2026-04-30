@@ -1,111 +1,121 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Photography;
+
+use Psr\Log\LoggerInterface;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Str;
 
 final class PhotographyApiController extends Controller
 {
-
-    public function __construct(
-            private readonly AIPhotoSessionConstructor $aiConstructor,
-            private readonly BookingService $bookingService,
-            private readonly LogManager $logger,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
-    ) {}
-        /**
-         * AI Подбор фотосессии
-         * POST /api/v1/photography/ai-match
-         */
-        public function aiMatch(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            try {
-                $validated = $request->validate([
-                    'preferences' => 'required|array',
-                    'budget_max' => 'nullable|integer',
-                    'vertical' => 'nullable|string',
-                ]);
-                $this->logger->channel('audit')->info('AI Photography Match Request', [
-                    'user_id' => $this->guard->id(),
-                    'correlation_id' => $correlationId,
-                    'preferences' => $validated['preferences']
-                ]);
-                $result = $this->aiConstructor->match(
-                    $validated['preferences'],
-                    $validated['budget_max'] ?? 5000000,
-                    $correlationId
-                );
-                return $this->response->json([
-                    'success' => true,
-                    'data' => $result,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('AI Match Error', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage()
-                ]);
-                return $this->response->json([
-                    'success' => false,
-                    'message' => 'Ошибка при работе AI подбора.',
-                    'correlation_id' => $correlationId
-                ], 500);
-            }
-        }
-        /**
-         * Бронирование сессии
-         * POST /api/v1/photography/book
-         */
-        public function book(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            try {
-                $validated = $request->validate([
-                    'session_id' => 'required|exists:photography_sessions,id',
-                    'starts_at' => 'required|date|after:now',
-                    'photographer_id' => 'nullable|exists:photography_photographers,id',
-                    'studio_id' => 'nullable|exists:photography_studios,id',
-                ]);
-                $booking = $this->bookingService->createBooking(
-                    $this->guard->id() ?? 0, // Mock auth for now
-                    $validated['session_id'],
-                    $validated['starts_at'],
-                    $validated['photographer_id'] ?? null,
-                    $validated['studio_id'] ?? null,
-                    $correlationId
-                );
-                return $this->response->json([
-                    'success' => true,
-                    'booking_uuid' => $booking->uuid,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                return $this->response->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ], 400);
-            }
-        }
-        /**
-         * Получение списка студий по гео-точкам
-         */
-        public function listStudios(Request $request): JsonResponse
-        {
-            $correlationId = (string) \Illuminate\Support\Str::uuid();
-            $studios = PhotoStudio::where('is_verified', true)
-                ->orderBy('rating', 'desc')
-                ->limit(10)
-                ->get();
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AIPhotoSessionConstructor $aiConstructor,
+        private readonly BookingService $bookingService,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,) {}
+
+    /**
+     * AI Подбор фотосессии
+     * POST /api/v1/photography/ai-match
+     */
+    public function aiMatch(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        try {
+            $validated = $request->validate([
+                'preferences' => 'required|array',
+                'budget_max' => 'nullable|integer',
+                'vertical' => 'nullable|string',
+            ]);
+            $this->logger->channel('audit')->$this->logger->info('AI Photography Match Request', [
+                'user_id' => $this->guard->id(),
+                'correlation_id' => $correlationId,
+                'preferences' => $validated['preferences'],
+            ]);
+            $result = $this->aiConstructor->match(
+                $validated['preferences'],
+                $validated['budget_max'] ?? 5000000,
+                $correlationId
+            );
+
             return $this->response->json([
                 'success' => true,
-                'data' => $studios,
-                'correlation_id' => $correlationId
+                'data' => $result,
+                'correlation_id' => $correlationId,
             ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('AI Match Error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->response->json([
+                'success' => false,
+                'message' => 'Ошибка при работе AI подбора.',
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
+
+    /**
+     * Бронирование сессии
+     * POST /api/v1/photography/book
+     */
+    public function book(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        try {
+            $validated = $request->validate([
+                'session_id' => 'required|exists:photography_sessions,id',
+                'starts_at' => 'required|date|after:now',
+                'photographer_id' => 'nullable|exists:photography_photographers,id',
+                'studio_id' => 'nullable|exists:photography_studios,id',
+            ]);
+            $booking = $this->bookingService->createBooking(
+                $this->guard->id() ?? 0, // Mock auth for now
+                $validated['session_id'],
+                $validated['starts_at'],
+                $validated['photographer_id'] ?? null,
+                $validated['studio_id'] ?? null,
+                $correlationId
+            );
+
+            return $this->response->json([
+                'success' => true,
+                'booking_uuid' => $booking->uuid,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 400);
+        }
+    }
+
+    /**
+     * Получение списка студий по гео-точкам
+     */
+    public function listStudios(Request $request): JsonResponse
+    {
+        $correlationId = (string) Str::uuid();
+        $studios = PhotoStudio::where('is_verified', true)
+            ->orderBy('rating', 'desc')
+            ->limit(10)
+            ->get();
+
+        return $this->response->json([
+            'success' => true,
+            'data' => $studios,
+            'correlation_id' => $correlationId,
+        ]);
+    }
 }

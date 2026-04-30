@@ -1,9 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use LogManager;
+
+use Illuminate\Http\JsonResponse;
+
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use RuntimeException;
 
 /**
@@ -15,24 +21,28 @@ use RuntimeException;
  * This exception is automatically converted to HTTP 429 Too Many Requests.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantQuotaExceededException extends RuntimeException
 {
-    private int $tenantId;
-    private string $resourceType;
-    private int $used;
-    private int $quota;
-    private ?int $requested;
+    private readonly int $tenantId;
 
-    public function __construct(
+    private readonly string $resourceType;
+
+    private readonly int $used;
+
+    private readonly int $quota;
+
+    private readonly ?int $requested;
+
+    public function __construct(private readonly LogManager $logManager,
         int $tenantId,
         string $resourceType,
         int $used,
         int $quota,
         ?int $requested = null,
-        ?\Throwable $previous = null
-    ) {
+        ?\Throwable $previous = null) {
         $this->tenantId = $tenantId;
         $this->resourceType = $resourceType;
         $this->used = $used;
@@ -54,7 +64,7 @@ final class TenantQuotaExceededException extends RuntimeException
         parent::__construct($message, 0, $previous);
 
         // Log for audit and alerting
-        Log::warning('Tenant quota exceeded', [
+        $this->logManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->warning('Tenant quota exceeded', [
             'tenant_id' => $tenantId,
             'resource_type' => $resourceType,
             'used' => $used,
@@ -104,7 +114,7 @@ final class TenantQuotaExceededException extends RuntimeException
      */
     public function render($request)
     {
-        return response()->json([
+        return new JsonResponse([
             'error' => 'quota_exceeded',
             'message' => $this->getMessage(),
             'tenant_id' => $this->tenantId,

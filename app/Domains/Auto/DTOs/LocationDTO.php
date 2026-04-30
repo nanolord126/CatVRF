@@ -1,22 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\DTOs;
 
 final readonly class LocationDTO
 {
-
-    public function __construct(
-            public float $latitude,
-            public float $longitude,
-            private ?string $address = null) {
-
-    }
-
-        public function toPoint(): string
-        {
-            return "POINT({$this->longitude} {$this->latitude})";
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -32,6 +21,18 @@ final readonly class LocationDTO
      */
     private const CACHE_TTL = 3600;
 
+
+    public function __construct(
+        public float $latitude,
+        public float $longitude,
+        private readonly ?string $address = null
+    ) {}
+
+    public function toPoint(): string
+    {
+        return "POINT({$this->longitude} {$this->latitude})";
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -39,15 +40,15 @@ final readonly class LocationDTO
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -56,5 +57,4 @@ final readonly class LocationDTO
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

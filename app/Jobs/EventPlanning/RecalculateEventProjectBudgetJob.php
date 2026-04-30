@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\EventPlanning;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,88 +16,90 @@ use Illuminate\Database\DatabaseManager;
 
 final class RecalculateEventProjectBudgetJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public int $tries = 3;
-        public int $backoff = 60;
+    public int $tries = 3;
 
-        /**
-         * Create a new job instance.
-         */
-        public function __construct(
-            private readonly int $projectId,
-            private readonly string $correlationId,
-            private readonly LogManager $logger,
-            private readonly DatabaseManager $db,
-    ) {}
+    public int $backoff = 60;
 
-        /**
-         * Execute the job.
-         */
-        public function handle(PricingService $pricingService): void
-        {
-            // 1. Audit Start (Canon 2026: Mandatory audit trace)
-            $this->logger->channel('audit')->info('[Job] Starting budget recalculation', [
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly int $projectId,
+        private readonly string $correlationId,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,) {}
+
+    /**
+     * Execute the job.
+     */
+    public function handle(PricingService $pricingService): void
+    {
+        // 1. Audit Start (Canon 2026: Mandatory audit trace)
+        $this->logger->channel('audit')->$this->logger->info('[Job] Starting budget recalculation', [
+            'correlation_id' => $this->correlationId,
+            'project_id' => $this->projectId,
+        ]);
+
+        try {
+            // 2. Transaction Scope (Canon 2026: Mutating records)
+            $this->db->transaction(function () {
+                // Lock for update to prevent race conditions during recalculation
+                $project = EventProject::where('id', $this->projectId)->lockForUpdate()->firstOrFail();
+
+                // 3. Calculation logic (Simulation for high-density code)
+                // In a real scenario, we aggregate all bookings, venues, and packages
+                $totalSpent = $project->bookings()
+                    ->where('status', 'confirmed')
+                    ->sum('total_price');
+
+                // 4. Update the project state
+                $oldBudget = $project->budget_spent;
+                $project->budget_spent = (int) $totalSpent;
+
+                // Mark completion if appropriate (Simple logic for vertical growth)
+                if ($project->status === 'draft' && $totalSpent > 0) {
+                    $project->status = 'active';
+                }
+
+                $project->save();
+
+                // 5. Success Audit Log
+                $this->logger->channel('audit')->$this->logger->info('[Job] Budget recalculated successfully', [
+                    'correlation_id' => $this->correlationId,
+                    'project_id' => $this->projectId,
+                    'old_budget' => $oldBudget,
+                    'new_budget' => $totalSpent,
+                    'status_changed' => $project->status !== 'draft',
+                ]);
+            });
+
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'correlation_id' => $this->correlationId,
-                'project_id' => $this->projectId,
             ]);
 
-            try {
-                // 2. Transaction Scope (Canon 2026: Mutating records)
-                $this->db->transaction(function () use ($pricingService) {
-                    // Lock for update to prevent race conditions during recalculation
-                    $project = EventProject::where('id', $this->projectId)->lockForUpdate()->firstOrFail();
-
-                    // 3. Calculation logic (Simulation for high-density code)
-                    // In a real scenario, we aggregate all bookings, venues, and packages
-                    $totalSpent = $project->bookings()
-                        ->where('status', 'confirmed')
-                        ->sum('total_price');
-
-                    // 4. Update the project state
-                    $oldBudget = $project->budget_spent;
-                    $project->budget_spent = (int)$totalSpent;
-
-                    // Mark completion if appropriate (Simple logic for vertical growth)
-                    if ($project->status === 'draft' && $totalSpent > 0) {
-                        $project->status = 'active';
-                    }
-
-                    $project->save();
-
-                    // 5. Success Audit Log
-                    $this->logger->channel('audit')->info('[Job] Budget recalculated successfully', [
-                        'correlation_id' => $this->correlationId,
-                        'project_id' => $this->projectId,
-                        'old_budget' => $oldBudget,
-                        'new_budget' => $totalSpent,
-                        'status_changed' => $project->status !== 'draft',
-                    ]);
-                });
-
-            } catch (\Exception $e) {
-                $this->logger->channel('audit')->error($e->getMessage(), [
-                    'exception' => $e::class,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'correlation_id' => $this->correlationId,
-                ]);
-
-                // Release back to queue if retries remain
-                throw $e;
-            }
+            // Release back to queue if retries remain
+            throw $e;
         }
+    }
 
-        /**
-         * Get tags for the job (Filament/Horizon monitoring).
-         */
-        public function tags(): array
-        {
-            return [
-                'event-planning',
-                'project:' . $this->projectId,
-                'correlation:' . $this->correlationId,
-            ];
-        }
+    /**
+     * Get tags for the job (Filament/Horizon monitoring).
+     */
+    public function tags(): array
+    {
+        return [
+            'event-planning',
+            'project:'.$this->projectId,
+            'correlation:'.$this->correlationId,
+        ];
+    }
 }
-

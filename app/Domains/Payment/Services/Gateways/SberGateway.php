@@ -12,10 +12,10 @@ use Psr\Log\LoggerInterface;
 final readonly class SberGateway implements PaymentGatewayInterface
 {
     public function __construct(
-        private AuditService $audit,
-        private LoggerInterface $logger,
-        private string $userName,
-        private string $password,
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger,
+        private readonly string $userName,
+        private readonly string $password,
     ) {}
 
     public function initPayment(
@@ -24,14 +24,14 @@ final readonly class SberGateway implements PaymentGatewayInterface
         string $correlationId,
         string $description = '',
     ): array {
-        $this->logger->info('Sber init payment called', [
+        $this->logger->$this->logger->info('Sber init payment called', [
             'amount_kopecks' => $amountKopecks,
             'idempotency_key' => $idempotencyKey,
             'correlation_id' => $correlationId,
         ]);
 
-        $mockProviderId = 'sbr_' . uniqid('', true);
-        $mockUrl = 'https://securepayments.sberbank.ru/payment/merchants/sbersafe/page.do?orderId=' . $mockProviderId;
+        $mockProviderId = 'sbr_'.uniqid('', true);
+        $mockUrl = 'https://securepayments.sberbank.ru/payment/merchants/sbersafe/page.do?orderId='.$mockProviderId;
 
         $response = [
             'payment_id' => $mockProviderId,
@@ -85,7 +85,7 @@ final readonly class SberGateway implements PaymentGatewayInterface
         string $correlationId,
     ): array {
         $response = [
-            'refund_id' => 'ref_' . uniqid('', true),
+            'refund_id' => 'ref_'.uniqid('', true),
             'status' => 'REFUNDED',
             'provider_response' => [
                 'orderId' => $providerPaymentId,

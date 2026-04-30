@@ -1,18 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Size Recommendation Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Рекомендация размера на основе антропометрических данных,
         истории покупок, бренда и типа товара.
  */
@@ -20,11 +26,11 @@ final readonly class FashionSizeRecommendationService
 {
     private const CONFIDENCE_THRESHOLD = 0.7;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Рекомендовать размер для товара.
@@ -81,7 +87,7 @@ final readonly class FashionSizeRecommendationService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion size recommended', [
+        $this->log->channel('audit')->$this->logger->info('Fashion size recommended', [
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'product_id' => $productId,
@@ -120,7 +126,7 @@ final readonly class FashionSizeRecommendationService
                 'waist' => $measurements['waist'] ?? null,
                 'hips' => $measurements['hips'] ?? null,
                 'shoe_size' => $measurements['shoe_size'] ?? null,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]
         );
@@ -244,11 +250,11 @@ final readonly class FashionSizeRecommendationService
 
     private function determineBaseSize(array $userProfile, string $productCategory, ?array $userMeasurements): string
     {
-        if (!empty($userMeasurements)) {
+        if (! empty($userMeasurements)) {
             return $this->calculateSizeFromMeasurements($userMeasurements, $productCategory);
         }
 
-        if (!empty($userProfile)) {
+        if (! empty($userProfile)) {
             return $this->calculateSizeFromProfile($userProfile, $productCategory);
         }
 
@@ -300,7 +306,7 @@ final readonly class FashionSizeRecommendationService
     private function applyBrandAdjustment(string $baseSize, array $brandFitProfile): string
     {
         $sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-        $currentIndex = array_search($baseSize, $sizeOrder);
+        $currentIndex = array_search($baseSize, $sizeOrder, true);
 
         if ($currentIndex === false) {
             return $baseSize;
@@ -308,11 +314,13 @@ final readonly class FashionSizeRecommendationService
 
         if ($brandFitProfile['runs_large'] > 0.5) {
             $newIndex = max(0, $currentIndex - 1);
+
             return $sizeOrder[$newIndex];
         }
 
         if ($brandFitProfile['runs_small'] > 0.5) {
             $newIndex = min(count($sizeOrder) - 1, $currentIndex + 1);
+
             return $sizeOrder[$newIndex];
         }
 
@@ -322,8 +330,8 @@ final readonly class FashionSizeRecommendationService
     private function calculateConfidence(array $userProfile, array $brandFitProfile): float
     {
         $confidence = 0.5;
-        
-        if (!empty($userProfile)) {
+
+        if (! empty($userProfile)) {
             $confidence += 0.3;
         }
 
@@ -338,7 +346,7 @@ final readonly class FashionSizeRecommendationService
     {
         $reasons = [];
 
-        if (!empty($userProfile)) {
+        if (! empty($userProfile)) {
             $reasons[] = 'Based on your measurements';
         }
 
@@ -354,7 +362,7 @@ final readonly class FashionSizeRecommendationService
     private function getAlternativeSizes(string $size): array
     {
         $sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-        $currentIndex = array_search($size, $sizeOrder);
+        $currentIndex = array_search($size, $sizeOrder, true);
 
         if ($currentIndex === false) {
             return [];
@@ -379,7 +387,7 @@ final readonly class FashionSizeRecommendationService
             'product_id' => $productId,
             'recommended_size' => $recommendation['size'],
             'confidence' => $recommendation['confidence'],
-            'recommended_at' => Carbon::now(),
+            'recommended_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
     }

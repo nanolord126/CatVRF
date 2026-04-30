@@ -1,27 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\GroceryAndDelivery\Pages;
 
+use Psr\Log\LoggerInterface;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\GroceryAndDelivery\GroceryAndDeliveryResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 final class CreateGroceryAndDelivery extends CreateRecord
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = GroceryAndDeliveryResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -32,7 +31,7 @@ final class CreateGroceryAndDelivery extends CreateRecord
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('GroceryAndDelivery creation form submitted', [
+            $this->log->channel('audit')->$this->logger->info('GroceryAndDelivery creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
                 'user_id' => auth()->id(),
@@ -44,13 +43,13 @@ final class CreateGroceryAndDelivery extends CreateRecord
 
     protected function afterCreate(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('GroceryAndDelivery record created successfully', [
+        $this->log->channel('audit')->$this->logger->info('GroceryAndDelivery record created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
             'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 

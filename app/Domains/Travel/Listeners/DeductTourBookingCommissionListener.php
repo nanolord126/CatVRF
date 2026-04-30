@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Travel\Listeners;
 
 use App\Models\BalanceTransaction;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use App\Models\Wallet;
 
 final class DeductTourBookingCommissionListener
 {
-
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
@@ -22,7 +21,7 @@ final class DeductTourBookingCommissionListener
             $wallet = null;
 
             if (isset($event->booking->agency_id)) {
-                $wallet = \App\Models\Wallet::where('walletable_type', 'agency')
+                $wallet = Wallet::where('walletable_type', 'agency')
                     ->where('walletable_id', $event->booking->agency_id)
                     ->lockForUpdate()
                     ->first();
@@ -33,6 +32,7 @@ final class DeductTourBookingCommissionListener
                     'booking_id' => $event->booking->id ?? null,
                     'correlation_id' => $event->correlationId ?? null,
                 ]);
+
                 return;
             }
 
@@ -51,7 +51,7 @@ final class DeductTourBookingCommissionListener
                 'correlation_id' => $event->correlationId ?? null,
             ]);
 
-            $this->logger->info('Travel commission deducted', [
+            $this->logger->$this->logger->info('Travel commission deducted', [
                 'booking_id'       => $event->booking->id,
                 'booking_number'   => $event->booking->booking_number,
                 'agency_id'        => $event->booking->agency_id,

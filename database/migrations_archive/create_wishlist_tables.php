@@ -1,15 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         // Create wishlist_items table
-        if (!Schema::connection('central')->hasTable('wishlist_items')) {
+        if (! Schema::connection('central')->hasTable('wishlist_items')) {
             Schema::connection('central')->create('wishlist_items', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -27,7 +28,7 @@ return new class extends Migration
         }
 
         // Create wishlist_shares table
-        if (!Schema::connection('central')->hasTable('wishlist_shares')) {
+        if (! Schema::connection('central')->hasTable('wishlist_shares')) {
             Schema::connection('central')->create('wishlist_shares', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -42,7 +43,7 @@ return new class extends Migration
         }
 
         // Create wishlist_shared_payments table (for group purchasing)
-        if (!Schema::connection('central')->hasTable('wishlist_shared_payments')) {
+        if (! Schema::connection('central')->hasTable('wishlist_shared_payments')) {
             Schema::connection('central')->create('wishlist_shared_payments', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('wishlist_share_id')->constrained('wishlist_shares')->cascadeOnDelete();

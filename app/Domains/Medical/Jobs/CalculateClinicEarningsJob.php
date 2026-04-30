@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Medical\Jobs;
 
-
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Medical\Models\MedicalClinic;
 use Illuminate\Bus\Queueable;
@@ -15,12 +13,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 use Throwable;
+use Carbon\CarbonImmutable;
 
 final class CalculateClinicEarningsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    private string $correlationId;
+    private readonly string $correlationId;
 
     public function __construct(private readonly LoggerInterface $logger)
     {
@@ -36,8 +38,8 @@ final class CalculateClinicEarningsJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $month = now()->month;
-            $year = now()->year;
+            $month = CarbonImmutable::now()->month;
+            $year = CarbonImmutable::now()->year;
 
             MedicalClinic::where('is_active', true)->chunk(50, function ($clinics) use ($month, $year) {
                 foreach ($clinics as $clinic) {
@@ -53,11 +55,23 @@ final class CalculateClinicEarningsJob implements ShouldQueue
         }
     }
 
+    public function retryUntil(): \DateTime
+    {
+        return CarbonImmutable::now()->addHours(6);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $this->logger->error('medical job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function calculateClinicEarnings(MedicalClinic $clinic, int $month, int $year): void
     {
         try {
-            $startDate = now()->setMonth($month)->setYear($year)->startOfMonth();
-            $endDate = now()->setMonth($month)->setYear($year)->endOfMonth();
+            $startDate = CarbonImmutable::now()->setMonth($month)->setYear($year)->startOfMonth();
+            $endDate = CarbonImmutable::now()->setMonth($month)->setYear($year)->endOfMonth();
 
             $appointments = $clinic->appointments()
                 ->whereBetween('completed_at', [$startDate, $endDate])
@@ -67,7 +81,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
             $totalRevenue = $appointments->sum('price');
             $totalCommission = $appointments->sum('commission_amount');
 
-            $this->logger->info('Monthly clinic earnings calculated', [
+            $this->logger->$this->logger->info('Monthly clinic earnings calculated', [
                 'clinic_id' => $clinic->id,
                 'month' => $month,
                 'year' => $year,
@@ -84,10 +98,4 @@ final class CalculateClinicEarningsJob implements ShouldQueue
             ]);
         }
     }
-
-    public function retryUntil(): \DateTime
-    {
-        return now()->addHours(6);
-    }
 }
-

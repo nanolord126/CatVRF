@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -11,27 +13,27 @@ use Illuminate\Queue\SerializesModels;
 
 final class AutoPartCreated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     /**
      * Create a new event instance.
      */
     public function __construct(
         public readonly AutoPart $autoPart,
         public readonly string $correlationId
-    ) {
-
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new Channel('auto.parts.' . $this->autoPart->tenant_id),
+            new Channel('auto.parts.'.$this->autoPart->tenant_id),
         ];
     }
 

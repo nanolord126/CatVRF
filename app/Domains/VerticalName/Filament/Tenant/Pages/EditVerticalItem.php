@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Filament\Tenant\Pages;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
+use Request;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\VerticalName\Filament\Tenant\VerticalItemResource;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Actions;
@@ -24,24 +28,18 @@ use Illuminate\Support\Str;
  *   — Автоматическая подстановка correlation_id перед сохранением.
  *   — Кнопка удаления товара в header.
  *   — Уведомление после успешного сохранения.
- *
- * @package App\Domains\VerticalName\Filament\Tenant\Pages
  */
 final class EditVerticalItem extends EditRecord
 {
     /**
      * Связанный Filament-ресурс.
-     *
-     * @var string
      */
     protected static string $resource = VerticalItemResource::class;
 
     /**
      * Заголовок страницы.
-     *
-     * @var string|null
      */
-    protected ?string $heading = 'Редактировать товар';
+    protected readonly ?string $heading = 'Редактировать товар';
 
     /**
      * Actions в header страницы.
@@ -70,12 +68,12 @@ final class EditVerticalItem extends EditRecord
      * Обновляет correlation_id для каждого изменения,
      * чтобы каждая мутация имела уникальный trace ID.
      *
-     * @param  array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['correlation_id'] = app(Request::class)->header('X-Correlation-ID', Str::uuid()->toString());
+        $data['correlation_id'] = $this->request /* TODO: inject via constructor DI */ /* TODO: inject via DI */->header('X-Correlation-ID', Str::uuid()->toString());
 
         return $data;
     }
@@ -87,7 +85,7 @@ final class EditVerticalItem extends EditRecord
      */
     protected function afterSave(): void
     {
-        Notification::make()
+        $this->notificationManager->make()
             ->title('Товар обновлён')
             ->body("Изменения в товаре «{$this->record->name}» сохранены.")
             ->success()
@@ -96,8 +94,6 @@ final class EditVerticalItem extends EditRecord
 
     /**
      * URL для редиректа после сохранения.
-     *
-     * @return string
      */
     protected function getRedirectUrl(): string
     {

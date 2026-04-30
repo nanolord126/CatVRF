@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Jewelry\JewelryItemResource\Pages;
 
@@ -6,16 +8,6 @@ use Filament\Resources\Pages\EditRecord;
 
 final class EditJewelryItem extends EditRecord
 {
-
-    protected static string $resource = JewelryItemResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\DeleteAction::make(),
-            ];
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -31,6 +23,16 @@ final class EditJewelryItem extends EditRecord
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = JewelryItemResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -38,15 +40,15 @@ final class EditJewelryItem extends EditRecord
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -55,5 +57,4 @@ final class EditJewelryItem extends EditRecord
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

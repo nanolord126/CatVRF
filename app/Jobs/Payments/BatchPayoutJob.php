@@ -1,32 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\Payments;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 final class BatchPayoutJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    private string $correlationId;
+    private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    )
-    {
+        private readonly DatabaseManager $db,) {
         $this->correlationId = Str::uuid()->toString();
-        $this->onQueue('payouts');
+        $this->onQueue('payment');
     }
 
     public function tags(): array
@@ -36,7 +39,7 @@ final class BatchPayoutJob implements ShouldQueue
 
     public function retryUntil(): \DateTime
     {
-        return now()->addHours(12);
+        return CarbonImmutable::now()->addHours(12);
     }
 
     public function handle(): void
@@ -54,7 +57,7 @@ final class BatchPayoutJob implements ShouldQueue
                     try {
                         $this->processSinglePayout($payout);
 
-                        $this->logger->channel('audit')->info('Batch payout processed', [
+                        $this->logger->channel('audit')->$this->logger->info('Batch payout processed', [
                             'correlation_id' => $this->correlationId,
                             'payment_transaction_id' => $payout->id,
                             'amount' => $payout->amount,
@@ -114,4 +117,3 @@ final class BatchPayoutJob implements ShouldQueue
         // );
     }
 }
-

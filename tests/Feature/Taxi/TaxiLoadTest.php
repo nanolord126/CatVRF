@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Taxi;
 
@@ -8,6 +10,9 @@ use App\Domains\Taxi\DTOs\CreateTaxiOrderDto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
+use App\Domains\Taxi\DTOs\TaxiDriverMatchingDto;
+use App\Domains\Taxi\Services\TaxiDriverMatchingService;
+use Illuminate\Support\Str;
 
 final class TaxiLoadTest extends TestCase
 {
@@ -86,8 +91,8 @@ final class TaxiLoadTest extends TestCase
         $startTime = microtime(true);
 
         for ($i = 0; $i < 50; $i++) {
-            $match = app(\App\Domains\Taxi\Services\TaxiDriverMatchingService::class)->matchDriver(
-                new \App\Domains\Taxi\DTOs\TaxiDriverMatchingDto(
+            $match = app(TaxiDriverMatchingService::class)->matchDriver(
+                new TaxiDriverMatchingDto(
                     rideId: $i,
                     pickupLat: 55.75396,
                     pickupLon: 37.62039,
@@ -112,7 +117,7 @@ final class TaxiLoadTest extends TestCase
 
         for ($i = 0; $i < 200; $i++) {
             $ride = TaxiRide::create([
-                'uuid' => \Illuminate\Support\Str::uuid(),
+                'uuid' => Str::uuid(),
                 'tenant_id' => 1,
                 'passenger_id' => 1,
                 'pickup_address' => "Location {$i}",
@@ -146,7 +151,7 @@ final class TaxiLoadTest extends TestCase
         for ($i = 0; $i < 1000; $i++) {
             $key = "taxi:load-test:{$i}";
             $value = ['data' => $i, 'timestamp' => now()];
-            
+
             Cache::put($key, $value, 60);
             $writes[] = $key;
         }
@@ -182,7 +187,7 @@ final class TaxiLoadTest extends TestCase
     public function test_memory_usage_stays_within_limits(): void
     {
         $initialMemory = memory_get_usage(true);
-        
+
         for ($i = 0; $i < 1000; $i++) {
             $dto = new CreateTaxiOrderDto(
                 tenantId: 1,

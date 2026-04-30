@@ -19,14 +19,13 @@ use InvalidArgumentException;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Domain\ValueObjects
  */
 final class Coordinate extends ValueObject
 {
     public function __construct(
         private readonly float $latitude,
-        private readonly float $longitude) {
+        private readonly float $longitude
+    ) {
         if ($latitude < -90 || $latitude > 90) {
             throw new InvalidArgumentException('Latitude must be between -90 and 90.');
         }

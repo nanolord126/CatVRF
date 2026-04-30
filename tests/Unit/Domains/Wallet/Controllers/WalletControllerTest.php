@@ -12,6 +12,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\DatabaseManager;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
 
 /**
  * Unit-тесты WalletController.
@@ -71,7 +72,7 @@ final class WalletControllerTest extends TestCase
         $method = new \ReflectionMethod(WalletController::class, 'extractCorrelationId');
         $method->setAccessible(true);
 
-        $request = \Illuminate\Http\Request::create('/test');
+        $request = Request::create('/test');
         $result = $method->invoke($controller, $request);
 
         $this->assertNotEmpty($result);
@@ -85,7 +86,7 @@ final class WalletControllerTest extends TestCase
         $method = new \ReflectionMethod(WalletController::class, 'extractCorrelationId');
         $method->setAccessible(true);
 
-        $request = \Illuminate\Http\Request::create('/test', 'GET', [], [], [], [
+        $request = Request::create('/test', 'GET', [], [], [], [
             'HTTP_X-Correlation-ID' => 'my-corr-id',
         ]);
         $result = $method->invoke($controller, $request);

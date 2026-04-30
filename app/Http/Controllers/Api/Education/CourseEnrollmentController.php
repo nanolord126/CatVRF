@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Education;
 
@@ -7,12 +9,13 @@ use App\Domains\Education\Services\CourseEnrollmentService;
 use App\Domains\Education\Services\CRMIntegrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class CourseEnrollmentController extends Controller
 {
     public function __construct(
-        private CourseEnrollmentService $enrollmentService,
-        private CRMIntegrationService $crmService,
+        private readonly CourseEnrollmentService $enrollmentService,
+        private readonly CRMIntegrationService $crmService,
     ) {}
 
     public function enroll(Request $request): JsonResponse
@@ -23,7 +26,7 @@ final readonly class CourseEnrollmentController extends Controller
             'corporate_contract_id' => ['nullable', 'integer'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $idempotencyKey = $request->header('X-Idempotency-Key');
 
         $userId = (int) $request->input('user_id');
@@ -40,7 +43,7 @@ final readonly class CourseEnrollmentController extends Controller
 
         $this->crmService->syncEnrollmentCreated($result['enrollment_id'], $result, $correlationId);
 
-        return response()->json($result)
+        return new JsonResponse($result)
             ->setStatusCode(201)
             ->header('X-Correlation-ID', $correlationId);
     }
@@ -51,14 +54,14 @@ final readonly class CourseEnrollmentController extends Controller
             'progress_percent' => ['required', 'integer', 'min:0', 'max:100'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $progressPercent = (int) $request->input('progress_percent');
 
         $this->enrollmentService->updateProgress($enrollmentId, $progressPercent, $correlationId);
 
         $this->crmService->syncProgressUpdated($enrollmentId, $progressPercent, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Progress updated',
             'enrollment_id' => $enrollmentId,
             'progress_percent' => $progressPercent,
@@ -72,14 +75,14 @@ final readonly class CourseEnrollmentController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $reason = $request->input('reason');
 
         $this->enrollmentService->cancelEnrollment($enrollmentId, $reason, $correlationId);
 
         $this->crmService->syncEnrollmentCancelled($enrollmentId, $reason, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Enrollment cancelled',
             'enrollment_id' => $enrollmentId,
         ])
@@ -88,13 +91,13 @@ final readonly class CourseEnrollmentController extends Controller
 
     public function issueCertificate(int $enrollmentId, Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
         $certificate = $this->enrollmentService->issueCertificate($enrollmentId, $correlationId);
 
         $this->crmService->syncCertificateIssued($enrollmentId, $certificate, $correlationId);
 
-        return response()->json($certificate)
+        return new JsonResponse($certificate)
             ->header('X-Correlation-ID', $correlationId);
     }
 }

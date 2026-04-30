@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Presentation\Http\Controllers\B2C;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +30,7 @@ final class PropertyDetailsController extends Controller
             return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Объект не найден'], 404);
         }
 
-        $this->logger->info('Property details viewed', ['correlation_id' => $correlationId, 'property_id' => $id]);
+        $this->logger->$this->logger->info('Property details viewed', ['correlation_id' => $correlationId, 'property_id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'data' => $property]);
     }
@@ -52,12 +55,12 @@ final class PropertyDetailsController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('Viewing requested', ['correlation_id' => $correlationId, 'viewing_id' => $viewingId]);
+        $this->logger->$this->logger->info('Viewing requested', ['correlation_id' => $correlationId, 'viewing_id' => $viewingId]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $viewingId, 'message' => 'Запрос на просмотр создан'], 201);
     }

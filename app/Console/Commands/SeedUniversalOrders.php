@@ -1,16 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 
 final class SeedUniversalOrders extends Command
 {
-    protected $signature = 'orders:seed {--count=10}';
-    protected $description = 'Seed universal orders without booting Filament';
-
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {
+        parent::__construct();
+    }
     private const VERTICALS = [
         'beauty', 'food', 'real_estate', 'fashion', 'travel', 'auto', 'hotels',
         'medical', 'electronics', 'fitness', 'sports', 'luxury', 'insurance',
@@ -29,11 +33,15 @@ final class SeedUniversalOrders extends Command
         'vegan_products', 'art',
     ];
 
+    protected $signature = 'orders:seed {--count=10}';
+
+    protected $description = 'Seed universal orders without booting Filament';
+
     public function handle(): int
     {
         $count = (int) $this->option('count');
 
-        $this->info("Seeding {$count} B2C and B2B orders for " . count(self::VERTICALS) . " verticals...");
+        $this->info("Seeding {$count} B2C and B2B orders for ".count(self::VERTICALS).' verticals...');
 
         $totalOrders = 0;
 
@@ -65,24 +73,16 @@ final class SeedUniversalOrders extends Command
         $platformCommission = (int) ($total * 0.14);
         $sellerEarnings = $total - $platformCommission;
 
-        $orderId = DB::table('orders')->insertGetId([
+        $orderId = $this->db->table('orders')->insertGetId([
             'uuid' => Str::uuid()->toString(),
             'tenant_id' => $tenantId,
             'user_id' => $userId,
-            'business_group_id' => null,
             'vertical' => $vertical,
-            'status' => $this->getRandomStatus(),
-            'subtotal' => $subtotal,
-            'shipping_cost' => $shippingCost,
-            'discount_amount' => $discountAmount,
-            'total' => $total,
-            'platform_commission' => $platformCommission,
-            'seller_earnings' => $sellerEarnings,
-            'currency' => 'RUB',
-            'payment_status' => $this->getRandomPaymentStatus(),
-            'payment_method' => $this->getRandomPaymentMethod(),
-            'is_b2b' => false,
-            'inn' => null,
+            'type' => 'b2c',
+            'status' => 'completed',
+            'total_kopecks' => $total,
+            'platform_commission_kopecks' => $platformCommission,
+            'seller_earnings_kopecks' => $sellerEarnings,
             'business_card_id' => null,
             'delivery_address' => $this->getRandomAddress(),
             'delivery_lat' => rand(55000000, 60000000) / 1000000,
@@ -99,11 +99,11 @@ final class SeedUniversalOrders extends Command
             $quantity = rand(1, 5);
             $unitPrice = rand(1000, 50000);
 
-            DB::table('order_items')->insert([
+            $this->db->table('order_items')->insert([
                 'order_id' => $orderId,
-                'product_type' => $vertical . '_product',
+                'product_type' => $vertical.'_product',
                 'product_id' => rand(1, 1000),
-                'product_name' => ucfirst($vertical) . ' Product ' . ($i + 1),
+                'product_name' => ucfirst($vertical).' Product '.($i + 1),
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'total_price' => $quantity * $unitPrice,
@@ -126,7 +126,7 @@ final class SeedUniversalOrders extends Command
         $platformCommission = (int) ($total * 0.12);
         $sellerEarnings = $total - $platformCommission;
 
-        $orderId = DB::table('orders')->insertGetId([
+        $orderId = $this->db->table('orders')->insertGetId([
             'uuid' => Str::uuid()->toString(),
             'tenant_id' => $tenantId,
             'user_id' => $userId,
@@ -144,7 +144,7 @@ final class SeedUniversalOrders extends Command
             'payment_method' => 'b2b_credit',
             'is_b2b' => true,
             'inn' => $this->getRandomINN(),
-            'business_card_id' => 'BC-' . Str::random(8),
+            'business_card_id' => 'BC-'.Str::random(8),
             'delivery_address' => $this->getRandomAddress(),
             'delivery_lat' => rand(55000000, 60000000) / 1000000,
             'delivery_lon' => rand(35000000, 40000000) / 1000000,
@@ -160,11 +160,11 @@ final class SeedUniversalOrders extends Command
             $quantity = rand(10, 100);
             $unitPrice = rand(1000, 50000);
 
-            DB::table('order_items')->insert([
+            $this->db->table('order_items')->insert([
                 'order_id' => $orderId,
-                'product_type' => $vertical . '_product',
+                'product_type' => $vertical.'_product',
                 'product_id' => rand(1, 1000),
-                'product_name' => ucfirst($vertical) . ' Product ' . ($i + 1),
+                'product_name' => ucfirst($vertical).' Product '.($i + 1),
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'total_price' => $quantity * $unitPrice,
@@ -179,18 +179,21 @@ final class SeedUniversalOrders extends Command
     private function getRandomStatus(): string
     {
         $statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+
         return $statuses[array_rand($statuses)];
     }
 
     private function getRandomPaymentStatus(): string
     {
         $statuses = ['pending', 'paid', 'failed', 'refunded', 'partial_refund'];
+
         return $statuses[array_rand($statuses)];
     }
 
     private function getRandomPaymentMethod(): string
     {
         $methods = ['card', 'sbp', 'wallet'];
+
         return $methods[array_rand($methods)];
     }
 
@@ -198,7 +201,8 @@ final class SeedUniversalOrders extends Command
     {
         $streets = ['Main Street', 'Park Avenue', 'Oak Road', 'Elm Street', 'Broadway'];
         $numbers = rand(1, 999);
-        return $numbers . ' ' . $streets[array_rand($streets)] . ', Moscow';
+
+        return $numbers.' '.$streets[array_rand($streets)].', Moscow';
     }
 
     private function getRandomINN(): string
@@ -209,12 +213,14 @@ final class SeedUniversalOrders extends Command
     private function getRandomColor(): string
     {
         $colors = ['red', 'blue', 'green', 'black', 'white', 'yellow', 'purple'];
+
         return $colors[array_rand($colors)];
     }
 
     private function getRandomSize(): string
     {
         $sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+
         return $sizes[array_rand($sizes)];
     }
 }

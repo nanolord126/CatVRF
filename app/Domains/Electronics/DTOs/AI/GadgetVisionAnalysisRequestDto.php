@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs\AI;
 
@@ -7,9 +9,9 @@ use Illuminate\Http\UploadedFile;
 final readonly class GadgetVisionAnalysisRequestDto
 {
     /**
-     * @param array<string> $preferredBrands
-     * @param array<string> $useCases
-     * @param array<string, mixed> $additionalSpecs
+     * @param  array<string>  $preferredBrands
+     * @param  array<string>  $useCases
+     * @param  array<string, mixed>  $additionalSpecs
      */
     public function __construct(
         public UploadedFile $image,
@@ -21,8 +23,7 @@ final readonly class GadgetVisionAnalysisRequestDto
         public array $useCases = [],
         public array $additionalSpecs = [],
         public ?string $idempotencyKey = null,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(array $data, UploadedFile $image, int $userId, string $correlationId): self
     {

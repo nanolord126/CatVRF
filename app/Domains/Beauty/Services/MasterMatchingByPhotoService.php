@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\DTOs\MasterMatchingByPhotoDto;
 use App\Domains\Beauty\Events\MasterMatchedEvent;
 use App\Domains\Beauty\Models\Master;
@@ -14,25 +18,28 @@ use App\Services\RecommendationService;
 use App\Services\Security\IdempotencyService;
 use App\Services\ML\UserTasteAnalyzerService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use OpenAI\Client;
 
 final readonly class MasterMatchingByPhotoService
 {
     private const CACHE_TTL = 3600;
+
     private const EMBEDDING_DIMENSION = 512;
 
-    public function __construct(
-        private Client $openai,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private IdempotencyService $idempotency,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly Client $openai,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly IdempotencyService $idempotency,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function match(MasterMatchingByPhotoDto $dto): array
     {
@@ -46,10 +53,10 @@ final readonly class MasterMatchingByPhotoService
         );
 
         $cacheKey = $this->getCacheKey($dto);
-        $cached = Redis::get($cacheKey);
+        $cached = $this->redis->get($cacheKey);
 
         if ($cached !== null) {
-            Log::channel('audit')->info('Master matching cache hit', [
+            $this->log->channel('audit')->$this->logger->info('Master matching cache hit', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
             ]);
@@ -57,7 +64,7 @@ final readonly class MasterMatchingByPhotoService
             return json_decode($cached, true);
         }
 
-        return DB::transaction(function () use ($dto, $cacheKey) {
+        return $this->db->transaction(function () use ($dto, $cacheKey) {
             $analysis = $this->analyzePhoto($dto);
 
             $faceEmbedding = $this->generateFaceEmbedding($dto->photo);
@@ -93,16 +100,16 @@ final readonly class MasterMatchingByPhotoService
                 'correlation_id' => $dto->correlationId,
             ];
 
-            Redis::setex($cacheKey, self::CACHE_TTL, json_encode($result));
+            $this->redis->setex($cacheKey, self::CACHE_TTL, json_encode($result));
 
-            Log::channel('audit')->info('Master matching completed', [
+            $this->log->channel('audit')->$this->logger->info('Master matching completed', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'matches_count' => count($enrichedMasters),
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new MasterMatchedEvent($dto->userId, $enrichedMasters, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new MasterMatchedEvent($dto->userId, $enrichedMasters, $dto->correlationId));
 
             $this->audit->record(
                 action: 'beauty_master_matched',
@@ -135,7 +142,7 @@ final readonly class MasterMatchingByPhotoService
                         [
                             'type' => 'image_url',
                             'image_url' => [
-                                'url' => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($dto->photo->getRealPath())),
+                                'url' => 'data:image/jpeg;base64,'.base64_encode(file_get_contents($dto->photo->getRealPath())),
                             ],
                         ],
                     ],
@@ -240,7 +247,7 @@ final readonly class MasterMatchingByPhotoService
                     'lat' => $master->salon->lat,
                     'lon' => $master->salon->lon,
                 ],
-                'services' => $master->services->map(fn($s) => [
+                'services' => $master->services->map(fn ($s) => [
                     'id' => $s->id,
                     'name' => $s->name,
                     'duration' => $s->duration,
@@ -299,7 +306,7 @@ final readonly class MasterMatchingByPhotoService
             $master['match_percentage'] = min(99, (int) round($mlScore * 100));
         }
 
-        usort($masters, fn($a, $b) => $b['ml_score'] <=> $a['ml_score']);
+        usort($masters, fn ($a, $b) => $b['ml_score'] <=> $a['ml_score']);
 
         return array_slice($masters, 0, 10);
     }
@@ -323,6 +330,7 @@ final readonly class MasterMatchingByPhotoService
         }
 
         $ratio = $preferredPrice / $price;
+
         return min(1.0, max(0.0, $ratio));
     }
 

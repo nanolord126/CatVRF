@@ -17,9 +17,9 @@ use RuntimeException;
 final class InsufficientBalanceException extends RuntimeException
 {
     public function __construct(
-        private readonly int    $walletId,
-        private readonly float  $requested,
-        private readonly float  $currentBalance,
+        private readonly int $walletId,
+        private readonly float $requested,
+        private readonly float $currentBalance,
         private readonly string $correlationId,
     ) {
         parent::__construct(

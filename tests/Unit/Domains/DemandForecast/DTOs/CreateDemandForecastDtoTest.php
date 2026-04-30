@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\DemandForecast\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\DemandForecast\DTOs\CreateDemandForecastDto;
 
 /**
  * Unit tests for CreateDemandForecastDto.
@@ -14,7 +17,7 @@ final class CreateDemandForecastDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\DemandForecast\DTOs\CreateDemandForecastDto::class
+            CreateDemandForecastDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateDemandForecastDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateDemandForecastDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateDemandForecastDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\DemandForecast\DTOs\CreateDemandForecastDto::class
+            CreateDemandForecastDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('businessGroupId', $params, 'Constructor must have businessGroupId');
         $this->assertContains('name', $params, 'Constructor must have name');
@@ -37,7 +40,7 @@ final class CreateDemandForecastDtoTest extends TestCase
         $this->assertContains('idempotencyKey', $params, 'Constructor must have idempotencyKey');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -47,6 +50,6 @@ final class CreateDemandForecastDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\DemandForecast\DTOs\CreateDemandForecastDto::class;
+        return CreateDemandForecastDto::class;
     }
 }

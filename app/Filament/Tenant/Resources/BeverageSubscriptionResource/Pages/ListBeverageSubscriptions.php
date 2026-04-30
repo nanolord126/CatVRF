@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListBeverageSubscriptions — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listbeveragesubscriptions
  * @see https://catvrf.ru/docs/listbeveragesubscriptions
  * @see https://catvrf.ru/docs/listbeveragesubscriptions
@@ -30,24 +33,16 @@
  * @see https://catvrf.ru/docs/listbeveragesubscriptions
  */
 
-
 namespace App\Filament\Tenant\Resources\BeverageSubscriptionResource\Pages;
 
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\CreateAction;
 
 final class ListBeverageSubscriptions extends ListRecords
 {
-
     protected static string $resource = BeverageSubscriptionResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\CreateAction::make()
-                    ->label('Grant New Subscription')
-                    ->icon('heroicon-o-sparkles'),
-            ];
-        }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +51,7 @@ final class ListBeverageSubscriptions extends ListRecords
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +62,17 @@ final class ListBeverageSubscriptions extends ListRecords
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Grant New Subscription')
+                ->icon('heroicon-o-sparkles'),
         ];
     }
 }

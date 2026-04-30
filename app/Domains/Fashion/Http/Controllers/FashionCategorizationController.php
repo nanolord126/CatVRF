@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Controllers;
 
@@ -13,9 +15,9 @@ use Illuminate\Validation\ValidationException;
 final readonly class FashionCategorizationController
 {
     public function __construct(
-        private FashionProductCategorizationService $categorization,
-        private FashionProductFilteringService $filtering,
-        private FashionUserPatternMemoryService $patternMemory,
+        private readonly FashionProductCategorizationService $categorization,
+        private readonly FashionProductFilteringService $filtering,
+        private readonly FashionUserPatternMemoryService $patternMemory,
     ) {}
 
     /**
@@ -41,7 +43,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -70,7 +72,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -86,7 +88,7 @@ final readonly class FashionCategorizationController
 
         $hierarchy = $this->categorization->getCategoryHierarchy($parentCategory);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $hierarchy,
         ]);
@@ -105,7 +107,7 @@ final readonly class FashionCategorizationController
 
         $suggestions = $this->categorization->getSmartCategorySuggestions($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $suggestions,
         ]);
@@ -139,7 +141,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -156,7 +158,7 @@ final readonly class FashionCategorizationController
 
         $filters = $this->filtering->getAvailableFilters($userId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $filters,
             'correlation_id' => $correlationId,
@@ -185,7 +187,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -206,7 +208,7 @@ final readonly class FashionCategorizationController
 
         $recommendations = $this->filtering->getSmartFilterRecommendations($userId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $recommendations,
             'correlation_id' => $correlationId,
@@ -239,7 +241,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -260,7 +262,7 @@ final readonly class FashionCategorizationController
 
         $patterns = $this->patternMemory->getUserMemoryPatterns($userId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $patterns,
             'correlation_id' => $correlationId,
@@ -281,7 +283,7 @@ final readonly class FashionCategorizationController
 
         $predictions = $this->patternMemory->predictNextAction($userId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $predictions,
             'correlation_id' => $correlationId,
@@ -308,7 +310,7 @@ final readonly class FashionCategorizationController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $recommendations,
             'correlation_id' => $correlationId,
@@ -328,7 +330,7 @@ final readonly class FashionCategorizationController
 
         $data = $this->patternMemory->exportUserMemoryData($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $data,
         ]);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -9,7 +11,9 @@ use App\Domains\Auto\Models\AutoVehicle;
 
 final class VideoInspectionInitiatedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public readonly AutoVehicle $vehicle,

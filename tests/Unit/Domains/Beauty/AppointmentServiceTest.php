@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Beauty;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Beauty\Domain\Services\AppointmentService;
 
 /**
  * Unit tests for AppointmentService.
@@ -14,7 +17,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Beauty\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $this->assertTrue($reflection->isFinal(), 'AppointmentService must be final');
     }
@@ -22,7 +25,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Beauty\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'AppointmentService must be readonly');
     }
@@ -30,7 +33,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Beauty\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'AppointmentService must have __construct');
@@ -40,9 +43,8 @@ final class AppointmentServiceTest extends TestCase
     public function test_book_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Beauty\Domain\Services\AppointmentService::class, 'book'),
+            method_exists(AppointmentService::class, 'book'),
             'AppointmentService must implement book()'
         );
     }
-
 }

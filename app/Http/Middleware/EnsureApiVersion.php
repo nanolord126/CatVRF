@@ -31,7 +31,7 @@ final class EnsureApiVersion
     /**
          * @var array<string>
          */
-        private array $supportedVersions = ['v1', 'v2'];
+        private readonly array $supportedVersions = ['v1', 'v2'];
 
         public function handle(Request $request, Closure $next): mixed
         {

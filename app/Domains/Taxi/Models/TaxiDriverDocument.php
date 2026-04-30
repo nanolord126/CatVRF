@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +15,39 @@ use Illuminate\Support\Str;
 final class TaxiDriverDocument extends Model
 {
     use HasFactory;
+    use TenantScoped;
+
+    /**
+     * Типы документов.
+     */
+    public const TYPE_DRIVER_LICENSE = 'driver_license';
+
+    public const TYPE_VEHICLE_REGISTRATION = 'vehicle_registration';
+
+    public const TYPE_INSURANCE = 'insurance';
+
+    public const TYPE_INSPECTION = 'inspection';
+
+    public const TYPE_BACKGROUND_CHECK = 'background_check';
+
+    public const TYPE_MEDICAL_CERTIFICATE = 'medical_certificate';
+
+    public const TYPE_TAXI_LICENSE = 'taxi_license';
+
+    public const TYPE_IDENTITY_DOCUMENT = 'identity_document';
+
+    public const TYPE_CONTRACT = 'contract';
+
+    /**
+     * Статусы документов.
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_VERIFIED = 'verified';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    public const STATUS_EXPIRED = 'expired';
 
     protected $table = 'taxi_driver_documents';
 
@@ -32,7 +70,7 @@ final class TaxiDriverDocument extends Model
         'rejection_reason',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -47,43 +85,6 @@ final class TaxiDriverDocument extends Model
     protected $hidden = ['metadata'];
 
     /**
-     * Типы документов.
-     */
-    public const TYPE_DRIVER_LICENSE = 'driver_license';
-    public const TYPE_VEHICLE_REGISTRATION = 'vehicle_registration';
-    public const TYPE_INSURANCE = 'insurance';
-    public const TYPE_INSPECTION = 'inspection';
-    public const TYPE_BACKGROUND_CHECK = 'background_check';
-    public const TYPE_MEDICAL_CERTIFICATE = 'medical_certificate';
-    public const TYPE_TAXI_LICENSE = 'taxi_license';
-    public const TYPE_IDENTITY_DOCUMENT = 'identity_document';
-    public const TYPE_CONTRACT = 'contract';
-
-    /**
-     * Статусы документов.
-     */
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_VERIFIED = 'verified';
-    public const STATUS_REJECTED = 'rejected';
-    public const STATUS_EXPIRED = 'expired';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiDriverDocument $document) {
-            $document->uuid = $document->uuid ?? (string) Str::uuid();
-            $document->tenant_id = $document->tenant_id ?? (tenant()->id ?? 1);
-            $document->status = $document->status ?? self::STATUS_PENDING;
-            $document->correlation_id = $document->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
-
-    /**
      * Отношения.
      */
     public function driver(): BelongsTo
@@ -96,8 +97,8 @@ final class TaxiDriverDocument extends Model
      */
     public function isValid(): bool
     {
-        return $this->status === self::STATUS_VERIFIED && 
-               $this->expiry_date && 
+        return $this->status === self::STATUS_VERIFIED &&
+               $this->expiry_date &&
                $this->expiry_date->isFuture();
     }
 
@@ -114,8 +115,8 @@ final class TaxiDriverDocument extends Model
      */
     public function isExpiringSoon(): bool
     {
-        return $this->expiry_date && 
-               $this->expiry_date->between(now(), now()->addDays(30));
+        return $this->expiry_date &&
+               $this->expiry_date->between(CarbonImmutable::now(), CarbonImmutable::now()->addDays(30));
     }
 
     /**
@@ -123,11 +124,11 @@ final class TaxiDriverDocument extends Model
      */
     public function getDaysUntilExpiry(): ?int
     {
-        if (!$this->expiry_date) {
+        if (! $this->expiry_date) {
             return null;
         }
 
-        return (int) now()->diffInDays($this->expiry_date, false);
+        return (int) CarbonImmutable::now()->diffInDays($this->expiry_date, false);
     }
 
     /**
@@ -138,7 +139,7 @@ final class TaxiDriverDocument extends Model
         $this->update([
             'status' => self::STATUS_VERIFIED,
             'verified_by' => $verifiedBy,
-            'verified_at' => now(),
+            'verified_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -151,5 +152,21 @@ final class TaxiDriverDocument extends Model
             'status' => self::STATUS_REJECTED,
             'rejection_reason' => $reason,
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiDriverDocument $document) {
+            $document->uuid = $document->uuid ?? (string) Str::uuid();
+            $document->tenant_id = $document->tenant_id ?? (tenant()->id ?? 1);
+            $document->status = $document->status ?? self::STATUS_PENDING;
+            $document->correlation_id = $document->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateService — CatVRF 2026 Component.
@@ -7,21 +9,23 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createservice
  * @see https://catvrf.ru/docs/createservice
  * @see https://catvrf.ru/docs/createservice
  */
 
-
 namespace App\Filament\Tenant\Resources\Service\Pages;
 
 use App\Filament\Tenant\Resources\ServiceResource;
 use Filament\Resources\Pages\CreateRecord;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class CreateService
@@ -33,34 +37,11 @@ use Filament\Resources\Pages\CreateRecord;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Service\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class CreateService extends CreateRecord
 {
-    protected static string $resource = ServiceResource::class;
-
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
-    }
-
     /**
      * Version identifier for this component.
      */
@@ -71,4 +52,21 @@ final class CreateService extends CreateRecord
      */
     private const MAX_RETRIES = 3;
 
+    protected static string $resource = ServiceResource::class;
+
+    /**
+     * Get the string representation of this object.
+     */
+    public function __toString(): string
+    {
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

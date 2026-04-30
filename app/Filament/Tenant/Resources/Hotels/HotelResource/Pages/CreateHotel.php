@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Hotels\HotelResource\Pages;
+
+use LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Filament\Tenant\Resources\Hotels\HotelResource;
 use Filament\Resources\Pages\CreateRecord;
@@ -11,8 +17,6 @@ use Psr\Log\LoggerInterface;
  * CreateHotel — страница создания отеля для HotelResource.
  *
  * Filament v3 Page: tenant-scoped, correlation_id tracing, audit logging.
- *
- * @package App\Filament\Tenant\Resources\Hotels\HotelResource\Pages
  */
 final class CreateHotel extends CreateRecord
 {
@@ -21,7 +25,7 @@ final class CreateHotel extends CreateRecord
     /**
      * Мутация данных формы перед созданием записи.
      *
-     * @param array<string, mixed> $data Данные формы
+     * @param  array<string, mixed>  $data  Данные формы
      * @return array<string, mixed> Обогащённые данные
      */
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -38,12 +42,12 @@ final class CreateHotel extends CreateRecord
      */
     protected function afterCreate(): void
     {
-        app(LoggerInterface::class)->info('Hotel record created via HotelResource', [
+        $this->loggerInterface /* TODO: inject via constructor DI */ /* TODO: inject via DI */->$this->logger->info('Hotel record created via HotelResource', [
             'record_id' => $this->record->id,
             'correlation_id' => $this->record->correlation_id ?? null,
             'user_id' => filament()->auth()->id(),
             'tenant_id' => filament()->getTenant()?->id,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 

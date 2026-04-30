@@ -1,13 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Analytics\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
+use Carbon\Carbon;
 
 /**
  * Class AnalyticsEvent
@@ -31,14 +34,13 @@ use Illuminate\Support\Str;
  * @property string|null $status
  * @property array|null $tags
  * @property array|null $metadata
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property \Carbon\Carbon|null $deleted_at
- *
- * @package App\Domains\Analytics\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property Carbon|null $deleted_at
  */
 final class AnalyticsEvent extends Model
 {
+    use TenantScoped;
 
     protected $table = 'analytics_events';
 
@@ -59,30 +61,12 @@ final class AnalyticsEvent extends Model
         'metadata' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query): void {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = (string) Str::uuid();
-            }
-        });
-    }
-
     /**
      * Get the tenant that owns this analytics event.
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     /**
@@ -90,7 +74,7 @@ final class AnalyticsEvent extends Model
      */
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class);
+        return $this->belongsTo(BusinessGroup::class);
     }
 
     /**
@@ -106,6 +90,24 @@ final class AnalyticsEvent extends Model
      */
     public function getDisplayLabel(): string
     {
-        return $this->name ?? ('Analytics Event #' . $this->id);
+        return $this->name ?? ('Analytics Event #'.$this->id);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query): void {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+        });
     }
 }

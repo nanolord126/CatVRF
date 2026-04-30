@@ -1,52 +1,58 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-
-
 use App\Services\FraudControlService;
+use App\DTOs\OperationDto;
+use Illuminate\Support\Str;
+
 final class ContractorPolicy
 {
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly FraudControlService $fraud,
         private readonly Request $request,) {}
 
-
+
     // Dependencies injected via constructor
-        // Add private readonly properties here
-        public function viewAny(User $user): Response
-        {
-            return $this->response->allow();
-        }
+    // Add private readonly properties here
+    public function viewAny(User $user): Response
+    {
+        return $this->response->allow();
+    }
 
-        public function view(User $user, Contractor $contractor): Response
-        {
-            return $this->response->allow();
-        }
+    public function $this->viewFactory->make(User $user, Contractor $contractor): Response
+    {
+        return $this->response->allow();
+    }
 
-        public function create(User $user): Response
-        {
-        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+    public function create(User $user): Response
+    {
+        $this->fraud->check(new OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString()));
 
-            return $user->hasPermissionTo('create_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+        return $user->hasPermissionTo('create_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
-        public function update(User $user, Contractor $contractor): Response
-        {
-        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+    public function update(User $user, Contractor $contractor): Response
+    {
+        $this->fraud->check(new OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString()));
 
-            return $user->id === $contractor->user_id || $user->hasPermissionTo('update_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+        return $user->id === $contractor->user_id || $user->hasPermissionTo('update_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
-        public function delete(User $user, Contractor $contractor): Response
-        {
-        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+    public function delete(User $user, Contractor $contractor): Response
+    {
+        $this->fraud->check(new OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString()));
 
-            return $user->hasPermissionTo('delete_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+        return $user->hasPermissionTo('delete_contractors') ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -55,7 +61,7 @@ final class ContractorPolicy
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -66,8 +72,8 @@ final class ContractorPolicy
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

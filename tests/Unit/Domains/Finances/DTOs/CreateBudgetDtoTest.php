@@ -16,36 +16,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class CreateBudgetDtoTest extends TestCase
 {
-    private function makeDto(
-        int $tenantId = 1,
-        ?int $businessGroupId = null,
-        int $userId = 10,
-        string $correlationId = 'corr-budget',
-        string $name = 'Q1 Marketing',
-        int $amount = 10000000,
-        string $currency = 'RUB',
-        string $periodStart = '2026-01-01',
-        string $periodEnd = '2026-03-31',
-        array $metadata = [],
-        ?string $idempotencyKey = null,
-        bool $isB2B = false,
-    ): CreateBudgetDto {
-        return new CreateBudgetDto(
-            tenantId: $tenantId,
-            businessGroupId: $businessGroupId,
-            userId: $userId,
-            correlationId: $correlationId,
-            name: $name,
-            amount: $amount,
-            currency: $currency,
-            periodStart: $periodStart,
-            periodEnd: $periodEnd,
-            metadata: $metadata,
-            idempotencyKey: $idempotencyKey,
-            isB2B: $isB2B,
-        );
-    }
-
     #[Test]
     public function it_stores_all_properties(): void
     {
@@ -97,7 +67,7 @@ final class CreateBudgetDtoTest extends TestCase
     }
 
     #[Test]
-    public function toArray_returns_correct_structure(): void
+    public function to_array_returns_correct_structure(): void
     {
         $dto = $this->makeDto(
             tenantId: 100,
@@ -127,7 +97,7 @@ final class CreateBudgetDtoTest extends TestCase
     }
 
     #[Test]
-    public function toArray_does_not_leak_internal_flags(): void
+    public function to_array_does_not_leak_internal_flags(): void
     {
         $dto = $this->makeDto(idempotencyKey: 'key-123', isB2B: true);
         $array = $dto->toArray();
@@ -137,7 +107,7 @@ final class CreateBudgetDtoTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_contains_required_fields(): void
+    public function to_audit_context_contains_required_fields(): void
     {
         $dto = $this->makeDto(
             tenantId: 10,
@@ -161,7 +131,7 @@ final class CreateBudgetDtoTest extends TestCase
     }
 
     #[Test]
-    public function getAmountInRubles_converts_kopecks(): void
+    public function get_amount_in_rubles_converts_kopecks(): void
     {
         self::assertSame(100000.0, $this->makeDto(amount: 10000000)->getAmountInRubles());
         self::assertSame(1.0, $this->makeDto(amount: 100)->getAmountInRubles());
@@ -184,5 +154,35 @@ final class CreateBudgetDtoTest extends TestCase
         self::assertSame(15, $dto->businessGroupId);
         self::assertSame(15, $dto->toArray()['business_group_id']);
         self::assertTrue($dto->toAuditContext()['is_b2b']);
+    }
+
+    private function makeDto(
+        int $tenantId = 1,
+        ?int $businessGroupId = null,
+        int $userId = 10,
+        string $correlationId = 'corr-budget',
+        string $name = 'Q1 Marketing',
+        int $amount = 10000000,
+        string $currency = 'RUB',
+        string $periodStart = '2026-01-01',
+        string $periodEnd = '2026-03-31',
+        array $metadata = [],
+        ?string $idempotencyKey = null,
+        bool $isB2B = false,
+    ): CreateBudgetDto {
+        return new CreateBudgetDto(
+            tenantId: $tenantId,
+            businessGroupId: $businessGroupId,
+            userId: $userId,
+            correlationId: $correlationId,
+            name: $name,
+            amount: $amount,
+            currency: $currency,
+            periodStart: $periodStart,
+            periodEnd: $periodEnd,
+            metadata: $metadata,
+            idempotencyKey: $idempotencyKey,
+            isB2B: $isB2B,
+        );
     }
 }

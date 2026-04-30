@@ -5,16 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Analytics;
 
 use App\Services\Analytics\QuotaClickHouseRepository;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
  * Unit Tests for QuotaClickHouseRepository
- * 
+ *
  * Production 2026 CANON - ClickHouse Quota Analytics Tests
- * 
+ *
  * Tests cover:
  * - Idempotent inserts with quota_event_id
  * - Batch inserts for performance
@@ -27,20 +24,13 @@ final class QuotaClickHouseRepositoryTest extends TestCase
 {
     private QuotaClickHouseRepository $repository;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->repository = new QuotaClickHouseRepository();
-    }
-
     /**
      * Test single quota event insertion
      */
     public function test_insert_quota_event(): void
     {
         // Skip if ClickHouse is not configured
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -67,11 +57,11 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_idempotent_insert(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
-        $quotaEventId = 'test-idempotent-' . time();
+        $quotaEventId = 'test-idempotent-'.time();
         $event = [
             'quota_event_id' => $quotaEventId,
             'tenant_id' => 1,
@@ -97,7 +87,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_batch_insert_quota_events(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -121,7 +111,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_get_current_hour_usage(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -136,7 +126,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_get_daily_usage(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -151,7 +141,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_get_usage_in_range(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -169,11 +159,11 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_event_exists(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
-        $nonExistentId = 'non-existent-' . time();
+        $nonExistentId = 'non-existent-'.time();
         $exists = $this->repository->eventExists($nonExistentId);
 
         $this->assertFalse($exists);
@@ -187,7 +177,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
         $result = $this->repository->testConnection();
 
         // This test passes if ClickHouse is configured, skips otherwise
-        if (!$result) {
+        if (! $result) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -199,7 +189,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_error_handling_invalid_data(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -233,10 +223,10 @@ final class QuotaClickHouseRepositoryTest extends TestCase
         // This is a structural test to verify retry logic exists
         $reflection = new \ReflectionClass($this->repository);
         $method = $reflection->getMethod('withRetry');
-        
+
         $this->assertTrue($method->isPrivate());
         $parameters = $method->getParameters();
-        
+
         // Should have callback parameter
         $this->assertCount(1, $parameters);
         $this->assertInstanceOf(\ReflectionParameter::class, $parameters[0]);
@@ -247,7 +237,7 @@ final class QuotaClickHouseRepositoryTest extends TestCase
      */
     public function test_trace_id_integration(): void
     {
-        if (!$this->repository->testConnection()) {
+        if (! $this->repository->testConnection()) {
             $this->markTestSkipped('ClickHouse not configured');
         }
 
@@ -261,6 +251,13 @@ final class QuotaClickHouseRepositoryTest extends TestCase
         $result = $this->repository->insertQuotaEvent($event);
 
         $this->assertTrue($result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->repository = new QuotaClickHouseRepository();
     }
 
     protected function tearDown(): void

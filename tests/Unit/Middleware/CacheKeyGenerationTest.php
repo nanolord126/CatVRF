@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Middleware;
 
@@ -22,7 +24,7 @@ final class CacheKeyGenerationTest extends TestCase
         $userId = 123;
         $cacheKey = "user_b2b_mode_{$userId}";
 
-        $this->assertStringContainsString((string)$userId, $cacheKey);
+        $this->assertStringContainsString((string) $userId, $cacheKey);
     }
 
     public function test_cache_tag_includes_user_id(): void
@@ -30,7 +32,7 @@ final class CacheKeyGenerationTest extends TestCase
         $userId = 456;
         $cacheTag = "user_b2c_b2b_{$userId}";
 
-        $this->assertStringContainsString((string)$userId, $cacheTag);
+        $this->assertStringContainsString((string) $userId, $cacheTag);
     }
 
     public function test_response_cache_key_includes_hash(): void
@@ -40,7 +42,7 @@ final class CacheKeyGenerationTest extends TestCase
         $hash = hash('sha256', $url);
         $cacheKey = "response_{$userId}_{$hash}";
 
-        $this->assertStringContainsString((string)$userId, $cacheKey);
+        $this->assertStringContainsString((string) $userId, $cacheKey);
         $this->assertStringContainsString($hash, $cacheKey);
     }
 
@@ -50,6 +52,6 @@ final class CacheKeyGenerationTest extends TestCase
         $cacheKey = "user_taste_profile_{$userId}";
 
         $this->assertStringContainsString('user_taste_profile', $cacheKey);
-        $this->assertStringContainsString((string)$userId, $cacheKey);
+        $this->assertStringContainsString((string) $userId, $cacheKey);
     }
 }

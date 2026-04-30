@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\Psychology\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Carbon\CarbonImmutable;
+
+final class PsychologicalReview extends Model
+{
+    protected $table = 'psy_reviews';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'psychologist_id',
+        'rating',
+        'comment',
+        'is_public',
+        'correlation_id',
+    ];
+
+    protected $casts = [
+        'rating' => 'integer',
+        'is_public' => 'boolean',
+    ];
+
+    public function psychologist(): BelongsTo
+    {
+        return $this->belongsTo(Psychologist::class, 'psychologist_id');
+    }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return self::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            $model->correlation_id = (string) Str::uuid();
+            $model->tenant_id = tenant()->id ?? 0;
+        });
+    }
+}

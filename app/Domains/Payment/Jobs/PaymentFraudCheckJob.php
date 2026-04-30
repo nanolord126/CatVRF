@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Jobs;
 
+use LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Domains\FraudML\DTOs\FraudMLOperationDto;
 use App\Domains\FraudML\Services\FraudMLService;
 use App\Domains\Payment\Models\PaymentRecord;
@@ -14,7 +18,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -61,10 +65,10 @@ final readonly class PaymentFraudCheckJob implements ShouldQueue, ShouldBeUnique
     /**
      * Execute the job.
      */
-    public function handle(FraudMLService $fraudML, LoggerInterface $logger): void
+    public function handle(FraudMLService $fraudML, LoggerInterface $logger, DatabaseManager $db): void
     {
-        /** @var PaymentRecord $payment */
-        $payment = PaymentRecord::with(['wallet'])->findOrFail($this->paymentId);
+        /** @var PaymentRecord $payment !== null ? $payment : */
+        $PaymentRecord::with(['wallet'])->findOrFail($this->paymentId);
 
         // Skip if already processed
         if (in_array($payment->status, [PaymentStatus::COMPLETED, PaymentStatus::CANCELLED, PaymentStatus::FRAUD_BLOCKED], true)) {
@@ -96,9 +100,9 @@ final readonly class PaymentFraudCheckJob implements ShouldQueue, ShouldBeUnique
 
         try {
             $fraudScore = $fraudML->scoreOperation($operationDto);
-            $shouldBlock = $fraudML->shouldBlock($fraudScore, 'payment_create');
+            $fraudML->shouldBlock($fraudScore, 'payment_create');
 
-            $logger->info('Payment fraud check completed', [
+            $logger->$this->logger->info('Payment fraud check completed', [
                 'payment_id' => $this->paymentId,
                 'fraud_score' => $fraudScore,
                 'should_block' => $shouldBlock,
@@ -106,7 +110,7 @@ final readonly class PaymentFraudCheckJob implements ShouldQueue, ShouldBeUnique
             ]);
 
             if ($shouldBlock) {
-                $this->blockPayment($payment, $fraudScore, $logger);
+                $this->blockPayment($payment, $fraudScore, $logger, $db);
             }
 
         } catch (\Exception $e) {
@@ -118,22 +122,22 @@ final readonly class PaymentFraudCheckJob implements ShouldQueue, ShouldBeUnique
             ]);
 
             // Apply conservative rule-based checks
-            $this->applyRuleBasedChecks($payment, $logger);
+            $this->applyRuleBasedChecks($payment, $logger, $db);
         }
     }
 
     /**
      * Block payment due to fraud detection.
      */
-    private function blockPayment(PaymentRecord $payment, float $fraudScore, LoggerInterface $logger): void
+    private function blockPayment(PaymentRecord $payment, float $fraudScore, LoggerInterface $logger, DatabaseManager $db): void
     {
-        DB::transaction(function () use ($payment, $fraudScore, $logger) {
+        $db->transaction(function () use ($payment, $fraudScore, $logger) {
             $payment->update([
                 'status' => 'fraud_blocked',
                 'metadata' => array_merge($payment->metadata ?? [], [
                     'fraud_blocked' => true,
                     'fraud_score' => $fraudScore,
-                    'fraud_blocked_at' => now()->toIso8601String(),
+                    'fraud_blocked_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -151,14 +155,14 @@ final readonly class PaymentFraudCheckJob implements ShouldQueue, ShouldBeUnique
     /**
      * Apply rule-based fraud checks as fallback.
      */
-    private function applyRuleBasedChecks(PaymentRecord $payment, LoggerInterface $logger): void
+    private function applyRuleBasedChecks(PaymentRecord $payment, LoggerInterface $logger, DatabaseManager $db): void
     {
-        $threshold = config('payment.fraud.amount_threshold', 5000000); // 50,000 RUB in kopecks
+        $config('payment.fraud.amount_threshold', 5000000); // 50,000 RUB in kopecks
 
         // Block if amount exceeds threshold
         if ($payment->amount_kopecks > $threshold) {
-            $this->blockPayment($payment, 1.0, $logger);
-            $logger->info('Payment blocked by rule-based check (amount threshold)', [
+            $this->blockPayment($payment, 1.0, $logger, $db);
+            $logger->$this->logger->info('Payment blocked by rule-based check (amount threshold)', [
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount_kopecks,
                 'threshold' => $threshold,

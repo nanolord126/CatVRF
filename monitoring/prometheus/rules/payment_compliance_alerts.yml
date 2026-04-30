@@ -1,0 +1,256 @@
+groups:
+  - name: payment_compliance_aml
+    interval: 30s
+    rules:
+      # Alert when AML checks have high risk rate
+      - alert: PaymentComplianceAMLHighRiskRate
+        expr: |
+          (
+            sum(rate(aml_checks_total{risk_level="critical"}[5m])) /
+            sum(rate(aml_checks_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz115
+        annotations:
+          summary: "High AML risk rate detected"
+          description: "More than 10% of AML checks have critical risk level (ФЗ-115)"
+          
+      # Alert when AML checks are blocked
+      - alert: PaymentComplianceAMLBlocked
+        expr: |
+          sum(rate(aml_checks_total{status="blocked"}[5m])) > 0
+        for: 2m
+        labels:
+          severity: critical
+          compliance: fz115
+        annotations:
+          summary: "AML checks blocking payments"
+          description: "Payments are being blocked by AML checks (ФЗ-115)"
+          
+      # Alert when AML checks require manual review
+      - alert: PaymentComplianceAMLReviewRequired
+        expr: |
+          sum(aml_checks_pending_review) > 10
+        for: 10m
+        labels:
+          severity: warning
+          compliance: fz115
+        annotations:
+          summary: "AML checks requiring manual review"
+          description: "{{ $value }} AML checks require manual review (ФЗ-115)"
+          
+      # Alert when Rosfinmonitoring reporting fails
+      - alert: PaymentComplianceRosfinmonitoringReportFailure
+        expr: |
+          sum(rate(rosfinmonitoring_reports_failed_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          compliance: fz115
+        annotations:
+          summary: "Rosfinmonitoring reporting failing"
+          description: "Failed to report to Rosfinmonitoring (ФЗ-115)"
+          
+      # Alert when transaction velocity is high
+      - alert: PaymentComplianceHighTransactionVelocity
+        expr: |
+          sum(rate(aml_checks_velocity_24h[5m])) by (user_id) > 10
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz115
+        annotations:
+          summary: "High transaction velocity detected"
+          description: "User {{ $labels.user_id }} has high transaction velocity (ФЗ-115)"
+          
+      # Alert when amount anomalies are detected
+      - alert: PaymentComplianceAmountAnomaly
+        expr: |
+          sum(rate(aml_checks_amount_anomaly_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz115
+        annotations:
+          summary: "Amount anomalies detected"
+          description: "Unusual transaction amounts detected (ФЗ-115)"
+
+  - name: payment_compliance_fiscal
+    interval: 30s
+    rules:
+      # Alert when fiscal receipts fail to send
+      - alert: PaymentComplianceFiscalReceiptFailure
+        expr: |
+          (
+            sum(rate(fiscal_receipts_total{status="failed"}[5m])) /
+            sum(rate(fiscal_receipts_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          compliance: fz54
+        annotations:
+          summary: "Fiscal receipts failing to send"
+          description: "More than 5% of fiscal receipts are failing (54-ФЗ)"
+          
+      # Alert when pending fiscal receipts accumulate
+      - alert: PaymentCompliancePendingFiscalReceipts
+        expr: |
+          sum(fiscal_receipts_pending) > 100
+        for: 10m
+        labels:
+          severity: warning
+          compliance: fz54
+        annotations:
+          summary: "Pending fiscal receipts accumulating"
+          description: "{{ $value }} fiscal receipts pending to send (54-ФЗ)"
+          
+      # Alert when fiscal receipt retries exceed threshold
+      - alert: PaymentComplianceFiscalReceiptHighRetryRate
+        expr: |
+          (
+            sum(rate(fiscal_receipts_retries_total[5m])) /
+            sum(rate(fiscal_receipts_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz54
+        annotations:
+          summary: "High fiscal receipt retry rate"
+          description: "More than 10% of fiscal receipts require retries (54-ФЗ)"
+          
+      # Alert when OFD provider has high error rate
+      - alert: PaymentComplianceOFDErrorRate
+        expr: |
+          (
+            sum(rate(ofd_requests_failed_total{provider=~".+"}[5m])) by (provider) /
+            sum(rate(ofd_requests_total{provider=~".+"}[5m])) by (provider)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz54
+        annotations:
+          summary: "OFD provider high error rate"
+          description: "OFD provider {{ $labels.provider }} has high error rate (54-ФЗ)"
+          
+      # Alert when fiscal confirmation takes too long
+      - alert: PaymentComplianceFiscalConfirmationDelay
+        expr: |
+          histogram_quantile(0.95, rate(fiscal_receipt_confirmation_duration_seconds_bucket[5m])) > 60
+        for: 10m
+        labels:
+          severity: warning
+          compliance: fz54
+        annotations:
+          summary: "Fiscal confirmation delay"
+          description: "95th percentile of fiscal confirmation time is > 60s (54-ФЗ)"
+
+  - name: payment_compliance_fz161
+    interval: 30s
+    rules:
+      # Alert when ФЗ-161 violations occur
+      - alert: PaymentComplianceFZ161Violation
+        expr: |
+          sum(rate(fz161_violations_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: critical
+          compliance: fz161
+        annotations:
+          summary: "ФЗ-161 violations detected"
+          description: "Payments violating ФЗ-161 requirements detected"
+          
+      # Alert when transaction limits are approached
+      - alert: PaymentComplianceTransactionLimitWarning
+        expr: |
+          (
+            sum(payment_volume_kopecks) / fz161_max_daily_amount
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz161
+        annotations:
+          summary: "Approaching daily transaction limit"
+          description: "Daily transaction volume approaching ФЗ-161 limit"
+          
+      # Alert when fraud detection blocks payments
+      - alert: PaymentComplianceFraudBlockRate
+        expr: |
+          (
+            sum(rate(payments_blocked_fraud_total[5m])) /
+            sum(rate(payments_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          compliance: fz161
+        annotations:
+          summary: "High fraud block rate"
+          description: "More than 5% of payments blocked by fraud detection (ФЗ-161)"
+          
+      # Alert when settlement method violations occur
+      - alert: PaymentComplianceSettlementViolation
+        expr: |
+          sum(rate(settlement_violations_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: critical
+          compliance: fz161
+        annotations:
+          summary: "Settlement method violations"
+          description: "Settlements not to bank accounts detected (ФЗ-161)"
+
+  - name: payment_compliance_general
+    interval: 60s
+    rules:
+      # Alert when compliance checks take too long
+      - alert: PaymentComplianceCheckLatency
+        expr: |
+          histogram_quantile(0.95, rate(compliance_check_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Compliance checks slow"
+          description: "95th percentile of compliance check time is > 5s"
+          
+      # Alert when compliance job queue length is high
+      - alert: PaymentComplianceJobQueueLength
+        expr: |
+          sum(queue_length{queue=~"fiscal|aml|compliance"}) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Compliance job queue high"
+          description: "Compliance job queue length is {{ $value }}"
+          
+      # Alert when compliance job failure rate is high
+      - alert: PaymentComplianceJobFailureRate
+        expr: |
+          (
+            sum(rate(jobs_failed_total{job=~"AMLReport|FiscalReceipt|Rosfinmonitoring"}[5m])) /
+            sum(rate(jobs_total{job=~"AMLReport|FiscalReceipt|Rosfinmonitoring"}[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Compliance jobs failing"
+          description: "More than 10% of compliance jobs are failing"
+          
+      # Alert when data retention cleanup fails
+      - alert: PaymentComplianceRetentionCleanupFailure
+        expr: |
+          sum(rate(retention_cleanup_failed_total[1h])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Retention cleanup failing"
+          description: "Failed to cleanup old compliance data"

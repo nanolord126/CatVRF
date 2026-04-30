@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Communication;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Communication\Models\Message;
 use Illuminate\Mail\Mailer;
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * Sends a Message record via email (Mailgun / SendGrid driver).
@@ -14,9 +18,27 @@ use Illuminate\Log\LogManager;
  */
 final readonly class EmailChannelService
 {
+    use WithAuditLogging;
+
+    /**
+     * Component: EmailChannelService
+     *
+     * Part of the CatVRF 2026 multi-vertical marketplace platform.
+     * Implements tenant-aware, fraud-checked business logic
+     * with full correlation_id tracing and audit logging.
+     *
+     * @version 2026.1
+     */
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
     public function __construct(
-        private Mailer     $mailer,
-        private LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly Mailer $mailer,
+        private readonly LogManager $log,
+        private readonly AuditService $audit,
     ) {}
 
     public function send(Message $message): void
@@ -26,6 +48,7 @@ final readonly class EmailChannelService
                 'message_id'     => $message->id,
                 'correlation_id' => $message->correlation_id,
             ]);
+
             return;
         }
 
@@ -39,25 +62,10 @@ final readonly class EmailChannelService
             }
         );
 
-        $this->logger->channel('audit')->info('Email message sent', [
+        $this->logger->channel('audit')->$this->logger->info('Email message sent', [
             'message_id'     => $message->id,
             'to_email'       => $message->metadata['to_email'],
             'correlation_id' => $message->correlation_id,
         ]);
     }
-
-    /**
-     * Component: EmailChannelService
-     *
-     * Part of the CatVRF 2026 multi-vertical marketplace platform.
-     * Implements tenant-aware, fraud-checked business logic
-     * with full correlation_id tracing and audit logging.
-     *
-     * @package CatVRF
-     * @version 2026.1
-     */
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 }

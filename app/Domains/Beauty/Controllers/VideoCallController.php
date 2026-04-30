@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 final class VideoCallController
 {
     public function __construct(
-        private VideoCallService $videoCallService,
+        private readonly VideoCallService $videoCallService,
     ) {}
 
     public function initiate(VideoCallRequest $request): JsonResponse
@@ -23,7 +23,7 @@ final class VideoCallController
 
         $result = $this->videoCallService->initiate($dto);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new VideoCallResource($result),
             'correlation_id' => $result['correlation_id'],
@@ -38,6 +38,6 @@ final class VideoCallController
 
         $result = $this->videoCallService->end($callId, $durationSeconds, $reason);
 
-        return response()->json($result);
+        return new JsonResponse($result);
     }
 }

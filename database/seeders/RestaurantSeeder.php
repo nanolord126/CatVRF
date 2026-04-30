@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Domains\Food\Models\Restaurant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 final class RestaurantSeeder extends Seeder
 {
@@ -189,7 +190,7 @@ final class RestaurantSeeder extends Seeder
                 ['slug' => $restaurantData['slug']],
                 array_merge($restaurantData, [
                     'tenant_id' => 1,
-                    'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+                    'correlation_id' => Str::uuid()->toString(),
                 ]),
             );
         }

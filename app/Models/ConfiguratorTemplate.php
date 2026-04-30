@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -8,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * Class ConfiguratorTemplate
@@ -24,49 +27,49 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class ConfiguratorTemplate extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
-        protected $table = 'configurator_templates';
+    protected $table = 'configurator_templates';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'name',
-            'slug',
-            'type',
-            'meta',
-            'is_active',
-            'correlation_id',
-            'tags',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'name',
+        'slug',
+        'type',
+        'meta',
+        'is_active',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $casts = [
-            'meta' => 'json',
-            'tags' => 'json',
-            'is_active' => 'boolean',
-        ];
+    protected $casts = [
+        'meta' => 'json',
+        'tags' => 'json',
+        'is_active' => 'boolean',
+    ];
 
-        protected static function booted(): void
-        {
-            static::creating(function (ConfiguratorTemplate $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-            });
+    public function options(): HasMany
+    {
+        return $this->hasMany(ConfiguratorOption::class, 'template_id');
+    }
 
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        self::creating(function (ConfiguratorTemplate $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+        });
 
-        public function options(): HasMany
-        {
-            return $this->hasMany(ConfiguratorOption::class, 'template_id');
-        }
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

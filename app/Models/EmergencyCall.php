@@ -1,29 +1,33 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * EmergencyCall — запись о вызове экстренных служб.
  * Канон CatVRF 2026 — PRODUCTION MANDATORY.
  *
- * @property int         $id
- * @property int|null    $tenant_id
+ * @property int $id
+ * @property int|null $tenant_id
  * @property string|null $caller_name
- * @property string      $caller_phone
+ * @property string $caller_phone
  * @property string|null $address
- * @property float|null  $lat
- * @property float|null  $lon
- * @property string      $category       fire|medical|accident|crime|other
- * @property string      $status         new|dispatched|on_scene|resolved|cancelled|false_call
+ * @property float|null $lat
+ * @property float|null $lon
+ * @property string $category fire|medical|accident|crime|other
+ * @property string $status new|dispatched|on_scene|resolved|cancelled|false_call
  * @property string|null $assigned_unit
  * @property string|null $dispatcher_notes
  * @property string|null $correlation_id
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class EmergencyCall extends Model
 {
@@ -50,15 +54,6 @@ final class EmergencyCall extends Model
         'lon' => 'float',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (self $model): void {
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-        });
-    }
-
     // ── Relations ────────────────────────────────────────────
 
     public function tenant(): BelongsTo
@@ -68,13 +63,22 @@ final class EmergencyCall extends Model
 
     // ── Scopes ───────────────────────────────────────────────
 
-    public function scopeActive($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeActive($query): Builder
     {
         return $query->whereIn('status', ['new', 'dispatched', 'on_scene']);
     }
 
-    public function scopeNew($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeNew($query): Builder
     {
         return $query->where('status', 'new');
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model): void {
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+        });
     }
 }

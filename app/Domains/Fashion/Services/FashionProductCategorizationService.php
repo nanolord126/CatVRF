@@ -1,12 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -16,13 +22,14 @@ use Illuminate\Support\Str;
 final readonly class FashionProductCategorizationService
 {
     private const CATEGORY_CONFIDENCE_THRESHOLD = 0.75;
+
     private const AUTO_CATEGORIZATION_ENABLED = true;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Автоматическая категоризация товара на основе атрибутов.
@@ -80,7 +87,7 @@ final readonly class FashionProductCategorizationService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Fashion product auto-categorized', [
+            $this->log->channel('audit')->$this->logger->info('Fashion product auto-categorized', [
                 'product_id' => $productId,
                 'tenant_id' => $tenantId,
                 'primary_category' => $primaryCategory,
@@ -125,7 +132,7 @@ final readonly class FashionProductCategorizationService
                     $results[] = $result;
                 }
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to recategorize product', [
+                $this->log->channel('audit')->warning('Failed to recategorize product', [
                     'product_id' => $productId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -226,7 +233,7 @@ final readonly class FashionProductCategorizationService
 
         $name = strtolower($attributes['name'] ?? '');
         $description = strtolower($attributes['description'] ?? '');
-        $combined = $name . ' ' . $description;
+        $combined = $name.' '.$description;
 
         foreach ($categoryRules as $category => $keywords) {
             foreach ($keywords as $keyword) {
@@ -342,7 +349,7 @@ final readonly class FashionProductCategorizationService
             }
         }
 
-        $currentMonth = Carbon::now()->month;
+        $currentMonth = CarbonImmutable::now()->month;
         if ($currentMonth >= 3 && $currentMonth <= 5) {
             return 'spring';
         } elseif ($currentMonth >= 6 && $currentMonth <= 8) {
@@ -397,7 +404,7 @@ final readonly class FashionProductCategorizationService
                 'style_profile' => $styleProfile,
                 'season' => $season,
                 'target_audience' => $targetAudience,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
     }
@@ -409,7 +416,7 @@ final readonly class FashionProductCategorizationService
         $score += isset($attributes['description']) ? 0.1 : 0;
         $score += isset($attributes['material']) ? 0.1 : 0;
         $score += isset($attributes['style']) ? 0.05 : 0;
-        $score += !empty($attributes['colors']) ? 0.05 : 0;
+        $score += ! empty($attributes['colors']) ? 0.05 : 0;
 
         return min($score, 1.0);
     }
@@ -435,14 +442,15 @@ final readonly class FashionProductCategorizationService
             ->toArray();
 
         $total = array_sum($views);
-        return array_map(fn($count) => $count / max($total, 1), $views);
+
+        return array_map(fn ($count) => $count / max($total, 1), $views);
     }
 
     private function getTrendingCategories(): array
     {
         $views = $this->db->table('product_views')
             ->join('fashion_product_categories', 'product_views.product_id', '=', 'fashion_product_categories.product_id')
-            ->where('product_views.created_at', '>=', Carbon::now()->subDays(7))
+            ->where('product_views.created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->selectRaw('fashion_product_categories.primary_category, COUNT(*) as count')
             ->groupBy('fashion_product_categories.primary_category')
             ->orderByRaw('count DESC')
@@ -452,7 +460,8 @@ final readonly class FashionProductCategorizationService
             ->toArray();
 
         $total = array_sum($views);
-        return array_map(fn($count) => $count / max($total, 1), $views);
+
+        return array_map(fn ($count) => $count / max($total, 1), $views);
     }
 
     private function getSeasonalCategories(): array

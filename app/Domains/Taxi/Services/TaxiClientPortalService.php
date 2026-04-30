@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Models\TaxiClientFavorite;
@@ -13,7 +17,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * TaxiClientPortalService - Production-ready client portal for taxi operations
- * 
+ *
  * Features:
  * - Client dashboard with ride history
  * - Booking functionality
@@ -37,23 +41,23 @@ final readonly class TaxiClientPortalService
     /**
      * Get client dashboard
      */
-    public function getClientDashboard(int $userId, string $correlationId = null): array
+    public function getClientDashboard(int $userId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
-        $today = now()->startOfDay();
-        
+
+        $today = CarbonImmutable::now()->startOfDay();
+
         // Today's rides
         $todayRides = TaxiRide::where('passenger_id', $userId)
             ->whereDate('created_at', $today)
             ->count();
-        
+
         // Active ride
         $activeRide = TaxiRide::where('passenger_id', $userId)
             ->whereIn('status', [TaxiRide::STATUS_ACCEPTED, TaxiRide::STATUS_STARTED])
             ->with(['driver', 'vehicle'])
             ->first();
-        
+
         // Recent rides
         $recentRides = TaxiRide::where('passenger_id', $userId)
             ->whereIn('status', [TaxiRide::STATUS_COMPLETED, TaxiRide::STATUS_CANCELLED])
@@ -61,7 +65,7 @@ final readonly class TaxiClientPortalService
             ->limit(5)
             ->with(['driver', 'vehicle'])
             ->get();
-        
+
         // Favorite locations
         $favoriteLocations = TaxiClientFavorite::where('user_id', $userId)
             ->where('type', TaxiClientFavorite::TYPE_LOCATION)
@@ -69,13 +73,13 @@ final readonly class TaxiClientPortalService
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
-        
+
         // Favorite drivers
         $favoriteDrivers = TaxiClientFavorite::where('user_id', $userId)
             ->where('type', TaxiClientFavorite::TYPE_DRIVER)
             ->with('driver')
             ->get();
-        
+
         return [
             'user_id' => $userId,
             'today' => [
@@ -129,24 +133,24 @@ final readonly class TaxiClientPortalService
     /**
      * Get client ride history
      */
-    public function getClientRideHistory(int $userId, ?Carbon $startDate = null, ?Carbon $endDate = null, int $perPage = 20, string $correlationId = null): array
+    public function getClientRideHistory(int $userId, ?Carbon $startDate = null, ?Carbon $endDate = null, int $perPage = 20, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $query = TaxiRide::where('passenger_id', $userId);
-        
+
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
         }
-        
+
         if ($endDate) {
             $query->where('created_at', '<=', $endDate);
         }
-        
+
         $rides = $query->orderBy('created_at', 'desc')
             ->with(['driver', 'vehicle'])
             ->paginate($perPage);
-        
+
         return [
             'user_id' => $userId,
             'total_rides' => $rides->total(),
@@ -187,10 +191,10 @@ final readonly class TaxiClientPortalService
     /**
      * Add favorite location
      */
-    public function addFavoriteLocation(int $userId, array $data, string $correlationId = null): TaxiClientFavorite
+    public function addFavoriteLocation(int $userId, array $data, ?string $correlationId = null): TaxiClientFavorite
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($userId, $data, $correlationId) {
             $favorite = TaxiClientFavorite::create([
                 'tenant_id' => tenant()->id ?? 1,
@@ -219,7 +223,7 @@ final readonly class TaxiClientPortalService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi favorite location added', [
+            $this->logger->$this->logger->info('Taxi favorite location added', [
                 'correlation_id' => $correlationId,
                 'favorite_uuid' => $favorite->uuid,
                 'user_id' => $userId,
@@ -233,18 +237,18 @@ final readonly class TaxiClientPortalService
     /**
      * Add favorite driver
      */
-    public function addFavoriteDriver(int $userId, int $driverId, string $correlationId = null): TaxiClientFavorite
+    public function addFavoriteDriver(int $userId, int $driverId, ?string $correlationId = null): TaxiClientFavorite
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($userId, $driverId, $correlationId) {
             $driver = Driver::findOrFail($driverId);
-            
+
             // Check if already favorited
             $existing = TaxiClientFavorite::where('user_id', $userId)
                 ->where('driver_id', $driverId)
                 ->first();
-            
+
             if ($existing) {
                 return $existing;
             }
@@ -253,7 +257,7 @@ final readonly class TaxiClientPortalService
                 'tenant_id' => tenant()->id ?? 1,
                 'user_id' => $userId,
                 'type' => TaxiClientFavorite::TYPE_DRIVER,
-                'name' => $driver->first_name . ' ' . $driver->last_name,
+                'name' => $driver->first_name.' '.$driver->last_name,
                 'driver_id' => $driverId,
                 'is_default' => false,
                 'correlation_id' => $correlationId,
@@ -272,7 +276,7 @@ final readonly class TaxiClientPortalService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi favorite driver added', [
+            $this->logger->$this->logger->info('Taxi favorite driver added', [
                 'correlation_id' => $correlationId,
                 'favorite_uuid' => $favorite->uuid,
                 'user_id' => $userId,
@@ -286,14 +290,14 @@ final readonly class TaxiClientPortalService
     /**
      * Remove favorite
      */
-    public function removeFavorite(int $userId, string $uuid, string $correlationId = null): void
+    public function removeFavorite(int $userId, string $uuid, ?string $correlationId = null): void
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $favorite = TaxiClientFavorite::where('user_id', $userId)
             ->where('uuid', $uuid)
             ->firstOrFail();
-        
+
         $favorite->delete();
 
         $this->audit->log(
@@ -305,7 +309,7 @@ final readonly class TaxiClientPortalService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Taxi favorite removed', [
+        $this->logger->$this->logger->info('Taxi favorite removed', [
             'correlation_id' => $correlationId,
             'favorite_uuid' => $uuid,
             'user_id' => $userId,
@@ -315,10 +319,10 @@ final readonly class TaxiClientPortalService
     /**
      * Get client statistics
      */
-    public function getClientStatistics(int $userId, string $correlationId = null): array
+    public function getClientStatistics(int $userId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $totalRides = TaxiRide::where('passenger_id', $userId)->count();
         $completedRides = TaxiRide::where('passenger_id', $userId)
             ->where('status', TaxiRide::STATUS_COMPLETED)
@@ -326,15 +330,15 @@ final readonly class TaxiClientPortalService
         $cancelledRides = TaxiRide::where('passenger_id', $userId)
             ->where('status', TaxiRide::STATUS_CANCELLED)
             ->count();
-        
+
         $totalSpent = TaxiRide::where('passenger_id', $userId)
             ->where('status', TaxiRide::STATUS_COMPLETED)
             ->sum('total_price');
-        
+
         $averageRating = TaxiRide::where('passenger_id', $userId)
             ->whereNotNull('metadata.driver_rating')
             ->avg('metadata.driver_rating') ?? 5.0;
-        
+
         // Most used locations
         $topPickupLocations = TaxiRide::where('passenger_id', $userId)
             ->where('status', TaxiRide::STATUS_COMPLETED)
@@ -344,7 +348,7 @@ final readonly class TaxiClientPortalService
             ->orderBy('count', 'desc')
             ->limit(5)
             ->get();
-        
+
         return [
             'user_id' => $userId,
             'rides' => [
@@ -374,20 +378,20 @@ final readonly class TaxiClientPortalService
     /**
      * Rate ride
      */
-    public function rateRide(int $userId, string $rideUuid, int $rating, ?string $comment, string $correlationId = null): TaxiRide
+    public function rateRide(int $userId, string $rideUuid, int $rating, ?string $comment, ?string $correlationId = null): TaxiRide
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($userId, $rideUuid, $rating, $comment, $correlationId) {
             $ride = TaxiRide::where('uuid', $rideUuid)
                 ->where('passenger_id', $userId)
                 ->with('driver')
                 ->firstOrFail();
-            
+
             if ($ride->status !== TaxiRide::STATUS_COMPLETED) {
                 throw new \InvalidArgumentException('Ride must be completed to rate');
             }
-            
+
             if ($rating < 1 || $rating > 5) {
                 throw new \InvalidArgumentException('Rating must be between 1 and 5');
             }
@@ -396,7 +400,7 @@ final readonly class TaxiClientPortalService
                 'metadata' => array_merge($ride->metadata ?? [], [
                     'passenger_rating' => $rating,
                     'passenger_comment' => $comment,
-                    'rated_at' => now()->toIso8601String(),
+                    'rated_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -415,7 +419,7 @@ final readonly class TaxiClientPortalService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi ride rated', [
+            $this->logger->$this->logger->info('Taxi ride rated', [
                 'correlation_id' => $correlationId,
                 'ride_uuid' => $ride->uuid,
                 'user_id' => $userId,
@@ -429,15 +433,15 @@ final readonly class TaxiClientPortalService
     /**
      * Get ride details
      */
-    public function getRideDetails(int $userId, string $rideUuid, string $correlationId = null): array
+    public function getRideDetails(int $userId, string $rideUuid, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $ride = TaxiRide::where('uuid', $rideUuid)
             ->where('passenger_id', $userId)
             ->with(['driver', 'vehicle'])
             ->firstOrFail();
-        
+
         return [
             'uuid' => $ride->uuid,
             'status' => $ride->status,

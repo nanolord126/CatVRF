@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
 
@@ -11,21 +13,25 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 final readonly class ElectronicsService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'electronics:order:';
+
     private const RATE_LIMIT_MAX = 15;
+
     private const RATE_LIMIT_DECAY = 3600;
 
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -44,7 +50,7 @@ final readonly class ElectronicsService
                 $total += $product->price_kopecks * $item['quantity'];
 
                 if ($product->stock < $item['quantity']) {
-                    throw new \RuntimeException('Out of stock for product: ' . $product->id, 400);
+                    throw new \RuntimeException('Out of stock for product: '.$product->id, 400);
                 }
             }
 
@@ -80,7 +86,7 @@ final readonly class ElectronicsService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Electronic order created', [
+            $this->logger->$this->logger->info('Electronic order created', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -187,11 +193,37 @@ final readonly class ElectronicsService
     /**
      * Получить список заказов клиента.
      */
-    public function getUserOrders(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserOrders(int $clientId, int $limit = 10): Collection
     {
         return ElectronicOrder::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')
             ->take($limit)
             ->get();
+    }
+
+    /**
+     * Корректировать складские остатки товара.
+     */
+    public function adjustStock(int $productId, int $quantity, string $reason, string $correlationId): void
+    {
+        $product = ElectronicProduct::findOrFail($productId);
+        
+        $product->increment('stock', $quantity);
+        
+        $this->audit->record(
+            action: 'electronics_stock_adjusted',
+            subjectType: ElectronicProduct::class,
+            subjectId: $productId,
+            oldValues: ['stock' => $product->stock - $quantity],
+            newValues: ['stock' => $product->stock],
+            correlationId: $correlationId,
+        );
+        
+        $this->logger->$this->logger->info('Electronics stock adjusted', [
+            'product_id' => $productId,
+            'quantity' => $quantity,
+            'reason' => $reason,
+            'correlation_id' => $correlationId,
+        ]);
     }
 }

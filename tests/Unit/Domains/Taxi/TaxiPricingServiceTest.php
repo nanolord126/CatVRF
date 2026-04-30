@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
@@ -13,12 +15,6 @@ final class TaxiPricingServiceTest extends TestCase
     use RefreshDatabase;
 
     private readonly TaxiPricingService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiPricingService::class);
-    }
 
     public function test_calculate_price_returns_valid_result(): void
     {
@@ -152,5 +148,11 @@ final class TaxiPricingServiceTest extends TestCase
         $longResult = $this->service->calculatePrice($longDto);
 
         $this->assertLessThan($longResult->totalPrice, $shortResult->totalPrice);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiPricingService::class);
     }
 }

@@ -1,0 +1,133 @@
+# Prometheus Alerting Rules for Redis Cluster
+# Production 2026 - CatVRF (28 Verticals)
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: redis-cluster-alerts
+  namespace: catvrf-prod
+  labels:
+    release: prometheus
+    app: redis-cluster
+spec:
+  groups:
+  - name: redis-cluster
+    interval: 30s
+    rules:
+    # Cluster Down Alert
+    - alert: RedisClusterDown
+      expr: redis_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        team: platform
+      annotations:
+        summary: "Redis cluster node is down"
+        description: "Redis instance {{ $labels.instance }} is down for more than 1 minute"
+
+    # High Memory Usage Alert
+    - alert: RedisHighMemoryUsage
+      expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis high memory usage"
+        description: "Redis {{ $labels.instance }} memory usage is {{ $value | humanizePercentage }}"
+
+    # Low Cache Hit Ratio Alert
+    - alert: RedisLowCacheHitRatio
+      expr: |
+        (
+          rate(redis_keyspace_hits_total[5m]) /
+          (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))
+        ) < 0.8
+      for: 10m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis low cache hit ratio"
+        description: "Redis {{ $labels.instance }} cache hit ratio is {{ $value | humanizePercentage }}"
+
+    # High Connection Count Alert
+    - alert: RedisHighConnectionCount
+      expr: redis_connected_clients > 10000
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis high connection count"
+        description: "Redis {{ $labels.instance }} has {{ $value }} connections"
+
+    # Cluster Slot Coverage Alert
+    - alert: RedisClusterSlotCoverage
+      expr: redis_cluster_slots_assigned < 16384
+      for: 5m
+      labels:
+        severity: critical
+        team: platform
+      annotations:
+        summary: "Redis cluster slot coverage incomplete"
+        description: "Redis cluster has only {{ $value }} slots assigned out of 16384"
+
+    # Evicted Keys Alert
+    - alert: RedisEvictedKeys
+      expr: rate(redis_evicted_keys_total[5m]) > 100
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis evicting keys"
+        description: "Redis {{ $labels.instance }} is evicting {{ $value }} keys/sec"
+
+    # Cluster Node Failure Alert
+    - alert: RedisClusterNodeFailure
+      expr: redis_cluster_state != 1
+      for: 2m
+      labels:
+        severity: critical
+        team: platform
+      annotations:
+        summary: "Redis cluster node failure"
+        description: "Redis cluster {{ $labels.instance }} is in failed state"
+
+    # Rejected Connections Alert
+    - alert: RedisRejectedConnections
+      expr: rate(redis_rejected_connections_total[5m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis rejecting connections"
+        description: "Redis {{ $labels.instance }} is rejecting {{ $value }} connections/sec"
+
+    # Slow Operations Alert
+    - alert: RedisSlowOperations
+      expr: rate(redis_slowlog_length[5m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis slow operations"
+        description: "Redis {{ $labels.instance }} has {{ $value }} slow operations in slowlog"
+
+    # Master Without Replica Alert
+    - alert: RedisMasterWithoutReplica
+      expr: |
+        count by (instance) (
+          redis_master_repl_offset > 0
+          and on(instance) redis_replica_connected_slaves == 0
+        ) > 0
+      for: 10m
+      labels:
+        severity: warning
+        team: platform
+      annotations:
+        summary: "Redis master without replica"
+        description: "Redis master {{ $labels.instance }} has no replicas"

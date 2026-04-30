@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Travel;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Travel\Domain\Services\BookingService;
 
 /**
  * Unit tests for BookingService.
@@ -14,7 +17,7 @@ final class BookingServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Travel\Domain\Services\BookingService::class
+            BookingService::class
         );
         $this->assertTrue($reflection->isFinal(), 'BookingService must be final');
     }
@@ -22,7 +25,7 @@ final class BookingServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Travel\Domain\Services\BookingService::class
+            BookingService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'BookingService must be readonly');
     }
@@ -30,35 +33,34 @@ final class BookingServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Travel\Domain\Services\BookingService::class
+            BookingService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'BookingService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_createBooking_method_exists(): void
+    public function test_create_booking_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Travel\Domain\Services\BookingService::class, 'createBooking'),
+            method_exists(BookingService::class, 'createBooking'),
             'BookingService must implement createBooking()'
         );
     }
 
-    public function test_payBooking_method_exists(): void
+    public function test_pay_booking_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Travel\Domain\Services\BookingService::class, 'payBooking'),
+            method_exists(BookingService::class, 'payBooking'),
             'BookingService must implement payBooking()'
         );
     }
 
-    public function test_cancelBooking_method_exists(): void
+    public function test_cancel_booking_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Travel\Domain\Services\BookingService::class, 'cancelBooking'),
+            method_exists(BookingService::class, 'cancelBooking'),
             'BookingService must implement cancelBooking()'
         );
     }
-
 }

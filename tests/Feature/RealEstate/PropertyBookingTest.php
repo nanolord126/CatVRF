@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\RealEstate;
 
@@ -21,40 +23,6 @@ final class PropertyBookingTest extends TestCase
     private Property $property;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->bookingService = app(PropertyBookingService::class);
-
-        $this->property = Property::create([
-            'tenant_id' => 1,
-            'uuid' => Str::uuid()->toString(),
-            'correlation_id' => Str::uuid()->toString(),
-            'owner_id' => 1,
-            'title' => 'Test Property',
-            'description' => 'Test Description',
-            'address' => 'Test Address',
-            'city' => 'Москва',
-            'region' => 'Moscow',
-            'lat' => 55.7558,
-            'lon' => 37.6173,
-            'property_type' => 'apartment',
-            'status' => PropertyStatus::AVAILABLE,
-            'price' => 10000000,
-            'area' => 100,
-            'rooms' => 3,
-            'floor' => 5,
-            'total_floors' => 10,
-            'year_built' => 2020,
-            'features' => ['parking' => true, 'elevator' => true],
-            'images' => [],
-            'tags' => ['test'],
-        ]);
-
-        $this->user = User::factory()->create(['tenant_id' => 1]);
-    }
 
     public function test_can_create_booking(): void
     {
@@ -264,5 +232,39 @@ final class PropertyBookingTest extends TestCase
             $this->assertArrayHasKey('demand_multiplier', $slot);
             $this->assertArrayHasKey('price_adjustment', $slot);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->bookingService = app(PropertyBookingService::class);
+
+        $this->property = Property::create([
+            'tenant_id' => 1,
+            'uuid' => Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
+            'owner_id' => 1,
+            'title' => 'Test Property',
+            'description' => 'Test Description',
+            'address' => 'Test Address',
+            'city' => 'Москва',
+            'region' => 'Moscow',
+            'lat' => 55.7558,
+            'lon' => 37.6173,
+            'property_type' => 'apartment',
+            'status' => PropertyStatus::AVAILABLE,
+            'price' => 10000000,
+            'area' => 100,
+            'rooms' => 3,
+            'floor' => 5,
+            'total_floors' => 10,
+            'year_built' => 2020,
+            'features' => ['parking' => true, 'elevator' => true],
+            'images' => [],
+            'tags' => ['test'],
+        ]);
+
+        $this->user = User::factory()->create(['tenant_id' => 1]);
     }
 }

@@ -1,97 +1,105 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Services\AI;
-
-
-
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
+use App\Domains\Medical\Psychology\Models\PsychologicalSession;
+
 final readonly class AITherapyConstructorService
 {
     public function __construct(
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
-
+
     /**
-         * Создание персонального терапевтического плана.
-         */
-        public function generateTherapyPlan(array $userData, string $correlationId): array
-        {
-            $this->logger->info('Generating AI Therapy Plan', [
-                'user_id' => $userData['user_id'] ?? 'anonymous',
-                'correlation_id' => $correlationId,
-            ]);
+     * Создание персонального терапевтического плана.
+     */
+    public function generateTherapyPlan(array $userData, string $correlationId): array
+    {
+        $this->logger->$this->logger->info('Generating AI Therapy Plan', [
+            'user_id' => $userData['user_id'] ?? 'anonymous',
+            'correlation_id' => $correlationId,
+        ]);
 
-            // В 2026 тут идет запрос в Vercel AI SDK / OpenAI / Gemini 1.5 Pro
-            // Эмулируем AI-логику на основе правил
-            $isAnxious = in_array('anxiety', $userData['symptoms'] ?? []);
-            $isDepressed = in_array('depression', $userData['symptoms'] ?? []);
+        // В 2026 тут идет запрос в Vercel AI SDK / OpenAI / Gemini 1.5 Pro
+        // Эмулируем AI-логику на основе правил
+        $isAnxious = in_array('anxiety', $userData['symptoms'] ?? [], true);
+        $isDepressed = in_array('depression', $userData['symptoms'] ?? [], true);
 
-            $plan = [
-                'vertical' => 'Psychology',
-                'suggested_duration' => $isDepressed ? '12 sessions' : '6 sessions',
-                'therapy_type' => $isAnxious ? 'CBT (Cognitive Behavioral Therapy)' : 'Existential Therapy',
-                'frequency' => $isDepressed ? '2 times per week' : '1 time per week',
-                'matches' => $this->findBestMatches($userData),
-                'confidence_score' => 0.92,
-                'correlation_id' => $correlationId,
-            ];
+        $plan = [
+            'vertical' => 'Psychology',
+            'suggested_duration' => $isDepressed ? '12 sessions' : '6 sessions',
+            'therapy_type' => $isAnxious ? 'CBT (Cognitive Behavioral Therapy)' : 'Existential Therapy',
+            'frequency' => $isDepressed ? '2 times per week' : '1 time per week',
+            'matches' => $this->findBestMatches($userData),
+            'confidence_score' => 0.92,
+            'correlation_id' => $correlationId,
+        ];
 
-            return $plan;
-        }
+        return $plan;
+    }
 
-        /**
-         * Поиск "идеального" матча через векторное сходство (эмуляция).
-         */
-        private function findBestMatches(array $userData): Collection
-        {
-            $tenantId = $this->guard->user()->tenant_id ?? 0;
-            $psychologists = Psychologist::where('tenant_id', $tenantId)
-                ->where('is_available', true)
-                ->limit(3)
-                ->get();
+    /**
+     * AI-анализ "протоколов" сессий для выявления аномалий.
+     * Обязательно по ФЗ-152 и правилам 2026.
+     */
+    public function analyzeSessionVibe(int $sessionId): array
+    {
+        $session = PsychologicalSession::findOrFail($sessionId);
 
-            return $psychologists->map(function ($psychologist) use ($userData) {
-                $similarity = 0.0;
+        $this->logger->$this->logger->info('AI Session Vibe Analysis', [
+            'session_id' => $sessionId,
+            'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+        ]);
 
-                // Простые весовые коэффициенты (Cosine Similarity в 2026)
-                if ($psychologist->experience_years > 5) $similarity += 0.3;
-                if ($psychologist->rating >= 4.7) $similarity += 0.4;
+        // Эмуляция NLP анализа текста или видео/аудио потока
+        return [
+            'emotional_intensity' => 0.65,
+            'risk_level' => 'low',
+            'client_engagement' => 0.88,
+            'suggested_homework' => 'Deep breathing exercise for 10 min daily',
+        ];
+    }
 
-                // Если симптомы совпадают со специализацией
-                if (Str::contains($psychologist->specialization, $userData['symptoms'] ?? [])) {
-                    $similarity += 0.5;
-                }
+    /**
+     * Поиск "идеального" матча через векторное сходство (эмуляция).
+     */
+    private function findBestMatches(array $userData): Collection
+    {
+        $tenantId = $this->guard->user()->tenant_id ?? 0;
+        $psychologists = Psychologist::where('tenant_id', $tenantId)
+            ->where('is_available', true)
+            ->limit(3)
+            ->get();
 
-                return [
-                    'psychologist_id' => $psychologist->id,
-                    'name' => $psychologist->full_name,
-                    'similarity_score' => min($similarity, 1.0),
-                ];
-            })->sortByDesc('similarity_score');
-        }
+        return $psychologists->map(function ($psychologist) use ($userData) {
+            $similarity = 0.0;
 
-        /**
-         * AI-анализ "протоколов" сессий для выявления аномалий.
-         * Обязательно по ФЗ-152 и правилам 2026.
-         */
-        public function analyzeSessionVibe(int $sessionId): array
-        {
-            $session = \App\Domains\Medical\Psychology\Models\PsychologicalSession::findOrFail($sessionId);
+            // Простые весовые коэффициенты (Cosine Similarity в 2026)
+            if ($psychologist->experience_years > 5) {
+                $similarity += 0.3;
+            }
+            if ($psychologist->rating >= 4.7) {
+                $similarity += 0.4;
+            }
 
-            $this->logger->info('AI Session Vibe Analysis', [
-                'session_id' => $sessionId,
-                'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
-            ]);
+            // Если симптомы совпадают со специализацией
+            if (Str::contains($psychologist->specialization, $userData['symptoms'] ?? [])) {
+                $similarity += 0.5;
+            }
 
-            // Эмуляция NLP анализа текста или видео/аудио потока
             return [
-                'emotional_intensity' => 0.65,
-                'risk_level' => 'low',
-                'client_engagement' => 0.88,
-                'suggested_homework' => 'Deep breathing exercise for 10 min daily',
+                'psychologist_id' => $psychologist->id,
+                'name' => $psychologist->full_name,
+                'similarity_score' => min($similarity, 1.0),
             ];
-        }
+        })->sortByDesc('similarity_score');
+    }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Notifications;
 
@@ -13,7 +15,7 @@ use Tests\TestCase;
 
 /**
  * MultiChannelNotificationFlowTest
- * 
+ *
  * Тестирует отправку уведомлений по всем каналам одновременно
  */
 final class MultiChannelNotificationFlowTest extends TestCase
@@ -21,16 +23,6 @@ final class MultiChannelNotificationFlowTest extends TestCase
     use RefreshDatabase;
 
     private NotificationService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        Mail::fake();
-        Log::fake();
-
-        $this->service = app(NotificationService::class);
-    }
 
     /** @test */
     public function it_sends_to_email_and_sms_simultaneously(): void
@@ -466,5 +458,15 @@ final class MultiChannelNotificationFlowTest extends TestCase
         // Should track delivery per channel
         $fresh = $notification->fresh();
         $this->assertIsArray($fresh->metadata);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Mail::fake();
+        Log::fake();
+
+        $this->service = app(NotificationService::class);
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\EventPlanning\Entertainment\Http\Controllers\EntertainmentVenueController;
 use App\Domains\EventPlanning\Entertainment\Http\Controllers\EntertainmentEventController;

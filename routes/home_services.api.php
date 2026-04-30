@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Domains\HomeServices\Http\Controllers\ContractorController;
@@ -8,7 +10,7 @@ use App\Domains\HomeServices\Http\Controllers\ServiceReviewController;
 use App\Domains\HomeServices\Http\Controllers\ServiceCategoryController;
 
 Route::prefix('home-services')->group(function () {
-    
+
     // Public endpoints
     Route::get('/categories', [ServiceCategoryController::class, 'index']);
     Route::get('/contractors', [ContractorController::class, 'index']);
@@ -21,7 +23,7 @@ Route::prefix('home-services')->group(function () {
 
     // Authenticated endpoints
     Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
-        
+
         // Job Management
         Route::post('/jobs', [ServiceJobController::class, 'create']);
         Route::get('/jobs/my', [ServiceJobController::class, 'myJobs']);

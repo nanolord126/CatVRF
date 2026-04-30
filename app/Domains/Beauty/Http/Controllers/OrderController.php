@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
@@ -6,12 +8,13 @@ use App\Domains\Beauty\Services\OrderService;
 use App\Http\Controllers\Api\UniversalOrderController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 final class OrderController extends UniversalOrderController
 {
     public function __construct(
+        private readonly LogManager $log,
         private readonly OrderService $beautyOrderService,
     ) {
         parent::__construct();
@@ -20,20 +23,20 @@ final class OrderController extends UniversalOrderController
     public function create(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
-        
+
         $data = $request->all();
         $data['vertical'] = 'beauty';
-        
+
         $validation = $this->beautyOrderService->validateOrder($data, $correlationId);
-        
-        if (!$validation['valid']) {
-            Log::channel('audit')->warning('Beauty order validation failed', [
+
+        if (! $validation['valid']) {
+            $this->log->channel('audit')->warning('Beauty order validation failed', [
                 'reason' => $validation['reason'],
                 'fraud_score' => $validation['fraud_score'] ?? null,
                 'correlation_id' => $correlationId,
             ]);
-            
-            return response()->json([
+
+            return new JsonResponse([
                 'error' => 'Order validation failed',
                 'reason' => $validation['reason'],
                 'fraud_score' => $validation['fraud_score'] ?? null,
@@ -42,7 +45,7 @@ final class OrderController extends UniversalOrderController
         }
 
         $response = parent::create($request);
-        
+
         if ($response->status() === 201) {
             $data = $response->getData(true);
             $this->beautyOrderService->sendOrderConfirmation(
@@ -51,7 +54,7 @@ final class OrderController extends UniversalOrderController
                 $correlationId
             );
         }
-        
+
         return $response;
     }
 
@@ -59,8 +62,8 @@ final class OrderController extends UniversalOrderController
     {
         $address = $request->input('address');
         $estimate = $this->beautyOrderService->getDeliveryEstimate($address);
-        
-        return response()->json([
+
+        return new JsonResponse([
             'vertical' => 'beauty',
             'delivery_estimate' => $estimate,
             'correlation_id' => $request->header('X-Correlation-ID') ?? (string) Str::uuid(),

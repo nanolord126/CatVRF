@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\ShortTermRentals;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService;
 
 /**
  * Unit tests for ApartmentReviewService.
@@ -14,7 +17,7 @@ final class ApartmentReviewServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class
+            ApartmentReviewService::class
         );
         $this->assertTrue($reflection->isFinal(), 'ApartmentReviewService must be final');
     }
@@ -22,7 +25,7 @@ final class ApartmentReviewServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class
+            ApartmentReviewService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'ApartmentReviewService must be readonly');
     }
@@ -30,35 +33,34 @@ final class ApartmentReviewServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class
+            ApartmentReviewService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'ApartmentReviewService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_createReview_method_exists(): void
+    public function test_create_review_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class, 'createReview'),
+            method_exists(ApartmentReviewService::class, 'createReview'),
             'ApartmentReviewService must implement createReview()'
         );
     }
 
-    public function test___toString_method_exists(): void
+    public function test___to_string_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class, '__toString'),
+            method_exists(ApartmentReviewService::class, '__toString'),
             'ApartmentReviewService must implement __toString()'
         );
     }
 
-    public function test_toDebugArray_method_exists(): void
+    public function test_to_debug_array_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\ShortTermRentals\Domain\Services\ApartmentReviewService::class, 'toDebugArray'),
+            method_exists(ApartmentReviewService::class, 'toDebugArray'),
             'ApartmentReviewService must implement toDebugArray()'
         );
     }
-
 }

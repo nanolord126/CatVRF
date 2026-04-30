@@ -1,24 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Ritual\FuneralOrderResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
 use App\Filament\Tenant\Resources\Ritual\FuneralOrderResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class ListFuneralOrders extends ListRecords
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = FuneralOrderResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
+
+    /**
+     * Логирование входа на страницу (Audit Log Канон).
+     */
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->log->channel('audit')->$this->logger->info('Ritual orders list visited', [
+            'user_id' => auth()->id(),
+            'tenant_id' => function_exists('tenant') ? tenant('id') : null,
+        ]);
+    }
 
     /**
      * Заголовочные действия (Канон: Минимум одна кнопка).
@@ -33,7 +45,7 @@ final class ListFuneralOrders extends ListRecords
             Actions\Action::make('ritual_report')
                 ->label('Выгрузить отчет')
                 ->icon('heroicon-o-document-arrow-down')
-                ->action(fn () => \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual report downloaded')),
+                ->action(fn () => $this->log->channel('audit')->$this->logger->info('Ritual report downloaded')),
         ];
     }
 
@@ -49,18 +61,5 @@ final class ListFuneralOrders extends ListRecords
         }
 
         return $query;
-    }
-
-    /**
-     * Логирование входа на страницу (Audit Log Канон).
-     */
-    public function mount(): void
-    {
-        parent::mount();
-
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual orders list visited', [
-            'user_id' => auth()->id(),
-            'tenant_id' => function_exists('tenant') ? tenant('id') : null,
-        ]);
     }
 }

@@ -1,16 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class Artwork extends Model
 {
+    use TenantScoped;
 
     protected $table = 'artworks';
 
@@ -40,21 +42,6 @@ final class Artwork extends Model
         'price_cents' => 'integer',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            $builder->where('tenant_id', self::resolveTenantId());
-        });
-
-        static::creating(static function (Artwork $artwork): void {
-            $artwork->uuid = $artwork->uuid ?: (string) Str::uuid();
-            $artwork->correlation_id = $artwork->correlation_id ?: (string) Str::uuid();
-            $artwork->tenant_id = $artwork->tenant_id ?: self::resolveTenantId();
-            $artwork->business_group_id = $artwork->business_group_id ?? self::resolveBusinessGroupId();
-            $artwork->is_visible = $artwork->is_visible ?? true;
-        });
-    }
-
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
@@ -76,6 +63,21 @@ final class Artwork extends Model
     public function scopeVisible(Builder $builder): Builder
     {
         return $builder->where('is_visible', true);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            $builder->where('tenant_id', self::resolveTenantId());
+        });
+
+        self::creating(static function (Artwork $artwork): void {
+            $artwork->uuid = $artwork->uuid ?: (string) Str::uuid();
+            $artwork->correlation_id = $artwork->correlation_id ?: (string) Str::uuid();
+            $artwork->tenant_id = $artwork->tenant_id ?: self::resolveTenantId();
+            $artwork->business_group_id = $artwork->business_group_id ?? self::resolveBusinessGroupId();
+            $artwork->is_visible = $artwork->is_visible ?? true;
+        });
     }
 
     private static function resolveTenantId(): int

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * LogDemandForecastCreated — CatVRF 2026 Component.
@@ -7,20 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/logdemandforecastcreated
  */
 
-
 namespace App\Domains\DemandForecast\Listeners;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\DemandForecast\Events\DemandForecastCreated;
+
 /**
  * Class LogDemandForecastCreated
  *
@@ -30,20 +32,19 @@ use App\Domains\DemandForecast\Events\DemandForecastCreated;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\DemandForecast\Listeners
  */
 final class LogDemandForecastCreated
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle the event.
      */
     public function handle(DemandForecastCreated $event): void
     {
-        $this->logger->info('DemandForecast created', [
+        $this->logger->$this->logger->info('DemandForecast created', [
             'model_id' => $event->demandForecast->id,
             'correlation_id' => $event->correlationId,
             'tenant_id' => $event->demandForecast->tenant_id ?? null,

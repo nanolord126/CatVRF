@@ -23,14 +23,13 @@ use Illuminate\Support\Collection;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Infrastructure\Eloquent\Repositories
  */
 final class EloquentDriverRepository implements DriverRepositoryInterface
 {
     public function findById(DriverId $id): ?DriverEntity
     {
         $model = DriverModel::find($id->toString());
+
         return $model ? $this->toEntity($model) : null;
     }
 

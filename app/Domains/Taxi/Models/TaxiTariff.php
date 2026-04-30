@@ -1,13 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class TaxiTariff extends Model
 {
     use HasFactory;
+    use TenantScoped;
 
     protected $table = 'taxi_tariffs';
 
@@ -92,7 +96,7 @@ final class TaxiTariff extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }

@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Enums\BusinessGroupVerificationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +17,7 @@ final class BusinessGroup extends Model
 
     protected $fillable = [
         'tenant_id',
+        'parent_business_group_id',
         'name',
         'inn',
         'kpp',
@@ -23,7 +27,11 @@ final class BusinessGroup extends Model
         'email',
         'is_active',
         'is_verified',
+        'verification_status',
+        'inn_verified_at',
+        'is_branch',
         'commission_percent',
+        'moderator_notes',
         'correlation_id',
         'uuid',
         'tags',
@@ -33,6 +41,9 @@ final class BusinessGroup extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_verified' => 'boolean',
+        'is_branch' => 'boolean',
+        'verification_status' => BusinessGroupVerificationStatus::class,
+        'inn_verified_at' => 'datetime',
         'commission_percent' => 'float',
         'tags' => 'json',
         'metadata' => 'json',
@@ -50,6 +61,22 @@ final class BusinessGroup extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * Parent business group (for branches)
+     */
+    public function parentBusinessGroup(): BelongsTo
+    {
+        return $this->belongsTo(BusinessGroup::class, 'parent_business_group_id');
+    }
+
+    /**
+     * Child business groups (branches)
+     */
+    public function childBusinessGroups(): HasMany
+    {
+        return $this->hasMany(BusinessGroup::class, 'parent_business_group_id');
     }
 
     /**
@@ -75,6 +102,77 @@ final class BusinessGroup extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    public function scopeBranches($query)
+    {
+        return $query->where('is_branch', true);
+    }
+
+    public function scopeMain($query)
+    {
+        return $query->where('is_branch', false);
+    }
+
+    public function scopeByVerificationStatus($query, BusinessGroupVerificationStatus $status)
+    {
+        return $query->where('verification_status', $status);
+    }
+
+    public function scopePendingVerification($query)
+    {
+        return $query->whereIn('verification_status', [
+            BusinessGroupVerificationStatus::Pending,
+            BusinessGroupVerificationStatus::ManualReview,
+        ]);
+    }
+
+
+    // ========================
+    // VERIFICATION METHODS
+    // ========================
+
+    public function approveVerification(?string $moderatorNotes = null): bool
+    {
+        return $this->update([
+            'verification_status' => BusinessGroupVerificationStatus::Approved,
+            'is_verified' => true,
+            'is_active' => true,
+            'moderator_notes' => $moderatorNotes,
+        ]);
+    }
+
+    public function rejectVerification(string $reason): bool
+    {
+        return $this->update([
+            'verification_status' => BusinessGroupVerificationStatus::Rejected,
+            'is_verified' => false,
+            'is_active' => false,
+            'moderator_notes' => $reason,
+        ]);
+    }
+
+    public function markInnVerified(): bool
+    {
+        return $this->update([
+            'inn_verified_at' => CarbonImmutable::now(),
+        ]);
+    }
+
+    public function canOperate(): bool
+    {
+        return $this->is_active
+            && $this->is_verified
+            && $this->verification_status?->canOperate();
+    }
+
+    public function isBranch(): bool
+    {
+        return $this->is_branch;
+    }
+
+    public function isMain(): bool
+    {
+        return !$this->is_branch;
+    }
     }
 
     public function scopeVerified($query)

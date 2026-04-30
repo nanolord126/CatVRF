@@ -6,16 +6,17 @@ namespace App\Services\AI\Prompts;
 
 /**
  * Prompt builder for CarRental AI
- * 
+ *
  * Vertical: carrental
  * Type: ai_constructor
- * 
+ *
  * Generates prompts for AI-powered features in CarRental vertical.
  */
 final class CarRentalPromptBuilder extends AbstractPromptBuilder
 {
-    protected string $version = '1.0.0';
-    protected array $metadata = [
+    protected readonly string $version = '1.0.0';
+
+    protected readonly array $metadata = [
         'vertical' => 'carrental',
         'type' => 'ai_constructor',
         'description' => 'AI constructor for CarRental vertical',
@@ -24,7 +25,7 @@ final class CarRentalPromptBuilder extends AbstractPromptBuilder
 
     public function getSystemPrompt(array $context = []): string
     {
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Ты — эксперт в вертикали CarRental. 
 Твоя задача — анализировать данные и предоставлять качественные рекомендации.
 
@@ -46,7 +47,7 @@ PROMPT;
 
     public function getUserPrompt(array $context = []): string
     {
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Проанализируй следующие данные:
 
 {{context_data}}

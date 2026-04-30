@@ -1,21 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Http\Controllers;
 
 use App\Domains\Electronics\DTOs\SplitPaymentRequestDto;
-use App\Domains\Electronics\DTOs\SplitPaymentResponseDto;
 use App\Domains\Electronics\Services\ElectronicsWalletService;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final readonly class WalletController
 {
     public function __construct(
-        private ElectronicsWalletService $walletService,
-    ) {
-    }
+        private readonly ElectronicsWalletService $walletService,
+        private readonly Guard $auth,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+    ) {}
 
     public function processSplitPayment(Request $request): JsonResponse
     {
@@ -32,14 +38,14 @@ final readonly class WalletController
             'idempotency_key' => 'nullable|string|max:255',
         ]);
 
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $correlationId = (string) Str::uuid();
         $idempotencyKey = $request->input('idempotency_key');
 
         if ($idempotencyKey) {
             $cachedResponse = $this->getSplitPaymentCache($idempotencyKey);
             if ($cachedResponse !== null) {
-                return response()->json($cachedResponse);
+                return new JsonResponse($cachedResponse);
             }
         }
 
@@ -55,7 +61,7 @@ final readonly class WalletController
             $this->setSplitPaymentCache($idempotencyKey, $result->toArray());
         }
 
-        return response()->json($result->toArray());
+        return new JsonResponse($result->toArray());
     }
 
     public function releaseEscrow(Request $request): JsonResponse
@@ -72,14 +78,14 @@ final readonly class WalletController
         try {
             $success = $this->walletService->releaseEscrow($paymentId, $reason, $correlationId);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => $success,
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'reason' => $reason,
             ]);
         } catch (\Throwable $e) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -89,28 +95,28 @@ final readonly class WalletController
 
     public function getWalletBalance(Request $request): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $tenantId = tenant()->id;
 
-        $wallet = \Illuminate\Support\Facades\DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->first();
 
-        if (!$wallet) {
-            return response()->json([
+        if (! $wallet) {
+            return new JsonResponse([
                 'balance_kopecks' => 0,
                 'hold_amount_kopecks' => 0,
                 'available_kopecks' => 0,
             ]);
         }
 
-        $bonusBalance = \Illuminate\Support\Facades\DB::table('balance_transactions')
+        $bonusBalance = $this->db->table('balance_transactions')
             ->where('wallet_id', $wallet->id)
             ->where('type', 'bonus')
             ->sum('amount');
 
-        return response()->json([
+        return new JsonResponse([
             'balance_kopecks' => (int) $wallet->current_balance,
             'hold_amount_kopecks' => (int) $wallet->hold_amount,
             'available_kopecks' => (int) ($wallet->current_balance - $wallet->hold_amount),
@@ -120,43 +126,43 @@ final readonly class WalletController
 
     public function getPaymentHistory(Request $request): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $tenantId = tenant()->id;
 
-        $payments = \Illuminate\Support\Facades\DB::table('electronics_split_payments')
+        $payments = $this->db->table('electronics_split_payments')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return response()->json($payments);
+        return new JsonResponse($payments);
     }
 
     public function getEscrowHolds(Request $request): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $tenantId = tenant()->id;
 
-        $holds = \Illuminate\Support\Facades\DB::table('electronics_escrow_holds')
+        $holds = $this->db->table('electronics_escrow_holds')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return response()->json($holds);
+        return new JsonResponse($holds);
     }
 
     private function getSplitPaymentCache(string $key): ?array
     {
-        return \Illuminate\Support\Facades\Cache::get("split_payment:{$key}");
+        return $this->cache->get("split_payment:{$key}");
     }
 
     private function setSplitPaymentCache(string $key, array $data): void
     {
-        \Illuminate\Support\Facades\Cache::put(
+        $this->cache->put(
             "split_payment:{$key}",
             $data,
-            now()->addHours(24)
+            CarbonImmutable::now()->addHours(24)
         );
     }
 }

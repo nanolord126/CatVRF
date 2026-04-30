@@ -1,19 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\B2B;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\BusinessGroup;
 use App\Services\BusinessGroupService;
 use App\Services\FraudControlService;
 use App\Services\InventoryService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * B2BOrderService — создание и управление B2B-заказами.
@@ -29,28 +33,32 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class B2BOrderService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService  $fraud,
-        private BusinessGroupService $businessGroupService,
-        private InventoryService     $inventory,
+        private readonly FraudControlService $fraud,
+        private readonly BusinessGroupService $businessGroupService,
+        private readonly InventoryService $inventory,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
+        private readonly AuditService $audit,
     ) {}
 
     /**
      * Создать B2B-заказ с одним или несколькими товарами.
      *
-     * @param array<int, array{product_id: int, quantity: int, warehouse_id: int}> $items
-     * @param bool $useCredit — если true, списать из кредитного лимита (без немедленной оплаты)
+     * @param  array<int, array{product_id: int, quantity: int, warehouse_id: int}>  $items
+     * @param  bool  $useCredit  — если true, списать из кредитного лимита (без немедленной оплаты)
      */
     public function create(
         BusinessGroup $group,
-        array         $items,
-        string        $deliveryAddress,
-        bool          $useCredit,
-        string        $correlationId,
+        array $items,
+        string $deliveryAddress,
+        bool $useCredit,
+        string $correlationId,
     ): array {
         $totalKopecks = $this->calculateTotal($items);
 
@@ -97,8 +105,8 @@ final readonly class B2BOrderService
                 'payment_type'      => $useCredit ? 'credit' : 'prepaid',
                 'delivery_address'  => $deliveryAddress,
                 'correlation_id'    => $correlationId,
-                'created_at'        => now(),
-                'updated_at'        => now(),
+                'created_at'        => CarbonImmutable::now(),
+                'updated_at'        => CarbonImmutable::now(),
             ]);
 
             // Создаём позиции заказа
@@ -110,12 +118,12 @@ final readonly class B2BOrderService
                     'price_kopecks'         => $this->getWholesalePrice($item['product_id']),
                     'warehouse_id'          => $item['warehouse_id'],
                     'correlation_id'        => $correlationId,
-                    'created_at'            => now(),
-                    'updated_at'            => now(),
+                    'created_at'            => CarbonImmutable::now(),
+                    'updated_at'            => CarbonImmutable::now(),
                 ]);
             }
 
-            $this->logger->channel('audit')->info('B2B order created', [
+            $this->logger->channel('audit')->$this->logger->info('B2B order created', [
                 'order_id'          => $orderId,
                 'business_group_id' => $group->id,
                 'total_kopecks'     => $totalKopecks,
@@ -138,7 +146,7 @@ final readonly class B2BOrderService
     /**
      * Массовое создание B2B-заказов (import из Excel/JSON).
      *
-     * @param array<int, array{items: array, delivery_address: string, use_credit: bool}> $orders
+     * @param  array<int, array{items: array, delivery_address: string, use_credit: bool}>  $orders
      * @return array{created: int, failed: int, errors: array}
      */
     public function bulkCreate(BusinessGroup $group, array $orders, string $correlationId): array
@@ -154,7 +162,7 @@ final readonly class B2BOrderService
                     $orderData['items'],
                     $orderData['delivery_address'],
                     $orderData['use_credit'] ?? false,
-                    $correlationId . '-' . $index,
+                    $correlationId.'-'.$index,
                 );
                 $created++;
             } catch (\Throwable $e) {
@@ -177,7 +185,7 @@ final readonly class B2BOrderService
     // ──────────────────────────────────────────────────────
 
     /**
-     * @param array<int, array{product_id: int, quantity: int}> $items
+     * @param  array<int, array{product_id: int, quantity: int}>  $items
      */
     private function calculateTotal(array $items): int
     {
@@ -186,6 +194,7 @@ final readonly class B2BOrderService
             $price = $this->getWholesalePrice($item['product_id']);
             $total += $price * $item['quantity'];
         }
+
         return $total;
     }
 
@@ -198,6 +207,7 @@ final readonly class B2BOrderService
         if ($price === null) {
             // Fallback: 80% от розничной цены
             $retail = (int) $this->db->table('products')->where('id', $productId)->value('price_kopecks');
+
             return (int) round($retail * 0.8);
         }
 

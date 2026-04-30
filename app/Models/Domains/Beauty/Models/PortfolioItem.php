@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * PortfolioItem — CatVRF 2026 Component.
@@ -7,19 +9,21 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/portfolioitem
  */
-
 
 namespace App\Models\Domains\Beauty\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\Domains\Beauty\Models\PortfolioItemFactory;
 
 /**
  * Class PortfolioItem
@@ -39,14 +43,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Beauty\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PortfolioItem extends Model
 {
-    /** @use HasFactory<\Database\Factories\Domains\Beauty\Models\PortfolioItemFactory> */
-
+    /** @use HasFactory<PortfolioItemFactory> */
     protected $table = 'portfolio_items';
 
     protected $fillable = [
@@ -69,5 +71,4 @@ final class PortfolioItem extends Model
      * The number of models to return for pagination.
      */
     protected $perPage = 25;
-
 }

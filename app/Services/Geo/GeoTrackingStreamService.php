@@ -1,27 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Geo;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Geolocation Tracking Stream Service
- * 
+ *
  * Uses Redis Streams for guaranteed delivery of location updates
  * Prevents race conditions and ensures ordering
  */
 final readonly class GeoTrackingStreamService
 {
+    use WithAuditLogging;
+
     private const STREAM_KEY = 'geo:tracking:stream';
+
     private const CONSUMER_GROUP = 'geo_tracking_consumers';
+
     private const MAX_LENGTH = 10000;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -36,8 +50,8 @@ final readonly class GeoTrackingStreamService
         float $bearing = 0.0,
         ?string $correlationId = null,
     ): string {
-        $correlationId ??= \Illuminate\Support\Str::uuid()->toString();
-        
+        $correlationId ??= Str::uuid()->toString();
+
         $data = [
             'entity_id' => $entityId,
             'entity_type' => $entityType,
@@ -46,7 +60,7 @@ final readonly class GeoTrackingStreamService
             'speed' => $speed,
             'bearing' => $bearing,
             'correlation_id' => $correlationId,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'ip_address' => request()->ip(),
         ];
 
@@ -115,7 +129,7 @@ final readonly class GeoTrackingStreamService
                 true // MKSTREAM
             );
 
-            $this->logger->channel('geo')->info('Geo tracking consumer group created', [
+            $this->logger->channel('geo')->$this->logger->info('Geo tracking consumer group created', [
                 'consumer_group' => self::CONSUMER_GROUP,
             ]);
         } catch (\Exception $e) {
@@ -199,7 +213,7 @@ final readonly class GeoTrackingStreamService
     {
         try {
             $info = $this->redis->connection()->xinfo('STREAM', self::STREAM_KEY);
-            
+
             return [
                 'length' => $info['length'] ?? 0,
                 'groups' => $info['groups'] ?? 0,
@@ -218,10 +232,10 @@ final readonly class GeoTrackingStreamService
     /**
      * Trim stream to max length
      */
-    public function trimStream(int $maxLength = null): void
+    public function trimStream(?int $maxLength = null): void
     {
         $maxLength = $maxLength ?? self::MAX_LENGTH;
-        
+
         $this->redis->connection()->xtrim(
             self::STREAM_KEY,
             'MAXLEN',
@@ -229,7 +243,7 @@ final readonly class GeoTrackingStreamService
             $maxLength
         );
 
-        $this->logger->channel('geo')->info('Geo tracking stream trimmed', [
+        $this->logger->channel('geo')->$this->logger->info('Geo tracking stream trimmed', [
             'max_length' => $maxLength,
         ]);
     }
@@ -239,8 +253,8 @@ final readonly class GeoTrackingStreamService
      */
     public function deleteOldMessages(int $hoursOld = 24): int
     {
-        $cutoffTime = now()->subHours($hoursOld)->timestamp * 1000; // Redis uses milliseconds
-        
+        $cutoffTime = CarbonImmutable::now()->subHours($hoursOld)->timestamp * 1000; // Redis uses milliseconds
+
         $messages = $this->redis->connection()->xrange(
             self::STREAM_KEY,
             '-',
@@ -255,7 +269,7 @@ final readonly class GeoTrackingStreamService
         $ids = array_keys($messages);
         $deleted = $this->redis->connection()->xdel(self::STREAM_KEY, $ids);
 
-        $this->logger->channel('geo')->info('Old geo tracking messages deleted', [
+        $this->logger->channel('geo')->$this->logger->info('Old geo tracking messages deleted', [
             'count' => $deleted,
             'hours_old' => $hoursOld,
         ]);

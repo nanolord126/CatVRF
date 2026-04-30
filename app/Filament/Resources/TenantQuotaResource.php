@@ -2,6 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use TenantResourceLimiterService;
+
+use TenantQuotaPlanService;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Filament\Resources\TenantQuotaResource\Pages;
 use App\Models\Tenant;
 use App\Services\Tenancy\TenantResourceLimiterService;
@@ -100,7 +108,7 @@ final class TenantQuotaResource extends Resource
                     ->label('View Stats')
                     ->icon('heroicon-o-chart-pie')
                     ->modalHeading('Tenant Quota Statistics')
-                    ->modalContent(fn (Tenant $tenant) => view('filament.resources.tenant-quota-stats', [
+                    ->modalContent(fn (Tenant $tenant) => $this->viewFactory->make('filament.resources.tenant-quota-stats', [
                         'tenant' => $tenant,
                         'stats' => self::getDetailedStats($tenant),
                     ]))
@@ -121,10 +129,10 @@ final class TenantQuotaResource extends Resource
                             ->required(),
                     ])
                     ->action(function (Tenant $tenant, array $data) {
-                        $planService = app(TenantQuotaPlanService::class);
+                        $planService = $this->tenantQuotaPlanService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
                         $planService->upgradePlan($tenant->id, $data['plan']);
                         
-                        \Filament\Notifications\Notification::make()
+                        \Filament\Notifications\$this->notificationManager->make()
                             ->title('Plan Upgraded')
                             ->body("Tenant {$tenant->name} upgraded to {$data['plan']} plan")
                             ->success()
@@ -137,10 +145,10 @@ final class TenantQuotaResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->action(function (Tenant $tenant) {
-                        $limiter = app(TenantResourceLimiterService::class);
+                        $limiter = $this->tenantResourceLimiterService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
                         $limiter->resetUsage($tenant->id);
                         
-                        \Filament\Notifications\Notification::make()
+                        \Filament\Notifications\$this->notificationManager->make()
                             ->title('Quotas Reset')
                             ->body("Quotas reset for tenant {$tenant->name}")
                             ->warning()
@@ -154,7 +162,7 @@ final class TenantQuotaResource extends Resource
 
     private static function getQuotaPercentage(Tenant $tenant, string $resourceType): float
     {
-        $limiter = app(TenantResourceLimiterService::class);
+        $limiter = $this->tenantResourceLimiterService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
         $stats = $limiter->getQuotaStats((int) $tenant->id);
         
         return $stats[$resourceType]['percentage'] ?? 0;
@@ -162,7 +170,7 @@ final class TenantQuotaResource extends Resource
 
     private static function getDetailedStats(Tenant $tenant): array
     {
-        $limiter = app(TenantResourceLimiterService::class);
+        $limiter = $this->tenantResourceLimiterService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
         return $limiter->getQuotaStats((int) $tenant->id);
     }
 

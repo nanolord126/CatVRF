@@ -4,12 +4,15 @@ namespace App\Http\Middleware\Verticals;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 final class BeautyBiometricAuthMiddleware
 {
+    public function __construct(
+        private readonly LogManager $log,
+    ) {}
     public function handle(Request $request, Closure $next): Response
     {
         $biometricToken = $request->header('X-Biometric-Token') ?? $request->input('biometric_token');
@@ -28,7 +31,7 @@ final class BeautyBiometricAuthMiddleware
         }
 
         if (!$this->validateBiometricToken($userId, $biometricToken)) {
-            Log::channel('audit')->warning('beauty.biometric.auth.failed', [
+            $this->log->channel('audit')->warning('beauty.biometric.auth.failed', [
                 'user_id' => $userId,
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -40,7 +43,7 @@ final class BeautyBiometricAuthMiddleware
             ], 403);
         }
 
-        Log::channel('audit')->info('beauty.biometric.auth.success', [
+        $this->log->channel('audit')->info('beauty.biometric.auth.success', [
             'user_id' => $userId,
             'ip' => $request->ip(),
         ]);

@@ -34,7 +34,7 @@ final class SportProductSeeder extends Seeder
                     'name' => $product['name'],
                 ],
                 [
-                    'sku' => strtoupper('SPORT-' . Str::random(8)),
+                    'sku' => strtoupper('SPORT-'.Str::random(8)),
                     'sport_type' => $product['sport_type'],
                     'description' => 'Спортивный товар высокого качества',
                     'price' => $product['price'],

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -8,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * Tourism Wishlist Factory
- * 
+ *
  * Factory for creating tourism wishlist test data.
  * Includes state methods for different wishlist item types.
  */

@@ -1,32 +1,40 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * A/B Price Testing System для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Тестирование ценовых стратегий, анализ конверсии,
         определение оптимальной цены, статистическая значимость.
  */
 final readonly class FashionABPriceTestingService
 {
     private const MIN_SAMPLE_SIZE = 100;
+
     private const CONFIDENCE_LEVEL = 0.95;
+
     private const MAX_TEST_DAYS = 30;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Создать A/B тест цены.
@@ -69,11 +77,11 @@ final readonly class FashionABPriceTestingService
             'control_revenue' => 0,
             'test_revenue' => 0,
             'status' => 'active',
-            'started_at' => Carbon::now(),
-            'ends_at' => Carbon::now()->addDays(min($durationDays, self::MAX_TEST_DAYS)),
+            'started_at' => CarbonImmutable::now(),
+            'ends_at' => CarbonImmutable::now()->addDays(min($durationDays, self::MAX_TEST_DAYS)),
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->audit->record(
@@ -90,7 +98,7 @@ final readonly class FashionABPriceTestingService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion A/B price test created', [
+        $this->log->channel('audit')->$this->logger->info('Fashion A/B price test created', [
             'test_id' => $testId,
             'tenant_id' => $tenantId,
             'product_id' => $productId,
@@ -103,7 +111,7 @@ final readonly class FashionABPriceTestingService
             'control_price' => $controlPrice,
             'test_price' => $testPrice,
             'status' => 'active',
-            'ends_at' => Carbon::now()->addDays(min($durationDays, self::MAX_TEST_DAYS))->toIso8601String(),
+            'ends_at' => CarbonImmutable::now()->addDays(min($durationDays, self::MAX_TEST_DAYS))->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
     }
@@ -137,18 +145,18 @@ final readonly class FashionABPriceTestingService
             'user_id' => $userId,
             'group' => $group,
             'price' => $price,
-            'converted_at' => Carbon::now(),
+            'converted_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
 
         $column = $group === 'control' ? 'control' : 'test';
         $this->db->table('fashion_ab_price_tests')
             ->where('id', $testId)
-            ->increment($column . '_conversions');
-        
+            ->increment($column.'_conversions');
+
         $this->db->table('fashion_ab_price_tests')
             ->where('id', $testId)
-            ->increment($column . '_revenue', $price);
+            ->increment($column.'_revenue', $price);
 
         return [
             'test_id' => $testId,
@@ -179,7 +187,7 @@ final readonly class FashionABPriceTestingService
         $controlRate = $test['control_group_size'] > 0
             ? $test['control_conversions'] / $test['control_group_size']
             : 0;
-        
+
         $testRate = $test['test_group_size'] > 0
             ? $test['test_conversions'] / $test['test_group_size']
             : 0;
@@ -194,7 +202,7 @@ final readonly class FashionABPriceTestingService
 
         $winner = $this->determineWinner($lift, $statisticalSignificance);
 
-        if ($test['status'] === 'active' && Carbon::now()->gt($test['ends_at'])) {
+        if ($test['status'] === 'active' && CarbonImmutable::now()->gt($test['ends_at'])) {
             $this->completeTest($testId, $winner, $correlationId);
         }
 
@@ -299,17 +307,17 @@ final readonly class FashionABPriceTestingService
 
         $p1 = $controlConversions / $controlSize;
         $p2 = $testConversions / $testSize;
-        
+
         $pooled = ($controlConversions + $testConversions) / ($controlSize + $testSize);
         $se = sqrt($pooled * (1 - $pooled) * (1 / $controlSize + 1 / $testSize));
-        
+
         if ($se === 0) {
             return 0.0;
         }
 
         $z = ($p2 - $p1) / $se;
-        
-        return abs($z) >= 1.96 ? 0.95 : abs($z) >= 1.64 ? 0.90 : 0.0;
+
+        return abs($z) >= 1.96 ? 0.95 : (abs($z) >= 1.64 ? 0.90 : 0.0);
     }
 
     private function determineWinner(float $lift, float $statisticalSignificance): string
@@ -357,8 +365,8 @@ final readonly class FashionABPriceTestingService
             ->update([
                 'status' => 'completed',
                 'winner' => $winner,
-                'completed_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
+                'completed_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
     }
 

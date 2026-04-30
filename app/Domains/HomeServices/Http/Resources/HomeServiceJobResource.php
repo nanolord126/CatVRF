@@ -1,9 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 /**
  * Class HomeServiceJobResource
@@ -18,9 +23,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\HomeServices\Http\Resources
+ * @see FraudControlService
+ * @see AuditService
  */
 final class HomeServiceJobResource extends JsonResource
 {
@@ -56,7 +60,7 @@ final class HomeServiceJobResource extends JsonResource
     {
         return [
             'meta' => [
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
                 'api_version' => 'v1',
             ],
         ];

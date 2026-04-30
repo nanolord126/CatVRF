@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # ClickHouse - OLAP Database for Analytics
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: catvrf-clickhouse
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./database/clickhouse/migrations:/docker-entrypoint-initdb.d:ro
+    environment:
+      CLICKHOUSE_DB: catvrf_analytics
+      CLICKHOUSE_USER: catvrf
+      CLICKHOUSE_PASSWORD: catvrf_password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bigdata
+
+  # Redis - Cache and Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: catvrf-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bigdata
+
+  # Redis Streams for Real-time Ingestion
+  redis-streams:
+    image: redis:7-alpine
+    container_name: catvrf-redis-streams
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_streams_data:/data
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    networks:
+      - bigdata
+
+  # MinIO - S3-compatible Object Storage (alternative to AWS S3)
+  minio:
+    image: minio/minio:latest
+    container_name: catvrf-minio
+    ports:
+      - "9001:9000"  # API
+      - "9002:9001"  # Console
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - bigdata
+
+  # Grafana - Visualization Dashboard
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: catvrf-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - bigdata
+
+  # Vector - Log Aggregation and Pipeline
+  vector:
+    image: timberio/vector:0.30.0-alpine
+    container_name: catvrf-vector
+    ports:
+      - "8686:8686"  # API
+    volumes:
+      - ./config/vector/vector.dev.toml:/etc/vector/vector.toml:ro
+      - vector_data:/data
+    command: --config /etc/vector/vector.toml
+    depends_on:
+      - clickhouse
+      - redis
+    networks:
+      - bigdata
+
+volumes:
+  clickhouse_data:
+    driver: local
+  redis_data:
+    driver: local
+  redis_streams_data:
+    driver: local
+  minio_data:
+    driver: local
+  grafana_data:
+    driver: local
+  vector_data:
+    driver: local
+
+networks:
+  bigdata:
+    driver: bridge

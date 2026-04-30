@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\ConstructionAndRepair;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ConstructionAndRepairService.
- *
- * @covers \App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService
- */
-final class ConstructionAndRepairServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ConstructionAndRepairService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ConstructionAndRepairService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('ConstructionAndRepair');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ConstructionAndRepairService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ConstructionAndRepairService exists and is instantiable', function () {
+    $this->assertServiceExists('ConstructionAndRepairService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class, 'create'),
-            'ConstructionAndRepairService must implement create()'
-        );
-    }
+test('ConstructionAndRepairService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ConstructionAndRepairService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class, 'update'),
-            'ConstructionAndRepairService must implement update()'
-        );
-    }
+test('ConstructionAndRepairService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ConstructionAndRepairService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class, 'delete'),
-            'ConstructionAndRepairService must implement delete()'
-        );
-    }
+test('ConstructionAndRepairService enforces quota limits', function () {
+    $this->testServiceWithQuota('ConstructionAndRepairService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class, 'list'),
-            'ConstructionAndRepairService must implement list()'
-        );
-    }
+test('ConstructionAndRepairService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ConstructionAndRepair\Domain\Services\ConstructionAndRepairService::class, 'getById'),
-            'ConstructionAndRepairService must implement getById()'
-        );
-    }
+test('ConstructionAndRepairService has proper caching', function () {
+    $cacheKey = 'constructionandrepair:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ConstructionAndRepairService dispatches proper events', function () {
+    $eventClass = "App\Domains\ConstructionAndRepair\Events\ConstructionAndRepairProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+        $service->process([]);
+    });
+});
+
+test('ConstructionAndRepairService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\ConstructionAndRepair\Jobs\ProcessConstructionAndRepairJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ConstructionAndRepairService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ConstructionAndRepairService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ConstructionAndRepairService'));
+        $service->process([]);
+    }, 'ConstructionAndRepairService processed');
+});
+
+test('ConstructionAndRepairService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

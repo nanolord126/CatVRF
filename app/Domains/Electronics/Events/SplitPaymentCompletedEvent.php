@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
@@ -18,6 +20,5 @@ final readonly class SplitPaymentCompletedEvent
         public SplitPaymentRequestDto $request,
         public SplitPaymentResponseDto $response,
         public string $correlationId,
-    ) {
-    }
+    ) {}
 }

@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\DTOs;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 
 final readonly class MatchMastersByPhotoDto
 {
@@ -18,7 +21,7 @@ final readonly class MatchMastersByPhotoDto
         public ?int $limit = null,
     ) {}
 
-    public static function fromRequest(\Illuminate\Http\Request $request, int $userId, int $tenantId): self
+    public static function fromRequest(Request $request, int $userId, int $tenantId): self
     {
         return new self(
             tenantId: $tenantId,
