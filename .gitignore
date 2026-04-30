@@ -71,3 +71,36 @@ VERTICALS_FRAUD_AUDIT_REPORT_*.md
 VERTICALS_READINESS_MAP_*.md
 WORK_PLAN_Q*.md
 WORK_PLAN_Q*_REPORT.md
+
+# === CONTAINERIZATION FILES (Security - no commit to main) ===
+docker-compose.override.yml
+docker-compose.*.yml
+Dockerfile
+*.dockerfile
+.dockerignore
+
+# === AUTO-GENERATED TESTS AND UNTRACKED FILES ===
+tests/Unit/Domains/
+tests/Unit/Modules/
+tests/Unit/Services/
+tests/Unit/Models/
+tests/Unit/Features/
+tests/Unit/Filament/
+tests/Unit/Fitness/
+tests/Unit/Flowers/
+tests/Unit/Hotels/
+tests/Unit/Http/
+tests/Unit/Inventory/
+tests/Unit/Jobs/
+tests/Unit/Logistics/
+tests/Unit/Marketplace/
+tests/Unit/Medical/
+tests/Unit/Payment/
+tests/Unit/Repositories/
+tests/Unit/Restaurant/
+tests/Unit/Security/
+tests/Unit/Staff/
+tests/Unit/Verticals/
+tests/Unit/VetGrooming/
+tests/Unit/Shared/
+tests/bootstrap.php
