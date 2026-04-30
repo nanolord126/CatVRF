@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Services\AI;
+
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,10 +19,10 @@ use OpenAI\Client as OpenAIClient;
 final readonly class ArtConstructorService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache $cache,
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard,
         private readonly OpenAIClient $openai
@@ -34,9 +38,9 @@ final readonly class ArtConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'art_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:Art:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:Art:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 
@@ -49,7 +53,7 @@ final readonly class ArtConstructorService
             // Получаем рекомендации на основе AI-анализа
             $recommendations = $this->recommendation->getForVertical('Art', $fullProfile, $userId);
 
-            $this->logger->info('Art AI constructor used', [
+            $this->logger->$this->logger->info('Art AI constructor used', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
                 'vertical' => 'Art',
@@ -89,7 +93,7 @@ final readonly class ArtConstructorService
             $content = $response->choices[0]->message->content ?? '{}';
             $analysis = json_decode($content, true);
 
-            if ($analysis === null || !is_array($analysis)) {
+            if ($analysis === null || ! is_array($analysis)) {
                 return ['raw_analysis' => $content, 'confidence' => 0.5];
             }
 

@@ -1,33 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Log\LogManager;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Visual Search Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Поиск товаров по фото с использованием ML-эмбеддингов,
  * интеграция с OpenAI Vision, поиск похожих товаров по стилю.
  */
 final readonly class FashionVisualSearchService
 {
     private const SIMILARITY_THRESHOLD = 0.7;
+
     private const MAX_SEARCH_RESULTS = 30;
+
     private const EMBEDDING_DIMENSION = 512;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly HttpFactory $http,
+        private readonly LogManager $log,) {}
 
     /**
      * Поиск товаров по фото.
@@ -49,7 +57,7 @@ final readonly class FashionVisualSearchService
         );
 
         $embedding = $this->generateImageEmbedding($imageUrl, $correlationId);
-        
+
         if ($embedding === null) {
             throw new \RuntimeException('Failed to generate image embedding', 500);
         }
@@ -70,7 +78,7 @@ final readonly class FashionVisualSearchService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion visual search executed', [
+        $this->log->channel('audit')->$this->logger->info('Fashion visual search executed', [
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'results_count' => count($similarProducts),
@@ -100,7 +108,7 @@ final readonly class FashionVisualSearchService
             ->where('fp.status', 'active')
             ->where('fp.stock_quantity', '>', 0);
 
-        if (!empty($filters['categories'])) {
+        if (! empty($filters['categories'])) {
             $query->whereIn('fp.id', function ($q) use ($filters, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -109,7 +117,7 @@ final readonly class FashionVisualSearchService
             });
         }
 
-        if (!empty($filters['price_min']) || !empty($filters['price_max'])) {
+        if (! empty($filters['price_min']) || ! empty($filters['price_max'])) {
             $priceMin = (int) ($filters['price_min'] ?? 0);
             $priceMax = (int) ($filters['price_max'] ?? PHP_INT_MAX);
             $query->whereBetween('fp.price_b2c', [$priceMin, $priceMax]);
@@ -120,10 +128,10 @@ final readonly class FashionVisualSearchService
         $similarProducts = [];
         foreach ($products as $product) {
             $productEmbedding = $this->getProductEmbedding((int) $product['id'], $tenantId);
-            
+
             if ($productEmbedding !== null) {
                 $similarity = $this->calculateCosineSimilarity($embedding, $productEmbedding);
-                
+
                 if ($similarity >= self::SIMILARITY_THRESHOLD) {
                     $similarProducts[] = [
                         'product_id' => $product['id'],
@@ -137,7 +145,8 @@ final readonly class FashionVisualSearchService
             }
         }
 
-        usort($similarProducts, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
+        usort($similarProducts, fn ($a, $b) => $b['similarity'] <=> $a['similarity']);
+
         return array_slice($similarProducts, 0, self::MAX_SEARCH_RESULTS, true);
     }
 
@@ -208,7 +217,7 @@ final readonly class FashionVisualSearchService
                 $result = $this->indexProductForVisualSearch($productId, $correlationId);
                 $results[] = $result;
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to index product for visual search', [
+                $this->log->channel('audit')->warning('Failed to index product for visual search', [
                     'product_id' => $productId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -231,29 +240,32 @@ final readonly class FashionVisualSearchService
     private function generateImageEmbedding(string $imageUrl, string $correlationId): ?array
     {
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . config('services.openai.api_key'),
+            $response = $this->http->withHeaders([
+                'Authorization' => 'Bearer '.config('services.openai.api_key'),
             ])->post('https://api.openai.com/v1/embeddings', [
                 'model' => 'text-embedding-ada-002',
                 'input' => $imageUrl,
             ]);
 
-            if (!$response->successful()) {
-                Log::channel('audit')->error('OpenAI embedding API failed', [
+            if (! $response->successful()) {
+                $this->log->channel('audit')->error('OpenAI embedding API failed', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                     'correlation_id' => $correlationId,
                 ]);
+
                 return null;
             }
 
             $data = $response->json();
+
             return $data['data'][0]['embedding'] ?? null;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to generate image embedding', [
+            $this->log->channel('audit')->error('Failed to generate image embedding', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
+
             return null;
         }
     }
@@ -308,7 +320,7 @@ final readonly class FashionVisualSearchService
             [
                 'embedding' => json_encode($embedding),
                 'embedding_dimension' => count($embedding),
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]
         );
@@ -324,7 +336,7 @@ final readonly class FashionVisualSearchService
             'tenant_id' => $tenantId,
             'image_url' => $imageUrl,
             'embedding' => json_encode($embedding),
-            'searched_at' => Carbon::now(),
+            'searched_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
     }

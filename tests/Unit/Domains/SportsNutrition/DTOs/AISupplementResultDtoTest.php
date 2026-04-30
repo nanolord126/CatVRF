@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\SportsNutrition\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\SportsNutrition\DTOs\AISupplementResultDto;
 
 /**
  * Unit tests for AISupplementResultDto.
@@ -14,7 +17,7 @@ final class AISupplementResultDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\SportsNutrition\DTOs\AISupplementResultDto::class
+            AISupplementResultDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'AISupplementResultDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'AISupplementResultDto must be readonly');
@@ -23,11 +26,11 @@ final class AISupplementResultDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\SportsNutrition\DTOs\AISupplementResultDto::class
+            AISupplementResultDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('vertical', $params, 'Constructor must have vertical');
         $this->assertContains('recommended_stack_name', $params, 'Constructor must have recommended_stack_name');
         $this->assertContains('payload', $params, 'Constructor must have payload');
@@ -35,7 +38,7 @@ final class AISupplementResultDtoTest extends TestCase
         $this->assertContains('correlation_id', $params, 'Constructor must have correlation_id');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -45,6 +48,6 @@ final class AISupplementResultDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\SportsNutrition\DTOs\AISupplementResultDto::class;
+        return AISupplementResultDto::class;
     }
 }

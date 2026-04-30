@@ -1,15 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Listeners;
 
 use App\Models\BalanceTransaction;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 final class DeductTransportationCommissionListener
 {
-
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
@@ -23,6 +23,7 @@ final class DeductTransportationCommissionListener
             $this->logger->warning('Travel commission deduction skipped: missing event payload', [
                 'correlation_id' => $event->correlationId ?? null,
             ]);
+
             return;
         }
 
@@ -33,6 +34,7 @@ final class DeductTransportationCommissionListener
                     'item_type' => $itemType,
                     'correlation_id' => $event->correlationId ?? null,
                 ]);
+
                 return;
             }
 
@@ -44,6 +46,7 @@ final class DeductTransportationCommissionListener
                     'item_type' => $itemType,
                     'correlation_id' => $event->correlationId ?? null,
                 ]);
+
                 return;
             }
 
@@ -66,7 +69,7 @@ final class DeductTransportationCommissionListener
                 'correlation_id' => $event->correlationId ?? null,
             ]);
 
-            $this->logger->info("Travel {$itemType} commission deducted", [
+            $this->logger->$this->logger->info("Travel {$itemType} commission deducted", [
                 'item_id' => $item->id,
                 'item_type' => $itemType,
                 'agency_id' => $item->agency_id ?? null,
@@ -85,4 +88,3 @@ final class DeductTransportationCommissionListener
         }
     }
 }
-

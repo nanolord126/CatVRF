@@ -21,28 +21,10 @@ final class SportsPaymentAttackTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private FraudControlService $fraud;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->app->make(FraudControlService::class);
-        $this->audit = $this->app->make(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_zero_amount_payment_blocked(): void
     {
@@ -142,7 +124,7 @@ final class SportsPaymentAttackTest extends TestCase
 
     public function test_duplicate_transaction_id_blocked(): void
     {
-        $transactionId = 'TXN-' . Str::random(32);
+        $transactionId = 'TXN-'.Str::random(32);
 
         $dto1 = new RealTimeBookingDto(
             userId: 1,
@@ -260,11 +242,11 @@ final class SportsPaymentAttackTest extends TestCase
 
             try {
                 $holdResult = $this->service->holdSlot($dto);
-                
+
                 if ($holdResult['success']) {
                     $confirmResult = $this->service->confirmBooking($dto, [
                         'amount' => 100,
-                        'transaction_id' => 'TXN-' . Str::random(32),
+                        'transaction_id' => 'TXN-'.Str::random(32),
                         'payment_method' => 'card',
                     ]);
 
@@ -378,7 +360,7 @@ final class SportsPaymentAttackTest extends TestCase
 
         $confirmResult = $this->service->confirmBooking($dto, [
             'amount' => 100,
-            'transaction_id' => 'TXN-' . Str::random(32),
+            'transaction_id' => 'TXN-'.Str::random(32),
             'payment_method' => 'card',
         ]);
 
@@ -417,7 +399,7 @@ final class SportsPaymentAttackTest extends TestCase
 
         $confirmResult = $this->service->confirmBooking($dto, [
             'amount' => 100,
-            'transaction_id' => 'TXN-' . Str::random(32),
+            'transaction_id' => 'TXN-'.Str::random(32),
             'payment_method' => 'card',
         ]);
 
@@ -648,5 +630,25 @@ final class SportsPaymentAttackTest extends TestCase
                 $this->assertTrue(true, 'Chargeback prevention should trigger fraud detection');
             }
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->app->make(FraudControlService::class);
+        $this->audit = $this->app->make(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

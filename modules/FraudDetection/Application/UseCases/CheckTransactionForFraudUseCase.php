@@ -14,6 +14,9 @@ use Modules\FraudDetection\Domain\Services\FraudScoringServiceInterface;
 use Modules\FraudDetection\Domain\Events\FraudDetected;
 use Modules\FraudDetection\Infrastructure\Services\AnalyticsIntegrationService;
 use Modules\FraudDetection\Domain\Exceptions\FraudulentTransactionException;
+use App\Domain\Audit\Events\AuditEvent;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 
 final class CheckTransactionForFraudUseCase
 {
@@ -24,47 +27,80 @@ final class CheckTransactionForFraudUseCase
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly Dispatcher $eventDispatcher,
-        private readonly ConfigRepository $config
-    ) {
-    }
+        private readonly ConfigRepository $config,
+    ) {}
 
     /**
      * @throws FraudulentTransactionException
      */
     public function execute(FraudCheckData $data): void
     {
-        $this->db->transaction(function () use ($data): void {
+        $correlationId = $data->correlationId ?? (string) Str::uuid();
+        
+        $this->db->transaction(function () use ($data, $correlationId): void {
             $fraudScore = $this->scoringService->getScore($data);
+            $threshold = (float) $this->config->get('frauddetection.threshold', 0.85);
 
             $this->analyticsService->trackEvent('transaction_scored', [
                 'transaction_id' => $data->transactionId,
                 'score' => $fraudScore->getScore(),
-                'correlation_id' => $data->correlationId,
+                'correlation_id' => $correlationId,
             ]);
 
-            $threshold = (float) $this->config->get('frauddetection.threshold', 0.85);
+            // AUDIT LOG - Fraud check initiated (Domain Event for Clean Architecture)
+            Event::dispatch(AuditEvent::action(
+                action: 'fraud_check_initiated',
+                subjectType: 'Transaction',
+                subjectId: $data->transactionId,
+                context: [
+                    'operation_type' => $data->operationType ?? 'unknown',
+                    'amount' => $data->amount ?? null,
+                    'currency' => $data->currency ?? null,
+                    'user_id' => $data->userId,
+                    'tenant_id' => $data->tenantId ?? null,
+                ],
+                correlationId: $correlationId
+            ));
 
             if ($fraudScore->isFraudulent($threshold)) {
+                // AUDIT LOG - Fraud detected (Domain Event for Clean Architecture)
+                Event::dispatch(AuditEvent::action(
+                    action: 'fraud_check_blocked',
+                    subjectType: 'Transaction',
+                    subjectId: $data->transactionId,
+                    context: [
+                        'operation_type' => $data->operationType ?? 'transaction',
+                        'fraud_score' => $fraudScore->getScore(),
+                        'decision' => 'blocked',
+                        'transaction_id' => $data->transactionId,
+                        'threshold' => $threshold,
+                        'details' => array_slice($data->toArray(), 0, 10), // Limit context size
+                        'user_id' => $data->userId,
+                        'tenant_id' => $data->tenantId ?? null,
+                    ],
+                    correlationId: $correlationId
+                ));
+
                 $this->fraudAttemptRepository->create([
                     'transaction_id' => $data->transactionId,
                     'user_id' => $data->userId,
                     'score' => $fraudScore->getScore(),
                     'details' => $data->toArray(),
-                    'correlation_id' => $data->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 $this->eventDispatcher->dispatch(new FraudDetected(
                     transactionId: $data->transactionId,
                     userId: $data->userId,
                     score: $fraudScore->getScore(),
-                    correlationId: $data->correlationId
+                    correlationId: $correlationId
                 ));
 
                 $this->logger->warning('Fraudulent transaction detected and blocked.', [
                     'transaction_id' => $data->transactionId,
                     'user_id' => $data->userId,
                     'score' => $fraudScore->getScore(),
-                    'correlation_id' => $data->correlationId,
+                    'correlation_id' => $correlationId,
                 ]);
 
                 throw new FraudulentTransactionException(
@@ -72,10 +108,27 @@ final class CheckTransactionForFraudUseCase
                 );
             }
 
+            // AUDIT LOG - Fraud check passed (Domain Event for Clean Architecture)
+            Event::dispatch(AuditEvent::action(
+                action: 'fraud_check_approved',
+                subjectType: 'Transaction',
+                subjectId: $data->transactionId,
+                context: [
+                    'operation_type' => $data->operationType ?? 'transaction',
+                    'fraud_score' => $fraudScore->getScore(),
+                    'decision' => 'approved',
+                    'transaction_id' => $data->transactionId,
+                    'threshold' => $threshold,
+                    'user_id' => $data->userId,
+                    'tenant_id' => $data->tenantId ?? null,
+                ],
+                correlationId: $correlationId
+            ));
+
             $this->logger->info('Transaction passed fraud check.', [
                 'transaction_id' => $data->transactionId,
                 'score' => $fraudScore->getScore(),
-                'correlation_id' => $data->correlationId,
+                'correlation_id' => $correlationId,
             ]);
         });
     }

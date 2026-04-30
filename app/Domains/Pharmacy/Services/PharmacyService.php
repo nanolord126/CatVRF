@@ -1,27 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Services;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use App\Services\FraudControlService;
+use Illuminate\Support\Collection;
+use App\Domains\Shared\Geo\GeoLogisticsAdapter;
 
 final readonly class PharmacyService
 {
     public function __construct(
-        private readonly \App\Services\FraudControlService $fraud,
+        private readonly FraudControlService $fraud,
         private readonly WalletService $wallet,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard,
+        private readonly GeoLogisticsAdapter $geoAdapter,
     ) {}
 
     /**
      * Создание заказа в аптеке с проверкой наличия и рецептов.
      */
-    public function createOrder(int $pharmacyId, array $items, string $correlationId): PharmacyOrder
+    public function createOrder(int $pharmacyId, array $items, ?string $deliveryAddress = null, string $correlationId = ''): PharmacyOrder
     {
         $this->fraud->check(
             userId: $this->guard->id() ?? 0,
@@ -58,6 +66,21 @@ final readonly class PharmacyService
                 ];
 
                 $medication->decrement('stock_quantity', $item['quantity']);
+            // Calculate delivery cost via GeoLogistics if address provided
+            $deliveryCost = 0;
+            if ($deliveryAddress) {
+                $deliveryCalculation = $this->geoAdapter->calculateDeliveryForOrder([
+                    'vertical' => 'pharmacy',
+                    'seller_address' => $pharmacy->address,
+                 delivery_address' => $deliveryAddress,
+                'delivery_cost' => $deliveryCost,
+                '   'buyer_address' => $deliveryAddress,
+                    'items' => $items,
+                ]);
+                $deliveryCost = $deliveryCalculation['cost'];
+                $totalAmount += $deliveryCost;
+            }
+
             }
 
             $order = PharmacyOrder::create([
@@ -74,7 +97,7 @@ final readonly class PharmacyService
 
             $order->items()->createMany($orderItems);
 
-            $this->logger->info('Pharmacy order created', [
+            $this->logger->$this->logger->info('Pharmacy order created', [
                 'order_id' => $order->id,
                 'order_uuid' => $order->uuid,
                 'pharmacy_id' => $pharmacyId,
@@ -101,11 +124,11 @@ final readonly class PharmacyService
 
             $order->update([
                 'status' => 'ready_for_pickup',
-                'ready_at' => now(),
+                'ready_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Pharmacy order ready for pickup', [
+            $this->logger->$this->logger->info('Pharmacy order ready for pickup', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -146,13 +169,13 @@ final readonly class PharmacyService
 
             $order->update([
                 'status' => 'completed',
-                'completed_at' => now(),
+                'completed_at' => CarbonImmutable::now(),
                 'payout_amount' => $payoutAmount,
                 'platform_fee' => $platformFee,
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Pharmacy order completed with payout', [
+            $this->logger->$this->logger->info('Pharmacy order completed with payout', [
                 'order_id' => $order->id,
                 'payout_amount' => $payoutAmount,
                 'platform_fee' => $platformFee,
@@ -164,24 +187,9 @@ final readonly class PharmacyService
     }
 
     /**
-     * Валидация рецепта для рецептурных препаратов.
-     */
-    private function validateActivePrescription(int $userId, int $medicationId): void
-    {
-        $hasPrescription = Prescription::where('user_id', $userId)
-            ->where('status', 'verified')
-            ->where('expires_at', '>=', now())
-            ->exists();
-
-        if (!$hasPrescription) {
-            throw new RuntimeException("Valid prescription required for medication ID: {$medicationId}.");
-        }
-    }
-
-    /**
      * Поиск лекарств по МНН или торговому названию.
      */
-    public function searchMedications(string $query, int $pharmacyId): \Illuminate\Support\Collection
+    public function searchMedications(string $query, int $pharmacyId): Collection
     {
         return Medication::where('pharmacy_id', $pharmacyId)
             ->where('stock_quantity', '>', 0)
@@ -191,5 +199,20 @@ final readonly class PharmacyService
             })
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Валидация рецепта для рецептурных препаратов.
+     */
+    private function validateActivePrescription(int $userId, int $medicationId): void
+    {
+        $hasPrescription = Prescription::where('user_id', $userId)
+            ->where('status', 'verified')
+            ->where('expires_at', '>=', CarbonImmutable::now())
+            ->exists();
+
+        if (! $hasPrescription) {
+            throw new RuntimeException("Valid prescription required for medication ID: {$medicationId}.");
+        }
     }
 }

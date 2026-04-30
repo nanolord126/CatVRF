@@ -1,18 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Outfit Planner / Stylist AI Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * AI-стилист для составления аутфитов на основе гардероба,
         погоды, событий, трендов и предпочтений пользователя.
  */
@@ -20,11 +24,11 @@ final readonly class FashionOutfitPlannerService
 {
     private const MAX_OUTFIT_SUGGESTIONS = 10;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Сгенерировать аутфит на основе параметров.
@@ -73,7 +77,7 @@ final readonly class FashionOutfitPlannerService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion outfit generated', [
+        $this->log->channel('audit')->$this->logger->info('Fashion outfit generated', [
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'occasion' => $occasion,
@@ -111,7 +115,7 @@ final readonly class FashionOutfitPlannerService
             $bottoms = $this->getRandomItems($wardrobe, 'bottoms', 1);
             $shoes = $this->getRandomItems($wardrobe, 'shoes', 1);
 
-            if (!empty($tops) && !empty($bottoms)) {
+            if (! empty($tops) && ! empty($bottoms)) {
                 $suggestions[] = [
                     'id' => $i + 1,
                     'items' => array_merge($tops, $bottoms, $shoes),
@@ -135,8 +139,7 @@ final readonly class FashionOutfitPlannerService
         int $userId,
         array $currentItems,
         string $correlationId = ''
-    ): array
-    {
+    ): array {
         $correlationId = $correlationId ?: Str::uuid()->toString();
         $tenantId = $this->getTenantId();
 
@@ -148,7 +151,7 @@ final readonly class FashionOutfitPlannerService
 
         foreach ($missingCategories as $category) {
             $items = $this->filterItemsByCategory($wardrobe, $category, null);
-            if (!empty($items)) {
+            if (! empty($items)) {
                 $suggestions[$category] = array_slice($items, 0, 3, true);
             }
         }
@@ -181,7 +184,7 @@ final readonly class FashionOutfitPlannerService
 
         while ($currentDate->lte($end)) {
             $dayOutfits = $this->getOutfitsForDate($userId, $tenantId, $currentDate);
-            
+
             $calendar[] = [
                 'date' => $currentDate->toIso8601String(),
                 'day_of_week' => $currentDate->dayOfWeek,
@@ -243,10 +246,10 @@ final readonly class FashionOutfitPlannerService
 
     private function filterItemsByCategory(array $items, string $category, ?array $colors = null): array
     {
-        $filtered = array_filter($items, fn($item) => $item['primary_category'] === $category);
+        $filtered = array_filter($items, fn ($item) => $item['primary_category'] === $category);
 
-        if ($colors !== null && !empty($colors)) {
-            $filtered = array_filter($filtered, fn($item) => in_array(strtolower($item['color']), array_map('strtolower', $colors)));
+        if ($colors !== null && ! empty($colors)) {
+            $filtered = array_filter($filtered, fn ($item) => in_array(strtolower($item['color']), array_map('strtolower', $colors), true));
         }
 
         return array_values($filtered);
@@ -256,19 +259,19 @@ final readonly class FashionOutfitPlannerService
     {
         $outfit = [];
 
-        if (!empty($tops)) {
+        if (! empty($tops)) {
             $outfit[] = $tops[array_rand($tops)];
         }
 
-        if (!empty($bottoms)) {
+        if (! empty($bottoms)) {
             $outfit[] = $bottoms[array_rand($bottoms)];
         }
 
-        if (!empty($shoes)) {
+        if (! empty($shoes)) {
             $outfit[] = $shoes[array_rand($shoes)];
         }
 
-        if (!empty($accessories) && $this->shouldAddAccessories($occasion)) {
+        if (! empty($accessories) && $this->shouldAddAccessories($occasion)) {
             $outfit[] = $accessories[array_rand($accessories)];
         }
 
@@ -285,18 +288,18 @@ final readonly class FashionOutfitPlannerService
 
         $outfitColors = array_unique(array_column($outfit, 'color'));
         $preferredColors = $preferences['colors'] ?? [];
-        
+
         foreach ($outfitColors as $color) {
-            if (in_array(strtolower($color), array_map('strtolower', $preferredColors))) {
+            if (in_array(strtolower($color), array_map('strtolower', $preferredColors), true)) {
                 $score += 0.1;
             }
         }
 
         $outfitStyles = array_unique(array_column($outfit, 'style_profile'));
         $preferredStyles = $preferences['styles'] ?? [];
-        
+
         foreach ($outfitStyles as $style) {
-            if (in_array($style, $preferredStyles)) {
+            if (in_array($style, $preferredStyles, true)) {
                 $score += 0.1;
             }
         }
@@ -339,18 +342,19 @@ final readonly class FashionOutfitPlannerService
     {
         $filtered = $this->filterItemsByCategory($items, $category, null);
         shuffle($filtered);
+
         return array_slice($filtered, 0, $count, true);
     }
 
     private function predictOccasion(array $items): string
     {
         $styles = array_unique(array_column($items, 'style_profile'));
-        
-        if (in_array('formal', $styles)) {
+
+        if (in_array('formal', $styles, true)) {
             return 'formal';
-        } elseif (in_array('casual', $styles)) {
+        } elseif (in_array('casual', $styles, true)) {
             return 'casual';
-        } elseif (in_array('sport', $styles)) {
+        } elseif (in_array('sport', $styles, true)) {
             return 'sport';
         }
 
@@ -365,12 +369,13 @@ final readonly class FashionOutfitPlannerService
     private function identifyMissingCategories(array $currentCategories): array
     {
         $requiredCategories = ['tops', 'bottoms', 'shoes'];
+
         return array_diff($requiredCategories, $currentCategories);
     }
 
     private function shouldAddAccessories(string $occasion): bool
     {
-        return in_array($occasion, ['formal', 'party', 'date']);
+        return in_array($occasion, ['formal', 'party', 'date'], true);
     }
 
     private function getOutfitsForDate(int $userId, int $tenantId, Carbon $date): array

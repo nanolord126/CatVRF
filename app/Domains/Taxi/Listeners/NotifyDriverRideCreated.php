@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * NotifyDriverRideCreated — CatVRF 2026 Component.
@@ -7,43 +9,47 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/notifydriverridecreated
  */
 
-
 namespace App\Domains\Taxi\Listeners;
 
+use Illuminate\Notifications\ChannelManager;
+
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
+
 final class NotifyDriverRideCreated
 {
-    public function __construct(
+    public function __construct(private readonly ChannelManager $notificationManager,
         private readonly LoggerInterface $logger) {}
 
-
+
     public function handle(RideCreated $event): void
-        {
-            try {
-                $this->logger->info('Driver notified of new ride', [
-                    'ride_id' => $event->rideId,
-                    'driver_id' => $event->driverId,
-                    'correlation_id' => $event->correlationId,
-                    'action' => 'ride_created_driver_notification',
-                ]);
-                // Notification::send($driver, new RideAssignedNotification($event));
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to notify driver', [
-                    'correlation_id' => $event->correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
+    {
+        try {
+            $this->logger->$this->logger->info('Driver notified of new ride', [
+                'ride_id' => $event->rideId,
+                'driver_id' => $event->driverId,
+                'correlation_id' => $event->correlationId,
+                'action' => 'ride_created_driver_notification',
+            ]);
+            // $this->notificationManager->send($driver, new RideAssignedNotification($event));
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to notify driver', [
+                'correlation_id' => $event->correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
+    }
 
     /**
      * Get the string representation of this instance.
@@ -52,7 +58,7 @@ final class NotifyDriverRideCreated
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -63,8 +69,8 @@ final class NotifyDriverRideCreated
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

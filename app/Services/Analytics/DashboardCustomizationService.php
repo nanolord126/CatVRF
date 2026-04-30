@@ -1,137 +1,153 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 final readonly class DashboardCustomizationService
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly CacheManager $cache,
-    ) {}
+    use WithAuditLogging;
 
     private const CACHE_TTL = 86400;  // 24 hours
 
-        /**
-         * Сохранить макет дашборда
-         */
-        public function saveDashboardLayout(
-            int $userId,
-            int $tenantId,
-            array $widgets,
-            array $context = []
-        ): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly CacheManager $cache,
+        private readonly AuditService $audit,
+    ) {}
 
-            $layout = [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'widgets' => $widgets,
-                'saved_at' => now()->toIso8601String(),
-                'correlation_id' => $correlationId,
-            ];
+    /**
+     * Сохранить макет дашборда
+     */
+    public function saveDashboardLayout(
+        int $userId,
+        int $tenantId,
+        array $widgets,
+        array $context = []
+    ): array {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-            $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
-            $this->cache->put($cacheKey, $layout, self::CACHE_TTL);
+        $layout = [
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+            'widgets' => $widgets,
+            'saved_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $correlationId,
+        ];
 
-            $this->logger->channel('audit')->info('Dashboard layout saved', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'widgets_count' => count($widgets),
-            ]);
+        $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
+        $this->cache->put($cacheKey, $layout, self::CACHE_TTL);
 
-            return $layout;
+        $this->logger->channel('audit')->$this->logger->info('Dashboard layout saved', [
+            'correlation_id' => $correlationId,
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+            'widgets_count' => count($widgets),
+        ]);
+
+        return $layout;
+    }
+
+    /**
+     * Получить макет дашборда
+     */
+    public function getDashboardLayout(int $userId, int $tenantId, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+        $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
+
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
         }
 
-        /**
-         * Получить макет дашборда
-         */
-        public function getDashboardLayout(int $userId, int $tenantId, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-            $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
+        // Default layout
+        $defaultLayout = [
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+            'widgets' => [
+                ['id' => 'revenue-widget', 'size' => 'large', 'position' => 0],
+                ['id' => 'orders-widget', 'size' => 'medium', 'position' => 1],
+                ['id' => 'conversion-widget', 'size' => 'medium', 'position' => 2],
+                ['id' => 'aov-widget', 'size' => 'small', 'position' => 3],
+            ],
+            'saved_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $correlationId,
+        ];
 
-            $cached = $this->cache->get($cacheKey);
-            if ($cached !== null) {
-                return $cached;
-            }
+        $this->cache->put($cacheKey, $defaultLayout, self::CACHE_TTL);
 
-            // Default layout
-            $defaultLayout = [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'widgets' => [
-                    ['id' => 'revenue-widget', 'size' => 'large', 'position' => 0],
-                    ['id' => 'orders-widget', 'size' => 'medium', 'position' => 1],
-                    ['id' => 'conversion-widget', 'size' => 'medium', 'position' => 2],
-                    ['id' => 'aov-widget', 'size' => 'small', 'position' => 3],
-                ],
-                'saved_at' => now()->toIso8601String(),
-                'correlation_id' => $correlationId,
-            ];
+        return $defaultLayout;
+    }
 
-            $this->cache->put($cacheKey, $defaultLayout, self::CACHE_TTL);
+    /**
+     * Удалить кастомный макет
+     */
+    public function deleteDashboardLayout(int $userId, int $tenantId, array $context = []): bool
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+        $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
-            return $defaultLayout;
-        }
+        $this->cache->forget($cacheKey);
 
-        /**
-         * Удалить кастомный макет
-         */
-        public function deleteDashboardLayout(int $userId, int $tenantId, array $context = []): bool {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-            $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
+        $this->logger->channel('audit')->$this->logger->info('Dashboard layout deleted', [
+            'correlation_id' => $correlationId,
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+        ]);
 
-            $this->cache->forget($cacheKey);
+        return true;
+    }
 
-            $this->logger->channel('audit')->info('Dashboard layout deleted', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-            ]);
+    /**
+     * Сбросить на дефолтный макет
+     */
+    public function resetToDefault(int $userId, int $tenantId, array $context = []): array
+    {
+        $this->deleteDashboardLayout($userId, $tenantId, $context);
 
-            return true;
-        }
+        return $this->getDashboardLayout($userId, $tenantId, $context);
+    }
 
-        /**
-         * Сбросить на дефолтный макет
-         */
-        public function resetToDefault(int $userId, int $tenantId, array $context = []): array {
-            $this->deleteDashboardLayout($userId, $tenantId, $context);
-            return $this->getDashboardLayout($userId, $tenantId, $context);
-        }
+    /**
+     * Сохранить имя дашборда
+     */
+    public function saveDashboardName(
+        int $userId,
+        int $tenantId,
+        string $name,
+        array $context = []
+    ): array {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        /**
-         * Сохранить имя дашборда
-         */
-        public function saveDashboardName(
-            int $userId,
-            int $tenantId,
-            string $name,
-            array $context = []
-        ): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+        $nameData = [
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+            'name' => $name,
+            'saved_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $correlationId,
+        ];
 
-            $nameData = [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'name' => $name,
-                'saved_at' => now()->toIso8601String(),
-                'correlation_id' => $correlationId,
-            ];
+        $cacheKey = "dashboard:name:{$tenantId}:{$userId}";
+        $this->cache->put($cacheKey, $nameData, self::CACHE_TTL);
 
-            $cacheKey = "dashboard:name:{$tenantId}:{$userId}";
-            $this->cache->put($cacheKey, $nameData, self::CACHE_TTL);
+        $this->logger->channel('audit')->$this->logger->info('Dashboard name saved', [
+            'correlation_id' => $correlationId,
+            'user_id' => $userId,
+            'tenant_id' => $tenantId,
+            'name' => $name,
+        ]);
 
-            $this->logger->channel('audit')->info('Dashboard name saved', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'name' => $name,
-            ]);
-
-            return $nameData;
-        }
+        return $nameData;
+    }
 }

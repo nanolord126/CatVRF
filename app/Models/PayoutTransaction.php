@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Транзакция выплаты (курьерам, мастерам, партнёрам)
- *
- * @package App\Models
  */
 final class PayoutTransaction extends Model
 {
-
     protected $table = 'payout_transactions';
 
     protected $fillable = [

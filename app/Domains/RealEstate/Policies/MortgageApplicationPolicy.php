@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * MortgageApplicationPolicy — CatVRF 2026 Component.
@@ -7,41 +9,48 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/mortgageapplicationpolicy
  */
 
-
 namespace App\Domains\RealEstate\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
 
 final class MortgageApplicationPolicy
 {
-
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny($user): bool
-        {
-            return $user?->is_admin || false;
-        }
+    {
+        return $user?->is_admin || false;
+    }
 
-        public function view($user, $application): Response
-        {
-            return $application->client_id === $user?->id || $user?->is_admin
-                ? $this->response->allow()
-                : $this->response->deny('Нет прав');
-        }
+    public function $this->viewFactory->make($user, $application): Response
+    {
+        return $application->client_id === $user?->id || $user?->is_admin
+            ? $this->response->allow()
+            : $this->response->deny('Нет прав');
+    }
 
-        public function create($user): Response
-        {
-            return $user ? $this->response->allow() : $this->response->deny('Требуется авторизация');
-        }
+    public function create($user): Response
+    {
+        return $user ? $this->response->allow() : $this->response->deny('Требуется авторизация');
+    }
 
-        public function update($user, $application): Response
-        {
-            return $user?->is_admin ? $this->response->allow() : $this->response->deny('Только админ');
-        }
+    public function update($user, $application): Response
+    {
+        return $user?->is_admin ? $this->response->allow() : $this->response->deny('Только админ');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -50,7 +59,7 @@ final class MortgageApplicationPolicy
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -61,8 +70,8 @@ final class MortgageApplicationPolicy
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

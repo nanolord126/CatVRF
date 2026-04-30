@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -6,6 +8,9 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Modules\RealEstate\Enums\BookingStatus;
 use Modules\RealEstate\Models\PropertyBooking;
 use Modules\RealEstate\Models\Property;
+use App\Models\BusinessGroup;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class PropertyBookingFactory extends Factory
 {
@@ -17,11 +22,11 @@ final class PropertyBookingFactory extends Factory
 
         return [
             'tenant_id' => $property->tenant_id,
-            'business_group_id' => $this->faker->boolean(20) ? \App\Models\BusinessGroup::inRandomOrder()->first()?->id : null,
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'business_group_id' => $this->faker->boolean(20) ? BusinessGroup::inRandomOrder()->first()?->id : null,
+            'uuid' => Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'property_id' => $property->id,
-            'user_id' => \App\Models\User::inRandomOrder()->first()?->id ?? 1,
+            'user_id' => User::inRandomOrder()->first()?->id ?? 1,
             'viewing_slot' => $this->faker->dateTimeBetween('+1 day', '+30 days'),
             'amount' => $this->faker->randomFloat(2, 100000, 50000000),
             'status' => $this->faker->randomElement(BookingStatus::cases()),
@@ -33,12 +38,12 @@ final class PropertyBookingFactory extends Factory
                 'recommended' => $this->faker->boolean(70),
             ],
             'fraud_score' => $this->faker->randomFloat(4, 0, 0.5),
-            'idempotency_key' => \Illuminate\Support\Str::uuid()->toString(),
+            'idempotency_key' => Str::uuid()->toString(),
             'is_b2b' => $this->faker->boolean(15),
             'hold_until' => $this->faker->dateTimeBetween('+15 minutes', '+60 minutes'),
             'face_id_verified' => $this->faker->boolean(60),
             'blockchain_verified' => $this->faker->boolean(40),
-            'webrtc_room_id' => $this->faker->boolean(30) ? 'room_' . \Illuminate\Support\Str::random(8) : null,
+            'webrtc_room_id' => $this->faker->boolean(30) ? 'room_'.Str::random(8) : null,
             'original_price' => $property->price,
             'dynamic_discount' => $this->faker->randomFloat(2, 0, 500000),
             'escrow_amount' => $this->faker->boolean(50) ? $this->faker->randomFloat(2, 0, 50000000) : 0,
@@ -69,7 +74,7 @@ final class PropertyBookingFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => BookingStatus::CONFIRMED,
             'blockchain_verified' => true,
-            'webrtc_room_id' => 'room_' . \Illuminate\Support\Str::random(8),
+            'webrtc_room_id' => 'room_'.Str::random(8),
         ]);
     }
 
@@ -85,7 +90,7 @@ final class PropertyBookingFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_b2b' => true,
-            'business_group_id' => \App\Models\BusinessGroup::inRandomOrder()->first()?->id,
+            'business_group_id' => BusinessGroup::inRandomOrder()->first()?->id,
             'commission_split' => [
                 'platform' => $this->faker->randomFloat(2, 0, 1000000),
                 'agent' => $this->faker->randomFloat(2, 0, 500000),

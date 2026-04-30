@@ -7,6 +7,7 @@ namespace Tests\Unit\Domains\Payment\Resources;
 use App\Domains\Payment\Resources\PaymentRecordResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use PHPUnit\Framework\TestCase;
+use Illuminate\Http\Request;
 
 /**
  * Unit-тесты для PaymentRecordResource (API Resource).
@@ -44,7 +45,7 @@ final class PaymentResourceTest extends TestCase
             'tenant_id' => 10,
             'business_group_id' => null,
             'provider_code' => (object) ['value' => 'tinkoff'],
-            'status' => (object) ['value' => 'pending', 'label' => fn() => 'Ожидание', 'color' => fn() => 'warning'],
+            'status' => (object) ['value' => 'pending', 'label' => fn () => 'Ожидание', 'color' => fn () => 'warning'],
             'amount_kopecks' => 50000,
             'amount_rubles' => 500.00,
             'is_hold' => false,
@@ -62,7 +63,7 @@ final class PaymentResourceTest extends TestCase
         $resource = new PaymentRecordResource($data);
 
         // Имитируем request
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
 
         try {
             $array = $resource->toArray($request);
@@ -81,7 +82,7 @@ final class PaymentResourceTest extends TestCase
     {
         $data = (object) ['correlation_id' => 'meta-test'];
         $resource = new PaymentRecordResource($data);
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
 
         try {
             $with = $resource->with($request);

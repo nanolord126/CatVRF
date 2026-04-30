@@ -14,7 +14,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "baseUrl": ".",
-    "types": ["cypress", "chai", "mocha", "node"]
+    "types": ["cypress", "chai", "node"]
   },
   "include": [
     "cypress/**/*",

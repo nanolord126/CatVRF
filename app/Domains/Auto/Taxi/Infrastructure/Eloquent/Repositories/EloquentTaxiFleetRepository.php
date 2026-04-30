@@ -21,8 +21,6 @@ use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\TaxiFleet as TaxiFleetM
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Infrastructure\Eloquent\Repositories
  */
 final class EloquentTaxiFleetRepository implements TaxiFleetRepositoryInterface
 {
@@ -34,6 +32,7 @@ final class EloquentTaxiFleetRepository implements TaxiFleetRepositoryInterface
     public function findById(TaxiFleetId $id): ?TaxiFleetEntity
     {
         $model = TaxiFleetModel::find($id->toString());
+
         return $model ? $this->toEntity($model) : null;
     }
 

@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 final class Cart extends Model
 {
@@ -26,21 +29,6 @@ final class Cart extends Model
         'reserved_until' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(function (self $model) {
-            if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -59,5 +47,20 @@ final class Cart extends Model
     public function isExpired(): bool
     {
         return $this->reserved_until !== null && $this->reserved_until->isPast();
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

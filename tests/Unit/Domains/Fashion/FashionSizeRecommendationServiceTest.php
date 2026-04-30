@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionSizeRecommendationServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionSizeRecommendationService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionSizeRecommendationService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_recommend_size_returns_structure(): void
     {
@@ -64,6 +55,17 @@ final class FashionSizeRecommendationServiceTest extends BaseTestCase
         $this->assertIsArray($result);
         $this->assertArrayHasKey('user_id', $result);
         $this->assertArrayHasKey('size_preferences', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionSizeRecommendationService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createUser(): int

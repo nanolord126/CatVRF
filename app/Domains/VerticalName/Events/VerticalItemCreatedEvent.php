@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\VerticalName\Events;
 
 use App\Domains\VerticalName\Models\VerticalItem;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Событие: VerticalItem создан.
@@ -15,25 +12,21 @@ use Illuminate\Queue\SerializesModels;
  * CANON 2026 — Layer 4: Events.
  * Все события содержат correlation_id и tenant_id для traceability.
  * Слушатели обрабатывают пост-логику: уведомления, ML-обновления, кэш-инвалидация.
- *
- * @package App\Domains\VerticalName\Events
  */
 final class VerticalItemCreatedEvent
 {
-
     /**
-     * @param VerticalItem $item          Созданный товар
-     * @param string       $correlationId ID для сквозной трассировки
-     * @param int          $tenantId      ID тенанта
-     * @param bool         $isB2B         Был ли создан через B2B-поток
+     * @param  VerticalItem  $item  Созданный товар
+     * @param  string  $correlationId  ID для сквозной трассировки
+     * @param  int  $tenantId  ID тенанта
+     * @param  bool  $isB2B  Был ли создан через B2B-поток
      */
     public function __construct(
         public readonly VerticalItem $item,
         public readonly string $correlationId,
         public readonly int $tenantId,
         public readonly bool $isB2B = false,
-    ) {
-    }
+    ) {}
 
     /**
      * Получить массив данных для логирования/аудита.

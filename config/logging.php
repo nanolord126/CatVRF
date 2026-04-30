@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
+use App\Services\Infrastructure\DopplerService;
 
 return [
 
@@ -18,7 +21,7 @@ return [
     |
     */
 
-    'default' => App\Services\Infrastructure\DopplerService::get('LOG_CHANNEL', 'stack'),
+    'default' => DopplerService::get('LOG_CHANNEL', 'stack'),
 
     /*
     |--------------------------------------------------------------------------
@@ -32,8 +35,8 @@ return [
     */
 
     'deprecations' => [
-        'channel' => App\Services\Infrastructure\DopplerService::get('LOG_DEPRECATIONS_CHANNEL', 'null'),
-        'trace' => App\Services\Infrastructure\DopplerService::get('LOG_DEPRECATIONS_TRACE', false),
+        'channel' => DopplerService::get('LOG_DEPRECATIONS_CHANNEL', 'null'),
+        'trace' => DopplerService::get('LOG_DEPRECATIONS_TRACE', false),
     ],
 
     /*
@@ -54,67 +57,67 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) App\Services\Infrastructure\DopplerService::get('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) DopplerService::get('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
         ],
 
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
 
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
-            'days' => App\Services\Infrastructure\DopplerService::get('LOG_DAILY_DAYS', 14),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
+            'days' => DopplerService::get('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
 
         'slack' => [
             'driver' => 'slack',
-            'url' => App\Services\Infrastructure\DopplerService::get('LOG_SLACK_WEBHOOK_URL'),
-            'username' => App\Services\Infrastructure\DopplerService::get('LOG_SLACK_USERNAME', 'Laravel Log'),
-            'emoji' => App\Services\Infrastructure\DopplerService::get('LOG_SLACK_EMOJI', ':boom:'),
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'critical'),
+            'url' => DopplerService::get('LOG_SLACK_WEBHOOK_URL'),
+            'username' => DopplerService::get('LOG_SLACK_USERNAME', 'Laravel Log'),
+            'emoji' => DopplerService::get('LOG_SLACK_EMOJI', ':boom:'),
+            'level' => DopplerService::get('LOG_LEVEL', 'critical'),
             'replace_placeholders' => true,
         ],
 
         'papertrail' => [
             'driver' => 'monolog',
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
-            'handler' => App\Services\Infrastructure\DopplerService::get('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
+            'handler' => DopplerService::get('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
             'handler_with' => [
-                'host' => App\Services\Infrastructure\DopplerService::get('PAPERTRAIL_URL'),
-                'port' => App\Services\Infrastructure\DopplerService::get('PAPERTRAIL_PORT'),
-                'connectionString' => 'tls://'.App\Services\Infrastructure\DopplerService::get('PAPERTRAIL_URL').':'.App\Services\Infrastructure\DopplerService::get('PAPERTRAIL_PORT'),
+                'host' => DopplerService::get('PAPERTRAIL_URL'),
+                'port' => DopplerService::get('PAPERTRAIL_PORT'),
+                'connectionString' => 'tls://'.DopplerService::get('PAPERTRAIL_URL').':'.DopplerService::get('PAPERTRAIL_PORT'),
             ],
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'stderr' => [
             'driver' => 'monolog',
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
             'handler_with' => [
                 'stream' => 'php://stderr',
             ],
-            'formatter' => App\Services\Infrastructure\DopplerService::get('LOG_STDERR_FORMATTER'),
+            'formatter' => DopplerService::get('LOG_STDERR_FORMATTER'),
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'syslog' => [
             'driver' => 'syslog',
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
-            'facility' => App\Services\Infrastructure\DopplerService::get('LOG_SYSLOG_FACILITY', LOG_USER),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
+            'facility' => DopplerService::get('LOG_SYSLOG_FACILITY', LOG_USER),
             'replace_placeholders' => true,
         ],
 
         'errorlog' => [
             'driver' => 'errorlog',
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
 
@@ -126,7 +129,7 @@ return [
         'commands' => [
             'driver' => 'daily',
             'path' => storage_path('logs/commands.log'),
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'debug'),
+            'level' => DopplerService::get('LOG_LEVEL', 'debug'),
             'days' => 30,
             'replace_placeholders' => true,
         ],
@@ -134,7 +137,7 @@ return [
         'audit' => [
             'driver' => 'daily',
             'path' => storage_path('logs/audit.log'),
-            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'info'),
+            'level' => DopplerService::get('LOG_LEVEL', 'info'),
             'days' => 30,
             'replace_placeholders' => true,
         ],
@@ -183,10 +186,12 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
-        'audit' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/audit.log'),
+        'filament-audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/filament-audit.log'),
             'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
         ],
     ],
 

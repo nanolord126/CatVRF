@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 use Livewire\Component;
@@ -15,25 +19,30 @@ use Illuminate\Http\Request;
  */
 final class PriceLabel extends Component
 {
-    public int    $amountKop    = 0;  // цена в копейках B2C
-    public ?int   $b2bAmountKop = null; // цена в копейках B2B (null = нет B2B-цены)
-    public bool   $inStock      = true;
-    public bool   $isB2B        = false;
-    public string $currency     = '₽';
-    public string $size         = 'md'; // sm|md|lg
-    public int    $productId    = 0;
+    public int $amountKop    = 0;  // цена в копейках B2C
 
-    public function __construct(
+    public ?int $b2bAmountKop = null; // цена в копейках B2B (null = нет B2B-цены)
+
+    public bool $inStock      = true;
+
+    public bool $isB2B        = false;
+
+    public string $currency     = '₽';
+
+    public string $size         = 'md'; // sm|md|lg
+
+    public int $productId    = 0;
+
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly AuthManager $auth,
-        private readonly Request     $request,
-    ) {}
+        private readonly Request $request,) {}
 
     public function mount(
-        int    $amountKop    = 0,
-        ?int   $b2bAmountKop = null,
-        bool   $inStock      = true,
+        int $amountKop    = 0,
+        ?int $b2bAmountKop = null,
+        bool $inStock      = true,
         string $size         = 'md',
-        int    $productId    = 0,
+        int $productId    = 0,
     ): void {
         $this->amountKop    = $amountKop;
         $this->b2bAmountKop = $b2bAmountKop;
@@ -67,6 +76,6 @@ final class PriceLabel extends Component
 
     public function render(): View
     {
-        return view('livewire.shared.price-label');
+        return $this->viewFactory->make('livewire.shared.price-label');
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\VeganProducts\Controllers\VeganModelsController;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +15,7 @@ Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/vegan-products')->gr
     // List vegan products (with filters)
     Route::get('products', [VeganModelsController::class, 'index'])
         ->name('vegan-products.products.index');
-    
+
     // Get product details
     Route::get('products/{product}', [VeganModelsController::class, 'show'])
         ->name('vegan-products.products.show');
@@ -25,12 +27,12 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     Route::post('products', [VeganModelsController::class, 'store'])
         ->name('vegan-products.products.store')
         ->middleware('throttle:20,1');
-    
+
     // Update product
     Route::put('products/{product}', [VeganModelsController::class, 'update'])
         ->name('vegan-products.products.update')
         ->middleware('throttle:30,1');
-    
+
     // Delete product
     Route::delete('products/{product}', [VeganModelsController::class, 'destroy'])
         ->name('vegan-products.products.destroy')

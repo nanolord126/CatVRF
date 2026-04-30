@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\RealEstate;
 
+use Carbon\CarbonImmutable;
+
 use App\Filament\Tenant\Resources\RealEstate\PropertyViewingResource\Pages;
 use App\Domains\RealEstate\Models\PropertyViewing;
 use Filament\Forms;
@@ -46,7 +48,7 @@ final class PropertyViewingResource extends Resource
                             ->preload(),
                         Forms\Components\DateTimePicker::make('scheduled_at')
                             ->required()
-                            ->minDate(now())
+                            ->minDate(CarbonImmutable::now())
                             ->rules(['after:now']),
                         Forms\Components\Select::make('status')
                             ->options([
@@ -172,7 +174,7 @@ final class PropertyViewingResource extends Resource
                     ->query(fn (Builder $query): Builder => $query->expired()),
                 Tables\Filters\Filter::make('upcoming')
                     ->label('Предстоящие')
-                    ->query(fn (Builder $query): Builder => $query->where('scheduled_at', '>', now())),
+                    ->query(fn (Builder $query): Builder => $query->where('scheduled_at', '>', CarbonImmutable::now())),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

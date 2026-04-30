@@ -1,0 +1,165 @@
+# CatVRF RoadRunner Configuration 2026
+# Optimized for high-performance multi-tenant application
+
+version: "3"
+
+server:
+  # HTTP server configuration
+  http:
+    address: 0.0.0.0:8000
+    middlewares:
+      - static
+      - gzip
+    static:
+      # Serve static files from public directory
+      dir: public
+      forbid:
+        - ".env"
+        - ".htaccess"
+    max_request_size: 20971520  # 20MB
+    middleware:
+      - headers
+    headers:
+      # Security headers
+      response:
+        X-Content-Type-Options: "nosniff"
+        X-Frame-Options: "SAMEORIGIN"
+        X-XSS-Protection: "1; mode=block"
+        Referrer-Policy: "strict-origin-when-cross-origin"
+      # CORS headers (configure as needed)
+      request:
+        Access-Control-Allow-Origin: "*"
+        Access-Control-Allow-Methods: "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers: "Content-Type, Authorization, X-Tenant-ID"
+        Access-Control-Max-Age: "86400"
+
+# Pool configuration for PHP workers
+service:
+  # RPC service for inter-process communication
+  rpc:
+    listen: tcp://127.0.0.1:6001
+
+# PHP worker configuration
+php:
+  # Pool of PHP workers
+  workers:
+    # Number of workers (auto = CPU cores)
+    command: "php ./vendor/bin/roadrunner-worker"
+    pool:
+      # Number of workers (auto = CPU cores, or specify number)
+      num_workers: auto
+      # Maximum jobs per worker before recycling
+      max_jobs: 1000
+      # Worker allocate timeout in seconds
+      allocate_timeout: 60s
+      # Worker destroy timeout in seconds
+      destroy_timeout: 60s
+      # Supervisor settings
+      supervisor:
+        # Watch the worker process
+        watch_tick: 1s
+        # TTL for the worker (max lifetime)
+        ttl: 0s
+        # Idle worker TTL
+        idle_ttl: 60s
+        # Max worker memory in MB (0 = unlimited)
+        max_worker_memory: 128MB
+        # Exec timeout in seconds
+        exec_ttl: 60s
+
+# Logs configuration
+logs:
+  # Log mode (development, production, off)
+  mode: production
+  # Log channels
+  channels:
+    # HTTP channel
+    http:
+      level: info
+      mode: json
+      output: stdout
+      encoding: json
+    # Server channel
+    server:
+      level: info
+      mode: json
+      output: stdout
+      encoding: json
+    # RPC channel
+    rpc:
+      level: error
+      mode: json
+      output: stderr
+      encoding: json
+
+# Metrics configuration (Prometheus)
+metrics:
+  # Prometheus metrics address
+  address: 0.0.0.0:2112
+  # Prometheus metrics path
+  path: /metrics
+  # Collect application metrics
+  collect:
+    app:
+      enabled: true
+    # Collect server metrics
+    server:
+      enabled: true
+    # Collect pool metrics
+    pool:
+      enabled: true
+    # Collect RPC metrics
+    rpc:
+      enabled: true
+
+# Redis configuration (for cache and sessions)
+redis:
+  # Default Redis connection
+  default:
+    # Redis address
+    addr: "127.0.0.1:6379"
+    # Redis password (if needed)
+    password: ""
+    # Redis database number
+    db: 0
+    # Pool configuration
+    pool:
+      # Number of connections in the pool
+      num_workers: 10
+      # Max number of connections per worker
+      max_age: 0
+      # Idle timeout
+      idle_timeout: 10s
+      # Connection timeout
+      timeout: 5s
+
+# KV storage for Octane cache
+kv:
+  # Local memory KV storage
+  local:
+    driver: memory
+    config:
+      # Interval for garbage collection
+      interval: 60s
+
+# Reload configuration for zero-downtime deployments
+reload:
+  # Reload interval in seconds
+  interval: 1s
+  # Reload patterns (files to watch)
+  patterns:
+    - ".rr.yaml"
+    - "composer.json"
+    - "composer.lock"
+    - ".env"
+  # Services to reload
+  services:
+    http:
+      # Recursively reload services
+      recursive: true
+      # Reload on file changes
+      dirs:
+        - .
+      # File patterns to watch
+      patterns:
+        - ".php"

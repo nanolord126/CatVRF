@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\SoftwareDevelopment\Services;
 
@@ -9,24 +11,24 @@ use App\Services\WalletService;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * SoftwareDevelopmentService — управление проектами разработки ПО.
  *
  * Полный цикл: создание, завершение, отмена проектов
  * с fraud-check, wallet-интеграцией и audit-логированием.
- *
- * @package App\Domains\Freelance\SoftwareDevelopment\Services
  */
 final readonly class SoftwareDevelopmentService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final readonly class SoftwareDevelopmentService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Software project created', [
+            $this->logger->$this->logger->info('Software project created', [
                 'project_id' => $project->id,
                 'developer_id' => $developerId,
                 'correlation_id' => $correlationId,
@@ -124,7 +126,7 @@ final readonly class SoftwareDevelopmentService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Software project completed', [
+            $this->logger->$this->logger->info('Software project completed', [
                 'project_id' => $project->id,
                 'payout' => $project->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -174,7 +176,7 @@ final readonly class SoftwareDevelopmentService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Software project cancelled', [
+            $this->logger->$this->logger->info('Software project cancelled', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -194,7 +196,7 @@ final readonly class SoftwareDevelopmentService
     /**
      * Получить список проектов клиента.
      */
-    public function getUserProjects(int $clientId): \Illuminate\Database\Eloquent\Collection
+    public function getUserProjects(int $clientId): Collection
     {
         return SoftwareProject::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

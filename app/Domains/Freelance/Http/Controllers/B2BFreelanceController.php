@@ -1,279 +1,283 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Http\Controllers;
 
-
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\DatabaseManager;
 
 final class B2BFreelanceController extends Controller
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
-
+
     public function storefronts(): JsonResponse
-        {
-            try {
-                $storefronts = B2BFreelanceStorefront::where('is_active', true)
-                    ->where('is_verified', true)
-                    ->paginate(20);
+    {
+        try {
+            $storefronts = B2BFreelanceStorefront::where('is_active', true)
+                ->where('is_verified', true)
+                ->paginate(20);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'data' => $storefronts,
-                    'correlation_id' => Str::uuid(),
-                ], 200);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Failed to fetch storefronts', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
-                ]);
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'data' => $storefronts,
+                'correlation_id' => Str::uuid(),
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Failed to fetch storefronts', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при загрузке витрин',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при загрузке витрин',
+                'correlation_id' => Str::uuid(),
+            ], 500);
         }
+    }
 
-        public function createStorefront(Request $request): JsonResponse
-        {
-            try {
-                $this->authorize('createStorefront', B2BFreelanceStorefront::class);
+    public function createStorefront(Request $request): JsonResponse
+    {
+        try {
+            $this->authorize('createStorefront', B2BFreelanceStorefront::class);
 
-                $validated = $request->validate([
-                    'company_name' => 'required|string|max:255',
-                    'inn' => 'required|string|unique:b2b_freelance_storefronts,inn',
-                    'description' => 'nullable|string',
-                    'service_categories' => 'nullable|json',
-                    'wholesale_discount' => 'nullable|numeric|between:0,100',
-                    'min_order_amount' => 'integer|min:1000',
-                ]);
+            $validated = $request->validate([
+                'company_name' => 'required|string|max:255',
+                'inn' => 'required|string|unique:b2b_freelance_storefronts,inn',
+                'description' => 'nullable|string',
+                'service_categories' => 'nullable|json',
+                'wholesale_discount' => 'nullable|numeric|between:0,100',
+                'min_order_amount' => 'integer|min:1000',
+            ]);
 
-                $correlationId = Str::uuid()->toString();
+            $correlationId = Str::uuid()->toString();
 
-                $this->db->transaction(function () use ($validated, $correlationId) {
-                    B2BFreelanceStorefront::create([
-                        'uuid' => Str::uuid(),
-                        'tenant_id' => $request->user()->tenant_id,
-                        ...$validated,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    $this->logger->info('Freelance B2B: Storefront created', [
-                        'inn' => $validated['inn'],
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'message' => 'Витрина создана',
+            $this->db->transaction(function () use ($validated, $correlationId) {
+                B2BFreelanceStorefront::create([
+                    'uuid' => Str::uuid(),
+                    'tenant_id' => $request->user()->tenant_id,
+                    ...$validated,
                     'correlation_id' => $correlationId,
-                ], 201);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Storefront creation failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
                 ]);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при создании витрины',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
-        }
-
-        public function createOrder(Request $request): JsonResponse
-        {
-            try {
-                $validated = $request->validate([
-                    'b2b_freelance_storefront_id' => 'required|exists:b2b_freelance_storefronts,id',
-                    'company_contact_person' => 'required|string',
-                    'company_phone' => 'required|string',
-                    'items_json' => 'required|json',
-                    'total_amount' => 'required|numeric|min:1',
-                ]);
-
-                $correlationId = Str::uuid()->toString();
-                $commission = (int) ($validated['total_amount'] * 0.14);
-
-                $this->db->transaction(function () use ($validated, $correlationId, $commission) {
-                    B2BFreelanceOrder::create([
-                        'uuid' => Str::uuid(),
-                        'tenant_id' => $request->user()->tenant_id,
-                        'order_number' => 'B2B-' . Str::random(8),
-                        'commission_amount' => $commission,
-                        'status' => 'pending',
-                        ...$validated,
-                        'correlation_id' => $correlationId,
-                    ]);
-
-                    $this->logger->info('Freelance B2B: Order created', [
-                        'amount' => $validated['total_amount'],
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'message' => 'Заказ создан',
+                $this->logger->$this->logger->info('Freelance B2B: Storefront created', [
+                    'inn' => $validated['inn'],
                     'correlation_id' => $correlationId,
-                ], 201);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Order creation failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
                 ]);
+            });
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при создании заказа',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Витрина создана',
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Storefront creation failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при создании витрины',
+                'correlation_id' => Str::uuid(),
+            ], 500);
         }
+    }
 
-        public function myB2BOrders(): JsonResponse
-        {
-            try {
-                $orders = B2BFreelanceOrder::where('tenant_id', $request->user()->tenant_id)
-                    ->latest()
-                    ->paginate(20);
+    public function createOrder(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'b2b_freelance_storefront_id' => 'required|exists:b2b_freelance_storefronts,id',
+                'company_contact_person' => 'required|string',
+                'company_phone' => 'required|string',
+                'items_json' => 'required|json',
+                'total_amount' => 'required|numeric|min:1',
+            ]);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'data' => $orders,
-                    'correlation_id' => Str::uuid(),
-                ], 200);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Failed to fetch orders', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
-                ]);
+            $correlationId = Str::uuid()->toString();
+            $commission = (int) ($validated['total_amount'] * 0.14);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при загрузке заказов',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
-        }
-
-        public function approveOrder(int $id): JsonResponse
-        {
-            try {
-                $order = B2BFreelanceOrder::findOrFail($id);
-                $this->authorize('approveOrder', $order);
-
-                $correlationId = Str::uuid()->toString();
-
-                $this->db->transaction(function () use ($order, $correlationId) {
-                    $order->update(['status' => 'approved']);
-
-                    $this->logger->info('Freelance B2B: Order approved', [
-                        'order_id' => $order->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'message' => 'Заказ одобрен',
+            $this->db->transaction(function () use ($validated, $correlationId, $commission) {
+                B2BFreelanceOrder::create([
+                    'uuid' => Str::uuid(),
+                    'tenant_id' => $request->user()->tenant_id,
+                    'order_number' => 'B2B-'.Str::random(8),
+                    'commission_amount' => $commission,
+                    'status' => 'pending',
+                    ...$validated,
                     'correlation_id' => $correlationId,
-                ], 200);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Order approval failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
                 ]);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при одобрении заказа',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
-        }
-
-        public function rejectOrder(int $id, Request $request): JsonResponse
-        {
-            try {
-                $order = B2BFreelanceOrder::findOrFail($id);
-                $this->authorize('rejectOrder', $order);
-
-                $correlationId = Str::uuid()->toString();
-                $reason = $request->get('reason', '');
-
-                $this->db->transaction(function () use ($order, $correlationId, $reason) {
-                    $order->update([
-                        'status' => 'rejected',
-                        'notes' => $reason,
-                    ]);
-
-                    $this->logger->info('Freelance B2B: Order rejected', [
-                        'order_id' => $order->id,
-                        'reason' => $reason,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
-
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'message' => 'Заказ отклонен',
+                $this->logger->$this->logger->info('Freelance B2B: Order created', [
+                    'amount' => $validated['total_amount'],
                     'correlation_id' => $correlationId,
-                ], 200);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Order rejection failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
                 ]);
+            });
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при отклонении заказа',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Заказ создан',
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Order creation failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при создании заказа',
+                'correlation_id' => Str::uuid(),
+            ], 500);
         }
+    }
 
-        public function verifyInn(int $id): JsonResponse
-        {
-            try {
-                $this->authorize('verifyInn', B2BFreelanceStorefront::class);
+    public function myB2BOrders(): JsonResponse
+    {
+        try {
+            $orders = B2BFreelanceOrder::where('tenant_id', $request->user()->tenant_id)
+                ->latest()
+                ->paginate(20);
 
-                $storefront = B2BFreelanceStorefront::findOrFail($id);
-                $correlationId = Str::uuid()->toString();
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'data' => $orders,
+                'correlation_id' => Str::uuid(),
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Failed to fetch orders', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
 
-                $this->db->transaction(function () use ($storefront, $correlationId) {
-                    $storefront->update(['is_verified' => true]);
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при загрузке заказов',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
 
-                    $this->logger->info('Freelance B2B: Storefront verified', [
-                        'storefront_id' => $storefront->id,
-                        'inn' => $storefront->inn,
-                        'correlation_id' => $correlationId,
-                    ]);
-                });
+    public function approveOrder(int $id): JsonResponse
+    {
+        try {
+            $order = B2BFreelanceOrder::findOrFail($id);
+            $this->authorize('approveOrder', $order);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => true,
-                    'message' => 'Витрина верифицирована',
+            $correlationId = Str::uuid()->toString();
+
+            $this->db->transaction(function () use ($order, $correlationId) {
+                $order->update(['status' => 'approved']);
+
+                $this->logger->$this->logger->info('Freelance B2B: Order approved', [
+                    'order_id' => $order->id,
                     'correlation_id' => $correlationId,
-                ], 200);
-            } catch (\Throwable $e) {
-                $this->logger->error('Freelance B2B: Verification failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => Str::uuid(),
+                ]);
+            });
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Заказ одобрен',
+                'correlation_id' => $correlationId,
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Order approval failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при одобрении заказа',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function rejectOrder(int $id, Request $request): JsonResponse
+    {
+        try {
+            $order = B2BFreelanceOrder::findOrFail($id);
+            $this->authorize('rejectOrder', $order);
+
+            $correlationId = Str::uuid()->toString();
+            $reason = $request->get('reason', '');
+
+            $this->db->transaction(function () use ($order, $correlationId, $reason) {
+                $order->update([
+                    'status' => 'rejected',
+                    'notes' => $reason,
                 ]);
 
-                return new \Illuminate\Http\JsonResponse([
-                    'success' => false,
-                    'message' => 'Ошибка при верификации',
-                    'correlation_id' => Str::uuid(),
-                ], 500);
-            }
+                $this->logger->$this->logger->info('Freelance B2B: Order rejected', [
+                    'order_id' => $order->id,
+                    'reason' => $reason,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Заказ отклонен',
+                'correlation_id' => $correlationId,
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Order rejection failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при отклонении заказа',
+                'correlation_id' => Str::uuid(),
+            ], 500);
         }
+    }
+
+    public function verifyInn(int $id): JsonResponse
+    {
+        try {
+            $this->authorize('verifyInn', B2BFreelanceStorefront::class);
+
+            $storefront = B2BFreelanceStorefront::findOrFail($id);
+            $correlationId = Str::uuid()->toString();
+
+            $this->db->transaction(function () use ($storefront, $correlationId) {
+                $storefront->update(['is_verified' => true]);
+
+                $this->logger->$this->logger->info('Freelance B2B: Storefront verified', [
+                    'storefront_id' => $storefront->id,
+                    'inn' => $storefront->inn,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Витрина верифицирована',
+                'correlation_id' => $correlationId,
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error('Freelance B2B: Verification failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка при верификации',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
 }

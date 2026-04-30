@@ -1,8 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artist;
@@ -17,13 +17,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final class ArtistResource extends Resource
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
-
     protected static ?string $model = Artist::class;
+
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     public static function form(Form $form): Form
     {
@@ -162,12 +165,12 @@ final class ArtistResource extends Resource
                         $correlationId = (string) Str::uuid();
                         $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
-                                'is_active' => !$record->is_active,
+                                'is_active' => ! $record->is_active,
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        $this->logger->info('Artist toggled activity from Filament', [
+                        $this->logger->$this->logger->info('Artist toggled activity from Filament', [
                             'artist_id' => $record->id,
                             'new_state' => $record->is_active,
                             'correlation_id' => $record->correlation_id ?: $correlationId,

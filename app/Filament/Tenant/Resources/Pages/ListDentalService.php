@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -14,6 +16,8 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class ListDentalService
@@ -25,20 +29,12 @@ use Filament\Tables\Table;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ListDentalService extends ListRecords
 {
     protected static string $resource = DentalServiceResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Добавить услугу')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -49,9 +45,9 @@ final class ListDentalService extends ListRecords
                 BadgeColumn::make('category')->label('Категория')
                     ->colors(['primary' => 'Therapy', 'warning' => 'Surgery', 'success' => 'Orthodontics', 'info' => 'Implantology']),
                 TextColumn::make('base_price')->label('Базовая цена')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ') . ' ₽')->sortable(),
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ').' ₽')->sortable(),
                 TextColumn::make('duration_minutes')->label('Длительность')
-                    ->formatStateUsing(fn ($state) => $state . ' мин.')->sortable(),
+                    ->formatStateUsing(fn ($state) => $state.' мин.')->sortable(),
                 TextColumn::make('correlation_id')->label('Corr. ID')->toggleable(isToggledHiddenByDefault: true)->limit(16),
                 TextColumn::make('created_at')->label('Добавлено')->dateTime('d.m.Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -62,5 +58,12 @@ final class ListDentalService extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Добавить услугу')->icon('heroicon-o-plus'),
+        ];
     }
 }

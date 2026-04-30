@@ -1,17 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\User;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\Auth\AuthManager;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
-use Livewire\WithPagination;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * Orders — Livewire-компонент истории заказов пользователя.
@@ -26,21 +27,25 @@ use Illuminate\Database\DatabaseManager;
  */
 final class Orders extends Component
 {
-    public function __construct(
-        private readonly AuthManager $authManager,
-        private readonly DatabaseManager $db,
-    ) {}
-
-
     // ── публичные свойства ───────────────────────────────────────────────────
 
-    private string $filterStatus   = 'all';   // all | pending | processing | completed | cancelled
-    private string $filterVertical = 'all';
-    private string $search         = '';
-    private ?int $activeOrderId  = null;    // развёрнутый заказ
-    private array $activeOrder    = [];
-    private bool $isB2B          = false;
-    private string $correlationId  = '';
+    public string $filterStatus   = 'all';   // all | pending | processing | completed | cancelled
+
+    public string $filterVertical = 'all';
+
+    public string $search         = '';
+
+    public ?int $activeOrderId  = null;    // развёрнутый заказ
+
+    public array $activeOrder    = [];
+
+    public bool $isB2B          = false;
+
+    public string $correlationId  = '';
+
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly AuthManager $authManager,
+        private readonly DatabaseManager $db,) {}
 
     // ── lifecycle ───────────────────────────────────────────────────────────
 
@@ -50,8 +55,9 @@ final class Orders extends Component
 
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             $this->redirect(route('login'));
+
             return;
         }
 
@@ -79,11 +85,60 @@ final class Orders extends Component
         if ($this->activeOrderId === $orderId) {
             $this->activeOrderId = null;
             $this->activeOrder   = [];
+
             return;
         }
 
         $this->activeOrderId = $orderId;
         $this->loadOrderDetails($orderId);
+    }
+
+    // ── геттеры для view ─────────────────────────────────────────────────────
+
+    public function getOrders(): LengthAwarePaginator
+    {
+        /** @var User $user */
+        $user = $this->authManager->user();
+        if (! $user) {
+            return new LengthAwarePaginator([], 0, 15);
+        }
+
+        $query = $this->db->table('orders')
+            ->where('orders.user_id', $user->id)
+            ->orderByDesc('orders.created_at')
+            ->select([
+                'orders.id',
+                'orders.uuid',
+                'orders.status',
+                'orders.total_kopecks',
+                'orders.created_at',
+                'orders.vertical',
+            ]);
+
+        if ($this->filterStatus !== 'all') {
+            $query->where('orders.status', $this->filterStatus);
+        }
+
+        if ($this->filterVertical !== 'all') {
+            $query->where('orders.vertical', $this->filterVertical);
+        }
+
+        if (! empty($this->search)) {
+            $query->where(function ($q): void {
+                $q->where('orders.uuid', 'like', '%'.$this->search.'%');
+            });
+        }
+
+        return $query->paginate(10);
+    }
+
+    // ── рендер ──────────────────────────────────────────────────────────────
+
+    public function render(): View
+    {
+        return $this->viewFactory->make('livewire.user.orders', [
+            'orders' => $this->getOrders(),
+        ])->layout('layouts.user-cabinet');
     }
 
     // ── приватные методы ─────────────────────────────────────────────────────
@@ -92,7 +147,7 @@ final class Orders extends Component
     {
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -101,8 +156,9 @@ final class Orders extends Component
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             $this->activeOrder = [];
+
             return;
         }
 
@@ -130,53 +186,5 @@ final class Orders extends Component
             'items'    => $items,
             'delivery' => $delivery ? (array) $delivery : null,
         ];
-    }
-
-    // ── геттеры для view ─────────────────────────────────────────────────────
-
-    public function getOrders(): \Illuminate\Pagination\LengthAwarePaginator
-    {
-        /** @var User $user */
-        $user = $this->authManager->user();
-        if (!$user) {
-            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
-        }
-
-        $query = $this->db->table('orders')
-            ->where('orders.user_id', $user->id)
-            ->orderByDesc('orders.created_at')
-            ->select([
-                'orders.id',
-                'orders.uuid',
-                'orders.status',
-                'orders.total_kopecks',
-                'orders.created_at',
-                'orders.vertical',
-            ]);
-
-        if ($this->filterStatus !== 'all') {
-            $query->where('orders.status', $this->filterStatus);
-        }
-
-        if ($this->filterVertical !== 'all') {
-            $query->where('orders.vertical', $this->filterVertical);
-        }
-
-        if (!empty($this->search)) {
-            $query->where(function ($q): void {
-                $q->where('orders.uuid', 'like', '%' . $this->search . '%');
-            });
-        }
-
-        return $query->paginate(10);
-    }
-
-    // ── рендер ──────────────────────────────────────────────────────────────
-
-    public function render(): View
-    {
-        return view('livewire.user.orders', [
-            'orders' => $this->getOrders(),
-        ])->layout('layouts.user-cabinet');
     }
 }

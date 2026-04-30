@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -8,12 +10,6 @@ use Tests\TestCase;
 final class BodyMeasurementsServiceTest extends TestCase
 {
     private BodyMeasurementsService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = new BodyMeasurementsService();
-    }
 
     public function test_calculate_figure_type_hourglass(): void
     {
@@ -95,5 +91,11 @@ final class BodyMeasurementsServiceTest extends TestCase
         $this->assertArrayHasKey('figure_type', $result);
         $this->assertArrayHasKey('bra_size', $result);
         $this->assertArrayHasKey('bmi', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = new BodyMeasurementsService();
     }
 }

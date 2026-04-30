@@ -20,11 +20,11 @@ final readonly class FakeMortgageCalculatorService implements MortgageCalculator
     /**
      * Рассчитать ежемесячный платёж.
      *
-     * @param int   $loanAmountKopecks   Сумма кредита в копейках
-     * @param int   $downPaymentKopecks  Первоначальный взнос в копейках
-     * @param float $annualRatePercent   Годовая ставка в процентах (например 12.5)
-     * @param int   $termMonths          Срок кредита в месяцах
-     * @return int  Ежемесячный платёж в копейках
+     * @param  int  $loanAmountKopecks  Сумма кредита в копейках
+     * @param  int  $downPaymentKopecks  Первоначальный взнос в копейках
+     * @param  float  $annualRatePercent  Годовая ставка в процентах (например 12.5)
+     * @param  int  $termMonths  Срок кредита в месяцах
+     * @return int Ежемесячный платёж в копейках
      */
     public function calculateMonthlyPayment(
         int $loanAmountKopecks,
@@ -89,10 +89,10 @@ final readonly class FakeMortgageCalculatorService implements MortgageCalculator
      *
      * Банки применяют коэффициент PTI (Payment-to-Income) = 0.4.
      *
-     * @param int   $monthlyIncomeKopecks  Ежемесячный доход в копейках
-     * @param float $annualRatePercent     Годовая ставка
-     * @param int   $termMonths           Срок кредита в месяцах
-     * @return int  Максимальная сумма кредита в копейках
+     * @param  int  $monthlyIncomeKopecks  Ежемесячный доход в копейках
+     * @param  float  $annualRatePercent  Годовая ставка
+     * @param  int  $termMonths  Срок кредита в месяцах
+     * @return int Максимальная сумма кредита в копейках
      */
     public function calculateMaxLoanAmount(
         int $monthlyIncomeKopecks,

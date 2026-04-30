@@ -1,19 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
 use Illuminate\Support\Str;
 use Modules\Core\Models\Tenant;
 use Modules\Inventory\Models\InventoryItem;
 use Modules\Notifications\Jobs\SendNotificationJob;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Low Stock Notification Job
@@ -24,26 +29,29 @@ use Illuminate\Log\LogManager;
  */
 final class LowStockNotificationJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 1800; // 30 минут
+
     public int $tries = 2;
 
     private readonly string $correlationId;
 
-    public function __construct(
-        private readonly LogManager $logger,
-    )
-    {
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $logger,) {
         $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('Low stock notification check started', [
+            $this->logger->channel('audit')->$this->logger->info('Low stock notification check started', [
                 'correlation_id' => $this->correlationId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
 
             // 1. Найти все tenants с включённым уведомлением
@@ -52,7 +60,8 @@ final class LowStockNotificationJob implements ShouldQueue
                 ->get();
 
             if ($tenants->isEmpty()) {
-                $this->logger->info('No tenants with low stock alerts enabled');
+                $this->logger->$this->logger->info('No tenants with low stock alerts enabled');
+
                 return;
             }
 
@@ -61,7 +70,7 @@ final class LowStockNotificationJob implements ShouldQueue
                 $this->checkTenantInventory($tenant);
             }
 
-            $this->logger->channel('audit')->info('Low stock notification check completed', [
+            $this->logger->channel('audit')->$this->logger->info('Low stock notification check completed', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -83,6 +92,14 @@ final class LowStockNotificationJob implements ShouldQueue
         }
     }
 
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('LowStockNotificationJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     /**
      * Проверить инвентарь для конкретного tenant
      */
@@ -98,7 +115,7 @@ final class LowStockNotificationJob implements ShouldQueue
             return;
         }
 
-        $this->logger->info('Low stock items found', [
+        $this->logger->$this->logger->info('Low stock items found', [
             'tenant_id' => $tenant->id,
             'count' => $lowStockItems->count(),
         ]);
@@ -117,12 +134,12 @@ final class LowStockNotificationJob implements ShouldQueue
     {
         $owner = $tenant->owner();
 
-        if (!$owner) {
+        if (! $owner) {
             return;
         }
 
         $itemCount = $lowStockItems->count();
-        $criticalItems = $lowStockItems->filter(fn($item) => $item->current_stock === 0)->count();
+        $criticalItems = $lowStockItems->filter(fn ($item) => $item->current_stock === 0)->count();
 
         $message = "⚠️ У вас {$itemCount} товаров с низким остатком";
 
@@ -139,7 +156,7 @@ final class LowStockNotificationJob implements ShouldQueue
                 'item_count' => $itemCount,
                 'critical_count' => $criticalItems,
                 'items' => $lowStockItems
-                    ->map(fn($item) => [
+                    ->map(fn ($item) => [
                         'id' => $item->id,
                         'name' => $item->name,
                         'current_stock' => $item->current_stock,
@@ -150,7 +167,7 @@ final class LowStockNotificationJob implements ShouldQueue
             'correlation_id' => $this->correlationId,
         ]);
 
-        $this->logger->info('Low stock notification sent to owner', [
+        $this->logger->$this->logger->info('Low stock notification sent to owner', [
             'tenant_id' => $tenant->id,
             'user_id' => $owner->id,
             'item_count' => $itemCount,
@@ -164,23 +181,23 @@ final class LowStockNotificationJob implements ShouldQueue
     {
         // Найти менеджера склада
         $manager = $tenant->users()
-            ->whereHas('roles', fn($q) => $q->where('name', 'warehouse_manager'))
+            ->whereHas('roles', fn ($q) => $q->where('name', 'warehouse_manager'))
             ->first();
 
-        if (!$manager) {
+        if (! $manager) {
             return;
         }
 
         $itemsSummary = $lowStockItems
-            ->map(fn($item) => sprintf(
-                "%s: %d шт. (минимум: %d)",
+            ->map(fn ($item) => sprintf(
+                '%s: %d шт. (минимум: %d)',
                 $item->name,
                 $item->current_stock,
                 $item->min_stock_threshold
             ))
             ->implode("\n");
 
-        SendNotificationJob::dispatch(
+        SendNotificationJob::$this->bus->dispatch(
             email: $manager->email,
             subject: 'Уведомление: низкий остаток товаров',
             template: 'emails.low-stock-notification',
@@ -191,14 +208,6 @@ final class LowStockNotificationJob implements ShouldQueue
                 'items_summary' => $itemsSummary,
                 'correlation_id' => $this->correlationId,
             ]
-        )->onQueue('emails');
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('LowStockNotificationJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'error' => $exception->getMessage(),
-        ]);
+        )->onQueue('notification');
     }
 }

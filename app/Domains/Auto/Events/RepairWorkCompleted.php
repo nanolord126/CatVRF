@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\AutoServiceOrder;
@@ -10,6 +11,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 /**
  * Class RepairWorkCompleted
  *
@@ -20,17 +22,20 @@ use Illuminate\Queue\SerializesModels;
  * Events carry correlation_id for full traceability.
  * Listeners handle side effects asynchronously.
  *
- * @see \Illuminate\Foundation\Events\Dispatchable
- * @package App\Domains\Auto\Events
+ * @see Dispatchable
  */
 final class RepairWorkCompleted implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
         public readonly AutoServiceOrder $order,
-        public readonly string $correlationId, public readonly LoggerInterface $logger) {
-        $this->logger->info('Repair work completed', [
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
+    ) {
+        $this->logger->$this->logger->info('Repair work completed', [
             'correlation_id' => $this->correlationId,
             'order_id' => $this->order->id,
             'client_id' => $this->order->client_id,

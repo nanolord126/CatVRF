@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Taxi\DTOs\TaxiPricingDto;
 use App\Domains\Taxi\DTOs\TaxiPricingResultDto;
@@ -8,34 +12,38 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 
 /**
  * TaxiPricingService - Dynamic pricing with surge pricing algorithm
- * 
+ *
  * Uses ML-based predictive pricing that beats competitors by 60% accuracy
  * Implements dynamic surge pricing with real-time demand analysis
  */
 final readonly class TaxiPricingService
 {
     private const CACHE_TTL = 180;
+
     private const BASE_PRICE_KOPEKS = 15000;
+
     private const PRICE_PER_KM_KOPEKS = 2500;
+
     private const PRICE_PER_MINUTE_KOPEKS = 300;
-    
+
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly Cache $cache,
+        private readonly HttpClientFactory $http,
     ) {}
 
     public function calculatePrice(TaxiPricingDto $dto): TaxiPricingResultDto
     {
         $correlationId = $dto->correlationId;
-        
+
         $this->fraud->check(
             userId: 0,
             operationType: 'taxi_pricing_calculate',
@@ -47,12 +55,13 @@ final readonly class TaxiPricingService
 
         $cacheKey = "taxi:pricing:{$dto->pickupLat}:{$dto->pickupLon}:{$dto->distanceKm}:{$dto->tenantId}:{$dto->isB2B}";
         $cachedPrice = $this->cache->get($cacheKey);
-        
+
         if ($cachedPrice !== null) {
             $this->logger->debug('Pricing retrieved from cache', [
                 'cache_key' => $cacheKey,
                 'correlation_id' => $correlationId,
             ]);
+
             return TaxiPricingResultDto::fromArray($cachedPrice);
         }
 
@@ -64,24 +73,24 @@ final readonly class TaxiPricingService
         );
 
         $basePrice = self::BASE_PRICE_KOPEKS;
-        $distancePrice = (int)($dto->distanceKm * self::PRICE_PER_KM_KOPEKS);
-        $timePrice = (int)($dto->estimatedMinutes * self::PRICE_PER_MINUTE_KOPEKS);
-        
+        $distancePrice = (int) ($dto->distanceKm * self::PRICE_PER_KM_KOPEKS);
+        $timePrice = (int) ($dto->estimatedMinutes * self::PRICE_PER_MINUTE_KOPEKS);
+
         $subtotal = $basePrice + $distancePrice + $timePrice;
-        
+
         $totalBeforeSurge = $subtotal;
-        $totalAfterSurge = (int)($totalBeforeSurge * $surgeMultiplier);
-        
+        $totalAfterSurge = (int) ($totalBeforeSurge * $surgeMultiplier);
+
         $platformCommissionRate = $dto->isB2B ? 0.08 : 0.15;
-        $platformCommission = (int)($totalAfterSurge * $platformCommissionRate);
-        
+        $platformCommission = (int) ($totalAfterSurge * $platformCommissionRate);
+
         $fleetCommission = 0;
         if ($dto->isB2B) {
-            $fleetCommission = (int)($totalAfterSurge * 0.05);
+            $fleetCommission = (int) ($totalAfterSurge * 0.05);
         }
 
         $totalPrice = $totalAfterSurge;
-        
+
         $priceBreakdown = [
             'base_price' => $basePrice,
             'distance_price' => $distancePrice,
@@ -116,7 +125,7 @@ final readonly class TaxiPricingService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Taxi price calculated', [
+        $this->logger->$this->logger->info('Taxi price calculated', [
             'total_price' => $totalPrice,
             'surge_multiplier' => $surgeMultiplier,
             'distance_km' => $dto->distanceKm,
@@ -137,13 +146,13 @@ final readonly class TaxiPricingService
     ): TaxiPricingResultDto {
         $distanceDifference = abs($actualDistanceKm - $estimatedDistanceKm);
         $distancePriceAdjustment = 0;
-        
+
         if ($distanceDifference > 0.5) {
-            $distancePriceAdjustment = (int)(($actualDistanceKm - $estimatedDistanceKm) * self::PRICE_PER_KM_KOPEKS);
+            $distancePriceAdjustment = (int) (($actualDistanceKm - $estimatedDistanceKm) * self::PRICE_PER_KM_KOPEKS);
         }
 
-        $finalPrice = max($basePrice, (int)($basePrice + $distancePriceAdjustment));
-        
+        $finalPrice = max($basePrice, (int) ($basePrice + $distancePriceAdjustment));
+
         $priceBreakdown = [
             'base_price' => $basePrice,
             'estimated_distance_km' => $estimatedDistanceKm,
@@ -157,7 +166,7 @@ final readonly class TaxiPricingService
             basePrice: $basePrice,
             surgeMultiplier: $surgeMultiplier,
             totalPrice: $finalPrice,
-            platformCommission: (int)($finalPrice * 0.15),
+            platformCommission: (int) ($finalPrice * 0.15),
             fleetCommission: 0,
             priceBreakdown: $priceBreakdown,
         );
@@ -167,16 +176,16 @@ final readonly class TaxiPricingService
     {
         $cacheKey = "taxi:surge:{$lat}:{$lon}:{$tenantId}";
         $cachedMultiplier = $this->cache->get($cacheKey);
-        
+
         if ($cachedMultiplier !== null) {
             return $cachedMultiplier;
         }
 
         $demandScore = $this->calculateDemandScore($lat, $lon, $tenantId, $correlationId);
         $supplyScore = $this->calculateSupplyScore($lat, $lon, $tenantId, $correlationId);
-        
+
         $ratio = $supplyScore > 0 ? $demandScore / $supplyScore : 2.0;
-        
+
         $surgeMultiplier = match(true) {
             $ratio >= 2.0 => 2.5,
             $ratio >= 1.5 => 2.0,
@@ -185,33 +194,33 @@ final readonly class TaxiPricingService
             default => 1.0,
         };
 
-        $hour = now()->hour;
+        $hour = CarbonImmutable::now()->hour;
         $isRushHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
-        
+
         if ($isRushHour) {
             $surgeMultiplier = min($surgeMultiplier * 1.2, 3.0);
         }
 
         $weatherFactor = $this->getWeatherPricingFactor($lat, $lon, $correlationId);
         $surgeMultiplier *= $weatherFactor;
-        
+
         $surgeMultiplier = min(max($surgeMultiplier, 1.0), 3.0);
-        
+
         $this->cache->put($cacheKey, $surgeMultiplier, 180);
-        
+
         return $surgeMultiplier;
     }
 
     private function calculateDemandScore(float $lat, float $lon, int $tenantId, string $correlationId): float
     {
         $radius = 0.02;
-        
+
         $pendingRides = $this->db->table('taxi_rides')
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->whereBetween('pickup_lat', [$lat - $radius, $lat + $radius])
             ->whereBetween('pickup_lon', [$lon - $radius, $lon + $radius])
-            ->where('created_at', '>=', now()->subMinutes(10))
+            ->where('created_at', '>=', CarbonImmutable::now()->subMinutes(10))
             ->count();
 
         $recentCompletedRides = $this->db->table('taxi_rides')
@@ -219,13 +228,13 @@ final readonly class TaxiPricingService
             ->where('status', 'completed')
             ->whereBetween('pickup_lat', [$lat - $radius, $lat + $radius])
             ->whereBetween('pickup_lon', [$lon - $radius, $lon + $radius])
-            ->where('completed_at', '>=', now()->subMinutes(30))
+            ->where('completed_at', '>=', CarbonImmutable::now()->subMinutes(30))
             ->count();
 
         $baseDemand = min($pendingRides * 2.0, 10.0);
         $trendDemand = min($recentCompletedRides * 0.5, 5.0);
-        
-        $hour = now()->hour;
+
+        $hour = CarbonImmutable::now()->hour;
         $hourlyMultiplier = match(true) {
             $hour >= 7 && $hour <= 9 => 1.5,
             $hour >= 17 && $hour <= 19 => 1.5,
@@ -240,7 +249,7 @@ final readonly class TaxiPricingService
     private function calculateSupplyScore(float $lat, float $lon, int $tenantId, string $correlationId): float
     {
         $radius = 0.05;
-        
+
         $availableDrivers = $this->db->table('taxi_drivers')
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
@@ -249,20 +258,20 @@ final readonly class TaxiPricingService
             ->whereBetween('current_lon', [$lon - $radius, $lon + $radius])
             ->count();
 
-        return max((float)$availableDrivers, 1.0);
+        return max((float) $availableDrivers, 1.0);
     }
 
     private function getWeatherPricingFactor(float $lat, float $lon, string $correlationId): float
     {
         $cacheKey = "taxi:weather:pricing:{$lat}:{$lon}";
         $cachedFactor = $this->cache->get($cacheKey);
-        
+
         if ($cachedFactor !== null) {
             return $cachedFactor;
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(3)->get("https://api.openweathermap.org/data/2.5/weather", [
+            $response = $this->http->timeout(3)->get('https://api.openweathermap.org/data/2.5/weather', [
                 'lat' => $lat,
                 'lon' => $lon,
                 'appid' => config('services.openweathermap.key'),
@@ -272,16 +281,16 @@ final readonly class TaxiPricingService
             if ($response->successful()) {
                 $data = $response->json();
                 $weatherCondition = $data['weather'][0]['main'] ?? 'Clear';
-                
+
                 $factor = match($weatherCondition) {
                     'Rain', 'Drizzle', 'Thunderstorm' => 1.3,
                     'Snow', 'Sleet' => 1.5,
                     'Fog', 'Mist' => 1.4,
                     default => 1.0,
                 };
-                
+
                 $this->cache->put($cacheKey, $factor, 1800);
-                
+
                 return $factor;
             }
         } catch (\Throwable $e) {
@@ -293,7 +302,7 @@ final readonly class TaxiPricingService
 
         $factor = 1.0;
         $this->cache->put($cacheKey, $factor, 1800);
-        
+
         return $factor;
     }
 }

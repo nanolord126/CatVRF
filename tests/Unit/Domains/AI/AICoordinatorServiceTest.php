@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\AI;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\AI\Domain\Services\AICoordinatorService;
 
 /**
  * Unit tests for AICoordinatorService.
@@ -14,7 +17,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\AI\Domain\Services\AICoordinatorService::class
+            AICoordinatorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'AICoordinatorService must be final');
     }
@@ -22,7 +25,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\AI\Domain\Services\AICoordinatorService::class
+            AICoordinatorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'AICoordinatorService must be readonly');
     }
@@ -30,7 +33,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\AI\Domain\Services\AICoordinatorService::class
+            AICoordinatorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'AICoordinatorService must have __construct');
@@ -40,7 +43,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\AI\Domain\Services\AICoordinatorService::class, 'create'),
+            method_exists(AICoordinatorService::class, 'create'),
             'AICoordinatorService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_update_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\AI\Domain\Services\AICoordinatorService::class, 'update'),
+            method_exists(AICoordinatorService::class, 'update'),
             'AICoordinatorService must implement update()'
         );
     }
@@ -56,7 +59,7 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_delete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\AI\Domain\Services\AICoordinatorService::class, 'delete'),
+            method_exists(AICoordinatorService::class, 'delete'),
             'AICoordinatorService must implement delete()'
         );
     }
@@ -64,17 +67,16 @@ final class AICoordinatorServiceTest extends TestCase
     public function test_list_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\AI\Domain\Services\AICoordinatorService::class, 'list'),
+            method_exists(AICoordinatorService::class, 'list'),
             'AICoordinatorService must implement list()'
         );
     }
 
-    public function test_getById_method_exists(): void
+    public function test_get_by_id_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\AI\Domain\Services\AICoordinatorService::class, 'getById'),
+            method_exists(AICoordinatorService::class, 'getById'),
             'AICoordinatorService must implement getById()'
         );
     }
-
 }

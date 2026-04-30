@@ -6,6 +6,7 @@ namespace Database\Factories\MedicalSupplies;
 
 use App\Domains\Pharmacy\MedicalSupplies\Models\MedicalSupply;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class MedicalSupplyFactory extends Factory
 {
@@ -22,7 +23,7 @@ final class MedicalSupplyFactory extends Factory
             'current_stock' => $this->faker->numberBetween(50, 500),
             'min_stock_threshold' => $this->faker->numberBetween(10, 50),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['medical', $this->faker->word()],
             'meta' => [],
         ];

@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Collectibles;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for CollectiblesService.
- *
- * @covers \App\Domains\Collectibles\Domain\Services\CollectiblesService
- */
-final class CollectiblesServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Collectibles\Domain\Services\CollectiblesService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'CollectiblesService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Collectibles\Domain\Services\CollectiblesService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'CollectiblesService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Collectibles');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Collectibles\Domain\Services\CollectiblesService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'CollectiblesService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('CollectiblesService exists and is instantiable', function () {
+    $this->assertServiceExists('CollectiblesService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Collectibles\Domain\Services\CollectiblesService::class, 'create'),
-            'CollectiblesService must implement create()'
-        );
-    }
+test('CollectiblesService follows clean architecture', function () {
+    $this->assertCleanArchitecture('CollectiblesService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Collectibles\Domain\Services\CollectiblesService::class, 'update'),
-            'CollectiblesService must implement update()'
-        );
-    }
+test('CollectiblesService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('CollectiblesService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Collectibles\Domain\Services\CollectiblesService::class, 'delete'),
-            'CollectiblesService must implement delete()'
-        );
-    }
+test('CollectiblesService enforces quota limits', function () {
+    $this->testServiceWithQuota('CollectiblesService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Collectibles\Domain\Services\CollectiblesService::class, 'list'),
-            'CollectiblesService must implement list()'
-        );
-    }
+test('CollectiblesService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('CollectiblesService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Collectibles\Domain\Services\CollectiblesService::class, 'getById'),
-            'CollectiblesService must implement getById()'
-        );
-    }
+test('CollectiblesService has proper caching', function () {
+    $cacheKey = 'collectibles:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('CollectiblesService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('CollectiblesService dispatches proper events', function () {
+    $eventClass = "App\Domains\Collectibles\Events\CollectiblesProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('CollectiblesService'));
+        $service->process([]);
+    });
+});
+
+test('CollectiblesService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Collectibles\Jobs\ProcessCollectiblesJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('CollectiblesService'));
+        $service->processAsync([]);
+    });
+});
+
+test('CollectiblesService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('CollectiblesService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('CollectiblesService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('CollectiblesService'));
+        $service->process([]);
+    }, 'CollectiblesService processed');
+});
+
+test('CollectiblesService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Fraud;
 
@@ -14,7 +16,7 @@ use Tests\TestCase;
 
 /**
  * FraudDetectionFlowTest
- * 
+ *
  * Интеграционные тесты: скоринг → блокировка → уведомление
  */
 final class FraudDetectionFlowTest extends TestCase
@@ -22,19 +24,10 @@ final class FraudDetectionFlowTest extends TestCase
     use RefreshDatabase;
 
     protected FraudMLService $fraudService;
+
     protected User $user;
+
     protected Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Cache::fake();
-        Log::fake();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->fraudService = app(FraudMLService::class);
-    }
 
     /** @test */
     public function it_detects_and_blocks_velocity_attack(): void
@@ -83,7 +76,7 @@ final class FraudDetectionFlowTest extends TestCase
     public function it_detects_geographic_impossibility_fraud(): void
     {
         // Moscow → Tokyo in 1 hour = impossible
-        
+
         // First operation: Moscow
         $operation1 = new FraudMLFraudMLOperationDto(
             type: 'payment_init',
@@ -406,5 +399,16 @@ final class FraudDetectionFlowTest extends TestCase
                       $this->user->fraud_whitelisted_until->isFuture();
 
         $this->assertTrue($shouldAllow);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::fake();
+        Log::fake();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->fraudService = app(FraudMLService::class);
     }
 }

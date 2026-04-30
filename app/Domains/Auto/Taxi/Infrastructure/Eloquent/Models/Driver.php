@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Class Driver
@@ -27,16 +29,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Driver extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+
+    public $incrementing = false;
 
     protected $table = 'taxi_drivers';
-    public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -56,24 +60,23 @@ final class Driver extends Model
         'is_available' => 'boolean',
     ];
 
+    public function fleet(): BelongsTo
+    {
+        return $this->belongsTo(TaxiFleet::class, 'fleet_id', 'id');
+    }
+
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
             }
         });
-    }
-
-
-    public function fleet(): BelongsTo
-    {
-        return $this->belongsTo(TaxiFleet::class, 'fleet_id', 'id');
     }
 }

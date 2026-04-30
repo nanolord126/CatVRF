@@ -5,16 +5,13 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
-use Symfony\Component\Process\Process as SymfonyProcess;
+use Illuminate\Filesystem\Filesystem;
 
 /**
  * Generate AI Constructors for verticals
- * 
+ *
  * Command: php artisan ai:generate-constructors {vertical} [--dry-run] [--show-diff] [--force]
- * 
+ *
  * Features:
  * - Generates PromptBuilder classes for verticals
  * - Updates AI Constructor Services to use PromptBuilder
@@ -25,6 +22,11 @@ use Symfony\Component\Process\Process as SymfonyProcess;
  */
 final class GenerateAIConstructorsCommand extends Command
 {
+    public function __construct(
+        private readonly Filesystem $files,
+    ) {
+        parent::__construct();
+    }
     protected $signature = 'ai:generate-constructors 
                             {vertical : Vertical name (e.g., taxi, beauty, medical)}
                             {--dry-run : Preview changes without writing files}
@@ -36,8 +38,11 @@ final class GenerateAIConstructorsCommand extends Command
     protected $description = 'Generate AI Constructor components (PromptBuilder, Service updates) for a vertical';
 
     private bool $dryRun = false;
+
     private bool $showDiff = false;
+
     private array $generatedFiles = [];
+
     private array $diffs = [];
 
     public function handle(): int
@@ -50,9 +55,9 @@ final class GenerateAIConstructorsCommand extends Command
         $skipBackup = $this->option('skip-backup');
 
         $this->info("AI Constructor Generation for: {$vertical}");
-        $this->info("Mode: " . ($this->dryRun ? 'DRY-RUN' : 'LIVE'));
+        $this->info('Mode: '.($this->dryRun ? 'DRY-RUN' : 'LIVE'));
 
-        if (!$this->dryRun && !$skipBackup) {
+        if (! $this->dryRun && ! $skipBackup) {
             $this->createGitBackup();
         }
 
@@ -69,7 +74,7 @@ final class GenerateAIConstructorsCommand extends Command
         $this->showSummary();
 
         // Validate if not dry-run and not skipped
-        if (!$this->dryRun && !$skipValidation) {
+        if (! $this->dryRun && ! $skipValidation) {
             $this->validateGeneratedCode();
         }
 
@@ -87,17 +92,14 @@ final class GenerateAIConstructorsCommand extends Command
     {
         $this->info('Creating git backup...');
 
-        $branchName = 'ai-constructor-backup-' . now()->format('Y-m-d-His');
-        
-        $process = Process::fromShellCommandline(
-            'git checkout -b ' . escapeshellarg($branchName),
-            base_path()
-        );
+        $branchName = 'ai-constructor-backup-'.now()->format('Y-m-d-His');
 
-        $process->run();
+        $command = 'cd ' . escapeshellarg($this->laravel->basePath()) . ' && git checkout -b ' . escapeshellarg($branchName);
+        exec($command . ' 2>&1', $output, $returnCode);
 
-        if (!$process->isSuccessful()) {
+        if ($returnCode !== 0) {
             $this->warn('Could not create git branch. Continuing without backup.');
+
             return;
         }
 
@@ -122,13 +124,14 @@ final class GenerateAIConstructorsCommand extends Command
 
         $servicePath = $this->getAIConstructorServicePath($vertical);
 
-        if (!File::exists($servicePath)) {
+        if (! $this->files->exists($servicePath)) {
             $this->warn("AI Constructor Service not found at: {$servicePath}");
-            $this->warn("Skipping service update.");
+            $this->warn('Skipping service update.');
+
             return;
         }
 
-        $currentContent = File::get($servicePath);
+        $currentContent = $this->files->get($servicePath);
         $updatedContent = $this->updateServiceContent($currentContent, $vertical);
 
         $this->writeOrDiff($servicePath, $updatedContent, "AI Constructor Service: {$vertical}");
@@ -138,10 +141,10 @@ final class GenerateAIConstructorsCommand extends Command
     {
         $this->info("Generating DTOs for {$vertical}...");
 
-        $dtoPath = base_path("app/DTOs/AI/{$vertical}");
-        
-        if (!File::exists($dtoPath)) {
-            File::makeDirectory($dtoPath, 0755, true);
+        $dtoPath = app_path("DTOs/AI/{$vertical}");
+
+        if (! $this->files->exists($dtoPath)) {
+            $this->files->makeDirectory($dtoPath, 0755, true);
         }
 
         // Generate Request DTO
@@ -157,10 +160,10 @@ final class GenerateAIConstructorsCommand extends Command
 
     private function writeOrDiff(string $filePath, string $content, string $description): void
     {
-        $fileExists = File::exists($filePath);
+        $fileExists = $this->files->exists($filePath);
 
         if ($this->showDiff && $fileExists) {
-            $currentContent = File::get($filePath);
+            $currentContent = $this->files->get($filePath);
             $diff = $this->generateDiff($currentContent, $content, $filePath);
             $this->diffs[$filePath] = $diff;
             $this->line("\n<fg=yellow>Diff for {$description}:</>");
@@ -169,11 +172,12 @@ final class GenerateAIConstructorsCommand extends Command
 
         if ($this->dryRun) {
             $this->generatedFiles[] = "{$description} (dry-run)";
+
             return;
         }
 
-        File::ensureDirectoryExists(dirname($filePath));
-        File::put($filePath, $content);
+        $this->files->ensureDirectoryExists(dirname($filePath));
+        $this->files->put($filePath, $content);
         $this->generatedFiles[] = $description;
         $this->line("  ✓ {$description}");
     }
@@ -186,20 +190,17 @@ final class GenerateAIConstructorsCommand extends Command
         file_put_contents($tempOld, $old);
         file_put_contents($tempNew, $new);
 
-        $process = Process::fromShellCommandline(
-            'diff -u ' . escapeshellarg($tempOld) . ' ' . escapeshellarg($tempNew)
-        );
-
-        $process->run();
+        $command = 'diff -u '.escapeshellarg($tempOld).' '.escapeshellarg($tempNew);
+        exec($command . ' 2>&1', $output, $returnCode);
 
         unlink($tempOld);
         unlink($tempNew);
 
-        if (!$process->isSuccessful()) {
-            return $process->getOutput();
+        if ($returnCode !== 0) {
+            return implode("\n", $output);
         }
 
-        return "No changes detected.";
+        return 'No changes detected.';
     }
 
     private function validateGeneratedCode(): void
@@ -208,16 +209,13 @@ final class GenerateAIConstructorsCommand extends Command
 
         // PHPStan
         $this->info('Running PHPStan...');
-        $phpstanProcess = Process::fromShellCommandline(
-            'vendor/bin/phpstan analyse --memory-limit=2G',
-            base_path()
-        );
-        $phpstanProcess->run();
+        $command = 'cd ' . escapeshellarg($this->laravel->basePath()) . ' && vendor/bin/phpstan analyse --memory-limit=2G';
+        exec($command . ' 2>&1', $output, $returnCode);
 
-        if (!$phpstanProcess->isSuccessful()) {
+        if ($returnCode !== 0) {
             $this->error('PHPStan validation failed:');
-            $this->error($phpstanProcess->getErrorOutput());
-            if (!$this->option('force')) {
+            $this->error(implode("\n", $output));
+            if (! $this->option('force')) {
                 $this->error('Aborting due to validation errors. Use --force to skip.');
                 exit(1);
             }
@@ -227,16 +225,13 @@ final class GenerateAIConstructorsCommand extends Command
 
         // Pint
         $this->info('Running Pint...');
-        $pintProcess = Process::fromShellCommandline(
-            'vendor/bin/pint --test',
-            base_path()
-        );
-        $pintProcess->run();
+        $command = 'cd ' . escapeshellarg($this->laravel->basePath()) . ' && vendor/bin/pint --test';
+        exec($command . ' 2>&1', $output, $returnCode);
 
-        if (!$pintProcess->isSuccessful()) {
+        if ($returnCode !== 0) {
             $this->error('Pint validation failed:');
-            $this->error($pintProcess->getErrorOutput());
-            if (!$this->option('force')) {
+            $this->error(implode("\n", $output));
+            if (! $this->option('force')) {
                 $this->error('Aborting due to validation errors. Use --force to skip.');
                 exit(1);
             }
@@ -249,32 +244,33 @@ final class GenerateAIConstructorsCommand extends Command
     {
         $this->newLine();
         $this->info('=== Generation Summary ===');
-        $this->table(['File'], array_map(fn($f) => [$f], $this->generatedFiles));
-        $this->info('Total files: ' . count($this->generatedFiles));
+        $this->table(['File'], array_map(fn ($f) => [$f], $this->generatedFiles));
+        $this->info('Total files: '.count($this->generatedFiles));
     }
 
     // Helper methods for content generation
 
     private function getPromptBuilderClassName(string $vertical): string
     {
-        return ucfirst($vertical) . 'PromptBuilder';
+        return ucfirst($vertical).'PromptBuilder';
     }
 
     private function getPromptBuilderPath(string $vertical): string
     {
-        return base_path("app/Services/AI/Prompts/{$this->getPromptBuilderClassName($vertical)}.php");
+        return app_path("Services/AI/Prompts/{$this->getPromptBuilderClassName($vertical)}.php");
     }
 
     private function getAIConstructorServicePath(string $vertical): string
     {
         $verticalCapitalized = ucfirst($vertical);
-        return base_path("app/Domains/{$verticalCapitalized}/Services/AI/{$verticalCapitalized}AIConstructorService.php");
+
+        return app_path("Domains/{$verticalCapitalized}/Services/AI/{$verticalCapitalized}AIConstructorService.php");
     }
 
     private function generatePromptBuilderContent(string $vertical, string $className): string
     {
         $verticalLower = strtolower($vertical);
-        
+
         return <<<PHP
 <?php
 
@@ -363,24 +359,24 @@ PHP;
     private function updateServiceContent(string $currentContent, string $vertical): string
     {
         $promptBuilderClass = $this->getPromptBuilderClassName($vertical);
-        
+
         // Add import if not present
         $importStatement = "use App\\Services\\AI\\Prompts\\{$promptBuilderClass};";
-        
+
         if (strpos($currentContent, $importStatement) === false) {
             // Find the last use statement and add after it
             $pattern = '/(use [^;]+;\n)/';
             $lastUse = null;
             preg_match_all($pattern, $currentContent, $matches);
-            
-            if (!empty($matches[0])) {
+
+            if (! empty($matches[0])) {
                 $lastUse = end($matches[0]);
-                $currentContent = str_replace($lastUse, $lastUse . $importStatement . "\n", $currentContent);
+                $currentContent = str_replace($lastUse, $lastUse.$importStatement."\n", $currentContent);
             } else {
                 // Add after namespace
                 $currentContent = preg_replace(
                     '/(namespace [^;]+;\n)/',
-                    "$1\n" . $importStatement . "\n",
+                    "$1\n".$importStatement."\n",
                     $currentContent
                 );
             }
@@ -389,7 +385,7 @@ PHP;
         // Add to constructor if not present
         $constructorPattern = '/private readonly \\\\Illuminate\\\\Database\\\\DatabaseManager \\\$db,/';
         $constructorAddition = "private readonly {$promptBuilderClass} \$promptBuilder,";
-        
+
         if (strpos($currentContent, $constructorAddition) === false) {
             $currentContent = preg_replace(
                 $constructorPattern,
@@ -400,7 +396,7 @@ PHP;
 
         // Replace hardcoded prompt with PromptBuilder usage
         $hardcodedPromptPattern = "/\['role' => 'system', 'content' => '[^']+'\]/";
-        
+
         if (preg_match($hardcodedPromptPattern, $currentContent)) {
             $replacement = <<<PHP
 ['role' => 'system', 'content' => \$this->promptBuilder->getSystemPrompt([
@@ -416,8 +412,8 @@ PHP;
 
     private function generateRequestDtoContent(string $vertical): string
     {
-        $className = ucfirst($vertical) . 'RequestDto';
-        
+        $className = ucfirst($vertical).'RequestDto';
+
         return <<<PHP
 <?php
 
@@ -465,8 +461,8 @@ PHP;
 
     private function generateResponseDtoContent(string $vertical): string
     {
-        $className = ucfirst($vertical) . 'ResponseDto';
-        
+        $className = ucfirst($vertical).'ResponseDto';
+
         return <<<PHP
 <?php
 

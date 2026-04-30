@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Api\Food;
 
@@ -15,36 +17,12 @@ final class FoodApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $customer;
+
     protected User $restaurantOwner;
+
     protected Restaurant $restaurant;
+
     protected Dish $dish;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->customer = User::factory()->create(['is_business' => false]);
-        $this->restaurantOwner = User::factory()->create(['is_business' => true]);
-
-        $this->restaurant = Restaurant::factory()
-            ->for($this->restaurantOwner, 'owner')
-            ->create([
-                'name' => 'Delicious Pizza',
-                'cuisine_type' => ['pizza', 'pasta'],
-                'is_active' => true,
-                'is_b2c_available' => true,
-            ]);
-
-        $this->dish = Dish::factory()
-            ->for($this->restaurant)
-            ->create([
-                'name' => 'Margherita Pizza',
-                'price' => 50000,  // 500 руб
-                'cooking_time_minutes' => 15,
-                'calories' => 800,
-                'allergens' => ['gluten', 'dairy'],
-            ]);
-    }
 
     /**
      * Тест: Клиент может получить список ресторанов с фильтром
@@ -433,6 +411,33 @@ final class FoodApiTest extends TestCase
                 'data' => [
                     'is_corporate' => true,
                 ],
+            ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->customer = User::factory()->create(['is_business' => false]);
+        $this->restaurantOwner = User::factory()->create(['is_business' => true]);
+
+        $this->restaurant = Restaurant::factory()
+            ->for($this->restaurantOwner, 'owner')
+            ->create([
+                'name' => 'Delicious Pizza',
+                'cuisine_type' => ['pizza', 'pasta'],
+                'is_active' => true,
+                'is_b2c_available' => true,
+            ]);
+
+        $this->dish = Dish::factory()
+            ->for($this->restaurant)
+            ->create([
+                'name' => 'Margherita Pizza',
+                'price' => 50000,  // 500 руб
+                'cooking_time_minutes' => 15,
+                'calories' => 800,
+                'allergens' => ['gluten', 'dairy'],
             ]);
     }
 }

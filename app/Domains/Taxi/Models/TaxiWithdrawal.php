@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +15,22 @@ use Illuminate\Support\Str;
 
 final class TaxiWithdrawal extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
+
+    /**
+     * Статусы вывода средств.
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_PROCESSING = 'processing';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'taxi_withdrawals';
 
@@ -36,7 +56,7 @@ final class TaxiWithdrawal extends Model
         'failure_reason',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -51,32 +71,6 @@ final class TaxiWithdrawal extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Статусы вывода средств.
-     */
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_PROCESSING = 'processing';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_FAILED = 'failed';
-    public const STATUS_CANCELLED = 'cancelled';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiWithdrawal $withdrawal) {
-            $withdrawal->uuid = $withdrawal->uuid ?? (string) Str::uuid();
-            $withdrawal->tenant_id = $withdrawal->tenant_id ?? (tenant()->id ?? 1);
-            $withdrawal->status = $withdrawal->status ?? self::STATUS_PENDING;
-            $withdrawal->requested_at = $withdrawal->requested_at ?? now();
-            $withdrawal->correlation_id = $withdrawal->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -154,7 +148,7 @@ final class TaxiWithdrawal extends Model
     {
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'processed_at' => now(),
+            'processed_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -165,7 +159,7 @@ final class TaxiWithdrawal extends Model
     {
         $this->update([
             'status' => self::STATUS_FAILED,
-            'failed_at' => now(),
+            'failed_at' => CarbonImmutable::now(),
             'failure_reason' => $reason,
         ]);
     }
@@ -176,5 +170,22 @@ final class TaxiWithdrawal extends Model
     public function cancel(): void
     {
         $this->update(['status' => self::STATUS_CANCELLED]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiWithdrawal $withdrawal) {
+            $withdrawal->uuid = $withdrawal->uuid ?? (string) Str::uuid();
+            $withdrawal->tenant_id = $withdrawal->tenant_id ?? (tenant()->id ?? 1);
+            $withdrawal->status = $withdrawal->status ?? self::STATUS_PENDING;
+            $withdrawal->requested_at = $withdrawal->requested_at ?? CarbonImmutable::now();
+            $withdrawal->correlation_id = $withdrawal->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

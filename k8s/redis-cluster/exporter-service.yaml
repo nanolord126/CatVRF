@@ -1,0 +1,23 @@
+# Service for Redis Exporter (Prometheus Metrics)
+# Production 2026 - CatVRF
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter
+  namespace: catvrf-prod
+  labels:
+    app: redis-exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 9121
+    targetPort: 9121
+    protocol: TCP
+  selector:
+    app: redis-exporter

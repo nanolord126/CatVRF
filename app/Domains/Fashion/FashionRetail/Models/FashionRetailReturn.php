@@ -1,57 +1,46 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\FashionRetail\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
+
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FashionRetailReturn extends Model
 {
-
+    protected $table = 'fashion_retail_returns';
 
-        protected $table = 'fashion_retail_returns';
+    protected $fillable = [
+        'uuid',
+        'order_id',
+        'product_id',
+        'reason',
+        'status',
+        'refund_amount',
+        'images',
+        'notes',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $fillable = [
-            'uuid',
-            'order_id',
-            'product_id',
-            'reason',
-            'status',
-            'refund_amount',
-            'images',
-            'notes',
-            'correlation_id',
-            'tags',
-        ];
+    protected $casts = [
+        'images' => 'json',
+        'tags' => 'json',
+        'refund_amount' => 'decimal:2',
+    ];
 
-        protected $casts = [
-            'images' => 'json',
-            'tags' => 'json',
-            'refund_amount' => 'decimal:2',
-        ];
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(FashionRetailOrder::class, 'order_id');
+    }
 
-        public function order(): BelongsTo
-        {
-            return $this->belongsTo(FashionRetailOrder::class, 'order_id');
-        }
-
-        public function product(): BelongsTo
-        {
-            return $this->belongsTo(FashionRetailProduct::class, 'product_id');
-        }
-
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope("tenant_id", function ($query) {
-                if (function_exists("tenant") && tenant("id")) {
-                    $query->where("tenant_id", tenant("id"));
-                }
-            });
-        }
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(FashionRetailProduct::class, 'product_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -60,7 +49,7 @@ final class FashionRetailReturn extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -71,8 +60,18 @@ final class FashionRetailReturn extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
     }
 }

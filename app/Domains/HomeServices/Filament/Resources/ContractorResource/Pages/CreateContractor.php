@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateContractor — CatVRF 2026 Component.
@@ -7,24 +9,24 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createcontractor
  */
 
-
 namespace App\Domains\HomeServices\Filament\Resources\ContractorResource\Pages;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
+use Carbon\Carbon;
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateContractor extends CreateRecord
 {
-
     protected static string $resource = ContractorResource::class;
 
     /**
@@ -34,7 +36,7 @@ final class CreateContractor extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -45,8 +47,8 @@ final class CreateContractor extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

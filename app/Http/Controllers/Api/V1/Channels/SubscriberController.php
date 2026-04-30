@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Channels;
 
@@ -8,101 +10,110 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 final class SubscriberController extends Controller
 {
     public function __construct(
-            private readonly ChannelSubscriptionService $subscriptionService,
-            private readonly ResponseFactory $response,
+        private readonly ChannelSubscriptionService $subscriptionService,
+        private readonly ResponseFactory $response,
     ) {}
-        /** Подписаться на канал */
-        public function subscribe(Request $request, string $slug): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-            $validated = $request->validate([
-                'visibility_preference' => ['in:b2c,b2b,all'],
+
+    /** Подписаться на канал */
+    public function subscribe(Request $request, string $slug): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+        $validated = $request->validate([
+            'visibility_preference' => ['in:b2c,b2b,all'],
+        ]);
+        try {
+            $channel = $this->findActiveChannel($slug);
+            $this->subscriptionService->subscribe(
+                userId:                (int) $request->user()->id,
+                channel:               $channel,
+                visibilityPreference:  $validated['visibility_preference'] ?? 'all',
+                correlationId:         $correlationId,
+            );
+
+            return $this->response->json([
+                'success'        => true,
+                'message'        => "Вы подписались на канал «{$channel->name}».",
+                'correlation_id' => $correlationId,
             ]);
-            try {
-                $channel = $this->findActiveChannel($slug);
-                $this->subscriptionService->subscribe(
-                    userId:                (int) $request->user()->id,
-                    channel:               $channel,
-                    visibilityPreference:  $validated['visibility_preference'] ?? 'all',
-                    correlationId:         $correlationId,
-                );
-                return $this->response->json([
-                    'success'        => true,
-                    'message'        => "Вы подписались на канал «{$channel->name}».",
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Throwable $e) {
-                return $this->errorResponse($e, $correlationId, 422);
-            }
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e, $correlationId, 422);
         }
-        /** Отписаться от канала */
-        public function unsubscribe(Request $request, string $slug): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-            try {
-                $channel = $this->findActiveChannel($slug);
-                $this->subscriptionService->unsubscribe(
-                    userId:        (int) $request->user()->id,
-                    channel:       $channel,
-                    correlationId: $correlationId,
-                );
-                return $this->response->json([
-                    'success'        => true,
-                    'message'        => "Вы отписались от канала «{$channel->name}».",
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Throwable $e) {
-                return $this->errorResponse($e, $correlationId);
-            }
+    }
+
+    /** Отписаться от канала */
+    public function unsubscribe(Request $request, string $slug): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+        try {
+            $channel = $this->findActiveChannel($slug);
+            $this->subscriptionService->unsubscribe(
+                userId:        (int) $request->user()->id,
+                channel:       $channel,
+                correlationId: $correlationId,
+            );
+
+            return $this->response->json([
+                'success'        => true,
+                'message'        => "Вы отписались от канала «{$channel->name}».",
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e, $correlationId);
         }
-        /** Проверить статус подписки */
-        public function status(Request $request, string $slug): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-            try {
-                $channel     = $this->findActiveChannel($slug);
-                $isSubscribed = $this->subscriptionService->isSubscribed(
-                    (int) $request->user()->id,
-                    $channel->id
-                );
-                return $this->response->json([
-                    'success'        => true,
-                    'subscribed'     => $isSubscribed,
-                    'channel_name'   => $channel->name,
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Throwable $e) {
-                return $this->errorResponse($e, $correlationId, 404);
-            }
+    }
+
+    /** Проверить статус подписки */
+    public function status(Request $request, string $slug): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+        try {
+            $channel     = $this->findActiveChannel($slug);
+            $isSubscribed = $this->subscriptionService->isSubscribed(
+                (int) $request->user()->id,
+                $channel->id
+            );
+
+            return $this->response->json([
+                'success'        => true,
+                'subscribed'     => $isSubscribed,
+                'channel_name'   => $channel->name,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e, $correlationId, 404);
         }
-        /** Мои подписки */
-        public function mySubscriptions(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-            try {
-                $channels = $this->subscriptionService->getSubscribedChannels((int) $request->user()->id);
-                return $this->response->json([
-                    'success' => true,
-                    'data'    => $channels->map(fn ($c) => [
-                        'id'          => $c->id,
-                        'uuid'        => $c->uuid,
-                        'name'        => $c->name,
-                        'slug'        => $c->slug,
-                        'avatar_url'  => $c->avatar_url,
-                        'posts_count' => $c->posts_count,
-                        'plan'        => $c->plan?->slug,
-                    ]),
-                    'correlation_id' => $correlationId,
-                ]);
-            } catch (\Throwable $e) {
-                return $this->errorResponse($e, $correlationId);
-            }
+    }
+
+    /** Мои подписки */
+    public function mySubscriptions(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
+        try {
+            $channels = $this->subscriptionService->getSubscribedChannels((int) $request->user()->id);
+
+            return $this->response->json([
+                'success' => true,
+                'data'    => $channels->map(fn ($c) => [
+                    'id'          => $c->id,
+                    'uuid'        => $c->uuid,
+                    'name'        => $c->name,
+                    'slug'        => $c->slug,
+                    'avatar_url'  => $c->avatar_url,
+                    'posts_count' => $c->posts_count,
+                    'plan'        => $c->plan?->slug,
+                ]),
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e, $correlationId);
         }
-        private function findActiveChannel(string $slug): BusinessChannel
-        {
-            return BusinessChannel::withoutGlobalScopes()
-                ->where('slug', $slug)
-                ->where('status', 'active')
-                ->firstOrFail();
-        }
+    }
+
+    private function findActiveChannel(string $slug): BusinessChannel
+    {
+        return BusinessChannel::withoutGlobalScopes()
+            ->where('slug', $slug)
+            ->where('status', 'active')
+            ->firstOrFail();
+    }
 }

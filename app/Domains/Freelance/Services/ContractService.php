@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
 use App\Domains\Freelance\Models\FreelanceContract;
@@ -12,25 +17,24 @@ use App\Services\FraudControlService;
 use App\Services\WalletService;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * ContractService — управление фриланс-контрактами.
  *
  * Создание, активация, завершение контрактов,
  * управление milestones и выплатами.
- * Все мутации через DB::transaction + fraud-check.
- *
- * @package App\Domains\Freelance\Services
+ * Все мутации через $this->db->transaction + fraud-check.
  */
 final readonly class ContractService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {}
+    public function __construct(private readonly DatabaseManager $db,
+        private readonly EventDispatcher $eventDispatcher,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Создать контракт из принятого предложения.
@@ -73,7 +77,7 @@ final readonly class ContractService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Freelance contract created', [
+            $this->logger->$this->logger->info('Freelance contract created', [
                 'contract_id' => $contract->id,
                 'proposal_id' => $proposal->id,
                 'correlation_id' => $correlationId,
@@ -99,7 +103,7 @@ final readonly class ContractService
 
             $contract->update([
                 'status' => 'completed',
-                'completed_at' => Carbon::now(),
+                'completed_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
@@ -112,7 +116,7 @@ final readonly class ContractService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Freelance contract completed', [
+            $this->logger->$this->logger->info('Freelance contract completed', [
                 'contract_id' => $contract->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -143,7 +147,7 @@ final readonly class ContractService
                 correlationId: $correlationId,
             );
 
-            event(new PaymentMilestoneReleased(
+            $this->eventDispatcher->dispatch(new PaymentMilestoneReleased(
                 contract: $contract,
                 amount: $milestoneAmount,
                 milestoneNumber: $milestoneNumber,
@@ -162,7 +166,7 @@ final readonly class ContractService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Milestone payment released', [
+            $this->logger->$this->logger->info('Milestone payment released', [
                 'contract_id' => $contract->id,
                 'milestone' => $milestoneNumber,
                 'amount' => $milestoneAmount,

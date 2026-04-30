@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * DesignProject — CatVRF 2026 Component.
@@ -7,35 +9,42 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/designproject
  */
 
-
 namespace App\Domains\Furniture\InteriorDesign\Models;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class DesignProject extends Model
 {
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
+    protected $table = 'design_projects';
 
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='design_projects';protected $fillable=['uuid','tenant_id','designer_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','style','space_sqm','due_date','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','space_sqm'=>'integer','due_date'=>'datetime','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('design_projects.tenant_id',tenant()->id));}
+    protected $fillable = ['uuid', 'tenant_id', 'designer_id', 'client_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'style', 'space_sqm', 'due_date', 'tags'];
+
+    protected $casts = ['total_kopecks' => 'integer', 'payout_kopecks' => 'integer', 'space_sqm' => 'integer', 'due_date' => 'datetime', 'tags' => 'json'];
 
     /**
      * Связь с дизайнером проекта.
      */
-    public function designer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function designer(): BelongsTo
     {
         return $this->belongsTo(InteriorDesigner::class, 'designer_id');
     }
@@ -65,7 +74,7 @@ final class DesignProject extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -76,10 +85,15 @@ final class DesignProject extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
+            'class' => self::class,
             'id' => $this->id ?? null,
             'status' => $this->status ?? null,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('design_projects.tenant_id', tenant()->id));
     }
 }

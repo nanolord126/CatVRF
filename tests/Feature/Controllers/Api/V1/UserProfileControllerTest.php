@@ -1,23 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Api\V1;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use Illuminate\Support\Facades\DB;
 
 final class UserProfileControllerTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-    }
 
     public function test_show_returns_200_for_authenticated_user(): void
     {
@@ -30,5 +25,11 @@ final class UserProfileControllerTest extends TestCase
         if ($response->status() !== 404 && $response->status() !== 200) {
             $response->assertStatus(200);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
     }
 }

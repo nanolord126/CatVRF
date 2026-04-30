@@ -1,11 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Model;
 
 final class PaymentIdempotencyRecord extends Model
 {
+    public const OPERATION_INIT_PAYMENT = 'init_payment';
+
+    public const OPERATION_CAPTURE = 'capture';
+
+    public const OPERATION_REFUND = 'refund';
+
+    public const OPERATION_PAYOUT = 'payout';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_FAILED = 'failed';
+
     protected $table = 'payment_idempotency_records';
 
     protected $fillable = [
@@ -27,15 +45,6 @@ final class PaymentIdempotencyRecord extends Model
         'expires_at' => 'datetime',
     ];
 
-    const OPERATION_INIT_PAYMENT = 'init_payment';
-    const OPERATION_CAPTURE = 'capture';
-    const OPERATION_REFUND = 'refund';
-    const OPERATION_PAYOUT = 'payout';
-
-    const STATUS_PENDING = 'pending';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_FAILED = 'failed';
-
     /**
      * Найти по idempotency_key
      */
@@ -50,6 +59,7 @@ final class PaymentIdempotencyRecord extends Model
     public static function isProcessed(string $idempotencyKey): bool
     {
         $record = self::findByKey($idempotencyKey);
+
         return $record && $record->status === self::STATUS_COMPLETED;
     }
 
@@ -58,15 +68,15 @@ final class PaymentIdempotencyRecord extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('expires_at', '>', now());
+        return $query->where('expires_at', '>', CarbonImmutable::now());
     }
 
     protected static function booted(): void
     {
         parent::booted();
-        static::addGlobalScope("tenant_id", function ($query) {
-            if (function_exists("tenant") && tenant("id")) {
-                $query->where("tenant_id", tenant("id"));
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
             }
         });
     }

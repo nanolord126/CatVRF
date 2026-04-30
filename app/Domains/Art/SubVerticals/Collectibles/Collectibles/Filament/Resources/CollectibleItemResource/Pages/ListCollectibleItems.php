@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * ListCollectibleItems — CatVRF 2026 Component.
+ *
+ * Part of the CatVRF multi-vertical marketplace platform.
+ * Implements tenant-aware, fraud-checked business logic
+ * with full correlation_id tracing and audit logging.
+ *
+ * @version 2026.1
+ *
+ * @author CatVRF Team
+ * @license Proprietary
+
+ *
+ * @see https://catvrf.ru/docs/listcollectibleitems
+ */
+
+namespace App\Domains\Art\SubVerticals\Collectibles\Filament\Resources\CollectibleItemResource\Pages;
+
+use App\Domains\Collectibles\Filament\Resources\CollectibleItemResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+final class ListCollectibleItems extends ListRecords
+{
+    protected static string $resource = CollectibleItemResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}

@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\database\factories;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Art\Models\Artwork;
 use App\Domains\Art\Models\Artist;
@@ -36,7 +39,7 @@ final class ArtworkFactory extends Factory
 
     public function delivered(): self
     {
-        return $this->state(fn () => ['delivered_at' => Carbon::now()]);
+        return $this->state(fn () => ['delivered_at' => CarbonImmutable::now()]);
     }
 
     public function hidden(): self

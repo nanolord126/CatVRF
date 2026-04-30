@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Recommendation\Models\Recommendation;
+
 final class RecommendationPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class RecommendationPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Recommendation $recommendation): bool
+    public function $this->viewFactory->make(User $user, Recommendation $recommendation): bool
     {
         return $user->tenant_id === $recommendation->tenant_id;
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -23,15 +25,6 @@ final class ListFurnitureCustomOrder extends ListRecords
         return 'Индивидуальные заказы';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать заказ')
-                ->icon('heroicon-m-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -52,7 +45,7 @@ final class ListFurnitureCustomOrder extends ListRecords
                     ->toggleable(),
                 TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn (?int $state): string => $state ? number_format($state / 100, 2, '.', ' ') . ' ₽' : '—')
+                    ->formatStateUsing(fn (?int $state): string => $state ? number_format($state / 100, 2, '.', ' ').' ₽' : '—')
                     ->sortable(),
                 IconColumn::make('include_assembly')
                     ->label('Сборка')
@@ -93,5 +86,14 @@ final class ListFurnitureCustomOrder extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать заказ')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

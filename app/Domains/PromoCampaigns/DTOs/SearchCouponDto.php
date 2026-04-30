@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\PromoCampaigns\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Class SearchCouponDto
@@ -19,22 +20,22 @@ use Illuminate\Http\Request;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\PromoCampaigns\DTOs
  */
 final readonly class SearchCouponDto
 {
     public function __construct(
-        private readonly int     $tenantId,
-        private readonly ?int    $businessGroupId,
-        private readonly int     $userId,
-        private readonly string  $correlationId,
-        private ?string $query = null,
-        private ?string $status = null,
-        private ?string $sortBy = 'created_at',
-        private string $sortDir = 'desc',
+        private readonly int $tenantId,
+        private readonly ?int $businessGroupId,
+        private readonly int $userId,
+        private readonly string $correlationId,
+        private readonly ?string $query = null,
+        private readonly ?string $status = null,
+        private readonly ?string $sortBy = 'created_at',
+        private readonly string $sortDir = 'desc',
         public int $perPage = 20,
-        private int $page = 1,
-        private bool $isB2B = false) {}
+        private readonly int $page = 1,
+        private readonly bool $isB2B = false
+    ) {}
 
     public static function from(Request $request): self
     {
@@ -42,7 +43,7 @@ final readonly class SearchCouponDto
             tenantId:        (int) tenant()?->id,
             businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
             userId:          (int) $request->user()?->id,
-            correlationId:   $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId:   $request->header('X-Correlation-ID', Str::uuid()->toString()),
             query:           $request->input('q'),
             status:          $request->input('status'),
             sortBy:          $request->input('sort_by', 'created_at'),

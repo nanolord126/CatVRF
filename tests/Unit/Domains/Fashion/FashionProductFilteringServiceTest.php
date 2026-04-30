@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -16,22 +18,10 @@ final class FashionProductFilteringServiceTest extends BaseTestCase
 
     private FashionProductFilteringService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionProductFilteringService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make(UserBehaviorAnalyzerService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
-
     public function test_filter_products_returns_paginated_results(): void
     {
         $userId = $this->createUser();
-        
+
         for ($i = 0; $i < 5; $i++) {
             $this->createFashionProduct(['name' => "Product {$i}"]);
         }
@@ -79,7 +69,7 @@ final class FashionProductFilteringServiceTest extends BaseTestCase
     public function test_filter_products_with_price_range(): void
     {
         $userId = $this->createUser();
-        
+
         $this->createFashionProduct(['name' => 'Cheap', 'price_b2c' => 500]);
         $this->createFashionProduct(['name' => 'Expensive', 'price_b2c' => 10000]);
 
@@ -102,7 +92,7 @@ final class FashionProductFilteringServiceTest extends BaseTestCase
     public function test_filter_products_with_brand_filter(): void
     {
         $userId = $this->createUser();
-        
+
         $this->createFashionProduct(['name' => 'Nike Shirt', 'brand' => 'Nike']);
         $this->createFashionProduct(['name' => 'Adidas Shirt', 'brand' => 'Adidas']);
 
@@ -167,6 +157,18 @@ final class FashionProductFilteringServiceTest extends BaseTestCase
         $this->assertArrayHasKey('suggested_categories', $recommendations['recommendations']);
         $this->assertArrayHasKey('suggested_brands', $recommendations['recommendations']);
         $this->assertArrayHasKey('confidence', $recommendations);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionProductFilteringService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make(UserBehaviorAnalyzerService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createFashionProduct(array $overrides = []): int

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Controllers;
 
@@ -21,20 +23,20 @@ final class OrderController extends UniversalOrderController
     public function create(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
-        
+
         $data = $request->all();
         $data['vertical'] = 'travel';
-        
+
         $validation = $this->travelOrderService->validateOrder($data, $correlationId);
-        
-        if (!$validation['valid']) {
+
+        if (! $validation['valid']) {
             $this->logger->warning('Travel order validation failed', [
                 'reason' => $validation['reason'],
                 'fraud_score' => $validation['fraud_score'] ?? null,
                 'correlation_id' => $correlationId,
             ]);
-            
-            return response()->json([
+
+            return new JsonResponse([
                 'error' => 'Order validation failed',
                 'reason' => $validation['reason'],
                 'fraud_score' => $validation['fraud_score'] ?? null,
@@ -43,7 +45,7 @@ final class OrderController extends UniversalOrderController
         }
 
         $response = parent::create($request);
-        
+
         if ($response->status() === 201) {
             $data = $response->getData(true);
             $this->travelOrderService->sendOrderConfirmation(
@@ -52,7 +54,7 @@ final class OrderController extends UniversalOrderController
                 $correlationId
             );
         }
-        
+
         return $response;
     }
 
@@ -60,8 +62,8 @@ final class OrderController extends UniversalOrderController
     {
         $address = $request->input('address');
         $estimate = $this->travelOrderService->getDeliveryEstimate($address);
-        
-        return response()->json([
+
+        return new JsonResponse([
             'vertical' => 'travel',
             'delivery_estimate' => $estimate,
             'correlation_id' => $request->header('X-Correlation-ID') ?? (string) Str::uuid(),

@@ -12,8 +12,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Http\Requests\Api\V1\B2C\Taxi
  */
 final class RequestRideFormRequest extends FormRequest
 {

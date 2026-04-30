@@ -5,12 +5,19 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Contracts\Queue\Factory as QueueFactory;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Str;
+use App\Jobs\ProcessPayment;
 
 final class StressTestBeauty extends Command
 {
+    public function __construct(
+        private readonly HttpFactory $http,
+        private readonly QueueFactory $queue,
+    ) {
+        parent::__construct();
+    }
     protected $signature = 'beauty:stress-test 
                             {--type=all : Test type (all, spam, ddos, fraud, queues)}
                             {--concurrent=100 : Concurrent requests}
@@ -20,9 +27,13 @@ final class StressTestBeauty extends Command
     protected $description = 'Stress test Beauty vertical with spam, DDoS, fraud, and queue overload';
 
     private int $requestsSent = 0;
+
     private int $requestsFailed = 0;
+
     private float $startTime;
+
     private bool $running = true;
+
     private string $baseUrl = 'http://localhost:8001';
 
     public function handle(): int
@@ -33,11 +44,11 @@ final class StressTestBeauty extends Command
         $duration = (int) $this->option('duration');
         $crash = $this->option('crash');
 
-        $this->info("Starting Beauty stress test...");
+        $this->info('Starting Beauty stress test...');
         $this->info("Type: {$type}");
         $this->info("Concurrent: {$concurrent}");
         $this->info("Duration: {$duration}s");
-        $this->info("Crash mode: " . ($crash ? 'YES' : 'NO'));
+        $this->info('Crash mode: '.($crash ? 'YES' : 'NO'));
 
         if ($crash) {
             $concurrent *= 10;
@@ -68,19 +79,19 @@ final class StressTestBeauty extends Command
         $rps = $this->requestsSent / $totalTime;
 
         $this->newLine();
-        $this->info("=== RESULTS ===");
+        $this->info('=== RESULTS ===');
         $this->info("Requests sent: {$this->requestsSent}");
         $this->info("Requests failed: {$this->requestsFailed}");
-        $this->info("Success rate: " . round((($this->requestsSent - $this->requestsFailed) / $this->requestsSent) * 100, 2) . "%");
-        $this->info("RPS: " . round($rps, 2));
-        $this->info("Total time: " . round($totalTime, 2) . "s");
+        $this->info('Success rate: '.round((($this->requestsSent - $this->requestsFailed) / $this->requestsSent) * 100, 2).'%');
+        $this->info('RPS: '.round($rps, 2));
+        $this->info('Total time: '.round($totalTime, 2).'s');
 
         return Command::SUCCESS;
     }
 
     private function runSpamAttack(int $concurrent, int $duration): void
     {
-        $this->info("Running SPAM attack simulation...");
+        $this->info('Running SPAM attack simulation...');
 
         $endTime = time() + $duration;
 
@@ -88,7 +99,7 @@ final class StressTestBeauty extends Command
             for ($i = 0; $i < $concurrent; $i++) {
                 $result = $this->sendSpamRequest();
                 $this->requestsSent++;
-                if (!$result) {
+                if (! $result) {
                     $this->requestsFailed++;
                 }
             }
@@ -100,7 +111,7 @@ final class StressTestBeauty extends Command
 
     private function runDdosAttack(int $concurrent, int $duration): void
     {
-        $this->info("Running DDoS attack simulation...");
+        $this->info('Running DDoS attack simulation...');
 
         $endTime = time() + $duration;
 
@@ -108,7 +119,7 @@ final class StressTestBeauty extends Command
             for ($i = 0; $i < $concurrent; $i++) {
                 $result = $this->sendDdosRequest($i);
                 $this->requestsSent++;
-                if (!$result) {
+                if (! $result) {
                     $this->requestsFailed++;
                 }
             }
@@ -119,7 +130,7 @@ final class StressTestBeauty extends Command
 
     private function runFraudAttack(int $concurrent, int $duration): void
     {
-        $this->info("Running FRAUD attack simulation...");
+        $this->info('Running FRAUD attack simulation...');
 
         $endTime = time() + $duration;
         $fraudPatterns = ['same_ip_spam', 'rapid_actions', 'unusual_amounts', 'suspicious_user_agents'];
@@ -129,7 +140,7 @@ final class StressTestBeauty extends Command
                 $pattern = $fraudPatterns[$i % count($fraudPatterns)];
                 $result = $this->sendFraudRequest($pattern, $i);
                 $this->requestsSent++;
-                if (!$result) {
+                if (! $result) {
                     $this->requestsFailed++;
                 }
             }
@@ -141,14 +152,14 @@ final class StressTestBeauty extends Command
 
     private function runQueueOverload(int $concurrent, int $duration): void
     {
-        $this->info("Running QUEUE overload simulation...");
+        $this->info('Running QUEUE overload simulation...');
 
         $endTime = time() + $duration;
 
         while (time() < $endTime && $this->running) {
             for ($i = 0; $i < $concurrent; $i++) {
                 try {
-                    Queue::push(new \App\Jobs\ProcessPayment([
+                    $this->queue->push(new ProcessPayment([
                         'order_id' => rand(1, 100000),
                         'amount' => rand(1000, 50000),
                         'tenant_id' => 1,
@@ -166,7 +177,7 @@ final class StressTestBeauty extends Command
 
     private function runAllAttacks(int $concurrent, int $duration): void
     {
-        $this->info("Running ALL attack simulations...");
+        $this->info('Running ALL attack simulations...');
 
         $segmentDuration = $duration / 4;
 
@@ -182,7 +193,7 @@ final class StressTestBeauty extends Command
     private function sendSpamRequest(): bool
     {
         try {
-            $response = Http::timeout(5)->post('http://localhost:8000/api/beauty/fraud/analyze', [
+            $response = $this->http->timeout(5)->post('http://localhost:8000/api/beauty/fraud/analyze', [
                 'user_id' => 999,
                 'action' => 'appointment_booking',
                 'ip_address' => '192.168.1.100',
@@ -202,7 +213,7 @@ final class StressTestBeauty extends Command
     private function sendDdosRequest(int $index): bool
     {
         try {
-            $response = Http::timeout(2)->post($this->baseUrl . '/api/beauty/stress-test', [
+            $response = $this->http->timeout(2)->post($this->baseUrl.'/api/beauty/stress-test', [
                 'user_id' => rand(1, 10000),
                 'action' => 'payment',
                 'ip_address' => sprintf('10.%d.%d.%d', $index % 255, rand(0, 255), rand(0, 255)),
@@ -225,7 +236,7 @@ final class StressTestBeauty extends Command
             $payload = [
                 'user_id' => rand(1, 1000),
                 'action' => 'payment',
-                'ip_address' => '192.168.1.' . ($index % 255),
+                'ip_address' => '192.168.1.'.($index % 255),
                 'user_agent' => 'Mozilla/5.0',
             ];
 
@@ -245,7 +256,7 @@ final class StressTestBeauty extends Command
                     break;
             }
 
-            $response = Http::timeout(3)->get($this->baseUrl . '/stress-test', [
+            $response = $this->http->timeout(3)->get($this->baseUrl.'/stress-test', [
                 'X-Tenant-ID' => '1',
                 'X-Correlation-ID' => Str::uuid()->toString(),
             ]);

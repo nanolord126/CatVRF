@@ -1,15 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use App\Models\FraudAttempt;
 use App\Models\FraudModelVersion;
@@ -18,6 +21,7 @@ use App\Services\ML\FraudMLModelValidator;
 use App\Services\ML\FraudMLModelEncryption;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Fraud ML Model Recalculation Job
@@ -29,33 +33,41 @@ use Illuminate\Database\DatabaseManager;
  */
 final class FraudMLRecalculationJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 3600; // 1 час максимум
+
     public int $tries = 3;
+
     public int $backoff = 60; // 1 минута между попытками
 
     private readonly FraudMLService $fraudMLService;
+
     private readonly FraudMLModelValidator $validator;
+
     private readonly FraudMLModelEncryption $encryption;
+
     private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    )
-    {
-        $this->fraudMLService = app(FraudMLService::class);
-        $this->validator = app(FraudMLModelValidator::class);
-        $this->encryption = app(FraudMLModelEncryption::class);
+        private readonly FraudMLService $fraudMLService,
+        private readonly FraudMLModelValidator $validator,
+        private readonly FraudMLModelEncryption $encryption,) {
         $this->correlationId = (string) Str::uuid()->toString();
     }
+
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('FraudML recalculation started', [
+            $this->logger->channel('audit')->$this->logger->info('FraudML recalculation started', [
                 'correlation_id' => $this->correlationId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
 
             // 1. Собрать данные за последние 30 дней
@@ -66,6 +78,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
                     'correlation_id' => $this->correlationId,
                     'data_count' => count($trainingData),
                 ]);
+
                 return;
             }
 
@@ -77,7 +90,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
 
             // 4. Оценить качество с валидацией (KS-test, PSI, AUC)
             $metrics = $this->evaluateModel($features, $trainingData);
-            
+
             // 5. Статистическая валидация модели
             $validationResult = $this->validateModelStatistically($features, $trainingData);
 
@@ -88,7 +101,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             if ($validationResult['passes_validation'] && $metrics['auc_roc'] > 0.92 && $metrics['precision'] > 0.85) {
                 $this->startShadowMode($modelVersion);
 
-                $this->logger->channel('audit')->info('New FraudML model started in shadow mode', [
+                $this->logger->channel('audit')->$this->logger->info('New FraudML model started in shadow mode', [
                     'correlation_id' => $this->correlationId,
                     'model_version' => $modelVersion,
                     'auc_roc' => $metrics['auc_roc'],
@@ -101,8 +114,8 @@ final class FraudMLRecalculationJob implements ShouldQueue
                 ]);
 
                 // Dispatch job for shadow monitoring (will check after 24h)
-                FraudMLShadowPromotionJob::dispatch($modelVersion)
-                    ->delay(now()->addHours(24));
+                FraudMLShadowPromotionJob::$this->bus->dispatch($modelVersion)
+                    ->delay(CarbonImmutable::now()->addHours(24));
             } else {
                 $this->logger->warning('New FraudML model did not meet validation or quality threshold', [
                     'correlation_id' => $this->correlationId,
@@ -138,12 +151,20 @@ final class FraudMLRecalculationJob implements ShouldQueue
         }
     }
 
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('FraudMLRecalculationJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     /**
      * Собрать данные для обучения за последние 30 дней из Feature Store
      */
     private function collectTrainingData(): array
     {
-        $thirtyDaysAgo = now()->subDays(30);
+        $thirtyDaysAgo = CarbonImmutable::now()->subDays(30);
 
         // Collect from ClickHouse feature store (single source of truth)
         // This ensures consistency between training and inference
@@ -152,7 +173,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             ->get(['id', 'tenant_id', 'user_id', 'operation_type', 'features_json', 'decision', 'blocked_at'])
             ->toArray();
 
-        $this->logger->channel('audit')->info('Training data collected from Feature Store', [
+        $this->logger->channel('audit')->$this->logger->info('Training data collected from Feature Store', [
             'correlation_id' => $this->correlationId,
             'data_count' => count($attempts),
             'source' => 'clickhouse_feature_store',
@@ -184,13 +205,13 @@ final class FraudMLRecalculationJob implements ShouldQueue
      */
     private function trainModel(array $features, array $trainingData): string
     {
-        $version = now()->format('Y-m-d') . '-v' . (FraudModelVersion::query()
-            ->whereDate('trained_at', now())
+        $version = CarbonImmutable::now()->format('Y-m-d').'-v'.(FraudModelVersion::query()
+            ->whereDate('trained_at', CarbonImmutable::now())
             ->count() + 1);
 
         // Здесь вызвать Python скрипт или ML сервис для обучения
         // Для демо: просто логируем
-        $this->logger->channel('audit')->info('FraudML model training started', [
+        $this->logger->channel('audit')->$this->logger->info('FraudML model training started', [
             'correlation_id' => $this->correlationId,
             'model_version' => $version,
             'training_samples' => count($features),
@@ -218,7 +239,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
      */
     private function validateModelStatistically(array $features, array $trainingData): array
     {
-        $splitIndex = (int)(count($features) * 0.8);
+        $splitIndex = (int) (count($features) * 0.8);
         $trainingSplit = array_slice($features, 0, $splitIndex);
         $validationSplit = array_slice($features, $splitIndex);
 
@@ -238,9 +259,9 @@ final class FraudMLRecalculationJob implements ShouldQueue
     private function saveModelVersion(string $version, array $metrics, array $validationResult): array
     {
         $filePath = "storage/models/fraud/{$version}.joblib";
-        
+
         $modelDir = dirname($filePath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
         file_put_contents($filePath, json_encode(['version' => $version, 'weights' => []]));
@@ -262,7 +283,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
         $this->db->transaction(function () use ($version, $metrics, $validationResult, $encryptedPath, $fileHash, $isEncrypted) {
             FraudModelVersion::create([
                 'version' => $version,
-                'trained_at' => now(),
+                'trained_at' => CarbonImmutable::now(),
                 'accuracy' => $metrics['accuracy'],
                 'precision' => $metrics['precision'],
                 'recall' => $metrics['recall'],
@@ -271,7 +292,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
                 'file_path' => $encryptedPath,
                 'file_hash' => $fileHash,
                 'is_encrypted' => $isEncrypted,
-                'comment' => "Auto-trained on " . now()->toDateTimeString(),
+                'comment' => 'Auto-trained on '.CarbonImmutable::now()->toDateTimeString(),
                 'training_metadata' => [
                     'validation' => $validationResult,
                     'sample_count' => count($metrics),
@@ -303,7 +324,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
     private function cleanupOldModels(): void
     {
         $oldModels = FraudModelVersion::query()
-            ->where('trained_at', '<', now()->subDays(30))
+            ->where('trained_at', '<', CarbonImmutable::now()->subDays(30))
             ->get();
 
         foreach ($oldModels as $model) {
@@ -315,17 +336,9 @@ final class FraudMLRecalculationJob implements ShouldQueue
             // Удалить запись из БД
             $model->delete();
 
-            $this->logger->info('Deleted old FraudML model', [
+            $this->logger->$this->logger->info('Deleted old FraudML model', [
                 'version' => $model->version,
             ]);
         }
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('FraudMLRecalculationJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'error' => $exception->getMessage(),
-        ]);
     }
 }

@@ -1,1 +1,35 @@
-<?php declare(strict_types=1); namespace Database\Factories; use App\Models\Domains\RealEstate\Property; use Illuminate\Database\Eloquent\Factories\Factory; use Illuminate\Support\Str; use Illuminate\Support\Facades\DB; final class PropertyFactory extends Factory { protected $model = Property::class; public function definition(): array { return [ "tenant_id" => DB::table("tenants")->value("id") ?? 1, "type" => "apartment", "name" => fake()->sentence(), "area" => fake()->numberBetween(50, 300), "price" => fake()->numberBetween(100, 10000), "correlation_id" => (string) Str::uuid() ]; } public function available(): static { return $this->state(fn () => []); } public function booked(): static { return $this->state(fn () => []); } public function verified(): static { return $this->state(fn () => []); } }
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Models\Domains\RealEstate\Property;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
+final class PropertyFactory extends Factory
+{
+    protected $model = Property::class;
+
+    public function definition(): array
+    {
+        return ['tenant_id' => DB::table('tenants')->value('id') ?? 1, 'type' => 'apartment', 'name' => fake()->sentence(), 'area' => fake()->numberBetween(50, 300), 'price' => fake()->numberBetween(100, 10000), 'correlation_id' => (string) Str::uuid()];
+    }
+
+    public function available(): static
+    {
+        return $this->state(fn () => []);
+    }
+
+    public function booked(): static
+    {
+        return $this->state(fn () => []);
+    }
+
+    public function verified(): static
+    {
+        return $this->state(fn () => []);
+    }
+}

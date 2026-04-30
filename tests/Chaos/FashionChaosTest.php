@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -7,21 +9,15 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
-final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
+final class FashionChaosTest extends ChaosEngineeringTest
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-    }
 
     public function test_product_service_survives_cache_failure(): void
     {
@@ -161,7 +157,7 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
                 ]);
         }
 
-        $successfulUpdates = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulUpdates = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertGreaterThan(0, $successfulUpdates, 'Some updates should succeed despite lock contention');
         $this->restoreNormalLocks();
     }
@@ -223,7 +219,7 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
                 ->getJson('/api/fashion/products');
         }
 
-        $successfulRequests = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulRequests = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertGreaterThan(5, $successfulRequests, 'Rate limiting should recover from Redis restart');
         $this->restoreRedis();
     }
@@ -252,9 +248,17 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
                 ]);
         }
 
-        $successfulReviews = collect($responses)->filter(fn($r) => $r->status() === 201)->count();
+        $successfulReviews = collect($responses)->filter(fn ($r) => $r->status() === 201)->count();
         $this->assertGreaterThan(0, $successfulReviews, 'Some reviews should succeed despite contention');
         $this->restoreNormalLocks();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 
     private function simulateCacheFailure(): void
@@ -272,7 +276,7 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
     {
         DB::listen(function ($query) {
             if (str_contains($query->sql, 'fashion_products') || str_contains($query->sql, 'fashion_orders')) {
-                throw new \Illuminate\Database\QueryException('Simulated timeout', [], new \Exception());
+                throw new QueryException('Simulated timeout', [], new \Exception());
             }
         });
     }
@@ -297,9 +301,7 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         usleep($ms * 1000);
     }
 
-    private function restoreNormalLatency(): void
-    {
-    }
+    private function restoreNormalLatency(): void {}
 
     private function simulateRandomFailures(float $probability): void
     {
@@ -323,13 +325,9 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         config(['services.external.timeout' => 30]);
     }
 
-    private function simulateDiskFull(): void
-    {
-    }
+    private function simulateDiskFull(): void {}
 
-    private function restoreDiskSpace(): void
-    {
-    }
+    private function restoreDiskSpace(): void {}
 
     private function simulateHighMemoryPressure(): void
     {
@@ -341,13 +339,9 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         ini_set('memory_limit', '512M');
     }
 
-    private function simulateExternalAPIFailure(): void
-    {
-    }
+    private function simulateExternalAPIFailure(): void {}
 
-    private function restoreExternalAPI(): void
-    {
-    }
+    private function restoreExternalAPI(): void {}
 
     private function simulateConnectionTimeout(): void
     {
@@ -373,17 +367,11 @@ final class FashionChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         DB::flushQueryLog();
     }
 
-    private function simulateGracefulShutdown(): void
-    {
-    }
+    private function simulateGracefulShutdown(): void {}
 
-    private function restoreService(): void
-    {
-    }
+    private function restoreService(): void {}
 
-    private function simulateServiceCrash(): void
-    {
-    }
+    private function simulateServiceCrash(): void {}
 
     private function simulateServiceRestart(): void
     {

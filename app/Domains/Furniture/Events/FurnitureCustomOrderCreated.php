@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Events;
 
@@ -7,18 +9,8 @@ use Illuminate\Queue\SerializesModels;
 
 final class FurnitureCustomOrderCreated
 {
-
-
-    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
-
-        /**
-         * @param FurnitureCustomOrder $order
-         * @param string|null $correlationId
-         */
-        public function __construct(
-            public readonly FurnitureCustomOrder $order,
-            public ?string $correlationId = null
-        ) {}
+    use Dispatchable;
+    use SerializesModels;
 
     /**
      * Version identifier for this component.
@@ -35,6 +27,11 @@ final class FurnitureCustomOrderCreated
      */
     private const CACHE_TTL = 3600;
 
+    public function __construct(
+        public readonly FurnitureCustomOrder $order,
+        public ?string $correlationId = null
+    ) {}
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -42,15 +39,15 @@ final class FurnitureCustomOrderCreated
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -59,6 +56,4 @@ final class FurnitureCustomOrderCreated
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }
-

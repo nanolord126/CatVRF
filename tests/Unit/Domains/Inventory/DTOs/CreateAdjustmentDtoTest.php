@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Inventory\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Inventory\DTOs\CreateAdjustmentDto;
 
 /**
  * Unit tests for CreateAdjustmentDto.
@@ -14,7 +17,7 @@ final class CreateAdjustmentDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\DTOs\CreateAdjustmentDto::class
+            CreateAdjustmentDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateAdjustmentDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateAdjustmentDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateAdjustmentDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\DTOs\CreateAdjustmentDto::class
+            CreateAdjustmentDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('productId', $params, 'Constructor must have productId');
         $this->assertContains('warehouseId', $params, 'Constructor must have warehouseId');
@@ -38,7 +41,7 @@ final class CreateAdjustmentDtoTest extends TestCase
         $this->assertContains('employeeId', $params, 'Constructor must have employeeId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -48,6 +51,6 @@ final class CreateAdjustmentDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Inventory\DTOs\CreateAdjustmentDto::class;
+        return CreateAdjustmentDto::class;
     }
 }

@@ -8,37 +8,37 @@ use App\Domains\Insurance\InsuranceServices\Models\InsuranceConsultation;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * InsuranceServicesService — управление страховыми консультациями.
  *
  * Создание, завершение и отмена консультаций по страхованию.
  *
- * @package CatVRF
  * @version 2026.1
  */
 final readonly class InsuranceServicesService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private DatabaseManager     $db,
-        private LoggerInterface     $logger,
-        private Guard               $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Создать страховую консультацию.
      */
     public function createConsultation(
-        int    $agentId,
+        int $agentId,
         string $policyType,
-        int    $hoursEstimate,
+        int $hoursEstimate,
         string $dueDate,
         string $correlationId = '',
     ): InsuranceConsultation {
@@ -71,7 +71,7 @@ final readonly class InsuranceServicesService
                 'tags'           => ['insurance' => true],
             ]);
 
-            $this->logger->info('Insurance consultation created', [
+            $this->logger->$this->logger->info('Insurance consultation created', [
                 'consultation_id' => $consultation->id,
                 'correlation_id'  => $correlationId,
             ]);
@@ -107,7 +107,7 @@ final readonly class InsuranceServicesService
                 metadata: ['consultation_id' => $consultation->id],
             );
 
-            $this->logger->info('Insurance consultation completed', [
+            $this->logger->$this->logger->info('Insurance consultation completed', [
                 'consultation_id' => $consultation->id,
                 'correlation_id'  => $correlationId,
             ]);
@@ -148,7 +148,7 @@ final readonly class InsuranceServicesService
                 );
             }
 
-            $this->logger->info('Insurance consultation cancelled', [
+            $this->logger->$this->logger->info('Insurance consultation cancelled', [
                 'consultation_id' => $consultation->id,
                 'refunded'        => $wasPaid,
                 'correlation_id'  => $correlationId,
@@ -169,9 +169,9 @@ final readonly class InsuranceServicesService
     /**
      * Получить последние консультации клиента.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, InsuranceConsultation>
+     * @return Collection<int, InsuranceConsultation>
      */
-    public function getUserConsultations(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserConsultations(int $clientId, int $limit = 10): Collection
     {
         return InsuranceConsultation::where('client_id', $clientId)
             ->orderByDesc('created_at')
@@ -181,15 +181,15 @@ final readonly class InsuranceServicesService
 
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /** @return array<string, mixed> */
     public function toDebugArray(): array
     {
         return [
-            'class'     => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class'     => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

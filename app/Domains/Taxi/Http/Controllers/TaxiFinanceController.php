@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -29,7 +31,7 @@ final class TaxiFinanceController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'transaction' => $transaction,
         ]);
@@ -49,7 +51,7 @@ final class TaxiFinanceController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'refund' => $refund,
         ]);
@@ -62,7 +64,7 @@ final class TaxiFinanceController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'summary' => $summary,
         ]);
@@ -87,7 +89,7 @@ final class TaxiFinanceController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'withdrawal' => $withdrawal,
         ]);
@@ -100,7 +102,7 @@ final class TaxiFinanceController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'withdrawal' => $withdrawal,
         ]);
@@ -123,7 +125,7 @@ final class TaxiFinanceController extends Controller
             perPage: $validated['per_page'] ?? 50,
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'transactions' => $transactions,
         ]);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * TravelBookingResource — CatVRF 2026 Component.
@@ -7,19 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/travelbookingresource
  */
-
 
 namespace App\Domains\Travel\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 /**
  * Class TravelBookingResource
@@ -30,8 +33,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * API Resource for response transformation.
  * Formats model data for API responses.
  * Always includes correlation_id in meta.
- *
- * @package App\Domains\Travel\Http\Resources
  */
 final class TravelBookingResource extends JsonResource
 {
@@ -66,7 +67,7 @@ final class TravelBookingResource extends JsonResource
     {
         return [
             'meta' => [
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
                 'api_version' => 'v1',
             ],
         ];

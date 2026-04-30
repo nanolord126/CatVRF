@@ -1,11 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 /**
  * Class Medication
@@ -25,12 +27,12 @@ use Illuminate\Database\Eloquent\Builder;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Pharmacy\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Medication extends Model
 {
+    use TenantScoped;
 
     protected $table = 'medications';
 
@@ -45,7 +47,7 @@ final class Medication extends Model
         'stock_quantity',
         'instructions',
         'tags',
-        'correlation_id'
+        'correlation_id',
     ];
 
     protected $casts = [
@@ -53,16 +55,16 @@ final class Medication extends Model
         'instructions' => 'json',
         'tags' => 'json',
         'price' => 'integer',
-        'stock_quantity' => 'integer'
+        'stock_quantity' => 'integer',
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant_id', function (Builder $builder) {
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
             $builder->where('tenant_id', tenant()->id ?? 0);
         });
 
-        static::creating(function (Model $model) {
+        self::creating(function (Model $model) {
             $model->uuid = $model->uuid ?? (string) Str::uuid();
             $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
         });

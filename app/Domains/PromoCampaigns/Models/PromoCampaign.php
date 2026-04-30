@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\PromoCampaigns\Models;
 
-
 use Psr\Log\LoggerInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Models\Scopes\TenantScope;
 use App\Domains\PromoCampaigns\Enums\PromoType;
 use App\Domains\PromoCampaigns\Enums\PromoStatus;
@@ -23,11 +21,6 @@ use App\Domains\PromoCampaigns\Enums\PromoStatus;
  */
 final class PromoCampaign extends Model
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     /**
      * @var string Строго зафиксированное имя таблицы.
      */
@@ -76,18 +69,12 @@ final class PromoCampaign extends Model
         'applicable_categories' => 'array',
     ];
 
-    /**
-     * Категорически изолирует запросы в пределах текущего тенанта платформы.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
-    }
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
     /**
      * Безусловная связь со всеми фактами применений данного промо-кода.
-     *
-     * @return HasMany
      */
     public function uses(): HasMany
     {
@@ -96,11 +83,17 @@ final class PromoCampaign extends Model
 
     /**
      * Абсолютно надежная связь с аудиторскими логами для compliance контроля (ФЗ-38, ФЗ-152).
-     *
-     * @return HasMany
      */
     public function auditLogs(): HasMany
     {
         return $this->hasMany(PromoAuditLog::class, 'promo_campaign_id', 'id');
+    }
+
+    /**
+     * Категорически изолирует запросы в пределах текущего тенанта платформы.
+     */
+    protected static function booted(): void
+    {
+        self::addGlobalScope(new TenantScope());
     }
 }

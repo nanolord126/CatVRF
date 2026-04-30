@@ -11,33 +11,21 @@ use App\Domains\RealEstate\Models\B2BDeal;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 final class RealEstateFleetRentalServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RealEstateFleetRentalService $service;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(RealEstateFleetRentalService::class);
-        $this->tenant = Tenant::factory()->create();
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-            'status' => 'available',
-        ]);
-    }
 
     public function test_create_fleet_rental_deal_returns_valid_deal(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -61,7 +49,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_create_fleet_rental_deal_applies_discount(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -79,7 +67,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_create_fleet_rental_deal_rejects_insufficient_units(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Minimum unit count is 2');
@@ -98,7 +86,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_create_fleet_rental_deal_rejects_invalid_lease_term(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Minimum lease term is 3 months');
@@ -117,7 +105,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_approve_fleet_deal_changes_status(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -142,7 +130,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_approve_fleet_deal_updates_property_status(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -166,7 +154,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_approve_fleet_deal_rejects_non_pending_deal(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = B2BDeal::factory()->create([
             'status' => 'approved',
         ]);
@@ -183,7 +171,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_reject_fleet_deal_changes_status(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -209,7 +197,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_reject_fleet_deal_restores_property_status(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -234,7 +222,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_calculate_fleet_pricing_returns_valid_pricing(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateFleetPricing(
             5,
             12,
@@ -259,7 +247,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_get_active_fleet_deals_returns_deals(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -291,7 +279,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_extend_fleet_deal_increases_lease_term(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -322,7 +310,7 @@ final class RealEstateFleetRentalServiceTest extends TestCase
 
     public function test_extend_fleet_deal_rejects_excessive_extension(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $deal = $this->service->createFleetRentalDeal(
             $this->property->id,
             $this->tenant->id,
@@ -349,6 +337,21 @@ final class RealEstateFleetRentalServiceTest extends TestCase
             1,
             $correlationId
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(RealEstateFleetRentalService::class);
+        $this->tenant = Tenant::factory()->create();
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+            'status' => 'available',
+        ]);
     }
 
     protected function tearDown(): void

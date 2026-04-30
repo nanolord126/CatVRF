@@ -65,7 +65,7 @@ final class InternalHRJobBoardSeeder extends Seeder
             ['PHP', 'Laravel', 'AI Operations'],
             ['Logistics', 'Customer Success', 'Planning'],
             ['Healthcare', 'Nursing', 'Administration'],
-            ['Marketing', 'Procurement', 'B2B Sales']
+            ['Marketing', 'Procurement', 'B2B Sales'],
         ];
 
         foreach ($users as $index => $user) {

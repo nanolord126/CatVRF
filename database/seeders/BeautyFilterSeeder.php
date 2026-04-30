@@ -1,9 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
-
-use Database\Seeders\VerticalFilterSeederBase;
 
 /**
  * Фильтры для красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -61,5 +60,3 @@ final class BeautyFilterSeeder extends VerticalFilterSeederBase
         ]);
     }
 }
-
-

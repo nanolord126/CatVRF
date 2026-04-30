@@ -1,47 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class TaxiFleet extends Model
 {
-
-    use HasUuids, SoftDeletes;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
-        protected $table = 'taxi_fleets';
+    protected $table = 'taxi_fleets';
 
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'tenant_id',
-            'name',
-            'company_name',
-            'vehicle_count',
-            'rating',
-            'correlation_id',
-            'tags',
-        ];
+        'tenant_id',
+        'name',
+        'company_name',
+        'vehicle_count',
+        'rating',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $casts = [
-            'tags' => 'collection',
-            'rating' => 'float',
-            'vehicle_count' => 'integer',
-        ];
+    protected $casts = [
+        'tags' => 'collection',
+        'rating' => 'float',
+        'vehicle_count' => 'integer',
+    ];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant()?->id ?? 0));
-        }
-
-        public function vehicles(): HasMany
-        {
-            return $this->hasMany(TaxiVehicle::class, 'fleet_id');
-        }
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(TaxiVehicle::class, 'fleet_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -50,7 +50,7 @@ final class TaxiFleet extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -61,8 +61,13 @@ final class TaxiFleet extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant()?->id ?? 0));
     }
 }

@@ -7,7 +7,7 @@ UTF-8 без BOM, окончания строк только CRLF.
 Каждый класс — final (если не требуется наследование).
 Все свойства — private readonly.
 Никаких Facades и статических вызовов (Auth::, Cache::, Log::, DB::, response(), request(), config(), auth() и т.д.). Только constructor injection.
-Никакихreturn null;, throw new Exception("Not implemented"), TODO, FIXME, HACK, пустых методов, if (false).
+Никаких return null;, throw new Exception("Not implemented"), TODO, FIXME, HACK, пустых методов, if (false).
 Каждый файл минимум 60 строк (кроме миграций, фабрик и конфигов). Если файл больше 500 строк (за искючением .vue файлов) его необходимо рефакторить на несколько по бизнеслогике.
 В вертикалях должно быть минимум 2 сидера, 2 мида, несколько контроллеров, несколько политик, несколько фабрик и несколько моделей.
 Все вертикали должны быть адаптированы под очереди и потоки при нагрузках, с системами антифрода, ML и защитой от спама, rate limit. 
@@ -19,13 +19,12 @@ B2C/B2B определяется только так: $isB2B = $request->has('in
 Корзина: 1 продавец = 1 корзина, максимум 20 корзин на пользователя, резерв 20 минут.
 Товары без наличия — чёрно-белые (grayscale), без кнопки «В корзину».
 AI-конструктор обязателен для каждой вертикали.
-
 Обязательные тесты: unit, fraude, спам, краш системы, нагрузочный, стресс тест системы, атака на платежную систему, DDoS, филамент ресурсы проверка, клик-тест ui функционала.дальше
 
 
-9-СЛОЙНАЯ АРХИТЕКТУРА (строго соблюдать для всех 127 вертикалей)
+9-СЛОЙНАЯ АРХИТЕКТУРА (строго соблюдать для всех вертикалей)
 Layer 1: Models (Данные)
-PHPdeclare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
 
@@ -73,9 +72,11 @@ final class Salon extends Model
     public function businessGroup(): BelongsTo { ... }
     public function masters(): HasMany { ... }
 }
+
 Обязательные поля во всех таблицах мутаций: uuid, correlation_id, tags (json), tenant_id, business_group_id.
 Layer 2: DTOs
-PHPfinal readonly class CreateSalonDto
+
+final readonly class CreateSalonDto
 {
     public function __construct(
         public int $tenantId,
@@ -92,7 +93,8 @@ PHPfinal readonly class CreateSalonDto
     public function toArray(): array { ... }
 }
 Layer 3: Services (главный слой)
-PHPfinal readonly class SalonService
+
+final readonly class SalonService
 {
     public function __construct(
         private \App\Services\FraudControlService $fraud,
@@ -192,7 +194,7 @@ DB::transaction() при сохранении
 
 2. Универсальный фреймворк (AIConstructorService)
 В app/Services/AI/AIConstructorService.php живёт оркестратор, который используется всеми вертикалями:
-PHPfinal readonly class AIConstructorService
+final readonly class AIConstructorService
 {
     public function analyzeAndRecommend(
         UploadedFile $file,
@@ -219,7 +221,7 @@ AR-примерка (виртуальная)
 Список мастеров + цены + запись
 
 Код (полный сервис):
-PHPfinal readonly class BeautyImageConstructorService
+final readonly class BeautyImageConstructorService
 {
     public function analyzePhotoAndRecommend(UploadedFile $photo, int $userId): array
     {
@@ -4279,4 +4281,832 @@ Tailwind dark: prefix на все цветовые классы в компон�
  B2B витрина и условия задокументированы в компоненте
  Mobile-first проверка
  Cypress smoke-тест (открытие каталога + добавление в корзину)
+
+
+## DATABASE MIGRATIONS MAP (Полная карта миграций)
+
+### ОБЯЗАТЕЛЬНЫЕ ПОЛЯ ДЛЯ ВСЕХ ТАБЛИЦ МУТАЦИЙ
+
+Каждая таблица, которая создаёт/изменяет/удаляет данные, ДОЛЖНА иметь:
+
+```php
+Schema::create('{table_name}', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
+    $table->foreignId('business_group_id')->nullable()->constrained()->onDelete('set null');
+    $table->uuid('uuid')->unique();
+    $table->string('correlation_id')->nullable()->index();
+    $table->json('tags')->nullable();
+    $table->timestamps();
+    $table->softDeletes();
+});
+```
+
+### СТРУКТУРА МИГРАЦИЙ ПО СЛОЯМ
+
+#### Layer 1: Core Tables (Базовая инфраструктура)
+```
+database/migrations/
+├── 0001_01_01_000001_create_users_table.php
+├── 0001_01_01_000002_create_tenants_table.php
+├── 0001_01_01_000003_create_business_groups_table.php
+├── 0001_01_01_000004_create_roles_table.php
+├── 0001_01_01_000005_create_permissions_table.php
+├── 0001_01_01_000006_create_jobs_table.php
+├── 0001_01_01_000007_create_cache_table.php
+├── 0001_01_01_000008_create_failed_jobs_table.php
+└── 0001_01_01_000009_create_sessions_table.php
+```
+
+#### Layer 2: Wallet & Payment (Финансы)
+```
+database/migrations/
+├── 2024_01_01_000001_create_wallets_table.php
+├── 2024_01_01_000002_create_balance_transactions_table.php
+├── 2024_01_01_000003_create_payment_transactions_table.php
+├── 2024_01_01_000004_create_payment_idempotency_records_table.php
+├── 2024_01_01_000005_create_bonuses_table.php
+├── 2024_01_01_000006_create_bonus_transactions_table.php
+├── 2024_01_01_000007_create_payout_batches_table.php
+├── 2024_01_01_000008_create_refund_transactions_table.php
+├── 2024_01_01_000009_create_escrow_holds_table.php
+└── 2024_01_01_000010_create_payment_intents_table.php
+```
+
+#### Layer 3: Cart & Orders (Корзина и заказы)
+```
+database/migrations/
+├── 2024_01_15_000001_create_carts_table.php
+├── 2024_01_15_000002_create_cart_items_table.php
+├── 2024_01_15_000003_create_orders_table.php
+├── 2024_01_15_000004_create_order_items_table.php
+└── 2024_01_15_000005_create_order_status_history_table.php
+```
+
+#### Layer 4: Inventory (Инвентарь)
+```
+database/migrations/
+├── 2024_02_01_000001_create_products_table.php
+├── 2024_02_01_000002_create_product_variants_table.php
+├── 2024_02_01_000003_create_inventory_table.php
+├── 2024_02_01_000004_create_inventory_movements_table.php
+├── 2024_02_01_000005_create_warehouses_table.php
+└── 2024_02_01_000006_create_warehouse_locations_table.php
+```
+
+#### Layer 5: Verticals (Вертикали - 127 шт)
+```
+modules/{Vertical}/Database/Migrations/
+├── 2024_03_01_000001_create_{vertical}_services_table.php
+├── 2024_03_01_000002_create_{vertical}_bookings_table.php
+├── 2024_03_01_000003_create_{vertical}_reviews_table.php
+├── 2024_03_01_000004_create_{vertical}_categories_table.php
+└── 2024_03_01_000005_create_{vertical}_providers_table.php
+```
+
+Примеры вертикалей:
+- Beauty (salons, masters, appointments)
+- Taxi (rides, drivers, routes)
+- Food (restaurants, menus, orders)
+- Fashion (products, sizes, colors)
+- RealEstate (properties, bookings)
+- Hotels (rooms, reservations)
+- Medical (clinics, doctors, appointments)
+- Auto (cars, services, parts)
+- и т.д.
+
+#### Layer 6: ML & Big Data (Машинное обучение)
+```
+database/migrations/
+├── 2024_04_01_000001_create_user_taste_profiles_table.php
+├── 2024_04_01_000002_create_user_ai_designs_table.php
+├── 2024_04_01_000003_create_behavior_events_table.php
+├── 2024_04_01_000004_create_recommendations_table.php
+├── 2024_04_01_000005_create_fraud_scores_table.php
+└── 2024_04_01_000006_create_model_metrics_table.php
+```
+
+#### Layer 7: Audit & Logging (Аудит и логирование)
+```
+database/migrations/
+├── 2024_05_01_000001_create_audit_logs_table.php
+├── 2024_05_01_000002_create_correlation_logs_table.php
+├── 2024_05_01_000003_create_webhook_logs_table.php
+└── 2024_05_01_000004_create_api_logs_table.php
+```
+
+#### Layer 8: Notifications (Уведомления)
+```
+database/migrations/
+├── 2024_06_01_000001_create_notifications_table.php
+├── 2024_06_01_000002_create_notification_preferences_table.php
+├── 2024_06_01_000003_create_email_logs_table.php
+├── 2024_06_01_000004_create_sms_logs_table.php
+└── 2024_06_01_000005_create_push_logs_table.php
+```
+
+#### Layer 9: Compliance & Security (Compliance и безопасность)
+```
+database/migrations/
+├── 2024_07_01_000001_create_pii_consents_table.php
+├── 2024_07_01_000002_create_pii_deletion_requests_table.php
+├── 2024_07_01_000003_create_rate_limits_table.php
+├── 2024_07_01_000004_create_brute_force_attempts_table.php
+└── 2024_07_01_000005_create_security_events_table.php
+```
+
+### ПРАВИЛА СОЗДАНИЯ МИГРАЦИЙ
+
+#### 1. Именование миграций
+```bash
+# Формат: YYYY_MM_DD_XXXXXX_{action}_{table_name}_table.php
+php artisan make:migration create_users_table
+php artisan make:migration add_email_verified_at_to_users_table --table=users
+php artisan make:migration drop_soft_deletes_from_users_table --table=users
+```
+
+#### 2. Обязательные проверки перед созданием миграции
+- Проверить, нет ли уже такой таблицы
+- Проверить, нет ли дубликатов в других миграционных файлах
+- Добавить все обязательные поля (uuid, correlation_id, tags, tenant_id, business_group_id)
+- Для JSON полей использовать ->nullable() вместо ->default([])
+- Для enum полей проверять совместимость с SQLite/PostgreSQL
+
+#### 3. SQLite-specific ограничения
+- JSON поля: использовать ->nullable() вместо ->default([])
+- Foreign keys: SQLite не поддерживает alter table add foreign key, создавать сразу
+- Enum: в SQLite нет enum, использовать string с check constraint
+
+#### 4. PostgreSQL-specific особенности
+- JSONB вместо JSON для индексации
+- UUID вместо string(36)
+- Enum поддерживается нативно
+
+### ИЗВЕСТНЫЕ ПРОБЛЕМЫ И РЕШЕНИЯ
+
+#### Проблема 1: Дубликаты таблиц
+**Причина:** Одна и та же таблица создается в нескольких миграционных файлах
+**Решение:** Удалить дубликат, оставить только одну миграцию
+**Примеры дубликатов (уже исправлены):**
+- staff_skills: было в 2026_04_27_000002 и 2026_04_27_000003
+- staff_badges: было в 2026_04_27_000003 и 2026_04_27_000004
+- staff_shifts: было в 2026_04_27_000007 и 2026_04_27_000008
+- staff_wellness_metrics: было в 2026_04_27_000008 и 2026_04_27_000010
+
+#### Проблема 2: JSON default([])
+**Причина:** SQLite не поддерживает default([]) для JSON полей
+**Решение:** Использовать ->nullable() вместо ->default([])
+**Исправлено:**
+- 2026_04_27_000001_create_staff_employees_table.php
+- 2026_04_27_000007_create_staff_training_courses_table.php
+
+#### Проблема 3: Foreign key constraints
+**Причина:** Таблицы уже существуют с внешними ключами
+**Решение:** Использовать migrate:fresh для полной пересборки или временно отключить constraints
+**Команда:**
+```bash
+php artisan tinker --execute="DB::statement('PRAGMA foreign_keys = OFF'); Schema::dropIfExists('table_name'); DB::statement('PRAGMA foreign_keys = ON');"
+```
+
+### ЧЕК-ЛИСТ НОВОЙ МИГРАЦИИ
+
+Перед коммитом новой миграции обязательно проверить:
+
+- [ ] Миграция имеет уникальное имя (нет дубликатов)
+- [ ] Таблица не существует в других миграционных файлах
+- [ ] Добавлены обязательные поля: uuid, correlation_id, tags, tenant_id, business_group_id
+- [ ] JSON поля используют ->nullable() вместо ->default([])
+- [ ] Foreign keys созданы сразу (не через alter table)
+- [ ] Добавлены индексы на tenant_id, business_group_id, correlation_id
+- [ ] Добавлены softDeletes если нужна мягкое удаление
+- [ ] Метод down() удаляет таблицу корректно
+- [ ] Миграция протестирована на SQLite (локально)
+- [ ] Миграция протестирована на PostgreSQL (staging)
+- [ ] Нет статических вызовов Facade в миграции
+
+### ЗАПУСК МИГРАЦИЙ
+
+```bash
+# Обычный запуск (только новые)
+php artisan migrate
+
+# Принудительный запуск (production)
+php artisan migrate --force
+
+# Показать что будет выполнено (dry-run)
+php artisan migrate --pretend
+
+# Откат последней миграции
+php artisan migrate:rollback
+
+# Полный сброс и пересоздание (dev только!)
+php artisan migrate:fresh
+
+# Сброс с заполнением сидерами
+php artisan migrate:fresh --seed
+
+# Статус всех миграций
+php artisan migrate:status
+```
+
+### МИГРАЦИИ ДЛЯ PAYMENT VERTICAL
+
+```bash
+# Обязательные миграции для платежной системы
+database/migrations/
+├── 2024_04_24_000001_create_payments_table.php
+├── 2026_04_28_000017_create_payment_idempotency_records_table.php
+├── 2026_04_29_000001_create_payment_intents_table.php
+├── 2026_04_29_000002_create_escrow_holds_table.php
+├── 2026_04_29_000003_create_refund_transactions_table.php
+├── 2026_04_29_000004_create_recurring_subscriptions_table.php
+├── 2026_04_29_000005_create_payout_batches_table.php
+├── 2026_04_29_000006_add_payment_intent_id_to_payment_transactions.php
+├── 2026_04_29_000007_add_batch_id_to_payouts_table.php
+└── 2026_04_29_000008_create_outbox_messages_table.php
+```
+
+### МИГРАЦИИ ДЛЯ СТАФА (HR)
+
+```bash
+# Удалены дубликаты:
+- 2026_04_27_000003_create_staff_ai_analytics_tables.php (удален)
+- 2026_04_27_000003_create_staff_badges_table.php (удален)
+- 2026_04_27_000008_create_staff_wellness_tables.php (удален)
+
+# Оставшиеся миграции:
+database/migrations/
+├── 2026_04_27_000001_create_staff_employees_table.php
+├── 2026_04_27_000001_create_staff_table.php
+├── 2026_04_27_000002_add_video_avatar_to_staff_table.php
+├── 2026_04_27_000002_create_staff_skills_table.php
+├── 2026_04_27_000002_create_unified_warehouse_system.php
+├── 2026_04_27_000004_create_staff_gamification_tables.php
+├── 2026_04_27_000005_create_staff_mentorships_table.php
+├── 2026_04_27_000005_create_staff_social_tables.php
+├── 2026_04_27_000006_create_staff_learning_tables.php
+├── 2026_04_27_000006_create_staff_peer_reviews_table.php
+├── 2026_04_27_000007_create_staff_schedule_tables.php
+├── 2026_04_27_000007_create_staff_training_courses_table.php
+├── 2026_04_27_000008_create_staff_shifts_table.php
+├── 2026_04_27_000008_create_staff_wellness_table.php
+├── 2026_04_27_000009_create_staff_communication_tables.php
+├── 2026_04_27_000009_create_staff_leaves_table.php
+└── 2026_04_27_000010_create_staff_wellness_metrics_table.php
+```
+
+
+## PERFECT VERTICAL ARCHITECTURE (Идеальная архитектура вертикали)
+
+### ОБЯЗАТЕЛЬНАЯ СТРУКТУРА СЛОЕЙ ВЕРТИКАЛИ
+
+Каждая вертикаль ДОЛЖНА иметь следующую структуру в `modules/{Vertical}/`:
+
+```
+modules/{Vertical}/
+├── Domain/
+│   ├── Entities/                    # Сущности (readonly классы)
+│   │   ├── Service.php
+│   │   ├── Booking.php
+│   │   └── Review.php
+│   ├── ValueObjects/                # Value Objects
+│   │   ├── Price.php
+│   │   ├── Duration.php
+│   │   └── Status.php
+│   ├── Enums/                       # Enum классы
+│   │   ├── ServiceStatus.php
+│   │   ├── BookingStatus.php
+│   │   └── PaymentStatus.php
+│   ├── Events/                      # Domain Events
+│   │   ├── BookingCreated.php
+│   │   ├── ServiceUpdated.php
+│   │   └── PaymentCompleted.php
+│   ├── Interfaces/                  # Interfaces для репозиториев
+│   │   ├── ServiceRepositoryInterface.php
+│   │   └── BookingRepositoryInterface.php
+│   └── DTOs/                        # DTOs
+│       ├── CreateServiceDto.php
+│       ├── CreateBookingDto.php
+│       └── ServiceResponseDto.php
+├── Application/
+│   ├── Services/                    # Application Services
+│   │   ├── ServiceService.php
+│   │   ├── BookingService.php
+│   │   └── RecommendationService.php
+│   ├── Jobs/                        # Jobs
+│   │   ├── ProcessBookingJob.php
+│   │   ├── SendNotificationJob.php
+│   │   └── SyncWithExternalJob.php
+│   ├── Listeners/                   # Event Listeners
+│   │   ├── SendBookingConfirmation.php
+│   │   ├── UpdateInventoryListener.php
+│   │   └── FraudCheckListener.php
+│   └── Queries/                     # CQRS Queries
+│       ├── GetServiceQuery.php
+│       └── ListServicesQuery.php
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── Eloquent/
+│   │   │   ├── ServiceModel.php
+│   │   │   └── BookingModel.php
+│   │   └── Repositories/
+│   │       ├── EloquentServiceRepository.php
+│   │       └── EloquentBookingRepository.php
+│   ├── External/
+│   │   ├── ThirdPartyApiClient.php
+│   │   └── PaymentGatewayAdapter.php
+│   └── Cache/
+│       └── ServiceCacheRepository.php
+├── Presentation/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── ServiceController.php
+│   │   │   └── BookingController.php
+│   │   ├── Requests/
+│   │   │   ├── CreateServiceRequest.php
+│   │   │   └── CreateBookingRequest.php
+│   │   └── Resources/
+│   │       ├── ServiceResource.php
+│   │       └── BookingResource.php
+│   ├── Livewire/
+│   │   ├── ServiceCatalog.php
+│   │   ├── BookingForm.php
+│   │   └── ServiceDetail.php
+│   └── Filament/
+│       └── Resources/
+│           ├── ServiceResource.php
+│           └── BookingResource.php
+├── Tests/
+│   ├── Unit/
+│   │   ├── Domain/
+│   │   │   ├── ServiceTest.php
+│   │   │   └── PriceTest.php
+│   │   └── Application/
+│   │       ├── ServiceServiceTest.php
+│   │       └── BookingServiceTest.php
+│   ├── Feature/
+│   │   ├── ServiceControllerTest.php
+│   │   ├── BookingFlowTest.php
+│   │   └── FraudCheckTest.php
+│   ├── Integration/
+│   │   ├── PaymentGatewayIntegrationTest.php
+│   │   └── ExternalApiIntegrationTest.php
+│   └── E2E/
+│       └── BookingE2ETest.php
+├── Database/
+│   ├── Migrations/
+│   │   ├── 2024_XX_XX_XXXXXX_create_{vertical}_services_table.php
+│   │   └── 2024_XX_XX_XXXXXX_create_{vertical}_bookings_table.php
+│   └── Factories/
+│       ├── ServiceFactory.php
+│       └── BookingFactory.php
+├── config/
+│   └── {vertical}.php
+└── {Vertical}ServiceProvider.php
+```
+
+### ОБЯЗАТЕЛЬНЫЕ ТЕСТЫ ДЛЯ ВЕРТИКАЛИ
+
+#### 1. Unit Tests (Минимум 80% coverage)
+```php
+// tests/Unit/Domain/ServiceTest.php
+final class ServiceTest extends TestCase
+{
+    public function test_service_creation_with_valid_data(): void
+    {
+        $dto = new CreateServiceDto(
+            tenantId: 1,
+            name: 'Test Service',
+            price: new Price(1000),
+            duration: new Duration(60),
+        );
+
+        $service = Service::create($dto);
+
+        $this->assertEquals('Test Service', $service->name);
+        $this->assertEquals(1000, $service->price->value());
+    }
+
+    public function test_price_cannot_be_negative(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Price(-100);
+    }
+}
+```
+
+#### 2. Feature Tests (API endpoints)
+```php
+// tests/Feature/ServiceControllerTest.php
+final class ServiceControllerTest extends TestCase
+{
+    public function test_can_create_service(): void
+    {
+        $response = $this->postJson('/api/services', [
+            'name' => 'Test Service',
+            'price' => 1000,
+            'duration' => 60,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonStructure([
+                'data' => ['id', 'name', 'price', 'uuid']
+            ]);
+    }
+
+    public function test_requires_authentication(): void
+    {
+        $response = $this->postJson('/api/services', []);
+
+        $response->assertStatus(401);
+    }
+}
+```
+
+#### 3. Integration Tests (External dependencies)
+```php
+// tests/Integration/PaymentGatewayIntegrationTest.php
+final class PaymentGatewayIntegrationTest extends TestCase
+{
+    public function test_payment_gateway_integration(): void
+    {
+        $this->mock(PaymentGatewayInterface::class, function ($mock) {
+            $mock->shouldReceive('initiate')
+                ->once()
+                ->andReturn(['payment_id' => 'test_123']);
+        });
+
+        $service = new PaymentService($this->app->make(PaymentGatewayInterface::class));
+        $result = $service->processPayment(1000);
+
+        $this->assertEquals('test_123', $result['payment_id']);
+    }
+}
+```
+
+#### 4. E2E Tests (Обязательны для критических flows)
+```php
+// tests/E2E/BookingE2ETest.php
+final class BookingE2ETest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_complete_booking_flow(): void
+    {
+        // 1. Создаём сервис
+        $service = ServiceFactory::new()->create();
+
+        // 2. Пользователь авторизуется
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // 3. Отправляем запрос на бронирование
+        $response = $this->postJson('/api/bookings', [
+            'service_id' => $service->id,
+            'scheduled_at' => now()->addDay()->toDateTimeString(),
+        ]);
+
+        $response->assertStatus(201);
+
+        // 4. Проверяем, что бронирование создано
+        $this->assertDatabaseHas('bookings', [
+            'service_id' => $service->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
+        ]);
+
+        // 5. Проверяем, что событие отправлено
+        Event::assertDispatched(BookingCreated::class);
+
+        // 6. Проверяем, что fraud check выполнен
+        $this->assertDatabaseHas('fraud_scores', [
+            'entity_type' => 'booking',
+        ]);
+    }
+}
+```
+
+#### 5. Load Testing (Обязательно для production)
+```javascript
+// k6/vertical-{vertical}-load-test.js
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export let options = {
+    stages: [
+        { duration: '2m', target: 100 },  // Ramp up
+        { duration: '5m', target: 100 },  // Stay at 100
+        { duration: '2m', target: 200 },  // Ramp up to 200
+        { duration: '5m', target: 200 },  // Stay at 200
+        { duration: '2m', target: 0 },    // Ramp down
+    ],
+    thresholds: {
+        http_req_duration: ['p(95)<500'],  // 95% запросов < 500ms
+        http_req_failed: ['rate<0.01'],     // < 1% ошибок
+    },
+};
+
+export default function () {
+    let response = http.get('https://api.catvrf.ru/services');
+    check(response, {
+        'status is 200': (r) => r.status === 200,
+        'has services': (r) => JSON.parse(r.body).data.length > 0,
+    });
+    sleep(1);
+}
+```
+
+Запуск load testing:
+```bash
+k6 run k6/vertical-{vertical}-load-test.js
+```
+
+### ФРОНЕНД ДЛЯ ВЕРТИКАЛИ (Обязателен)
+
+#### 1. Vue 3 компоненты (Composition API)
+```typescript
+// frontend/src/pages/{Vertical}Catalog.vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { useVerticalStore } from '@/stores/{vertical}';
+
+const route = useRoute();
+const store = useVerticalStore();
+
+const services = ref([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+
+onMounted(async () => {
+    loading.value = true;
+    try {
+        services.value = await store.fetchServices();
+    } catch (e) {
+        error.value = 'Failed to load services';
+    } finally {
+        loading.value = false;
+    }
+});
+</script>
+
+<template>
+    <div class="vertical-catalog">
+        <div v-if="loading" class="skeleton">Loading...</div>
+        <div v-else-if="error" class="error">{{ error }}</div>
+        <div v-else class="services-grid">
+            <ServiceCard
+                v-for="service in services"
+                :key="service.id"
+                :service="service"
+            />
+        </div>
+    </div>
+</template>
+```
+
+#### 2. Pinia Store
+```typescript
+// frontend/src/stores/{vertical}.ts
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+
+export const useVerticalStore = defineStore('{vertical}', () => {
+    const services = ref([]);
+    const currentService = ref(null);
+
+    async function fetchServices() {
+        const response = await fetch('/api/services');
+        return response.json();
+    }
+
+    async function fetchService(id: string) {
+        const response = await fetch(`/api/services/${id}`);
+        currentService.value = await response.json();
+        return currentService.value;
+    }
+
+    return { services, currentService, fetchServices, fetchService };
+});
+```
+
+#### 3. TypeScript типы
+```typescript
+// frontend/src/types/{vertical}.ts
+export interface Service {
+    id: string;
+    uuid: string;
+    name: string;
+    price: number;
+    duration: number;
+    status: string;
+    createdAt: string;
+}
+
+export interface Booking {
+    id: string;
+    serviceId: string;
+    scheduledAt: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+}
+```
+
+### СОЗАВИСИМОСТИ ВЕРТИКАЛИ
+
+#### 1. Обязательные зависимости (Required)
+- FraudControlService (перед каждой мутацией)
+- AuditService (логирование всех действий)
+- IdempotencyService (защита от дубликатов)
+- CorrelationIdMiddleware (correlation_id в каждом запросе)
+- TenantMiddleware (tenant scoping)
+
+#### 2. Опциональные зависимости (Optional)
+- RecommendationService (для рекомендаций)
+- NotificationService (для уведомлений)
+- PaymentService (для оплаты)
+- WalletService (для баланса)
+- AIConstructorService (для AI-функционала)
+
+#### 3. Внешние зависимости (External)
+- Payment Gateways (Tinkoff, Tochka, Sber, SBP)
+- SMS/Email providers
+- Analytics (ClickHouse, Prometheus)
+- Cache (Redis)
+
+### ЧЕК-ЛИСТ ГОТОВНОСТИ ВЕРТИКАЛИ
+
+Перед merge в main ветка:
+
+**Backend:**
+- [ ] 9-слойная архитектура реализована полностью
+- [ ] Все сущности readonly классы
+- [ ] Все DTO immutable
+- [ ] FraudControlService вызывается перед каждой мутацией
+- [ ] AuditService логирует все действия
+- [ ] Correlation_id в каждом логе/событии/job
+- [ ] Unit тесты > 80% coverage
+- [ ] Feature тесты покрывают все endpoints
+- [ ] Integration тесты для внешних зависимостей
+- [ ] E2E тест для критического flow (booking/order)
+- [ ] Load тест (k6) для production readiness
+- [ ] Миграции следуют правилам (uuid, correlation_id, tags)
+- [ ] Нет дубликатов таблиц
+- [ ] Нет JSON default([])
+- [ ] Все сервисы final readonly классы
+- [ ] Constructor injection только
+
+**Frontend:**
+- [ ] Vue 3 + Composition API
+- [ ] TypeScript типы для всех компонентов
+- [ ] Pinia store для state management
+- [ ] Mobile-first design
+- [ ] Dark mode support
+- [ ] ARIA accessibility
+- [ ] Loading states (skeletons)
+- [ ] Error handling
+- [ ] Cypress E2E тесты для critical flows
+- [ ] Vitest unit тесты для компонентов
+
+**Infrastructure:**
+- [ ] Prometheus metrics для ключевых операций
+- [ ] Grafana dashboard для мониторинга
+- [ ] Alert rules для критичных метрик
+- [ ] Docker container (если нужен)
+- [ ] CI/CD pipeline настроен
+- [ ] Environment variables задокументированы
+
+**Documentation:**
+- [ ] README.md с инструкциями
+- [ ] API документация (OpenAPI/Swagger)
+- [ ] Architecture decision records (ADR)
+- [ ] Changelog для изменений
+
+### ПРАВИЛА КОММИТОВ (GIT HOOKS)
+
+Добавить в `.git/hooks/pre-commit`:
+
+```bash
+#!/bin/bash
+
+# Запрет на коммит .env файлов
+if git diff --cached --name-only | grep -E '^\.env'; then
+    echo "ERROR: .env files cannot be committed"
+    exit 1
+fi
+
+# Запрет на коммит файлов контейнеризации
+if git diff --cached --name-only | grep -E '^(docker-compose\.yml|Dockerfile|\.dockerignore)'; then
+    echo "ERROR: Containerization files cannot be committed to main branch"
+    exit 1
+fi
+
+# Запрет на коммит ключей API
+if git diff --cached | grep -E '(API_KEY|SECRET|PASSWORD|TOKEN)'; then
+    echo "ERROR: Possible API keys or secrets detected in commit"
+    exit 1
+fi
+
+# Запрет на коммит vendor/ и node_modules/
+if git diff --cached --name-only | grep -E '^(vendor/|node_modules/)'; then
+    echo "ERROR: Dependencies cannot be committed"
+    exit 1
+fi
+
+# Запрет на коммит .gitignore файлов
+if git diff --cached --name-only | grep -E '\.gitignore$'; then
+    echo "ERROR: .gitignore files cannot be committed"
+    exit 1
+fi
+
+echo "Pre-commit checks passed"
+exit 0
+```
+
+Добавить в `.gitignore`:
+```
+.env
+.env.*
+.env.local
+.env.production
+docker-compose.yml
+Dockerfile
+.dockerignore
+*.log
+```
+
+### CI/CD PIPELINE (GitHub Actions)
+
+```yaml
+# .github/workflows/vertical-ci.yml
+name: Vertical CI
+
+on:
+  pull_request:
+    paths:
+      - 'modules/{Vertical}/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'modules/{Vertical}/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo, pdo_sqlite
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+      
+      - name: Run Unit Tests
+        run: php artisan test --testsuite=Unit --coverage-clover=coverage.xml
+      
+      - name: Run Feature Tests
+        run: php artisan test --testsuite=Feature
+      
+      - name: Run Integration Tests
+        run: php artisan test --testsuite=Integration
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+      
+      - name: Run Cypress E2E
+        run: npx cypress run
+        working-directory: cypress
+
+  load-test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.2.0
+        with:
+          filename: k6/vertical-{vertical}-load-test.js
+```
  

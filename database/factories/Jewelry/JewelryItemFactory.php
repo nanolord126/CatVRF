@@ -6,6 +6,7 @@ namespace Database\Factories\Jewelry;
 
 use App\Domains\Luxury\Jewelry\Models\JewelryItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class JewelryItemFactory extends Factory
 {
@@ -28,7 +29,7 @@ final class JewelryItemFactory extends Factory
             'rating' => $this->faker->randomFloat(1, 3.5, 5),
             'review_count' => $this->faker->numberBetween(10, 300),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['jewelry', $this->faker->word()],
             'meta' => [],
         ];

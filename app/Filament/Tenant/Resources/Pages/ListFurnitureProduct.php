@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListFurnitureProduct extends ListRecords
     public function getTitle(): string
     {
         return 'Каталог мебели';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить товар')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -60,11 +53,11 @@ final class ListFurnitureProduct extends ListRecords
                     ->toggleable(),
                 TextColumn::make('price_b2c')
                     ->label('Цена B2C')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('price_b2b')
                     ->label('Цена B2B')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('stock_quantity')
@@ -78,7 +71,7 @@ final class ListFurnitureProduct extends ListRecords
                     ->boolean(),
                 TextColumn::make('assembly_cost')
                     ->label('Стоимость сборки')
-                    ->formatStateUsing(fn (?int $state): string => $state ? number_format($state / 100, 2, '.', ' ') . ' ₽' : '—')
+                    ->formatStateUsing(fn (?int $state): string => $state ? number_format($state / 100, 2, '.', ' ').' ₽' : '—')
                     ->toggleable(),
                 TextColumn::make('correlation_id')
                     ->label('Correlation ID')
@@ -103,5 +96,14 @@ final class ListFurnitureProduct extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить товар')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

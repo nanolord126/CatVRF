@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Auto\Taxi\Domain\Services;
 
 use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Геологистический сервис для расчёта маршрутов такси.
@@ -13,9 +15,8 @@ use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
  * между двумя точками.  В production-среде будет заменён на интеграцию
  * с OSRM / Yandex Maps Routing API.
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Taxi\Domain\Services
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class GeoLogisticsService
 {
@@ -29,8 +30,8 @@ final readonly class GeoLogisticsService
      * Получить информацию о маршруте между двумя точками.
      *
      * @param  Coordinate  $start  Точка отправления.
-     * @param  Coordinate  $end    Точка назначения.
-     * @return array{distance: float, duration: float}  Дистанция в метрах и время в секундах.
+     * @param  Coordinate  $end  Точка назначения.
+     * @return array{distance: float, duration: float} Дистанция в метрах и время в секундах.
      */
     public function getRouteInfo(Coordinate $start, Coordinate $end): array
     {
@@ -47,9 +48,9 @@ final readonly class GeoLogisticsService
      * Оценить время прибытия (ETA) в секундах.
      *
      * @param  Coordinate  $start  Текущая позиция.
-     * @param  Coordinate  $end    Точка назначения.
-     * @param  float  $speedMps    Текущая скорость курьера/водителя (м/с).
-     * @return float  Прогнозируемое время прибытия в секундах.
+     * @param  Coordinate  $end  Точка назначения.
+     * @param  float  $speedMps  Текущая скорость курьера/водителя (м/с).
+     * @return float Прогнозируемое время прибытия в секундах.
      */
     public function estimateEta(Coordinate $start, Coordinate $end, float $speedMps = self::CITY_AVG_SPEED_MPS): float
     {
@@ -66,8 +67,8 @@ final readonly class GeoLogisticsService
      * Рассчитать расстояние по формуле гаверсинуса.
      *
      * @param  Coordinate  $start  Начальная координата.
-     * @param  Coordinate  $end    Конечная координата.
-     * @return float  Расстояние в метрах.
+     * @param  Coordinate  $end  Конечная координата.
+     * @return float Расстояние в метрах.
      */
     private function calculateHaversineDistance(Coordinate $start, Coordinate $end): float
     {

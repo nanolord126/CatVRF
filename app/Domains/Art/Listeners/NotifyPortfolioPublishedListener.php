@@ -1,12 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Events\PortfolioItemPublished;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
 /**
  * Class NotifyPortfolioPublishedListener
  *
@@ -16,13 +19,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Art\Listeners
  */
 final class NotifyPortfolioPublishedListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit, private readonly LoggerInterface $logger) {}
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle handle operation.
@@ -31,7 +34,7 @@ final class NotifyPortfolioPublishedListener implements ShouldQueue
      */
     public function handle(PortfolioItemPublished $event): void
     {
-        $this->logger->info('NotifyPortfolioPublishedListener handled', [
+        $this->logger->$this->logger->info('NotifyPortfolioPublishedListener handled', [
             'event' => 'PortfolioItemPublished',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);
@@ -47,7 +50,7 @@ final class NotifyPortfolioPublishedListener implements ShouldQueue
         $this->logger->error('NotifyPortfolioPublishedListener failed', [
             'event' => 'PortfolioItemPublished',
             'error' => $exception->getMessage(),
-            'correlation_id' => $event->correlationId ?? \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => $event->correlationId ?? Str::uuid()->toString(),
         ]);
     }
 }

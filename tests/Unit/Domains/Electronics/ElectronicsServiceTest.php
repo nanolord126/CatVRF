@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ElectronicsService.
- *
- * @covers \App\Domains\Electronics\Domain\Services\ElectronicsService
- */
-final class ElectronicsServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Electronics\Domain\Services\ElectronicsService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ElectronicsService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Electronics\Domain\Services\ElectronicsService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ElectronicsService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Electronics');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Electronics\Domain\Services\ElectronicsService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ElectronicsService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ElectronicsService exists and is instantiable', function () {
+    $this->assertServiceExists('ElectronicsService');
+});
 
-    public function test_createOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Electronics\Domain\Services\ElectronicsService::class, 'createOrder'),
-            'ElectronicsService must implement createOrder()'
-        );
-    }
+test('ElectronicsService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ElectronicsService');
+});
 
-    public function test_completeOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Electronics\Domain\Services\ElectronicsService::class, 'completeOrder'),
-            'ElectronicsService must implement completeOrder()'
-        );
-    }
+test('ElectronicsService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ElectronicsService', 'process', []);
+});
 
-    public function test_cancelOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Electronics\Domain\Services\ElectronicsService::class, 'cancelOrder'),
-            'ElectronicsService must implement cancelOrder()'
-        );
-    }
+test('ElectronicsService enforces quota limits', function () {
+    $this->testServiceWithQuota('ElectronicsService', 'process', 1, 10, []);
+});
 
-    public function test_getOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Electronics\Domain\Services\ElectronicsService::class, 'getOrder'),
-            'ElectronicsService must implement getOrder()'
-        );
-    }
+test('ElectronicsService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ElectronicsService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getUserOrders_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Electronics\Domain\Services\ElectronicsService::class, 'getUserOrders'),
-            'ElectronicsService must implement getUserOrders()'
-        );
-    }
+test('ElectronicsService has proper caching', function () {
+    $cacheKey = 'electronics:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ElectronicsService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ElectronicsService dispatches proper events', function () {
+    $eventClass = "App\Domains\Electronics\Events\ElectronicsProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ElectronicsService'));
+        $service->process([]);
+    });
+});
+
+test('ElectronicsService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Electronics\Jobs\ProcessElectronicsJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ElectronicsService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ElectronicsService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ElectronicsService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ElectronicsService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ElectronicsService'));
+        $service->process([]);
+    }, 'ElectronicsService processed');
+});
+
+test('ElectronicsService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

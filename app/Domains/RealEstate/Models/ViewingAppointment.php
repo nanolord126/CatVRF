@@ -1,13 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class ViewingAppointment extends Model
 {
+    use TenantScoped;
 
     protected $table = 'viewing_appointments';
 
@@ -34,28 +39,27 @@ final class ViewingAppointment extends Model
     public function client(): BelongsTo
     {
         // Assuming a User model exists at App\Models\User
-        return $this->belongsTo(\App\Models\User::class, 'client_id');
+        return $this->belongsTo(User::class, 'client_id');
     }
 
     public function agent(): BelongsTo
     {
         // Assuming a User model for agents
-        return $this->belongsTo(\App\Models\User::class, 'agent_id');
-    }
+        return $this->belongsTo(User::class, 'agent_id');
+    }
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
+        self::creating(function ($model) {
             if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+                $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
 }

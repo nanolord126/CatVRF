@@ -1,43 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-
 use Illuminate\Contracts\Auth\Guard;
+use App\DTOs\OperationDto;
+use Illuminate\Support\Str;
+
 final class ServiceDisputePolicy
 {
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly FraudControlService $fraud,
         private readonly Guard $guard,
         private readonly Request $request,) {}
 
-
+
     // Dependencies injected via constructor
-        // Add private readonly properties here
-        public function viewAny(User $user): Response
-        {
-            return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+    // Add private readonly properties here
+    public function viewAny(User $user): Response
+    {
+        return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
-        public function view(User $user, ServiceDispute $dispute): Response
-        {
-            return $user->id === $dispute->initiator_id || $user->id === $dispute->job->contractor->user_id || $user->hasPermissionTo('view_disputes') ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+    public function $this->viewFactory->make(User $user, ServiceDispute $dispute): Response
+    {
+        return $user->id === $dispute->initiator_id || $user->id === $dispute->job->contractor->user_id || $user->hasPermissionTo('view_disputes') ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
-        public function create(User $user): Response
-        {
-        $this->fraud->check(new \App\DTOs\OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString()));
+    public function create(User $user): Response
+    {
+        $this->fraud->check(new OperationDto(correlationId: $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString()));
 
-            return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+        return $user->$this->guard ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
-        public function resolve(User $user, ServiceDispute $dispute): Response
-        {
-            return $user->hasPermissionTo('resolve_disputes') ? $this->response->allow() : $this->response->deny('Unauthorized');
-        }
+    public function resolve(User $user, ServiceDispute $dispute): Response
+    {
+        return $user->hasPermissionTo('resolve_disputes') ? $this->response->allow() : $this->response->deny('Unauthorized');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -46,7 +53,7 @@ final class ServiceDisputePolicy
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -57,8 +64,8 @@ final class ServiceDisputePolicy
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

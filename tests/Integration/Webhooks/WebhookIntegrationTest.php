@@ -1,22 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Webhooks;
 
 use App\Services\Webhook\WebhookManagementService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class WebhookIntegrationTest extends TestCase
 {
     private WebhookManagementService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(WebhookManagementService::class);
-    }
 
     public function test_webhook_delivery_to_external_endpoint(): void
     {
@@ -128,6 +122,7 @@ final class WebhookIntegrationTest extends TestCase
         // Verify signature was sent
         Http::assertSent(function ($request) use ($signature) {
             $receivedSignature = $request->header('X-Webhook-Signature')[0] ?? '';
+
             return hash_equals($signature, $receivedSignature);
         });
     }
@@ -240,6 +235,13 @@ final class WebhookIntegrationTest extends TestCase
 
         // Verify no HTTP request was made
         Http::assertNothingSent();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(WebhookManagementService::class);
     }
 
     protected function tearDown(): void

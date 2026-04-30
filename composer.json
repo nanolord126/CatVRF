@@ -10,30 +10,52 @@
         "doctrine/dbal": "^3.7",
         "filament/filament": "^3.2",
         "guzzlehttp/guzzle": "^7.2",
+        "intervention/image": "^3.0",
         "laravel/framework": "^11.0",
+        "laravel/horizon": "^5.20",
+        "laravel/octane": "^2.17",
+        "laravel/pennant": "^1.0",
+        "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
+        "livewire/livewire": "^3.0",
+        "maatwebsite/excel": "^3.1",
+        "openai-php/client": "^0.19",
+        "open-telemetry/sdk": "^1.0",
+        "open-telemetry/exporter-otlp": "^1.0",
+        "php-ffmpeg/php-ffmpeg": "^1.0",
+        "php-mqtt/client": "^2.2",
         "predis/predis": "^3.4",
         "promphp/prometheus_client_php": "^2.15",
         "smi2/phpclickhouse": "^1.5",
+        "spatie/image-optimizer": "^1.7",
         "spatie/laravel-data": "^4.5",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-permission": "^6.4",
         "spatie/laravel-prometheus": "^1.2",
         "spatie/laravel-query-builder": "^5.8",
         "spatie/laravel-tags": "^4.5",
-        "stancl/tenancy": "^3.7"
+        "stancl/tenancy": "^3.7",
+        "web-auth/webauthn-lib": "^5.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
+        "knuckleswtf/scribe": "^5.9",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.26",
         "mockery/mockery": "^1.4.4",
         "nunomaduro/collision": "^8.1",
         "pestphp/pest": "^2.34",
         "pestphp/pest-plugin-laravel": "^2.0",
+        "phpstan/phpstan": "^1.10",
         "phpunit/phpunit": "^10.5",
-        "spatie/laravel-ignition": "^2.4"
+        "spatie/laravel-ignition": "^2.4",
+        "spiral/roadrunner-cli": "^2.7",
+        "spiral/roadrunner-http": "^4.1"
+    },
+    "replace": {
+        "ext-pcntl": "*",
+        "ext-posix": "*"
     },
     "autoload": {
         "psr-4": {
@@ -42,6 +64,9 @@
             "Database\\Seeders\\": "database/seeders/",
             "Modules\\": "modules/"
         },
+        "files": [
+            "app/helpers.php"
+        ],
         "exclude-from-classmap": [
             "app/Domains/Archived"
         ]
@@ -55,9 +80,6 @@
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
-        ],
-        "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
@@ -75,6 +97,7 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform-check": false,
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

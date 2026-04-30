@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -19,33 +21,16 @@ final class ElectronicsWalletServiceTest extends TestCase
     use RefreshDatabase;
 
     private ElectronicsWalletService $service;
+
     private FraudControlService $fraud;
+
     private WalletService $wallet;
+
     private PaymentService $payment;
+
     private Cache $cache;
+
     private DatabaseManager $db;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->wallet = $this->createMock(WalletService::class);
-        $this->payment = $this->createMock(PaymentService::class);
-        $this->cache = app(Cache::class);
-        $this->db = app(DatabaseManager::class);
-
-        $this->service = new ElectronicsWalletService(
-            $this->fraud,
-            $this->wallet,
-            $this->payment,
-            $this->cache,
-            $this->db,
-            app('log'),
-        );
-    }
 
     #[Test]
     public function it_processes_split_payment_successfully(): void
@@ -360,6 +345,28 @@ final class ElectronicsWalletServiceTest extends TestCase
         $this->assertEquals($firstResult->paymentId, $secondResult->paymentId);
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->wallet = $this->createMock(WalletService::class);
+        $this->payment = $this->createMock(PaymentService::class);
+        $this->cache = app(Cache::class);
+        $this->db = app(DatabaseManager::class);
+
+        $this->service = new ElectronicsWalletService(
+            $this->fraud,
+            $this->wallet,
+            $this->payment,
+            $this->cache,
+            $this->db,
+            app('log'),
+        );
+    }
+
     private function getCommissionRate(int $userId, int $amountKopecks): float
     {
         $isB2B = $this->db->table('business_groups')
@@ -368,6 +375,7 @@ final class ElectronicsWalletServiceTest extends TestCase
 
         if ($isB2B) {
             $amountRubles = $amountKopecks / 100;
+
             return match (true) {
                 $amountRubles >= 1000000 => 0.08,
                 $amountRubles >= 500000 => 0.10,

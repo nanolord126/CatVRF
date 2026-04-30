@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Commissions\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Commissions\DTOs\CalculateCommissionDto;
 use App\Domains\Commissions\Models\CommissionRecord;
@@ -8,15 +12,15 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 final readonly class CommissionService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
         private readonly AuditService $audit,
-        private readonly FraudControlService $fraud,
-    ) {}
+        private readonly FraudControlService $fraud,) {}
 
     /**
      * Calculate commission for transaction
@@ -91,6 +95,7 @@ final readonly class CommissionService
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return $existing->id;
             }
 
@@ -118,7 +123,7 @@ final readonly class CommissionService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Commission recorded successfully', [
+            $this->logger->channel('audit')->$this->logger->info('Commission recorded successfully', [
                 'commission_id' => $record->id,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -143,8 +148,8 @@ final readonly class CommissionService
         }
 
         match ($period) {
-            'week' => $query->where('created_at', '>=', now()->subWeek()),
-            'month' => $query->where('created_at', '>=', now()->subMonth()),
+            'week' => $query->where('created_at', '>=', CarbonImmutable::now()->subWeek()),
+            'month' => $query->where('created_at', '>=', CarbonImmutable::now()->subMonth()),
             default => null,
         };
 
@@ -175,7 +180,7 @@ final readonly class CommissionService
             $updated = CommissionRecord::where('id', $commissionId)
                 ->update([
                     'status' => 'paid',
-                    'paid_at' => now(),
+                    'paid_at' => CarbonImmutable::now(),
                 ]);
 
             if ($updated) {
@@ -251,11 +256,11 @@ final readonly class CommissionService
     private function getPayoutSchedule(string $vertical): \DateTime
     {
         return match ($vertical) {
-            'tickets' => now()->addDays(7),
-            'food' => now()->addDays(7),
-            'beauty' => now()->addDays(7),
-            'auto' => now()->addDays(1),
-            default => now()->addDays(7),
+            'tickets' => CarbonImmutable::now()->addDays(7),
+            'food' => CarbonImmutable::now()->addDays(7),
+            'beauty' => CarbonImmutable::now()->addDays(7),
+            'auto' => CarbonImmutable::now()->addDays(1),
+            default => CarbonImmutable::now()->addDays(7),
         };
     }
 }

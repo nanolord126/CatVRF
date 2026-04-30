@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Geo;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Geo\Domain\Services\GeoCoordinatorService;
 
 /**
  * Unit tests for GeoCoordinatorService.
@@ -14,7 +17,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\GeoCoordinatorService::class
+            GeoCoordinatorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'GeoCoordinatorService must be final');
     }
@@ -22,7 +25,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\GeoCoordinatorService::class
+            GeoCoordinatorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'GeoCoordinatorService must be readonly');
     }
@@ -30,7 +33,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\GeoCoordinatorService::class
+            GeoCoordinatorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'GeoCoordinatorService must have __construct');
@@ -40,7 +43,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\GeoCoordinatorService::class, 'create'),
+            method_exists(GeoCoordinatorService::class, 'create'),
             'GeoCoordinatorService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_update_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\GeoCoordinatorService::class, 'update'),
+            method_exists(GeoCoordinatorService::class, 'update'),
             'GeoCoordinatorService must implement update()'
         );
     }
@@ -56,7 +59,7 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_delete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\GeoCoordinatorService::class, 'delete'),
+            method_exists(GeoCoordinatorService::class, 'delete'),
             'GeoCoordinatorService must implement delete()'
         );
     }
@@ -64,17 +67,16 @@ final class GeoCoordinatorServiceTest extends TestCase
     public function test_list_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\GeoCoordinatorService::class, 'list'),
+            method_exists(GeoCoordinatorService::class, 'list'),
             'GeoCoordinatorService must implement list()'
         );
     }
 
-    public function test_getById_method_exists(): void
+    public function test_get_by_id_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\GeoCoordinatorService::class, 'getById'),
+            method_exists(GeoCoordinatorService::class, 'getById'),
             'GeoCoordinatorService must implement getById()'
         );
     }
-
 }

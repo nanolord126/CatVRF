@@ -9,7 +9,8 @@ namespace Database\Seeders;
  */
 final class ElectronicsBrands extends BaseBrandSeeder
 {
-    public function run(): void {
+    public function run(): void
+    {
         $this->seedBrands('Electronics', [
             ['name' => 'Apple', 'country' => 'USA'], ['name' => 'Samsung', 'country' => 'South Korea'],
             ['name' => 'Xiaomi', 'country' => 'China'], ['name' => 'Sony', 'country' => 'Japan'],
@@ -40,5 +41,3 @@ final class ElectronicsBrands extends BaseBrandSeeder
         ]);
     }
 }
-
-

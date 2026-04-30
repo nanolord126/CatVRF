@@ -8,32 +8,23 @@ use Tests\TestCase;
 use App\Domains\RealEstate\Services\PropertyTransactionService;
 use App\Domains\RealEstate\DTOs\CreatePropertyDto;
 use App\Domains\RealEstate\Models\Property;
-use App\Domains\RealEstate\Models\PropertyViewing;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 final class PropertyTransactionServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private PropertyTransactionService $service;
+
     private User $user;
+
     private Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(PropertyTransactionService::class);
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-    }
 
     public function test_create_property_with_ai_generates_virtual_tour_and_ar_urls(): void
     {
@@ -41,7 +32,7 @@ final class PropertyTransactionServiceTest extends TestCase
             tenantId: $this->tenant->id,
             businessGroupId: null,
             userId: $this->user->id,
-            correlationId: \Illuminate\Support\Str::uuid()->toString(),
+            correlationId: Str::uuid()->toString(),
             data: [
                 'title' => 'Test Property',
                 'description' => 'Test Description',
@@ -80,7 +71,7 @@ final class PropertyTransactionServiceTest extends TestCase
             $this->user->id,
             $scheduledAt,
             false,
-            \Illuminate\Support\Str::uuid()->toString()
+            Str::uuid()->toString()
         );
 
         $this->assertTrue($result['success']);
@@ -107,7 +98,7 @@ final class PropertyTransactionServiceTest extends TestCase
             $this->user->id,
             $scheduledAt,
             false,
-            \Illuminate\Support\Str::uuid()->toString()
+            Str::uuid()->toString()
         );
 
         $b2bResult = $this->service->bookViewingWithHold(
@@ -115,7 +106,7 @@ final class PropertyTransactionServiceTest extends TestCase
             $this->user->id + 1,
             $scheduledAt->addMinutes(30),
             true,
-            \Illuminate\Support\Str::uuid()->toString()
+            Str::uuid()->toString()
         );
 
         $b2cExpires = Carbon::parse($b2cResult['hold_expires_at']);
@@ -139,7 +130,7 @@ final class PropertyTransactionServiceTest extends TestCase
             ],
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $result = $this->service->calculatePredictiveScoring(
             $property,
@@ -167,7 +158,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'price' => 10000000.00,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $firstCall = $this->service->calculatePredictiveScoring($property, $this->user->id, $correlationId);
         $secondCall = $this->service->calculatePredictiveScoring($property, $this->user->id, $correlationId);
@@ -186,7 +177,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'ownership_certificate' => hash('sha256', 'test_ownership'),
         ];
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $result = $this->service->verifyDocumentsOnBlockchain(
             $property,
@@ -208,7 +199,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'price' => 10000000.00,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $b2cResult = $this->service->calculateDynamicPrice($property, false, $correlationId);
         $b2bResult = $this->service->calculateDynamicPrice($property, true, $correlationId);
@@ -225,7 +216,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'price' => 10000000.00,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $result = $this->service->calculateDynamicPrice($property, false, $correlationId);
 
@@ -247,7 +238,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'price' => 10000000.00,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $result = $this->service->initiateEscrowPayment(
             $property,
@@ -269,7 +260,7 @@ final class PropertyTransactionServiceTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $result = $this->service->releaseEscrowPayment(
             $property,
@@ -291,7 +282,7 @@ final class PropertyTransactionServiceTest extends TestCase
         ]);
 
         $scheduledAt = Carbon::now()->addHours(24);
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $this->service->bookViewingWithHold(
             $property->id,
@@ -309,8 +300,18 @@ final class PropertyTransactionServiceTest extends TestCase
             $this->user->id + 1,
             $scheduledAt,
             false,
-            \Illuminate\Support\Str::uuid()->toString()
+            Str::uuid()->toString()
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(PropertyTransactionService::class);
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
     }
 
     protected function tearDown(): void

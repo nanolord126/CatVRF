@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -17,7 +18,8 @@ return new class extends Migration
             $table->boolean('is_default')->default(false);
             $table->timestamps();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
 
         Schema::create('crm_stages', function (Blueprint $table) {
             $table->id();
@@ -27,7 +29,8 @@ return new class extends Migration
             $table->integer('sort')->default(0);
             $table->timestamps();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
 
         Schema::create('crm_deals', function (Blueprint $table) {
             $table->id();
@@ -40,7 +43,8 @@ return new class extends Migration
             $table->json('custom_fields')->nullable();
             $table->timestamps();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
 
         Schema::create('crm_tasks', function (Blueprint $table) {
             $table->id();
@@ -52,7 +56,8 @@ return new class extends Migration
             $table->foreignId('deal_id')->nullable()->constrained('crm_deals')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
 
         Schema::create('crm_robot_rules', function (Blueprint $table) {
             $table->id();
@@ -63,7 +68,8 @@ return new class extends Migration
             $table->string('trigger_event')->default('entry'); // entry, time_offset, field_change
             $table->timestamps();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
     }
 
     /**
@@ -78,4 +84,3 @@ return new class extends Migration
         Schema::dropIfExists('crm_pipelines');
     }
 };
-

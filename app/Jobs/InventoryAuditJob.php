@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
 use App\Services\Inventory\InventoryAuditService;
 use Illuminate\Bus\Queueable;
@@ -9,11 +12,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
 
 /**
  * InventoryAuditJob — плановая инвентаризация всех складов tenant'а.
@@ -29,7 +31,10 @@ use Illuminate\Database\DatabaseManager;
  */
 final class InventoryAuditJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     /** @var int Количество попыток перед провалом */
     public int $tries = 2;
@@ -37,12 +42,11 @@ final class InventoryAuditJob implements ShouldQueue
     /** @var int Тайм-аут одного прогона, сек */
     public int $timeout = 300;
 
-    public function __construct(
-        private ?int $tenantId = null,
-        private ?int $warehouseId = null,
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly ?int $tenantId,
+        private readonly ?int $warehouseId,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly DatabaseManager $db,) {}
 
     public function handle(InventoryAuditService $auditor): void
     {
@@ -52,10 +56,11 @@ final class InventoryAuditJob implements ShouldQueue
         $warehouses = $this->buildWarehouseQuery();
 
         if ($warehouses->isEmpty()) {
-            $this->logger->channel('audit')->info('InventoryAuditJob: no warehouses to audit', [
+            $this->logger->channel('audit')->$this->logger->info('InventoryAuditJob: no warehouses to audit', [
                 'tenant_id'    => $this->tenantId,
                 'warehouse_id' => $this->warehouseId,
             ]);
+
             return;
         }
 
@@ -83,7 +88,7 @@ final class InventoryAuditJob implements ShouldQueue
 
                 $summary = $auditor->completeAudit($result['audit_id'], $cid);
 
-                $this->logger->channel('audit')->info('InventoryAuditJob: warehouse completed', [
+                $this->logger->channel('audit')->$this->logger->info('InventoryAuditJob: warehouse completed', [
                     'warehouse_id'   => $warehouse->id,
                     'status'         => $summary['status'],
                     'discrepancies'  => $summary['surpluses'] + $summary['shortages'],
@@ -101,7 +106,7 @@ final class InventoryAuditJob implements ShouldQueue
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private function buildWarehouseQuery(): \Illuminate\Support\Collection
+    private function buildWarehouseQuery(): Collection
     {
         $query = $this->db->table('warehouses')->where('is_active', true);
 
@@ -116,4 +121,3 @@ final class InventoryAuditJob implements ShouldQueue
         return $query->select('id', 'tenant_id', 'name')->get();
     }
 }
-

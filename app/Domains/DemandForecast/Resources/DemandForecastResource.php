@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * DemandForecastResource — CatVRF 2026 Component.
@@ -7,14 +9,14 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/demandforecastresource
  */
-
 
 namespace App\Domains\DemandForecast\Resources;
 
@@ -30,8 +32,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * API Resource for response transformation.
  * Formats model data for API responses.
  * Always includes correlation_id in meta.
- *
- * @package App\Domains\DemandForecast\Resources
  */
 final class DemandForecastResource extends JsonResource
 {

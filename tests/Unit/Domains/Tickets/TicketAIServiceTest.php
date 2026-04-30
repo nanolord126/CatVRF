@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Tickets;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Tickets\Domain\Services\TicketAIService;
 
 /**
  * Unit tests for TicketAIService.
@@ -14,7 +17,7 @@ final class TicketAIServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Tickets\Domain\Services\TicketAIService::class
+            TicketAIService::class
         );
         $this->assertTrue($reflection->isFinal(), 'TicketAIService must be final');
     }
@@ -22,7 +25,7 @@ final class TicketAIServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Tickets\Domain\Services\TicketAIService::class
+            TicketAIService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'TicketAIService must be readonly');
     }
@@ -30,35 +33,34 @@ final class TicketAIServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Tickets\Domain\Services\TicketAIService::class
+            TicketAIService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'TicketAIService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_suggestEventsForUser_method_exists(): void
+    public function test_suggest_events_for_user_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Tickets\Domain\Services\TicketAIService::class, 'suggestEventsForUser'),
+            method_exists(TicketAIService::class, 'suggestEventsForUser'),
             'TicketAIService must implement suggestEventsForUser()'
         );
     }
 
-    public function test_predictEventDemand_method_exists(): void
+    public function test_predict_event_demand_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Tickets\Domain\Services\TicketAIService::class, 'predictEventDemand'),
+            method_exists(TicketAIService::class, 'predictEventDemand'),
             'TicketAIService must implement predictEventDemand()'
         );
     }
 
-    public function test_designSeatMapLayout_method_exists(): void
+    public function test_design_seat_map_layout_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Tickets\Domain\Services\TicketAIService::class, 'designSeatMapLayout'),
+            method_exists(TicketAIService::class, 'designSeatMapLayout'),
             'TicketAIService must implement designSeatMapLayout()'
         );
     }
-
 }

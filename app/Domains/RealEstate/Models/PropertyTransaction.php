@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\RealEstate\Domain\Entities\RealEstateAgent;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class PropertyTransaction extends Model
 {
     use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'real_estate_transactions';
 
@@ -55,19 +58,6 @@ final class PropertyTransaction extends Model
         'tags' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant()->id);
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
-
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
@@ -75,12 +65,12 @@ final class PropertyTransaction extends Model
 
     public function buyer(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'buyer_id');
+        return $this->belongsTo(User::class, 'buyer_id');
     }
 
     public function seller(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'seller_id');
+        return $this->belongsTo(User::class, 'seller_id');
     }
 
     public function agent(): BelongsTo
@@ -111,5 +101,18 @@ final class PropertyTransaction extends Model
     public function scopeB2c($query)
     {
         return $query->where('is_b2b', false);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            $query->where('tenant_id', tenant()->id);
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\DTOs\BookAppointmentDto;
 use App\Domains\Beauty\Models\Appointment;
@@ -9,34 +13,34 @@ use App\Domains\Beauty\Models\BookingSlot;
 use App\Domains\Beauty\Models\Master;
 use App\Domains\Beauty\Models\Salon;
 use App\Domains\Beauty\Services\AI\BeautyImageConstructorService;
+use App\Domains\FraudML\Services\PaymentFraudMLService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\SpamProtectionService;
-use App\Services\WalletService;
 use App\Services\ML\UserTasteAnalyzerService;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Carbon\CarbonImmutable;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Str;
 use RuntimeException;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Models\Wallet;
+use Carbon\Carbon;
 
 final readonly class BeautyBookingService
 {
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $auditService,
-        private BookingSlotHoldService $slotHoldService,
-        private BeautyImageConstructorService $aiConstructor,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AtomicWalletOperationsService $atomicWallet,
-        private CircuitBreakerService $circuitBreaker,
-        private PaymentMetricsService $paymentMetrics,
-        private PricingEngineService $pricingEngine,
-        private SpamProtectionService $spamProtection,
-        private ConnectionInterface $db,
-        private Logger $logger,
-        private Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $auditService,
+        private readonly PaymentFraudMLService $paymentFraudML,
+        private readonly BeautyImageConstructorService $aiConstructor,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly SpamProtectionService $spamProtection,
+        private readonly ConnectionInterface $db,
+        private readonly Request $request,
     ) {}
 
     public function bookAppointment(BookAppointmentDto $dto): Appointment
@@ -63,15 +67,15 @@ final readonly class BeautyBookingService
                 $this->paymentFraudML->checkPaymentFraud(
                     tenantId: $dto->tenantId,
                     userId: $dto->userId,
-                    amountKopecks: (int)($service->price * 100),
-                    idempotencyKey: "beauty_booking_{$dto->salonId}_{$dto->serviceId}_{$dto->userId}_" . time(),
+                    amountKopecks: (int) ($service->price * 100),
+                    idempotencyKey: "beauty_booking_{$dto->salonId}_{$dto->serviceId}_{$dto->userId}_".time(),
                     correlationId: $correlationId,
                     verticalCode: 'beauty',
                     urgencyLevel: 'low',
                     isEmergency: false,
                 );
             }
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             $this->logger->channel('audit')->warning('Beauty booking payment blocked by ML fraud detection', [
                 'user_id' => $dto->userId,
                 'salon_id' => $dto->salonId,
@@ -84,7 +88,7 @@ final readonly class BeautyBookingService
 
         $spamCheck = $this->spamProtection->checkSpam(
             userId: $dto->userId,
-            action: 'be$this->auty_boing',
+            action: 'beauty_booking',
             ipAddress: request()->ip(),
             correlationId: $correlationId,
         );
@@ -133,7 +137,12 @@ final readonly class BeautyBookingService
 
             $finalPrice = $service->price;
 
-            $startsAt = \Carbon\Carbon::parse($dto->startsAt);
+            // Calculate dynamic pricing and flash discounts
+            $dynamicPrice = $this->calculateDynamicPrice($service, $dto->isB2b, $correlationId);
+            $flashDiscount = $this->calculateFlashDiscount($dto->userId, $dto->salonId, $correlationId);
+            $finalPrice = max($service->price + $dynamicPrice - $flashDiscount, 0);
+
+            $startsAt = Carbon::parse($dto->startsAt);
             $endsAt = $startsAt->copy()->addMinutes($service->duration_minutes);
 
             $appointment = Appointment::create([
@@ -219,7 +228,7 @@ final readonly class BeautyBookingService
             ->whereIn('specialization', $mergedProfile['recommended_styles'] ?? [])
             ->with(['salon', 'services'])
             ->get()
-            ->map(function ($master) use ($mergedProfile, $recommendations) {
+            ->map(function ($master) use ($mergedProfile) {
                 $matchScore = $this->calculateMasterMatchScore($master, $mergedProfile);
                 $isTopRated = $master->rating >= 4.8;
                 $hasFlashDiscount = $this->hasActiveFlashDiscount($master->id);
@@ -251,16 +260,16 @@ final readonly class BeautyBookingService
             ->toArray();
 
         $this->auditService->record(
-                action: 'beauty_ai_matching_completed',
-                subjectType: 'User',
-                subjectId: $userId,
-                oldValues: [],
-                newValues: [
-                    'masters_count' => count($masters),
-                    'style_profile' => $mergedProfile,
-                ],
-                correlationId: $correlationId,
-            );
+            action: 'beauty_ai_matching_completed',
+            subjectType: 'User',
+            subjectId: $userId,
+            oldValues: [],
+            newValues: [
+                'masters_count' => count($masters),
+                'style_profile' => $mergedProfile,
+            ],
+            correlationId: $correlationId,
+        );
 
         $this->logger->channel('audit')->info('beauty.ai_matching.success', [
             'correlation_id' => $correlationId,
@@ -271,7 +280,7 @@ final readonly class BeautyBookingService
         return [
             'success' => true,
             'style_profile' => $mergedProfile,
-            'ar_preview_url' => $aiResult['s3_path'] ? url('/beauty/ar-preview/' . $userId) : null,
+            'ar_preview_url' => $aiResult['s3_path'] ? url('/beauty/ar-preview/'.$userId) : null,
             'recommended_masters' => $masters,
             'correlation_id' => $correlationId,
         ];
@@ -300,9 +309,9 @@ final readonly class BeautyBookingService
             throw new RuntimeException('Appointment not found or invalid status for video call');
         }
 
-        $webrtcRoomId = 'beauty_call_' . $appointment->uuid;
-        $webrtcToken = hash('sha256', $webrtcRoomId . $correlationId . now()->timestamp);
-        $callExpiresAt = now()->addMinutes(10);
+        $webrtcRoomId = 'beauty_call_'.$appointment->uuid;
+        $webrtcToken = hash('sha256', $webrtcRoomId.$correlationId.CarbonImmutable::now()->timestamp);
+        $callExpiresAt = CarbonImmutable::now()->addMinutes(10);
 
         $appointment->update([
             'metadata' => array_merge($appointment->metadata ?? [], [
@@ -314,16 +323,16 @@ final readonly class BeautyBookingService
 
 
         $this->auditService->record(
-                action: 'beauty_video_call_initiated',
-                subjectType: Appointment::class,
-                subjectId: $appointment->id,
-                oldValues: [],
-                newValues: [
-                    'webrtc_room_id' => $webrtcRoomId,
-                    'expires_at' => $callExpiresAt->toIso8601String(),
-                ],
-                correlationId: $correlationId,
-            );
+            action: 'beauty_video_call_initiated',
+            subjectType: Appointment::class,
+            subjectId: $appointment->id,
+            oldValues: [],
+            newValues: [
+                'webrtc_room_id' => $webrtcRoomId,
+                'expires_at' => $callExpiresAt->toIso8601String(),
+            ],
+            correlationId: $correlationId,
+        );
 
         $this->logger->channel('audit')->info('beauty.video_call.initiated', [
             'correlation_id' => $correlationId,
@@ -381,13 +390,17 @@ final readonly class BeautyBookingService
                 }
 
                 if ($method === 'wallet') {
-                    $walletResult = $this->walletService->debit(
-                        walletId: $this->getUserWalletId($userId, $tenantId),
-                        amount: (int) ($amount * 100),
-                        reason: 'beauty_appointment_payment',
-                        correlationId: $correlationId,
-                    );
-                    $paymentResults[$method] = $walletResult;
+                    $wallet = Wallet::where('user_id', $userId)
+                        ->where('tenant_id', $tenantId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($wallet === null || $wallet->current_balance < ($amount * 100)) {
+                        throw new RuntimeException('Insufficient wallet balance');
+                    }
+
+                    $wallet->decrement('current_balance', (int) ($amount * 100));
+                    $paymentResults[$method] = ['success' => true, 'amount' => $amount];
                     $paidAmount += $amount;
                 } elseif ($method === 'card') {
                     throw new RuntimeException('Card payment not implemented in this version');
@@ -403,7 +416,7 @@ final readonly class BeautyBookingService
                 'metadata' => array_merge($appointment->metadata ?? [], [
                     'payment_split' => $paymentSplit,
                     'payment_results' => $paymentResults,
-                    'paid_at' => now()->toIso8601String(),
+                    'paid_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -465,7 +478,7 @@ final readonly class BeautyBookingService
             $refundAmount = 0.0;
 
             if ($previousStatus === 'confirmed') {
-                $hoursBeforeAppointment = now()->diffInHours($appointment->starts_at, false);
+                $hoursBeforeAppointment = CarbonImmutable::now()->diffInHours($appointment->starts_at, false);
                 if ($hoursBeforeAppointment >= 24) {
                     $refundAmount = $appointment->total_price;
                 } elseif ($hoursBeforeAppointment >= 4) {
@@ -473,14 +486,14 @@ final readonly class BeautyBookingService
                 }
 
                 if ($refundAmount > 0) {
-                    $this->atomicWallet->credit(
-                        walletId: $this->getUserWalletId($userId, $tenantId),
-                        amount: (int) ($refundAmount * 100),
-                        type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
-                        correlationId: $correlationId,
-                        sourceType: 'beauty_appointment',
-                        sourceId: $appointment->id,
-                    );
+                    $wallet = Wallet::where('user_id', $userId)
+                        ->where('tenant_id', $tenantId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($wallet !== null) {
+                        $wallet->increment('current_balance', (int) ($refundAmount * 100));
+                    }
                 }
             }
 
@@ -489,7 +502,7 @@ final readonly class BeautyBookingService
                 'cancellation_reason' => $reason,
                 'metadata' => array_merge($appointment->metadata ?? [], [
                     'previous_status' => $previousStatus,
-                    'cancelled_at' => now()->toIso8601String(),
+                    'cancelled_at' => CarbonImmutable::now()->toIso8601String(),
                     'refund_amount' => $refundAmount,
                 ]),
             ]);
@@ -573,14 +586,14 @@ final readonly class BeautyBookingService
     private function getCurrentSalonLoad(int $tenantId, string $correlationId): float
     {
         $totalSlots = BookingSlot::where('tenant_id', $tenantId)
-            ->where('starts_at', '>=', now())
-            ->where('starts_at', '<=', now()->addHours(24))
+            ->where('starts_at', '>=', CarbonImmutable::now())
+            ->where('starts_at', '<=', CarbonImmutable::now()->addHours(24))
             ->count();
 
         $bookedSlots = BookingSlot::where('tenant_id', $tenantId)
             ->where('status', 'booked')
-            ->where('starts_at', '>=', now())
-            ->where('starts_at', '<=', now()->addHours(24))
+            ->where('starts_at', '>=', CarbonImmutable::now())
+            ->where('starts_at', '<=', CarbonImmutable::now()->addHours(24))
             ->count();
 
         $loadFactor = $totalSlots > 0 ? $bookedSlots / $totalSlots : 0.0;
@@ -598,7 +611,7 @@ final readonly class BeautyBookingService
 
     private function getTimeBasedMultiplier(): float
     {
-        $hour = now()->hour;
+        $hour = CarbonImmutable::now()->hour;
 
         return match (true) {
             $hour >= 9 && $hour < 12 => 1.0,
@@ -630,19 +643,19 @@ final readonly class BeautyBookingService
     private function hasActiveFlashDiscount(int $masterId): bool
     {
         return Appointment::where('master_id', $masterId)
-            ->where('starts_at', '>=', now())
-            ->where('starts_at', '<=', now()->addHours(24))
+            ->where('starts_at', '>=', CarbonImmutable::now())
+            ->where('starts_at', '<=', CarbonImmutable::now()->addHours(24))
             ->count() < 3;
     }
 
     private function getUserWalletId(int $userId, int $tenantId): int
     {
-        $wallet = \App\Models\Wallet::where('user_id', $userId)
+        $wallet = Wallet::where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->first();
 
         if ($wallet === null) {
-            $wallet = \App\Models\Wallet::create([
+            $wallet = Wallet::create([
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
                 'current_balance' => 0,

@@ -19,7 +19,7 @@ use ReflectionClass;
 final class InventoryExceptionsTest extends TestCase
 {
     /* ================================================================== */
-    /*  Structural                                                         */
+    /*  Structural */
     /* ================================================================== */
 
     #[Test]
@@ -52,7 +52,7 @@ final class InventoryExceptionsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Constructor + Properties                                           */
+    /*  Constructor + Properties */
     /* ================================================================== */
 
     #[Test]
@@ -89,7 +89,7 @@ final class InventoryExceptionsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Getters                                                            */
+    /*  Getters */
     /* ================================================================== */
 
     #[Test]
@@ -111,7 +111,7 @@ final class InventoryExceptionsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  context()                                                          */
+    /*  context() */
     /* ================================================================== */
 
     #[Test]
@@ -156,7 +156,7 @@ final class InventoryExceptionsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  message                                                            */
+    /*  message */
     /* ================================================================== */
 
     #[Test]

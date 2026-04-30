@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Analytics\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Analytics\Models\AnalyticsEvent;
+
 final class AnalyticsEventPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class AnalyticsEventPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, AnalyticsEvent $analyticsEvent): bool
+    public function $this->viewFactory->make(User $user, AnalyticsEvent $analyticsEvent): bool
     {
         return $user->tenant_id === $analyticsEvent->tenant_id;
     }

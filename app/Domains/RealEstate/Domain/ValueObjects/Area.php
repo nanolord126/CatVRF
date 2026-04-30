@@ -12,7 +12,8 @@ use InvalidArgumentException;
 final readonly class Area
 {
     public function __construct(
-        private float $squareMeters) {
+        private readonly float $squareMeters
+    ) {
         if ($squareMeters <= 0.0) {
             throw new InvalidArgumentException(
                 "Area must be positive, got {$squareMeters} m²."
@@ -60,6 +61,6 @@ final readonly class Area
 
     public function format(): string
     {
-        return number_format($this->squareMeters, 1) . ' м²';
+        return number_format($this->squareMeters, 1).' м²';
     }
 }

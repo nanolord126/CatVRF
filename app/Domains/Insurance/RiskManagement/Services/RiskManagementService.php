@@ -8,37 +8,37 @@ use App\Domains\Insurance\RiskManagement\Models\RiskAssessment;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * RiskManagementService — управление оценкой рисков.
  *
  * Создание, завершение и отмена оценок рисков для бизнеса.
  *
- * @package CatVRF
  * @version 2026.1
  */
 final readonly class RiskManagementService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private DatabaseManager     $db,
-        private LoggerInterface     $logger,
-        private Guard               $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Создать оценку рисков.
      */
     public function createAssessment(
-        int    $analystId,
+        int $analystId,
         string $riskType,
-        int    $hoursEstimate,
+        int $hoursEstimate,
         string $dueDate,
         string $correlationId = '',
     ): RiskAssessment {
@@ -71,7 +71,7 @@ final readonly class RiskManagementService
                 'tags'           => ['risk' => true],
             ]);
 
-            $this->logger->info('Risk assessment created', [
+            $this->logger->$this->logger->info('Risk assessment created', [
                 'assessment_id'  => $assessment->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -107,7 +107,7 @@ final readonly class RiskManagementService
                 metadata: ['assessment_id' => $assessment->id],
             );
 
-            $this->logger->info('Risk assessment completed', [
+            $this->logger->$this->logger->info('Risk assessment completed', [
                 'assessment_id'  => $assessment->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -148,7 +148,7 @@ final readonly class RiskManagementService
                 );
             }
 
-            $this->logger->info('Risk assessment cancelled', [
+            $this->logger->$this->logger->info('Risk assessment cancelled', [
                 'assessment_id'  => $assessment->id,
                 'refunded'       => $wasPaid,
                 'correlation_id' => $correlationId,
@@ -169,9 +169,9 @@ final readonly class RiskManagementService
     /**
      * Получить последние оценки клиента.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, RiskAssessment>
+     * @return Collection<int, RiskAssessment>
      */
-    public function getUserAssessments(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserAssessments(int $clientId, int $limit = 10): Collection
     {
         return RiskAssessment::where('client_id', $clientId)
             ->orderByDesc('created_at')
@@ -181,15 +181,15 @@ final readonly class RiskManagementService
 
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /** @return array<string, mixed> */
     public function toDebugArray(): array
     {
         return [
-            'class'     => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class'     => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

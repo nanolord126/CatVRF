@@ -5,25 +5,22 @@ declare(strict_types=1);
 namespace App\Domains\RealEstate\Infrastructure\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property string      $id
- * @property int         $tenant_id
- * @property int         $user_id
- * @property string      $full_name
- * @property string      $license_number
- * @property float       $rating
- * @property int         $deals_count
- * @property bool        $is_active
+ * @property string $id
+ * @property int $tenant_id
+ * @property int $user_id
+ * @property string $full_name
+ * @property string $license_number
+ * @property float $rating
+ * @property int $deals_count
+ * @property bool $is_active
  * @property string|null $correlation_id
- * @property array|null  $tags
+ * @property array|null $tags
  */
 final class AgentModel extends Model
 {
-
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -61,7 +58,7 @@ final class AgentModel extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', static function ($builder): void {
+        self::addGlobalScope('tenant', static function ($builder): void {
             if (function_exists('tenant') && tenant() !== null) {
                 $builder->where('tenant_id', tenant()->id);
             }

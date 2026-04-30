@@ -1,13 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Fraud;
 
+use Illuminate\Notifications\ChannelManager;
+
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Jobs\FraudNotificationJob;
-
-
-use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Queue\Queue;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Сервис уведомлений о фроде.
@@ -19,42 +28,46 @@ use Illuminate\Database\DatabaseManager;
  *   high     (0.65–0.85)→ in_app + email + push + telegram
  *   critical (>0.85)    → in_app + email + push + sms + telegram + slack
  *
- * Никаких прямых Notification::send() вне этого сервиса.
+ * Никаких прямых $this->notificationManager->send() вне этого сервиса.
  * Отправка всегда асинхронна через FraudNotificationJob.
  */
 final readonly class FraudNotificationService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private \Illuminate\Contracts\Queue\Queue $queue,
-        private readonly LogManager $logger,
+        private readonly ChannelManager $notificationManager,
+        private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly Queue $queue,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Создать и отправить уведомление по результату проверки фрода.
      *
-     * @param  int    $userId
-     * @param  float  $score    ML-score (0.0–1.0)
-     * @param  string $operationType
-     * @param  string $correlationId
+     * @param  float  $score  ML-score (0.0–1.0)
      * @param  array  $details  Дополнительный контекст
      */
     public function notify(
-        int    $userId,
-        float  $score,
+        int $userId,
+        float $score,
         string $operationType,
         string $correlationId,
-        array  $details = [],
+        array $details = [],
     ): void {
         $severity = $this->resolveSeverity($score);
 
         // info → только лог, без уведомления пользователю
         if ($severity === 'info') {
-            $this->logger->channel('fraud_alert')->info('Fraud info event skipped notification', [
+            $this->logger->channel('fraud_alert')->$this->logger->info('Fraud info event skipped notification', [
                 'correlation_id' => $correlationId,
                 'user_id'        => $userId,
                 'score'          => $score,
             ]);
+
             return;
         }
 
@@ -67,14 +80,14 @@ final readonly class FraudNotificationService
             'channels'       => json_encode($this->resolveChannels($severity), JSON_UNESCAPED_UNICODE),
             'status'         => 'pending',
             'correlation_id' => $correlationId,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'created_at'     => CarbonImmutable::now(),
+            'updated_at'     => CarbonImmutable::now(),
         ]);
 
         // Отправка асинхронно, задержка 3 секунды
-        FraudNotificationJob::dispatch($notificationId, $severity, $correlationId)
+        FraudNotificationJob::$this->bus->dispatch($notificationId, $severity, $correlationId)
             ->onQueue('fraud-notifications')
-            ->delay(now()->addSeconds(3));
+            ->delay(CarbonImmutable::now()->addSeconds(3));
 
         $this->logger->channel('fraud_alert')->warning('Fraud notification queued', [
             'notification_id' => $notificationId,
@@ -89,10 +102,10 @@ final readonly class FraudNotificationService
      * Уведомление о critical security-событии (для SecurityMonitoringService).
      */
     public function notifyCriticalSecurityEvent(
-        int    $userId,
+        int $userId,
         string $eventType,
         string $correlationId,
-        array  $details = [],
+        array $details = [],
     ): void {
         $this->notify(
             userId:        $userId,

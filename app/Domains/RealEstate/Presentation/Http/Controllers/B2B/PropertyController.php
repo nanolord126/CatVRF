@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Presentation\Http\Controllers\B2B;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,12 +40,12 @@ final class PropertyController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'draft',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]));
         });
 
-        $this->logger->info('B2B property created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B property created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Объект создан'], 201);
     }
@@ -55,10 +58,10 @@ final class PropertyController extends Controller
             $this->db->table('real_estate_properties')
                 ->where('id', $id)
                 ->where('tenant_id', $request->get('tenant_id'))
-                ->update(['status' => 'published', 'is_active' => true, 'updated_at' => now()]);
+                ->update(['status' => 'published', 'is_active' => true, 'updated_at' => CarbonImmutable::now()]);
         });
 
-        $this->logger->info('B2B property published', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B property published', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Объект опубликован']);
     }

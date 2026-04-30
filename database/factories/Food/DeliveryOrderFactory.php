@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories\Food;
 
 use App\Domains\Food\Models\DeliveryOrder;
 use App\Domains\Food\Models\FoodOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class DeliveryOrderFactory extends Factory
 {
@@ -16,8 +19,8 @@ class DeliveryOrderFactory extends Factory
             'tenant_id' => 1,
             'food_order_id' => FoodOrder::factory(),
             'courier_id' => null,
-            'uuid' => \Illuminate\Support\Str::uuid(),
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
+            'correlation_id' => Str::uuid(),
             'status' => $this->faker->randomElement([
                 DeliveryOrder::STATUS_PENDING,
                 DeliveryOrder::STATUS_ACCEPTED,
@@ -35,7 +38,7 @@ class DeliveryOrderFactory extends Factory
             'cancelled_at' => null,
             'cancellation_reason' => null,
             'metadata' => [
-                'external_delivery_id' => \Illuminate\Support\Str::uuid(),
+                'external_delivery_id' => Str::uuid(),
                 'estimated_time' => $this->faker->numberBetween(15, 60),
             ],
         ];

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Payment;
+
+use Psr\Log\LoggerInterface;
 
 use App\Http\Controllers\Controller;
 use App\Services\Payment\PaymentService;
@@ -18,11 +22,10 @@ use Illuminate\Support\Str;
  */
 final class WebhookController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly PaymentService $paymentService,
         private readonly LogManager $logger,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * POST /webhooks/tinkoff — обработка webhook от Тинькофф.
@@ -34,7 +37,7 @@ final class WebhookController extends Controller
         try {
             $payload = $request->all();
 
-            $this->logger->channel('audit')->info('Tinkoff webhook received', [
+            $this->logger->channel('audit')->$this->logger->info('Tinkoff webhook received', [
                 'correlation_id' => $correlationId,
                 'terminal_key' => $payload['TerminalKey'] ?? 'unknown',
                 'order_id' => $payload['OrderId'] ?? 'unknown',
@@ -84,7 +87,7 @@ final class WebhookController extends Controller
         try {
             $payload = $request->all();
 
-            $this->logger->channel('audit')->info('Tochka webhook received', [
+            $this->logger->channel('audit')->$this->logger->info('Tochka webhook received', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payload['payment_id'] ?? 'unknown',
                 'status' => $payload['status'] ?? 'unknown',
@@ -130,7 +133,7 @@ final class WebhookController extends Controller
             $signature = $request->header('X-Signature') ?? $request->header('Sber-Signature', '');
 
             // Verify HMAC signature
-            if (!$this->webhookSignature->verify('sber', $rawPayload, $signature)) {
+            if (! $this->webhookSignature->verify('sber', $rawPayload, $signature)) {
                 $this->logger->channel('fraud_alert')->warning('Sber webhook signature verification failed', [
                     'correlation_id' => $correlationId,
                     'ip' => $request->ip(),
@@ -143,7 +146,7 @@ final class WebhookController extends Controller
                 ], 401);
             }
 
-            $this->logger->channel('audit')->info('Sber webhook received and verified', [
+            $this->logger->channel('audit')->$this->logger->info('Sber webhook received and verified', [
                 'correlation_id' => $correlationId,
                 'order_number' => $payload['orderNumber'] ?? 'unknown',
                 'operation' => $payload['operation'] ?? 'unknown',

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateFarmDirects — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createfarmdirects
  * @see https://catvrf.ru/docs/createfarmdirects
  * @see https://catvrf.ru/docs/createfarmdirects
@@ -31,14 +34,14 @@
  * @see https://catvrf.ru/docs/createfarmdirects
  */
 
-
 namespace App\Filament\Tenant\Resources\FarmDirect\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateFarmDirects extends CreateRecord
 {
-
     protected static string $resource = FarmDirectResource::class;
 
     /**
@@ -48,7 +51,7 @@ final class CreateFarmDirects extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +62,8 @@ final class CreateFarmDirects extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

@@ -1,8 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -16,16 +17,13 @@ use Illuminate\Notifications\Notification;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Notifications
  */
 final class AppointmentCancelledNotification extends Notification implements ShouldQueue
 {
     public function __construct(
         private readonly object $appointment,
         private readonly string $reason,
-    )
-    {
+    ) {
         // Implementation required by canon
     }
 
@@ -47,11 +45,11 @@ final class AppointmentCancelledNotification extends Notification implements Sho
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new MailMessage())
             ->subject('Запись отменена')
             ->line('Ваша запись была отменена.')
-            ->line('Причина: ' . $this->reason)
-            ->line('Салон: ' . ($this->appointment->salon->name ?? ''))
-            ->line('Дата: ' . ($this->appointment->datetime_start?->format('d.m.Y H:i') ?? ''));
+            ->line('Причина: '.$this->reason)
+            ->line('Салон: '.($this->appointment->salon->name ?? ''))
+            ->line('Дата: '.($this->appointment->datetime_start?->format('d.m.Y H:i') ?? ''));
     }
 }

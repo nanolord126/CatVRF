@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Marketplace\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Marketplace\DTOs\UpdateMarketplaceListingDto;
 
 /**
  * Unit tests for UpdateMarketplaceListingDto.
@@ -14,7 +17,7 @@ final class UpdateMarketplaceListingDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Marketplace\DTOs\UpdateMarketplaceListingDto::class
+            UpdateMarketplaceListingDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'UpdateMarketplaceListingDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'UpdateMarketplaceListingDto must be readonly');
@@ -23,18 +26,18 @@ final class UpdateMarketplaceListingDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Marketplace\DTOs\UpdateMarketplaceListingDto::class
+            UpdateMarketplaceListingDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('name', $params, 'Constructor must have name');
         $this->assertContains('description', $params, 'Constructor must have description');
         $this->assertContains('status', $params, 'Constructor must have status');
         $this->assertContains('correlationId', $params, 'Constructor must have correlationId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -44,6 +47,6 @@ final class UpdateMarketplaceListingDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Marketplace\DTOs\UpdateMarketplaceListingDto::class;
+        return UpdateMarketplaceListingDto::class;
     }
 }

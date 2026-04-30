@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * PersonalStylist — CatVRF 2026 Component.
@@ -7,27 +9,27 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/personalstylist
  */
 
-
 namespace App\Domains\Fashion\PersonalStyling\Models;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class PersonalStylist extends Model
 {
-
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='personal_stylists';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','specialties','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['specialties'=>'json','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('personal_stylists.tenant_id',tenant()->id));}
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
     /**
      * Version identifier for this component.
@@ -44,6 +46,17 @@ final class PersonalStylist extends Model
      */
     private const CACHE_TTL = 3600;
 
+    protected $table = 'personal_stylists';
+
+    protected $fillable = ['uuid', 'tenant_id', 'user_id', 'correlation_id', 'name', 'specialties', 'price_kopecks_per_hour', 'rating', 'is_verified', 'tags'];
+
+    protected $casts = ['specialties' => 'json', 'price_kopecks_per_hour' => 'integer', 'rating' => 'float', 'is_verified' => 'boolean', 'tags' => 'json'];
+
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('personal_stylists.tenant_id', tenant()->id));
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -51,15 +64,15 @@ final class PersonalStylist extends Model
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -68,5 +81,4 @@ final class PersonalStylist extends Model
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

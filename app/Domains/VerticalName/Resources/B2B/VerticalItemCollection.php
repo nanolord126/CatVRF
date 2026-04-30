@@ -13,8 +13,6 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  * CANON 2026 — Layer 8: Resources.
  * Пагинированная коллекция товаров для B2B API.
  * Включает мета-данные: пагинация, correlation_id, tenant_id.
- *
- * @package App\Domains\VerticalName\Resources\B2B
  */
 final class VerticalItemCollection extends ResourceCollection
 {

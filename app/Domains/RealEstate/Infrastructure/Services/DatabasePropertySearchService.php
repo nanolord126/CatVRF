@@ -15,6 +15,7 @@ use App\Domains\RealEstate\Domain\ValueObjects\PropertyId;
 use App\Domains\RealEstate\Infrastructure\Eloquent\Models\PropertyModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum;
 
 /**
  * Реализует поиск объектов на основе Eloquent + MySQL ST_Distance_Sphere.
@@ -26,7 +27,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 {
     public function search(
         ?string $query,
-        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
+        ?PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -39,8 +40,16 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         int $page,
     ): Collection {
         return $this->buildQuery(
-            $query, $type, $minPriceKopecks, $maxPriceKopecks,
-            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters, $tenantId,
+            $query,
+            $type,
+            $minPriceKopecks,
+            $maxPriceKopecks,
+            $minAreaSqm,
+            $rooms,
+            $lat,
+            $lon,
+            $radiusMeters,
+            $tenantId,
         )
             ->with(['photos'])
             ->orderByDesc('created_at')
@@ -52,7 +61,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 
     public function count(
         ?string $query,
-        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
+        ?PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -63,8 +72,16 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         int $tenantId,
     ): int {
         return $this->buildQuery(
-            $query, $type, $minPriceKopecks, $maxPriceKopecks,
-            $minAreaSqm, $rooms, $lat, $lon, $radiusMeters, $tenantId,
+            $query,
+            $type,
+            $minPriceKopecks,
+            $maxPriceKopecks,
+            $minAreaSqm,
+            $rooms,
+            $lat,
+            $lon,
+            $radiusMeters,
+            $tenantId,
         )->count();
     }
 
@@ -104,7 +121,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
 
     private function buildQuery(
         ?string $query,
-        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
+        ?PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minAreaSqm,
@@ -121,8 +138,8 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
         if ($query !== null && $query !== '') {
             $builder->where(static function (Builder $q) use ($query): void {
                 $q->where('title', 'like', "%{$query}%")
-                  ->orWhere('address', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%");
+                    ->orWhere('address', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%");
             });
         }
 
@@ -170,7 +187,7 @@ final readonly class DatabasePropertySearchService implements PropertySearchServ
             description:   $model->description,
             address:       $model->address,
             coordinates:   new Coordinate($model->latitude, $model->longitude),
-            type:          \App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum::from($model->type),
+            type:          PropertyTypeEnum::from($model->type),
             price:         Price::fromKopecks($model->price_kopecks),
             area:          new Area($model->area_sqm),
             rooms:         $model->rooms,

@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Tenancy;
 
 use App\Services\Tenancy\TenantQuotaPlanService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Services\Tenancy\TenantResourceLimiterService;
 
 /**
  * Tenant Quota Plan Service Test
@@ -12,6 +15,7 @@ use Tests\TestCase;
  * Production 2026 CANON - Quota Plan Management Tests
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantQuotaPlanServiceTest extends TestCase
@@ -19,13 +23,6 @@ final class TenantQuotaPlanServiceTest extends TestCase
     use RefreshDatabase;
 
     private TenantQuotaPlanService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(TenantQuotaPlanService::class);
-    }
 
     public function test_free_plan_quotas(): void
     {
@@ -72,7 +69,7 @@ final class TenantQuotaPlanServiceTest extends TestCase
 
         $this->service->applyPlan($tenantId, 'starter');
 
-        $limiter = app(\App\Services\Tenancy\TenantResourceLimiterService::class);
+        $limiter = app(TenantResourceLimiterService::class);
         $stats = $limiter->getQuotaStats($tenantId);
 
         $this->assertEquals(100000, $stats['ai_tokens']['quota']);
@@ -99,7 +96,7 @@ final class TenantQuotaPlanServiceTest extends TestCase
 
         $this->service->applyPlan($tenantId, 'free');
 
-        $limiter = app(\App\Services\Tenancy\TenantResourceLimiterService::class);
+        $limiter = app(TenantResourceLimiterService::class);
         $statsBefore = $limiter->getQuotaStats($tenantId);
 
         $this->service->upgradePlan($tenantId, 'pro');
@@ -107,5 +104,12 @@ final class TenantQuotaPlanServiceTest extends TestCase
         $statsAfter = $limiter->getQuotaStats($tenantId);
 
         $this->assertGreaterThan($statsBefore['ai_tokens']['quota'], $statsAfter['ai_tokens']['quota']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(TenantQuotaPlanService::class);
     }
 }

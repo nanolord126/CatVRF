@@ -1,31 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Tests\BaseTestCase;
 
-final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
+final class FashionFraudDetectionE2ETest extends BaseTestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-    }
 
     public function test_detects_rapid_multiple_orders_from_same_ip(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 10; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/fashion/orders', [
@@ -36,7 +31,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
 
         // After rapid orders, subsequent orders should be flagged or rate-limited
         $lastResponse = end($responses);
-        
+
         $this->assertContains(
             $lastResponse->status(),
             [200, 429, 403],
@@ -55,7 +50,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             ]);
 
         $this->assertNotEquals(500, $response->status());
-        
+
         // High value orders might require additional verification
         if ($response->status() === 200) {
             $this->assertArrayHasKey('requires_verification', $response->json());
@@ -66,7 +61,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
     {
         // Create orders with different payment methods rapidly
         $paymentMethods = ['wallet', 'card', 'paypal', 'crypto'];
-        
+
         foreach ($paymentMethods as $method) {
             $this->actingAs($this->user)
                 ->postJson('/api/fashion/orders', [
@@ -108,7 +103,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
                 ]);
 
             $this->assertNotEquals(500, $returnResponse->status());
-            
+
             // Address mismatch might trigger manual review
             if ($returnResponse->status() === 200) {
                 $this->assertArrayHasKey('requires_manual_review', $returnResponse->json());
@@ -146,7 +141,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             ]);
 
         $this->assertNotEquals(500, $response->status());
-        
+
         // High return rate might trigger warnings
         if ($response->status() === 200) {
             $data = $response->json();
@@ -158,10 +153,10 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
     {
         // Simulate login from different locations
         $ips = ['192.168.1.1', '192.168.1.2', '192.168.1.3', '10.0.0.1'];
-        
+
         foreach ($ips as $ip) {
             $_SERVER['REMOTE_ADDR'] = $ip;
-            
+
             $this->actingAs($this->user)
                 ->getJson('/api/fashion/orders');
         }
@@ -171,7 +166,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             ->getJson('/api/fashion/orders');
 
         $this->assertNotEquals(500, $response->status());
-        
+
         // Multiple IPs might trigger security check
         if ($response->status() === 200) {
             $this->assertArrayHasKey('security_warning', $response->json());
@@ -190,7 +185,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             ]);
 
         $this->assertNotEquals(500, $response->status());
-        
+
         // Price manipulation should be rejected
         $this->assertNotEquals(201, $response->status());
     }
@@ -199,7 +194,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
     {
         // Try to use same coupon multiple times
         $couponCode = 'TEST20';
-        
+
         for ($i = 0; $i < 5; $i++) {
             $response = $this->actingAs($this->user)
                 ->postJson('/api/fashion/orders', [
@@ -236,7 +231,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             $response = $this->actingAs($this->user)
                 ->postJson('/api/fashion/products/1/reviews', [
                     'rating' => 5,
-                    'comment' => 'Great product ' . $i,
+                    'comment' => 'Great product '.$i,
                 ]);
         }
 
@@ -248,7 +243,7 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
             ]);
 
         $this->assertNotEquals(500, $response->status());
-        
+
         if ($response->status() === 429) {
             $this->assertTrue(true, 'Review spam should be rate-limited');
         }
@@ -275,10 +270,18 @@ final class FashionFraudDetectionE2ETest extends \Tests\BaseTestCase
         ]);
 
         $this->assertNotEquals(500, $response->status());
-        
+
         // Might require CAPTCHA after multiple similar registrations
         if ($response->status() === 422) {
             $this->assertArrayHasKey('requires_captcha', $response->json());
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 }

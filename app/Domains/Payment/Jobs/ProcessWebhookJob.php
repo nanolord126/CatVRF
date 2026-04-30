@@ -19,10 +19,13 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ProcessWebhookJob implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Повторные попытки при ошибках (сбои БД, дэдлоки).
      */
+    public array $backoff = [60, 300, 900];
+    public int $timeout = 120;
     public int $tries = 3;
 
     /**
@@ -59,7 +62,7 @@ final class ProcessWebhookJob implements ShouldQueue
                 signature: $this->signature,
                 correlationId: $this->correlationId,
             );
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             // Re-throw to retry if needed.
             // Transaction inside coordinator handles atomicity.
             throw $e;
@@ -69,7 +72,7 @@ final class ProcessWebhookJob implements ShouldQueue
     /**
      * Вызывается при провале джоба (после всех попыток).
      */
-    public function failed(\Throwable $e): void
+    public function failed(\Exception $e): void
     {
         report(new \RuntimeException(
             "ProcessWebhookJob failed [provider={$this->provider->value}] [correlation_id={$this->correlationId}]: {$e->getMessage()}",

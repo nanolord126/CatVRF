@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs\AI;
 
 final readonly class GadgetVisionAnalysisResponseDto
 {
     /**
-     * @param array<int, array<string, mixed>> $recommendedProducts
-     * @param array<string, mixed> $visionAnalysis
-     * @param array<string, mixed> $arPreviewUrls
-     * @param array<string, mixed> $pricingInfo
+     * @param  array<int, array<string, mixed>>  $recommendedProducts
+     * @param  array<string, mixed>  $visionAnalysis
+     * @param  array<string, mixed>  $arPreviewUrls
+     * @param  array<string, mixed>  $pricingInfo
      */
     public function __construct(
         public bool $success,
@@ -20,8 +22,7 @@ final readonly class GadgetVisionAnalysisResponseDto
         public bool $videoCallAvailable,
         public ?string $videoCallToken = null,
         public ?string $flashSaleOffer = null,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

@@ -1,25 +1,26 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
 use App\Domains\Art\Models\PortfolioItem;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+
 final class PortfolioItemPublished
 {
-
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly EventDispatcher $eventDispatcher,
         public readonly PortfolioItem $item,
         public readonly string $correlationId,
-        public array $context = [],
-    ) {}
+        public array $context = [],) {}
 
-    public static function dispatch(PortfolioItem $item, string $correlationId, array $context = []): void
+    public static function $this->bus->dispatch(PortfolioItem $item, string $correlationId, array $context = []): void
     {
-        event(new self($item, $correlationId, $context));
+        $this->eventDispatcher->dispatch(new self($item, $correlationId, $context));
     }
 
     public function decisionPayload(): array
