@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Taxi;
 
-use App\Domains\Taxi\Models\TaxiRide;
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
+use Illuminate\Cache\RateLimiting\Limit;
 
 final class TaxiDDOSTest extends TestCase
 {
@@ -52,7 +53,7 @@ final class TaxiDDOSTest extends TestCase
     public function test_ip_address_gets_banned_after_excessive_requests(): void
     {
         $bannedIp = '192.168.1.250';
-        
+
         for ($i = 0; $i < 50; $i++) {
             $this->postJson('/api/v1/taxi/estimate-price', [
                 'pickup_lat' => 55.75396,
@@ -156,7 +157,7 @@ final class TaxiDDOSTest extends TestCase
     public function test_api_gateway_rate_limiting_works(): void
     {
         RateLimiter::for('api-gateway', function () {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(100);
+            return Limit::perMinute(100);
         });
 
         $requestCount = 0;
@@ -179,7 +180,7 @@ final class TaxiDDOSTest extends TestCase
     public function test_geographic_ddos_detection(): void
     {
         $country = 'XX';
-        
+
         Cache::put("ddos:country:{$country}:count", 10000, 60);
 
         $response = $this->postJson('/api/v1/taxi/orders', [

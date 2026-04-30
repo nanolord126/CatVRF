@@ -4,35 +4,31 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Infrastructure\Eloquent\Models;
 
-use App\Domains\RealEstate\Domain\Enums\PropertyStatusEnum;
-use App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property string              $id
- * @property int                 $tenant_id
- * @property string              $agent_id
- * @property string              $title
- * @property string              $description
- * @property string              $address
- * @property float               $latitude
- * @property float               $longitude
- * @property string              $type
- * @property int                 $price_kopecks
- * @property float               $area_sqm
- * @property int                 $rooms
- * @property int                 $floor
- * @property int                 $total_floors
- * @property string              $status
- * @property string|null         $correlation_id
- * @property array|null          $tags
+ * @property string $id
+ * @property int $tenant_id
+ * @property string $agent_id
+ * @property string $title
+ * @property string $description
+ * @property string $address
+ * @property float $latitude
+ * @property float $longitude
+ * @property string $type
+ * @property int $price_kopecks
+ * @property float $area_sqm
+ * @property int $rooms
+ * @property int $floor
+ * @property int $total_floors
+ * @property string $status
+ * @property string|null $correlation_id
+ * @property array|null $tags
  */
 final class PropertyModel extends Model
 {
-
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -101,7 +97,7 @@ final class PropertyModel extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', static function ($builder): void {
+        self::addGlobalScope('tenant', static function ($builder): void {
             if (function_exists('tenant') && tenant() !== null) {
                 $builder->where('tenant_id', tenant()->id);
             }

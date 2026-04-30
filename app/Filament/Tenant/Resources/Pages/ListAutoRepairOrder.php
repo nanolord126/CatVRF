@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -22,15 +24,6 @@ final class ListAutoRepairOrder extends ListRecords
         return 'Заказ-наряды СТО';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать заказ-наряд')
-                ->icon('heroicon-m-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -50,7 +43,7 @@ final class ListAutoRepairOrder extends ListRecords
                     ->sortable(),
                 TextColumn::make('total_cost_kopecks')
                     ->label('Сумма')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('planned_at')
                     ->label('План')
@@ -100,5 +93,14 @@ final class ListAutoRepairOrder extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать заказ-наряд')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

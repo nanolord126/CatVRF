@@ -6,6 +6,8 @@ namespace Tests\Feature\Domains\Beauty;
 
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 final class BeautyVerticalFeatureTest extends TestCase
 {
@@ -20,7 +22,7 @@ final class BeautyVerticalFeatureTest extends TestCase
     {
         // Маршрут может быть не подключен в окружении теста — проверяем безопасно.
         try {
-            \Illuminate\Support\Facades\Route::get('/__health_Beauty', static fn () => response()->json([
+            Route::get('/__health_Beauty', static fn () => response()->json([
                 'ok' => true,
                 'correlation_id' => request()->header('X-Correlation-ID', 'none'),
             ]));
@@ -34,7 +36,7 @@ final class BeautyVerticalFeatureTest extends TestCase
 
     public function test_b2b_mode_detection_rule(): void
     {
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $request->merge(['inn' => '7700000000', 'business_card_id' => 123]);
 
         $isB2B = $request->has('inn') && $request->has('business_card_id');
@@ -44,11 +46,11 @@ final class BeautyVerticalFeatureTest extends TestCase
     public function test_ai_directory_presence_or_skip(): void
     {
         $aiPath = base_path('app/Domains/Beauty/Services/AI');
-        if (!is_dir($aiPath)) {
+        if (! is_dir($aiPath)) {
             $this->markTestSkipped('AI директория пока отсутствует для вертикали Beauty');
         }
 
-        $files = glob($aiPath . '/*.php') ?: [];
+        $files = glob($aiPath.'/*.php') ?: [];
         self::assertNotEmpty($files, 'В AI директории нет PHP файлов');
     }
 }

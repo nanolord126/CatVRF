@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -30,7 +32,7 @@ final class FurnitureSeeder extends Seeder
                 'uuid' => Str::uuid()->toString(),
                 'tenant_id' => $tenantId,
                 'business_group_id' => null,
-                'sku' => $item['sku'] . '-' . Str::random(4),
+                'sku' => $item['sku'].'-'.Str::random(4),
                 'current_stock' => random_int(2, 50),
                 'rating' => random_int(40, 50) / 10,
                 'correlation_id' => Str::uuid()->toString(),

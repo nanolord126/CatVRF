@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\FashionRetail\Http\Controllers;
 
@@ -230,7 +232,7 @@ final class B2BFashionController extends Controller
             ], 422);
         }
 
-        $this->logger->info('B2B INN verification requested', [
+        $this->logger->$this->logger->info('B2B INN verification requested', [
             'inn' => $inn,
             'correlation_id' => $correlationId,
         ]);

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\TravelTourism\Services;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
@@ -64,7 +68,7 @@ final readonly class TravelBookingService
 
             $tour->increment('current_participants', $participants);
 
-            $this->logger->info('Travel booking created', [
+            $this->logger->$this->logger->info('Travel booking created', [
                 'booking_id' => $booking->id,
                 'booking_uuid' => $booking->uuid,
                 'tour_id' => $tourId,
@@ -99,11 +103,11 @@ final readonly class TravelBookingService
             $booking->update([
                 'payment_status' => 'completed',
                 'status' => 'confirmed',
-                'confirmed_at' => now(),
+                'confirmed_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Travel booking payment confirmed', [
+            $this->logger->$this->logger->info('Travel booking payment confirmed', [
                 'booking_id' => $booking->id,
                 'total_price' => $booking->total_price,
                 'correlation_id' => $correlationId,
@@ -129,7 +133,7 @@ final readonly class TravelBookingService
             $booking = TravelBooking::with('tour')->lockForUpdate()->findOrFail($bookingId);
 
             if ($booking->status === 'completed') {
-                throw new \RuntimeException("Cannot cancel a completed booking.");
+                throw new \RuntimeException('Cannot cancel a completed booking.');
             }
 
             if ($booking->payment_status === 'completed') {
@@ -148,11 +152,11 @@ final readonly class TravelBookingService
                 'status' => 'cancelled',
                 'payment_status' => $booking->payment_status === 'completed' ? 'refunded' : $booking->payment_status,
                 'cancellation_reason' => $reason,
-                'cancelled_at' => now(),
+                'cancelled_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Travel booking cancelled', [
+            $this->logger->$this->logger->info('Travel booking cancelled', [
                 'booking_id' => $booking->id,
                 'participants_released' => $booking->participants,
                 'reason' => $reason,
@@ -196,11 +200,11 @@ final readonly class TravelBookingService
             $booking->update([
                 'status' => 'completed',
                 'payout_amount' => $payoutAmount,
-                'completed_at' => now(),
+                'completed_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Travel tour payout completed', [
+            $this->logger->$this->logger->info('Travel tour payout completed', [
                 'booking_id' => $booking->id,
                 'payout_amount' => $payoutAmount,
                 'tour_operator_id' => $booking->tour->tour_operator_id,

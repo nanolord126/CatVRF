@@ -1,0 +1,71 @@
+{{ define "telegram.default.html" }}
+{{ range .Alerts }}
+<b>{{ .Status | toUpper }}</b>: {{ .Labels.alertname }}
+
+<b>Severity:</b> {{ .Labels.severity | toUpper }}
+<b>Summary:</b> {{ .Annotations.summary }}
+<b>Description:</b> {{ .Annotations.description }}
+
+<b>Details:</b>
+<b>Cluster:</b> {{ .Labels.cluster }}
+<b>Service:</b> {{ .Labels.service }}
+{{ if .Labels.vertical }}<b>Vertical:</b> {{ .Labels.vertical }}{{ end }}
+{{ if .Labels.queue }}<b>Queue:</b> {{ .Labels.queue }}{{ end }}
+<b>Started:</b> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.runbook }}<a href="{{ .Annotations.runbook }}">📖 Runbook</a>{{ end }}
+{{ if .Annotations.grafana }}<a href="{{ .Annotations.grafana }}">📊 Grafana</a>{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "telegram.warning.html" }}
+⚠️ <b>WARNING ALERT</b>
+
+{{ range .Alerts }}
+<b>Alert:</b> {{ .Labels.alertname }}
+<b>Summary:</b> {{ .Annotations.summary }}
+<b>Description:</b> {{ .Annotations.description }}
+
+<b>Context:</b>
+- Service: {{ .Labels.service }}
+{{ if .Labels.vertical }}- Vertical: {{ .Labels.vertical }}{{ end }}
+{{ if .Labels.queue }}- Queue: {{ .Labels.queue }}{{ end }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.grafana }}<a href="{{ .Annotations.grafana }}">📊 View in Grafana</a>{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "telegram.supermarket.html" }}
+🛒 <b>Supermarket Alert</b>
+
+{{ range .Alerts }}
+<b>Alert:</b> {{ .Labels.alertname }}
+<b>Severity:</b> {{ .Labels.severity | toUpper }}
+<b>Summary:</b> {{ .Annotations.summary }}
+<b>Description:</b> {{ .Annotations.description }}
+
+<b>Context:</b>
+- Queue: {{ .Labels.queue }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.runbook }}<a href="{{ .Annotations.runbook }}">📖 Runbook</a>{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "telegram.crm.html" }}
+🔄 <b>CRM Alert</b>
+
+{{ range .Alerts }}
+<b>Alert:</b> {{ .Labels.alertname }}
+<b>Severity:</b> {{ .Labels.severity | toUpper }}
+<b>Summary:</b> {{ .Annotations.summary }}
+<b>Description:</b> {{ .Annotations.description }}
+
+<b>Context:</b>
+- Service: {{ .Labels.service }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.runbook }}<a href="{{ .Annotations.runbook }}">📖 Runbook</a>{{ end }}
+{{ end }}
+{{ end }}

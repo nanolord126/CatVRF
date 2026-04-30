@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Domains\Food;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\FoodOrderFactory;
 
 /**
  * Class FoodOrder
@@ -23,43 +26,41 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Food
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class FoodOrder extends Model
 {
+    protected $table = 'food_orders';
 
-        protected $table = 'food_orders';
-
-        protected static function newFactory()
-        {
-            return \Database\Factories\FoodOrderFactory::new();
-        }
-
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'tenant_id',
-            'restaurant_id',
-            'customer_id',
-            'total_amount',
-            'status',
-            'items',
-            'delivery_address',
-        ];
+        'tenant_id',
+        'restaurant_id',
+        'customer_id',
+        'total_amount',
+        'status',
+        'items',
+        'delivery_address',
+    ];
 
-        protected $casts = [
-            'items' => 'array',
-        ];
+    protected $casts = [
+        'items' => 'array',
+    ];
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function newFactory()
+    {
+        return FoodOrderFactory::new();
+    }
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

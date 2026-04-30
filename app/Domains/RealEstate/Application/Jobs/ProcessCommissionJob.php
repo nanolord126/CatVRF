@@ -4,31 +4,27 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\Jobs;
 
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Domain\Repository\ContractRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\ContractId;
 use App\Services\WalletService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
 
 final class ProcessCommissionJob implements ShouldQueue
 {
-
     public int $tries = 5;
 
     public int $backoff = 120;
 
-
     public function __construct(
         private readonly string $contractId,
-        private readonly int    $tenantId,
-        private readonly int    $commissionKopecks,
-        private readonly string $correlationId) {}
+        private readonly int $tenantId,
+        private readonly int $commissionKopecks,
+        private readonly string $correlationId
+    ) {}
 
     public function handle(
         ContractRepositoryInterface $contractRepository,
@@ -36,7 +32,7 @@ final class ProcessCommissionJob implements ShouldQueue
         ConnectionInterface $db,
         LoggerInterface $logger,
     ): void {
-        $logger->info('ProcessCommissionJob: started', [
+        $logger->$this->logger->info('ProcessCommissionJob: started', [
             'contract_id'       => $this->contractId,
             'tenant_id'         => $this->tenantId,
             'commission_kopecks' => $this->commissionKopecks,
@@ -49,7 +45,7 @@ final class ProcessCommissionJob implements ShouldQueue
                 $contract         = $contractRepository->findById($contractDomainId);
 
                 if ($contract === null) {
-                    throw new \RuntimeException('Contract not found: ' . $this->contractId);
+                    throw new \RuntimeException('Contract not found: '.$this->contractId);
                 }
 
                 if ($contract->getStatus()->value !== 'signed') {
@@ -73,7 +69,7 @@ final class ProcessCommissionJob implements ShouldQueue
                 );
             });
 
-            $logger->info('ProcessCommissionJob: commission debited', [
+            $logger->$this->logger->info('ProcessCommissionJob: commission debited', [
                 'contract_id'       => $this->contractId,
                 'commission_kopecks' => $this->commissionKopecks,
                 'correlation_id'    => $this->correlationId,
@@ -108,13 +104,13 @@ final class ProcessCommissionJob implements ShouldQueue
         return [
             'real-estate',
             'commission',
-            'tenant:' . $this->tenantId,
-            'contract:' . $this->contractId,
+            'tenant:'.$this->tenantId,
+            'contract:'.$this->contractId,
         ];
     }
 
     public function retryUntil(): \DateTimeInterface
     {
-        return now()->addHours(24);
+        return CarbonImmutable::now()->addHours(24);
     }
 }

@@ -1,8 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\User;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Auth\AuthManager;
@@ -10,15 +14,12 @@ use App\Models\User;
 use App\Services\AI\AIConstructorService;
 use App\Services\FraudControlService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Auth;
-
-
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 /**
  * AIConstructor — Livewire-компонент запуска AI-конструкторов из личного кабинета.
@@ -32,20 +33,26 @@ use Illuminate\Database\DatabaseManager;
  */
 final class AIConstructor extends Component
 {
-
     // ── публичные свойства ───────────────────────────────────────────────────
 
-    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
+    /** @var TemporaryUploadedFile|null */
     private $photo = null;
 
-    private string $vertical      = 'beauty';  // выбранная вертикаль
-    private array $params        = [];        // доп. параметры (стиль, бюджет, диета и т.д.)
-    private bool $isProcessing  = false;
-    private bool $hasResult     = false;
-    private array $result        = [];
-    private array $savedDesigns  = [];
-    private string $errorMessage  = '';
-    private string $correlationId = '';
+    public string $vertical  = 'beauty';  // выбранная вертикаль
+
+    public array $params     = [];        // доп. параметры (стиль, бюджет, диета и т.д.)
+
+    public bool $isProcessing = false;
+
+    public bool $hasResult     = false;
+
+    public array $result        = [];
+
+    public array $savedDesigns  = [];
+
+    public string $errorMessage  = '';
+
+    public string $correlationId = '';
 
     /** Поддерживаемые вертикали */
     private array $verticals = [
@@ -60,14 +67,13 @@ final class AIConstructor extends Component
 
     // ── lifecycle ───────────────────────────────────────────────────────────
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly AuthManager $authManager,
-        private AIConstructorService $aiConstructor,
-        private FraudControlService  $fraud,
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly AIConstructorService $aiConstructor,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,) {}
 
     public function mount(string $vertical = 'beauty'): void
     {
@@ -86,13 +92,14 @@ final class AIConstructor extends Component
     {
         $this->validate([
             'photo'    => 'required|image|max:10240',  // 10 MB
-            'vertical' => 'required|string|in:' . implode(',', array_keys($this->verticals)),
+            'vertical' => 'required|string|in:'.implode(',', array_keys($this->verticals)),
         ]);
 
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             $this->redirect(route('login'));
+
             return;
         }
 
@@ -120,15 +127,16 @@ final class AIConstructor extends Component
                 )
                 : null;
 
-            if (!$file) {
+            if (! $file) {
                 $this->errorMessage = 'Не удалось обработать файл.';
+
                 return;
             }
 
             $this->result    = $this->aiConstructor->run($user, $this->vertical, $file, $this->params);
             $this->hasResult = true;
 
-            $this->logger->channel('audit')->info('AI constructor run from user cabinet', [
+            $this->logger->channel('audit')->$this->logger->info('AI constructor run from user cabinet', [
                 'user_id'        => $user->id,
                 'vertical'       => $this->vertical,
                 'correlation_id' => $this->correlationId,
@@ -138,7 +146,7 @@ final class AIConstructor extends Component
             $this->dispatch('ai-result', $this->result);
 
         } catch (\Throwable $e) {
-            $this->errorMessage = 'Ошибка AI-конструктора: ' . $e->getMessage();
+            $this->errorMessage = 'Ошибка AI-конструктора: '.$e->getMessage();
             $this->logger->channel('audit')->error('AI constructor failed in user cabinet', [
                 'user_id'        => $this->authManager->id(),
                 'vertical'       => $this->vertical,
@@ -153,7 +161,7 @@ final class AIConstructor extends Component
 
     public function selectVertical(string $vertical): void
     {
-        if (!array_key_exists($vertical, $this->verticals)) {
+        if (! array_key_exists($vertical, $this->verticals)) {
             return;
         }
         $this->vertical  = $vertical;
@@ -167,7 +175,7 @@ final class AIConstructor extends Component
     {
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -180,14 +188,23 @@ final class AIConstructor extends Component
         $this->dispatch('design-deleted', ['id' => $designId]);
     }
 
+    // ── рендер ──────────────────────────────────────────────────────────────
+
+    public function render(): View
+    {
+        return $this->viewFactory->make('livewire.user.ai-constructor')
+            ->layout('layouts.user-cabinet');
+    }
+
     // ── приватные методы ─────────────────────────────────────────────────────
 
     private function loadSavedDesigns(): void
     {
         /** @var User|null $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             $this->savedDesigns = [];
+
             return;
         }
 
@@ -197,20 +214,12 @@ final class AIConstructor extends Component
             ->limit(20)
             ->select(['id', 'vertical', 'created_at'])
             ->get()
-            ->map(fn(object $row): array => [
+            ->map(fn (object $row): array => [
                 'id'       => $row->id,
                 'vertical' => $row->vertical,
                 'label'    => $this->verticals[$row->vertical] ?? $row->vertical,
                 'created'  => $row->created_at,
             ])
             ->toArray();
-    }
-
-    // ── рендер ──────────────────────────────────────────────────────────────
-
-    public function render(): View
-    {
-        return view('livewire.user.ai-constructor')
-            ->layout('layouts.user-cabinet');
     }
 }

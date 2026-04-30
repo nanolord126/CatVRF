@@ -1,11 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Widgets;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
 
 /**
  * AIConstructorUsageWidget — использование AI-конструкторов tenant'а.
@@ -17,13 +19,15 @@ use Illuminate\Support\Facades\DB;
  */
 final class AIConstructorUsageWidget extends ChartWidget
 {
+    protected static ?int $sort      = 3;
+
+    protected static ?string $heading   = 'AI-конструкторы (14 дней)';
+
+    protected readonly int|string|array $columnSpan = 'full';
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
-
-    protected static ?int    $sort      = 3;
-    protected static ?string $heading   = 'AI-конструкторы (14 дней)';
-    protected int | string | array $columnSpan = 'full';
 
     protected function getData(): array
     {
@@ -34,10 +38,10 @@ final class AIConstructorUsageWidget extends ChartWidget
         // Строим метки
         $labels = [];
         for ($i = $days - 1; $i >= 0; $i--) {
-            $labels[] = now()->subDays($i)->format('d.m');
+            $labels[] = CarbonImmutable::now()->subDays($i)->format('d.m');
         }
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             return [
                 'datasets' => [],
                 'labels'   => $labels,
@@ -61,7 +65,7 @@ final class AIConstructorUsageWidget extends ChartWidget
         // Получаем вертикали
         $verticals = $this->db->table('user_ai_designs')
             ->whereIn('user_id', $tenantUserIds)
-            ->where('created_at', '>=', now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->distinct()
             ->pluck('vertical')
             ->filter()
@@ -73,7 +77,7 @@ final class AIConstructorUsageWidget extends ChartWidget
             // Отдаём суммарный график
             $data = [];
             for ($i = $days - 1; $i >= 0; $i--) {
-                $day  = now()->subDays($i)->startOfDay();
+                $day  = CarbonImmutable::now()->subDays($i)->startOfDay();
                 $data[] = $this->db->table('user_ai_designs')
                     ->whereIn('user_id', $tenantUserIds)
                     ->whereBetween('created_at', [$day, $day->copy()->endOfDay()])
@@ -108,7 +112,7 @@ final class AIConstructorUsageWidget extends ChartWidget
             $data = [];
 
             for ($i = $days - 1; $i >= 0; $i--) {
-                $day    = now()->subDays($i)->startOfDay();
+                $day    = CarbonImmutable::now()->subDays($i)->startOfDay();
                 $data[] = $this->db->table('user_ai_designs')
                     ->whereIn('user_id', $tenantUserIds)
                     ->where('vertical', $vertical)

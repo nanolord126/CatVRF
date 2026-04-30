@@ -6,6 +6,7 @@ namespace Database\Factories\Tickets;
 
 use App\Domains\Tickets\Models\Ticket;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class TicketFactory extends Factory
 {
@@ -14,15 +15,15 @@ final class TicketFactory extends Factory
     public function definition(): array
     {
         return [
-            'ticket_number' => 'TKT-' . strtoupper(\Illuminate\Support\Str::random(12)),
-            'qr_code_data' => 'ticket-' . \Illuminate\Support\Str::uuid()->toString(),
+            'ticket_number' => 'TKT-'.strtoupper(Str::random(12)),
+            'qr_code_data' => 'ticket-'.Str::uuid()->toString(),
             'ticket_type' => $this->faker->randomElement(['general', 'vip', 'student', 'senior']),
             'price' => $this->faker->numberBetween(50000, 500000),
             'status' => 'active',
             'payment_status' => 'paid',
             'purchased_at' => now()->subDays($this->faker->numberBetween(1, 30)),
             'checked_in_at' => null,
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['ticket'],
             'meta' => [],
         ];

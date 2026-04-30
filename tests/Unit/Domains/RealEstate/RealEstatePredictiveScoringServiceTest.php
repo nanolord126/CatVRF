@@ -12,59 +12,23 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Mockery;
+use Illuminate\Support\Str;
 
 final class RealEstatePredictiveScoringServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RealEstatePredictiveScoringService $service;
+
     private Tenant $tenant;
+
     private Property $property;
+
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-            'metadata' => [
-                'title_clear' => true,
-                'no_liens' => true,
-                'zoning_compliant' => true,
-                'building_permit_valid' => true,
-                'tax_clearance' => true,
-                'ownership_verified' => true,
-                'documents_complete' => true,
-                'metro_distance_meters' => 1000,
-                'school_distance_meters' => 500,
-                'park_distance_meters' => 300,
-                'infrastructure_score' => 0.8,
-                'crime_rate' => 0.2,
-                'blockchain_verified' => true,
-                'smart_contract_address' => '0x' . str_repeat('0', 40),
-                'virtual_tour_enabled' => true,
-            ],
-        ]);
-
-        DB::table('user_profiles')->insert([
-            'user_id' => $this->user->id,
-            'estimated_income' => 500000.00,
-            'existing_debt' => 50000.00,
-        ]);
-
-        $this->service = app(RealEstatePredictiveScoringService::class);
-    }
 
     public function test_calculate_deal_score_returns_valid_scoring_b2c(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -99,7 +63,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_b2b_includes_tiered_pricing(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -116,8 +80,8 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_caches_result_with_idempotency(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        $idempotencyKey = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
+        $idempotencyKey = Str::uuid()->toString();
 
         $firstCall = $this->service->calculateDealScore(
             $this->property,
@@ -142,7 +106,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_ml_fraud_detection(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -161,7 +125,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_ai_liquidity_analysis(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -179,7 +143,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_flash_discount(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $propertyLowScore = Property::factory()->create([
             'tenant_id' => $this->tenant->id,
             'type' => 'apartment',
@@ -206,7 +170,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_blockchain_verification(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -223,7 +187,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_escrow_eligibility(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -241,7 +205,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_webrtc_eligibility(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -256,7 +220,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_includes_crm_sync(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -272,7 +236,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_get_user_eligibility_returns_valid_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getUserEligibility(
             1,
             10000000.00,
@@ -301,7 +265,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
             ],
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateBulkScores(
             [$this->property->id, $property2->id],
             $this->user->id,
@@ -319,7 +283,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_get_user_eligibility_returns_valid_result_b2c(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getUserEligibility(
             $this->user->id,
             10000000.00,
@@ -342,7 +306,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_get_user_eligibility_includes_b2b_tier_and_credit_limit(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getUserEligibility(
             $this->user->id,
             10000000.00,
@@ -358,7 +322,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_recommendation_includes_manual_review(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $propertyLowScore = Property::factory()->create([
             'tenant_id' => $this->tenant->id,
             'type' => 'apartment',
@@ -384,7 +348,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
     public function test_calculate_deal_score_dynamic_price_never_below_50_percent(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -395,13 +359,13 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
 
         $basePrice = $result['dynamic_price']['base_price'];
         $dynamicPrice = $result['dynamic_price']['dynamic_price'];
-        
+
         $this->assertGreaterThanOrEqual($basePrice * 0.5, $dynamicPrice);
     }
 
     public function test_calculate_deal_score_b2b_mortgage_rate_lower(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $resultB2C = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -410,7 +374,7 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
             $correlationId
         );
 
-        $correlationId2 = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId2 = Str::uuid()->toString();
         $resultB2B = $this->service->calculateDealScore(
             $this->property,
             $this->user->id,
@@ -420,6 +384,45 @@ final class RealEstatePredictiveScoringServiceTest extends TestCase
         );
 
         $this->assertLessThan($resultB2C['mortgage_rate_estimate'], $resultB2B['mortgage_rate_estimate']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+            'metadata' => [
+                'title_clear' => true,
+                'no_liens' => true,
+                'zoning_compliant' => true,
+                'building_permit_valid' => true,
+                'tax_clearance' => true,
+                'ownership_verified' => true,
+                'documents_complete' => true,
+                'metro_distance_meters' => 1000,
+                'school_distance_meters' => 500,
+                'park_distance_meters' => 300,
+                'infrastructure_score' => 0.8,
+                'crime_rate' => 0.2,
+                'blockchain_verified' => true,
+                'smart_contract_address' => '0x'.str_repeat('0', 40),
+                'virtual_tour_enabled' => true,
+            ],
+        ]);
+
+        DB::table('user_profiles')->insert([
+            'user_id' => $this->user->id,
+            'estimated_income' => 500000.00,
+            'existing_debt' => 50000.00,
+        ]);
+
+        $this->service = app(RealEstatePredictiveScoringService::class);
     }
 
     protected function tearDown(): void

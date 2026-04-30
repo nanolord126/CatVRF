@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Cache;
 
@@ -7,16 +9,10 @@ use App\Jobs\CacheWarmers\WarmPopularProductsJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class CacheInvalidationTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Cache::flush();
-        Queue::fake();
-    }
-
     public function test_product_inventory_change_invalidates_cache(): void
     {
         $productId = 123;
@@ -36,7 +32,7 @@ final class CacheInvalidationTest extends TestCase
             vertical: $vertical,
             oldQuantity: 100,
             newQuantity: 50,
-            correlationId: \Illuminate\Support\Str::uuid()->toString(),
+            correlationId: Str::uuid()->toString(),
         );
 
         // Manually flush cache (listener would do this)
@@ -71,8 +67,8 @@ final class CacheInvalidationTest extends TestCase
         $cacheTag = "user_b2c_b2b_{$userId}";
 
         // Put multiple keys with same tag
-        Cache::store('redis')->tags([$cacheTag])->put("key_1", 'value_1', now()->addHours(1));
-        Cache::store('redis')->tags([$cacheTag])->put("key_2", 'value_2', now()->addHours(1));
+        Cache::store('redis')->tags([$cacheTag])->put('key_1', 'value_1', now()->addHours(1));
+        Cache::store('redis')->tags([$cacheTag])->put('key_2', 'value_2', now()->addHours(1));
 
         $this->assertTrue(Cache::has('key_1'));
         $this->assertTrue(Cache::has('key_2'));
@@ -82,5 +78,12 @@ final class CacheInvalidationTest extends TestCase
 
         $this->assertFalse(Cache::has('key_1'));
         $this->assertFalse(Cache::has('key_2'));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
+        Queue::fake();
     }
 }

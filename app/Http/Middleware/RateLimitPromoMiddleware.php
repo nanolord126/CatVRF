@@ -27,7 +27,7 @@ final class RateLimitPromoMiddleware
 {
 
     public function __construct(
-            private RateLimiterService $rateLimiter,
+            private readonly RateLimiterService $rateLimiter,
         private readonly Guard $guard,
     ) {
         /**

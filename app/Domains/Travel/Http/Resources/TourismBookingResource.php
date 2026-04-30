@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Resources;
 
@@ -7,7 +9,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Tourism Booking Resource
- * 
+ *
  * API resource for tourism booking responses.
  * Includes all killer features data for frontend consumption.
  */

@@ -6,6 +6,7 @@ namespace App\Domains\Wallet\DTOs;
 
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * DTO для создания транзакции баланса.
@@ -34,7 +35,7 @@ final readonly class CreateTransactionDto
             businessGroupId: $request->filled('business_group_id') ? (int) $request->input('business_group_id') : null,
             amount: (int) $request->input('amount'),
             type: BalanceTransactionType::from($request->input('type')),
-            correlationId: $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: $request->header('X-Correlation-ID', Str::uuid()->toString()),
             idempotencyKey: $request->input('idempotency_key'),
             description: $request->input('description'),
         );

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Commissions;
 
@@ -7,32 +9,19 @@ use App\Domains\Commissions\Services\CommissionService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class CommissionServiceTest extends TestCase
 {
     private CommissionService $service;
+
     private DatabaseManager $db;
+
     private AuditService $audit;
+
     private FraudControlService $fraud;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->db = app(DatabaseManager::class);
-        $this->audit = app(AuditService::class);
-        $this->fraud = app(FraudControlService::class);
-        
-        $this->service = new CommissionService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-            $this->fraud,
-        );
-    }
 
     public function test_calculate_b2c_commission(): void
     {
@@ -89,7 +78,7 @@ final class CommissionServiceTest extends TestCase
     {
         // Create commission rule with tiered rates
         $this->db->table('commission_rules')->insert([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Tiered Rule',
@@ -233,6 +222,22 @@ final class CommissionServiceTest extends TestCase
 
         $this->assertIsArray($pending);
         $this->assertGreaterThan(0, count($pending));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->db = app(DatabaseManager::class);
+        $this->audit = app(AuditService::class);
+        $this->fraud = app(FraudControlService::class);
+
+        $this->service = new CommissionService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+            $this->fraud,
+        );
     }
 
     protected function tearDown(): void

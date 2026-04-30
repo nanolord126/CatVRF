@@ -1,19 +1,31 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\HR;
 
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
+
 use App\Services\FraudControlService;
-use App\Services\AuditService;
+use App\Services\Security\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
 
 final readonly class TimeTrackingService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $log,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
-        private readonly AuditService $audit,
+        private readonly AuditService $auditService,
         private readonly FraudControlService $fraud,
         private readonly Cache $cache,
     ) {}
@@ -55,13 +67,13 @@ final readonly class TimeTrackingService
                 'tenant_id' => $tenantId,
                 'employee_id' => $employeeId,
                 'shift_id' => $shiftId,
-                'clock_in' => now(),
+                'clock_in' => CarbonImmutable::now(),
                 'clock_out' => null,
                 'status' => 'active',
                 'correlation_id' => $correlationId,
                 'metadata' => json_encode($metadata),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             $this->audit->record(
@@ -70,12 +82,12 @@ final readonly class TimeTrackingService
                 subjectId: $entryId,
                 newValues: [
                     'employee_id' => $employeeId,
-                    'clock_in' => now()->format('Y-m-d H:i:s'),
+                    'clock_in' => CarbonImmutable::now()->format('Y-m-d H:i:s'),
                 ],
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Employee clocked in', [
+            $this->logger->channel('audit')->$this->logger->info('Employee clocked in', [
                 'entry_id' => $entryId,
                 'employee_id' => $employeeId,
                 'correlation_id' => $correlationId,
@@ -104,7 +116,7 @@ final readonly class TimeTrackingService
                 ->where('id', $entryId)
                 ->first();
 
-            if (!$entry) {
+            if (! $entry) {
                 throw new \RuntimeException('Time entry not found');
             }
 
@@ -112,8 +124,8 @@ final readonly class TimeTrackingService
                 throw new \RuntimeException('Already clocked out');
             }
 
-            $clockOut = now();
-            $duration = $clockOut->diffInMinutes(\Carbon\Carbon::parse($entry->clock_in));
+            $clockOut = CarbonImmutable::now();
+            $duration = $clockOut->diffInMinutes(Carbon::parse($entry->clock_in));
 
             $updated = $this->db->table('time_entries')
                 ->where('id', $entryId)
@@ -122,7 +134,7 @@ final readonly class TimeTrackingService
                     'duration_minutes' => $duration,
                     'status' => 'completed',
                     'notes' => $notes,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             if ($updated) {
@@ -174,9 +186,9 @@ final readonly class TimeTrackingService
     ): array {
         $entries = $this->getTimeEntries($employeeId, $startDate, $endDate, $correlationId);
 
-        $totalMinutes = collect($entries)->sum('duration_minutes');
+        $totalMinutes = new Collection($entries)->sum('duration_minutes');
         $totalHours = $totalMinutes / 60;
-        $overtimeMinutes = collect($entries)->filter(fn($e) => $e->duration_minutes > 480)->sum('duration_minutes') - (count($entries) * 480);
+        $overtimeMinutes = new Collection($entries)->filter(fn ($e) => $e->duration_minutes > 480)->sum('duration_minutes') - (count($entries) * 480);
         $overtimeHours = max(0, $overtimeMinutes / 60);
 
         return [
@@ -193,10 +205,10 @@ final readonly class TimeTrackingService
      */
     public function autoClockOutInactiveEmployees(
         int $tenantId,
-        int $maxHours = 12,
+        int $maxHours,
         string $correlationId
     ): int {
-        $cutoffTime = now()->subHours($maxHours);
+        $cutoffTime = CarbonImmutable::now()->subHours($maxHours);
 
         $inactiveEntries = $this->db->table('time_entries')
             ->where('tenant_id', $tenantId)
@@ -223,7 +235,7 @@ final readonly class TimeTrackingService
             }
         }
 
-        $this->logger->channel('audit')->info('Auto clock out completed', [
+        $this->logger->channel('audit')->$this->logger->info('Auto clock out completed', [
             'tenant_id' => $tenantId,
             'clocked_out_count' => $clockedOut,
             'correlation_id' => $correlationId,

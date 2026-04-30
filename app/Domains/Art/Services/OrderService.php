@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Services;
 
@@ -6,7 +8,6 @@ use App\Services\FraudControlService;
 use App\Services\Payment\WalletService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 
 final readonly class OrderService
@@ -22,19 +23,20 @@ final readonly class OrderService
     public function calculateCommission(int $total, bool $isB2B): int
     {
         $rate = $isB2B ? 0.12 : 0.15;
+
         return (int) ($total * $rate);
     }
 
     public function validateOrder(array $data, string $correlationId): array
     {
         $fraudScore = $this->fraudService->check($data, $correlationId);
-        
+
         if ($fraudScore > 80) {
             $this->logger->warning('Art order rejected due to high fraud score', [
                 'fraud_score' => $fraudScore,
                 'correlation_id' => $correlationId,
             ]);
-            
+
             return ['valid' => false, 'reason' => 'high_fraud_risk', 'fraud_score' => $fraudScore];
         }
 

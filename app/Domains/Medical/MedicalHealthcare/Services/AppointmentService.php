@@ -1,31 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Medical\Models\MedicalAppointment;
 use App\Domains\Medical\Models\Doctor;
 use App\Services\FraudControlService;
 use App\Services\Payment\PaymentService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final class AppointmentService
 {
     private const SLOT_HOLD_MINUTES = 15;
+
     private const SLOT_HOLD_EXTENDED_MINUTES = 60;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private PaymentServiceAdapter $payment,
-        private CircuitBreakerService $circuitBreaker,
-        private PaymentMetricsService $paymentMetrics,
-        private AtomicWalletOperationsService $atomicWallet,
-        private PricingEngineService $pricingEngine,
-        private DatabaseManager $db,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly PaymentServiceAdapter $payment,
+        private readonly CircuitBreakerService $circuitBreaker,
+        private readonly PaymentMetricsService $paymentMetrics,
+        private readonly AtomicWalletOperationsService $atomicWallet,
+        private readonly PricingEngineService $pricingEngine,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function holdAppointmentSlot(int $doctorId, string $dateTime, int $userId, bool $extendedHold = false, string $correlationId = ''): array
     {
@@ -39,7 +45,7 @@ final class AppointmentService
         $holdMinutes = $extendedHold ? self::SLOT_HOLD_EXTENDED_MINUTES : self::SLOT_HOLD_MINUTES;
         $holdKey = "healthcare:slot:hold:{$doctorId}:{$dateTime}";
 
-        if (Redis::exists($holdKey)) {
+        if ($this->redis->exists($holdKey)) {
             return [
                 'success' => false,
                 'message' => 'Слот уже забронирован другим пользователем',
@@ -47,14 +53,14 @@ final class AppointmentService
             ];
         }
 
-        $holdUntil = now()->addMinutes($holdMinutes);
-        Redis::setex($holdKey, $holdMinutes * 60, json_encode([
+        $holdUntil = CarbonImmutable::now()->addMinutes($holdMinutes);
+        $this->redis->setex($holdKey, $holdMinutes * 60, json_encode([
             'user_id' => $userId,
-            'held_at' => now()->toIso8601String(),
+            'held_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ]));
 
-        Log::channel('audit')->info('Appointment slot held', [
+        $this->log->channel('audit')->$this->logger->info('Appointment slot held', [
             'user_id' => $userId,
             'doctor_id' => $doctorId,
             'datetime' => $dateTime,
@@ -71,7 +77,7 @@ final class AppointmentService
         ];
     }
 
-    public function confirmAppointmentWithPayment(int $userId, int $doctorId, string $dateTime, array $paymentData, string $correlationId = '', callable $calculatePrice): MedicalAppointment
+    public function confirmAppointmentWithPayment(int $userId, int $doctorId, string $dateTime, array $paymentData, string $correlationId, callable $calculatePrice): MedicalAppointment
     {
         $this->fraud->check(
             userId: $userId,
@@ -80,9 +86,9 @@ final class AppointmentService
             correlationId: $correlationId,
         );
 
-        return $this->db->transaction(function () use ($userId, $doctorId, $dateTime, $paymentData, $correlationId, $calculatePrice) {
+        return $this->db->transaction(function () use ($userId, $doctorId, $dateTime, $paymentData, $correlationId) {
             $holdKey = "healthcare:slot:hold:{$doctorId}:{$dateTime}";
-            $holdData = Redis::get($holdKey);
+            $holdData = $this->redis->get($holdKey);
 
             if ($holdData === null) {
                 throw new \RuntimeException('Время удержания слота истекло. Пожалуйста, выберите другое время.');
@@ -103,7 +109,7 @@ final class AppointmentService
                     'business_group_id' => $paymentData['business_group_id'] ?? null,
                     'demand_factor' => $paymentData['demand_factor'] ?? 1.0,
                     'supply_factor' => $paymentData['supply_factor'] ?? 1.0,
-                    'timestamp' => now(),
+                    'timestamp' => CarbonImmutable::now(),
                 ]
             );
             $finalPrice = $pricingResult['final_price'];
@@ -155,9 +161,9 @@ final class AppointmentService
                 'tags' => json_encode(['ai_diagnostic_flow', 'dynamic_pricing']),
             ]);
 
-            Redis::del($holdKey);
+            $this->redis->del($holdKey);
 
-            Log::channel('audit')->info('Appointment confirmed with payment', [
+            $this->log->channel('audit')->$this->logger->info('Appointment confirmed with payment', [
                 'appointment_id' => $appointment->id,
                 'user_id' => $userId,
                 'doctor_id' => $doctorId,
@@ -180,9 +186,9 @@ final class AppointmentService
             correlationId: $correlationId,
         );
 
-        $checkInData = json_decode(base64_decode($qrCode), true);
+        $checkInData = json_decode(base64_decode($qrCode, true), true);
 
-        if ($checkInData === null || !isset($checkInData['appointment_id'])) {
+        if ($checkInData === null || ! isset($checkInData['appointment_id'])) {
             throw new \RuntimeException('Неверный формат QR-кода.');
         }
 
@@ -196,20 +202,20 @@ final class AppointmentService
             throw new \RuntimeException('Консультация не подтверждена или уже завершена.');
         }
 
-        $allowedTimeWindow = now()->subMinutes(30)->lte($appointment->appointment_datetime)
-            && now()->addMinutes(15)->gte($appointment->appointment_datetime);
+        $allowedTimeWindow = CarbonImmutable::now()->subMinutes(30)->lte($appointment->appointment_datetime)
+            && CarbonImmutable::now()->addMinutes(15)->gte($appointment->appointment_datetime);
 
-        if (!$allowedTimeWindow) {
+        if (! $allowedTimeWindow) {
             throw new \RuntimeException('Чек-ин доступен только за 30 минут до начала и в течение 15 минут после.');
         }
 
         $appointment->update([
             'status' => 'checked_in',
-            'check_in_time' => now(),
+            'check_in_time' => CarbonImmutable::now(),
             'check_in_method' => $nfcData !== '' ? 'nfc' : 'qr',
         ]);
 
-        Log::channel('audit')->info('Instant check-in completed', [
+        $this->log->channel('audit')->$this->logger->info('Instant check-in completed', [
             'appointment_id' => $appointment->id,
             'user_id' => $appointment->user_id,
             'method' => $nfcData !== '' ? 'nfc' : 'qr',
@@ -242,6 +248,7 @@ final class AppointmentService
         if (function_exists('tenant') && tenant() !== null) {
             return intval(tenant()->id);
         }
+
         return 1;
     }
 }

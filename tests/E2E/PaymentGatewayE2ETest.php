@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -14,18 +16,12 @@ class PaymentGatewayE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
-    private User $user;
-    private Wallet $wallet;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->wallet = Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 1000000]);
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private Wallet $wallet;
+
+    private string $token;
 
     public function test_complete_payment_flow_init_to_captured(): void
     {
@@ -239,5 +235,14 @@ class PaymentGatewayE2ETest extends TestCase
             $response1->json('current_balance'),
             $response2->json('current_balance')
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->wallet = Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 1000000]);
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

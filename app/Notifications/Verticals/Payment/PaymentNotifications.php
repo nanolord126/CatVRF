@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Payment;
 
@@ -12,8 +14,9 @@ use App\Notifications\BaseMailableNotification;
  */
 final class PaymentInitiatedNotification extends BaseMailableNotification
 {
-    private string $type = 'payment.initiated';
-    private string $template = 'emails.payment.initiated';
+    private readonly string $type = 'payment.initiated';
+
+    private readonly string $template = 'emails.payment.initiated';
 
     /**
      * Конструктор
@@ -48,8 +51,9 @@ final class PaymentInitiatedNotification extends BaseMailableNotification
  */
 final class PaymentAuthorizedNotification extends BaseMailableNotification
 {
-    private string $type = 'payment.authorized';
-    private string $template = 'emails.payment.authorized';
+    private readonly string $type = 'payment.authorized';
+
+    private readonly string $template = 'emails.payment.authorized';
 
     public function __construct(int $userId, int $tenantId, array $paymentData)
     {
@@ -63,8 +67,9 @@ final class PaymentAuthorizedNotification extends BaseMailableNotification
  */
 final class PaymentCapturedNotification extends BaseMailableNotification
 {
-    private string $type = 'payment.captured';
-    private string $template = 'emails.payment.captured';
+    private readonly string $type = 'payment.captured';
+
+    private readonly string $template = 'emails.payment.captured';
 
     public function __construct(int $userId, int $tenantId, array $paymentData)
     {
@@ -87,8 +92,9 @@ final class PaymentCapturedNotification extends BaseMailableNotification
  */
 final class PaymentFailedNotification extends BaseMailableNotification
 {
-    private string $type = 'payment.failed';
-    private string $template = 'emails.payment.failed';
+    private readonly string $type = 'payment.failed';
+
+    private readonly string $template = 'emails.payment.failed';
 
     public function __construct(int $userId, int $tenantId, array $paymentData)
     {
@@ -112,8 +118,9 @@ final class PaymentFailedNotification extends BaseMailableNotification
  */
 final class PaymentRefundedNotification extends BaseMailableNotification
 {
-    private string $type = 'payment.refunded';
-    private string $template = 'emails.payment.refunded';
+    private readonly string $type = 'payment.refunded';
+
+    private readonly string $template = 'emails.payment.refunded';
 
     public function __construct(int $userId, int $tenantId, array $paymentData)
     {

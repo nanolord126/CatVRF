@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -16,20 +18,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Log;
 
 final class ListBeverageShop extends ListRecords
 {
     protected static string $resource = BeverageShopResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить заведение')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -71,7 +63,7 @@ final class ListBeverageShop extends ListRecords
                 TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '★ ' . number_format((float)$state, 1) : '—'),
+                    ->formatStateUsing(fn ($state) => $state > 0 ? '★ '.number_format((float) $state, 1) : '—'),
 
                 TextColumn::make('review_count')
                     ->label('Отзывов')
@@ -120,5 +112,14 @@ final class ListBeverageShop extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить заведение')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

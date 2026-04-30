@@ -3,13 +3,10 @@
 declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Listeners;
-use Illuminate\Bus\Queueable;
-use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
 use App\Services\AuditService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,12 +15,9 @@ use Psr\Log\LoggerInterface;
  * Tracks impression analytics via AuditService and logger.
  * Runs asynchronously via queue (ShouldQueue).
  * Does NOT inject Request — unavailable in queue context.
- *
- * @package App\Domains\Advertising\Domain\Listeners
  */
 final class TrackAdImpressionListener implements ShouldQueue
 {
-
     /**
      * The queue connection that should handle the job.
      */
@@ -35,7 +29,7 @@ final class TrackAdImpressionListener implements ShouldQueue
      */
     public function handle(AdImpressionRegistered $event, LoggerInterface $logger, AuditService $audit): void
     {
-        $logger->info('AdImpressionRegistered event handled', [
+        $logger->$this->logger->info('AdImpressionRegistered event handled', [
             'event' => 'AdImpressionRegistered',
             'campaign_id' => $event->campaignId,
             'cost' => $event->cost,

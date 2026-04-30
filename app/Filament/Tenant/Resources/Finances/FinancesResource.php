@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Finances;
 
@@ -12,15 +14,24 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Tenant\Resources\Finances\Pages\ListFinances;
+use App\Filament\Tenant\Resources\Finances\Pages\ViewFinances;
+use Illuminate\Database\Eloquent\Model;
 
 final class FinancesResource extends Resource
 {
     protected static ?string $model = BalanceTransaction::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Финансы';
+
     protected static ?string $navigationLabel = 'Транзакции';
+
     protected static ?string $modelLabel = 'Транзакция';
+
     protected static ?string $pluralModelLabel = 'Финансы';
+
     protected static ?int $navigationSort = 10;
 
     public static function canCreate(): bool
@@ -28,12 +39,12 @@ final class FinancesResource extends Resource
         return false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -54,7 +65,7 @@ final class FinancesResource extends Resource
                         ->columnSpan(1),
                     Placeholder::make('amount')
                         ->label('Сумма')
-                        ->content(fn (BalanceTransaction $record): string => number_format($record->amount / 100, 2) . ' ₽')
+                        ->content(fn (BalanceTransaction $record): string => number_format($record->amount / 100, 2).' ₽')
                         ->columnSpan(1),
                     Placeholder::make('status')
                         ->label('Статус')
@@ -70,11 +81,11 @@ final class FinancesResource extends Resource
                         ->columnSpan(1),
                     Placeholder::make('balance_before')
                         ->label('Баланс до')
-                        ->content(fn (BalanceTransaction $record): string => number_format(($record->balance_before ?? 0) / 100, 2) . ' ₽')
+                        ->content(fn (BalanceTransaction $record): string => number_format(($record->balance_before ?? 0) / 100, 2).' ₽')
                         ->columnSpan(1),
                     Placeholder::make('balance_after')
                         ->label('Баланс после')
-                        ->content(fn (BalanceTransaction $record): string => number_format(($record->balance_after ?? 0) / 100, 2) . ' ₽')
+                        ->content(fn (BalanceTransaction $record): string => number_format(($record->balance_after ?? 0) / 100, 2).' ₽')
                         ->columnSpan(1),
                     Placeholder::make('correlation_id')
                         ->label('Correlation ID')
@@ -106,8 +117,8 @@ final class FinancesResource extends Resource
                 TextColumn::make('amount')
                     ->label('Сумма')
                     ->sortable()
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2) . ' ₽')
-                    ->color(fn (BalanceTransaction $record): string => in_array($record->type, ['deposit', 'refund', 'bonus'])
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2).' ₽')
+                    ->color(fn (BalanceTransaction $record): string => in_array($record->type, ['deposit', 'refund', 'bonus'], true)
                         ? 'success'
                         : 'danger'),
                 TextColumn::make('status')
@@ -125,11 +136,11 @@ final class FinancesResource extends Resource
                     ->searchable(),
                 TextColumn::make('balance_before')
                     ->label('Было')
-                    ->formatStateUsing(fn (?int $state): string => $state !== null ? number_format($state / 100, 2) . ' ₽' : '—')
+                    ->formatStateUsing(fn (?int $state): string => $state !== null ? number_format($state / 100, 2).' ₽' : '—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('balance_after')
                     ->label('Стало')
-                    ->formatStateUsing(fn (?int $state): string => $state !== null ? number_format($state / 100, 2) . ' ₽' : '—')
+                    ->formatStateUsing(fn (?int $state): string => $state !== null ? number_format($state / 100, 2).' ₽' : '—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('correlation_id')
                     ->label('Correlation ID')
@@ -179,8 +190,8 @@ final class FinancesResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Finances\Pages\ListFinances::route('/'),
-            'view'  => \App\Filament\Tenant\Resources\Finances\Pages\ViewFinances::route('/{record}'),
+            'index' => ListFinances::route('/'),
+            'view'  => ViewFinances::route('/{record}'),
         ];
     }
 }

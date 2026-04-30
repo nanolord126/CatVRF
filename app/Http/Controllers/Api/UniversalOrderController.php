@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -10,20 +16,18 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Support\Str;
-
 use App\Services\FraudControlService;
 use App\Services\Wallet\WalletService;
 use App\Services\Security\IdempotencyService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
 use App\Jobs\ProcessB2BOrderJob;
-
 use App\Models\Order;
 use App\Models\OrderItem;
 
 final class UniversalOrderController
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly LogManager $logger,
         private readonly Guard $guard,
@@ -34,50 +38,7 @@ final class UniversalOrderController
         private readonly CommissionService $commission,
         private readonly NotificationService $notification,
         private readonly DatabaseManager $db,
-        private readonly Dispatcher $bus,
-    ) {}
-
-    private function getCorrelationId(): string
-    {
-        return $this->request->get('correlation_id')
-            ?? $this->request->header('X-Correlation-ID')
-            ?? Str::uuid()->toString();
-    }
-
-    private function isB2B(): bool
-    {
-        return $this->request->get('b2b_mode') === true;
-    }
-
-    private function auditLog(string $action, array $data = []): void
-    {
-        $this->logger->channel('audit')->info($action, array_merge([
-            'correlation_id' => $this->getCorrelationId(),
-            'user_id' => $this->guard->id(),
-            'ip_address' => $this->request->ip(),
-            'mode' => $this->isB2B() ? 'b2b' : 'b2c',
-        ], $data));
-    }
-
-    private function successResponse(mixed $data, string $message = 'Success', int $code = 200): JsonResponse
-    {
-        return $this->response->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $data,
-            'correlation_id' => $this->getCorrelationId(),
-        ], $code);
-    }
-
-    private function errorResponse(string $message, int $code = 400, array $errors = []): JsonResponse
-    {
-        return $this->response->json([
-            'success' => false,
-            'message' => $message,
-            'errors' => $errors,
-            'correlation_id' => $this->getCorrelationId(),
-        ], $code);
-    }
+        private readonly Dispatcher $bus,) {}
 
     public function createOrder(Request $request): JsonResponse
     {
@@ -118,7 +79,7 @@ final class UniversalOrderController
                 tenantId: (int) $tenantId,
             );
 
-            if (!empty($cachedResponse)) {
+            if (! empty($cachedResponse)) {
                 return $this->successResponse($cachedResponse, 'Order retrieved from cache (idempotent)');
             }
 
@@ -174,7 +135,7 @@ final class UniversalOrderController
                         'order_id' => $order->id,
                         'product_type' => $item['product_type'],
                         'product_id' => $item['product_id'],
-                        'product_name' => $item['product_type'] . '_' . $item['product_id'],
+                        'product_name' => $item['product_type'].'_'.$item['product_id'],
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'total_price' => $item['quantity'] * $item['unit_price'],
@@ -196,7 +157,7 @@ final class UniversalOrderController
 
                     $order->update([
                         'payment_status' => 'paid',
-                        'paid_at' => now(),
+                        'paid_at' => CarbonImmutable::now(),
                     ]);
                 }
 
@@ -256,7 +217,7 @@ final class UniversalOrderController
                 'correlation_id' => $correlationId,
             ]);
 
-            return $this->errorResponse('Order creation failed: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Order creation failed: '.$e->getMessage(), 500);
         }
     }
 
@@ -332,12 +293,55 @@ final class UniversalOrderController
         }
     }
 
+    private function getCorrelationId(): string
+    {
+        return $this->request->get('correlation_id')
+            ?? $this->request->header('X-Correlation-ID')
+            ?? Str::uuid()->toString();
+    }
+
+    private function isB2B(): bool
+    {
+        return $this->request->get('b2b_mode') === true;
+    }
+
+    private function auditLog(string $action, array $data = []): void
+    {
+        $this->logger->channel('audit')->$this->logger->info($action, array_merge([
+            'correlation_id' => $this->getCorrelationId(),
+            'user_id' => $this->guard->id(),
+            'ip_address' => $this->request->ip(),
+            'mode' => $this->isB2B() ? 'b2b' : 'b2c',
+        ], $data));
+    }
+
+    private function successResponse(mixed $data, string $message = 'Success', int $code = 200): JsonResponse
+    {
+        return $this->response->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $data,
+            'correlation_id' => $this->getCorrelationId(),
+        ], $code);
+    }
+
+    private function errorResponse(string $message, int $code = 400, array $errors = []): JsonResponse
+    {
+        return $this->response->json([
+            'success' => false,
+            'message' => $message,
+            'errors' => $errors,
+            'correlation_id' => $this->getCorrelationId(),
+        ], $code);
+    }
+
     private function calculateSubtotal(array $items): int
     {
         $subtotal = 0;
         foreach ($items as $item) {
             $subtotal += ($item['quantity'] * $item['unit_price']);
         }
+
         return $subtotal;
     }
 
@@ -357,7 +361,7 @@ final class UniversalOrderController
 
     private function calculateDiscount(array $validated, bool $isB2B): int
     {
-        if (!$isB2B) {
+        if (! $isB2B) {
             return 0;
         }
 
@@ -376,7 +380,7 @@ final class UniversalOrderController
 
     private function getBusinessGroupId(array $validated): ?int
     {
-        if (!isset($validated['business_card_id'])) {
+        if (! isset($validated['business_card_id'])) {
             return null;
         }
 

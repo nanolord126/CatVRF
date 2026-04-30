@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -19,15 +21,6 @@ use Filament\Tables\Table;
 final class ListFurniture extends ListRecords
 {
     protected static string $resource = FurnitureResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый товар')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -50,7 +43,7 @@ final class ListFurniture extends ListRecords
                     ->searchable(),
                 TextColumn::make('price')
                     ->label('Цена')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 TextColumn::make('current_stock')
@@ -93,5 +86,14 @@ final class ListFurniture extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый товар')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

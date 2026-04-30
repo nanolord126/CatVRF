@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Api\V1\AI\AIConstructorController;
 
 Route::post('/ai-constructor/run', [AIConstructorController::class, 'run'])

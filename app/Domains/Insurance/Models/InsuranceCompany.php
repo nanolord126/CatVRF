@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * InsuranceCompany — CatVRF 2026 Component.
@@ -7,29 +9,34 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/insurancecompany
  */
 
-
 namespace App\Domains\Insurance\Models;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
-use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 final class InsuranceCompany extends Model
 {
-
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='insurance_companies';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','products','rating','is_verified','tags'];protected $casts=['products'=>'json','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('insurance_companies.tenant_id',tenant()->id));}
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
+
+    protected $table = 'insurance_companies';
+
+    protected $fillable = ['uuid', 'tenant_id', 'user_id', 'correlation_id', 'name', 'products', 'rating', 'is_verified', 'tags'];
+
+    protected $casts = ['products' => 'json', 'rating' => 'float', 'is_verified' => 'boolean', 'tags' => 'json'];
 
     /**
      * Get the string representation of this instance.
@@ -38,7 +45,7 @@ final class InsuranceCompany extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -49,8 +56,13 @@ final class InsuranceCompany extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('insurance_companies.tenant_id', tenant()->id));
     }
 }

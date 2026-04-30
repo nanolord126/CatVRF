@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * EditTaxiRide — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/edittaxiride
  * @see https://catvrf.ru/docs/edittaxiride
  * @see https://catvrf.ru/docs/edittaxiride
@@ -31,23 +34,15 @@
  * @see https://catvrf.ru/docs/edittaxiride
  */
 
-
 namespace App\Filament\Tenant\Resources\Auto\TaxiRideResource\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\EditRecord;
 
 final class EditTaxiRide extends EditRecord
 {
-
     protected static string $resource = TaxiRideResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-            ];
-        }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +51,7 @@ final class EditTaxiRide extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +62,16 @@ final class EditTaxiRide extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
         ];
     }
 }

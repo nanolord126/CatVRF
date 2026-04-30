@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Services\CartService;
 use Illuminate\Auth\AuthManager;
+use Illuminate\Support\Str;
 
 /**
  * CartWidget — мини-корзина в хедере.
@@ -17,19 +22,21 @@ use Illuminate\Auth\AuthManager;
  */
 final class CartWidget extends Component
 {
-    public int    $itemCount      = 0;
-    public int    $totalAmountKop = 0; // в копейках
-    public bool   $isB2B          = false;
+    public int $itemCount      = 0;
+
+    public int $totalAmountKop = 0; // в копейках
+
+    public bool $isB2B          = false;
+
     public string $correlationId  = '';
 
-    public function __construct(
-        private readonly CartService    $cartService,
-        private readonly AuthManager   $auth,
-    ) {}
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly CartService $cartService,
+        private readonly AuthManager $auth,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
         $this->isB2B         = request()->has('inn') && request()->has('business_card_id');
         $this->refreshCart();
     }
@@ -38,9 +45,10 @@ final class CartWidget extends Component
     public function refreshCart(): void
     {
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             $this->itemCount      = 0;
             $this->totalAmountKop = 0;
+
             return;
         }
 
@@ -52,6 +60,6 @@ final class CartWidget extends Component
 
     public function render(): View
     {
-        return view('livewire.shared.cart-widget');
+        return $this->viewFactory->make('livewire.shared.cart-widget');
     }
 }

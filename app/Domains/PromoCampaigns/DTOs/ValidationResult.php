@@ -15,23 +15,21 @@ declare(strict_types=1);
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\PromoCampaigns\DTOs
  */
 final readonly class ValidationResult
 {
     /**
      * Безусловный конструктор транспортного объекта.
      *
-     * @param bool $isValid Абсолютно подтверждает валидность промо-механики к текущей корзине.
-     * @param string $message Исключительно понятное сообщение для отображения на UI/UX.
-     * @param int|null $calculatedDiscount Опциональная категорическая сумма предполагаемой скидки (в копейках), если код валиден.
-     * @param string|null $campaignId Строгий идентификатор кампании (UUID) при успешной валидации.
+     * @param  bool  $isValid  Абсолютно подтверждает валидность промо-механики к текущей корзине.
+     * @param  string  $message  Исключительно понятное сообщение для отображения на UI/UX.
+     * @param  int|null  $calculatedDiscount  Опциональная категорическая сумма предполагаемой скидки (в копейках), если код валиден.
+     * @param  string|null  $campaignId  Строгий идентификатор кампании (UUID) при успешной валидации.
      */
     public function __construct(
         public bool $isValid,
         public string $message,
         private readonly ?int $calculatedDiscount = null,
-        private readonly ?string $campaignId = null) {
-
-    }
+        private readonly ?string $campaignId = null
+    ) {}
 }

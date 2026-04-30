@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\{Category, Brand, Filter, FilterValue};
+use App\Models\{Category, Brand, Filter};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -39,7 +39,7 @@ final class CategoriesAndBrandsSeeder extends Seeder
             foreach ($subs as $sub) {
                 Category::create([
                     'name' => $sub, 'vertical' => $v, 'slug' => Str::slug($v.'-'.$sub),
-                    'is_active' => true, 'order' => 0
+                    'is_active' => true, 'order' => 0,
                 ]);
             }
         }
@@ -48,7 +48,7 @@ final class CategoriesAndBrandsSeeder extends Seeder
             'L\'Oreal' => 'Beauty', 'Bosch' => 'Construction', 'Toyota' => 'TaxiAuto',
             'Nike' => 'Sports', 'IKEA' => 'RealEstate', 'Apple' => 'Electronics',
             'Samsung' => 'Electronics', 'Dyson' => 'Beauty', 'CAT' => 'Construction',
-            'Hilton' => 'Hotels', 'McDonalds' => 'FoodDelivery', 'Pfizer' => 'HumanClinics'
+            'Hilton' => 'Hotels', 'McDonalds' => 'FoodDelivery', 'Pfizer' => 'HumanClinics',
         ];
 
         foreach ($brands as $name => $v) {

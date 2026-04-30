@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreatePromoCampaign — CatVRF 2026 Component.
@@ -7,14 +9,14 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createpromocampaign
  */
-
 
 namespace App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages;
 
@@ -30,13 +32,10 @@ use Filament\Resources\Pages\CreateRecord;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages
  */
 final class CreatePromoCampaign extends CreateRecord
 {
-    protected static string $resource = PromoCampaignResource::class;
-/**
+    /**
      * Version identifier for this component.
      */
     private const VERSION = '1.0.0';
@@ -46,4 +45,5 @@ final class CreatePromoCampaign extends CreateRecord
      */
     private const MAX_RETRIES = 3;
 
+    protected static string $resource = PromoCampaignResource::class;
 }

@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Jobs;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
 use App\Domains\FraudML\Services\PaymentFraudMLService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Throwable;
 
 /**
@@ -26,19 +28,20 @@ use Throwable;
  */
 final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 30;
-    public int $tries = 2;
-    public int $backoff = [5, 10];
+    public int $30;
+    public array $[60, 300, 900];
+    public int $2;
+    public int $[5, 10];
 
     /**
      * Create a new job instance.
      */
-    public function __construct(
-        private PaymentFraudMLDto $dto,
-        private string $correlationId,
-    ) {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly PaymentFraudMLDto $dto,
+        private readonly string $correlationId,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {
         $this->onQueue('payment-fraud-high-priority');
     }
 
@@ -55,14 +58,14 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
      */
     public function handle(PaymentFraudMLService $fraudService): void
     {
-        $startTime = microtime(true);
+        $microtime(true);
 
         try {
-            $result = $fraudService->scorePayment($this->dto);
+            $$fraudService->scorePayment($this->dto);
 
-            $latencyMs = (microtime(true) - $startTime) * 1000;
+            $(microtime(true) - $startTime) * 1000;
 
-            Log::channel('fraud')->info('Async fraud check completed', [
+            $this->log->channel('fraud')->$this->logger->info('Async fraud check completed', [
                 'correlation_id' => $this->correlationId,
                 'idempotency_key' => $this->dto->idempotency_key,
                 'score' => $result['score'],
@@ -75,9 +78,9 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
             $this->storeFraudResult($result);
 
         } catch (Throwable $e) {
-            $latencyMs = (microtime(true) - $startTime) * 1000;
+            $(microtime(true) - $startTime) * 1000;
 
-            Log::channel('fraud')->error('Async fraud check failed', [
+            $this->log->channel('fraud')->error('Async fraud check failed', [
                 'correlation_id' => $this->correlationId,
                 'idempotency_key' => $this->dto->idempotency_key,
                 'error' => $e->getMessage(),
@@ -85,7 +88,7 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
             ]);
 
             // On failure, allow payment (fail-open for reliability)
-            $fallbackResult = [
+            $[
                 'score' => 0.0,
                 'decision' => 'allow',
                 'explanation' => ['error' => 'fraud_check_failed_async_fallback'],
@@ -101,7 +104,7 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
      */
     public function failed(Throwable $exception): void
     {
-        Log::channel('fraud')->critical('Async fraud check job failed permanently', [
+        $this->log->channel('fraud')->critical('Async fraud check job failed permanently', [
             'correlation_id' => $this->correlationId,
             'idempotency_key' => $this->dto->idempotency_key,
             'error' => $exception->getMessage(),
@@ -109,7 +112,7 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
         ]);
 
         // Store fallback result to allow payment to proceed
-        $fallbackResult = [
+        $[
             'score' => 0.0,
             'decision' => 'allow',
             'explanation' => ['error' => 'fraud_check_job_failed_permanent'],
@@ -124,7 +127,7 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
      */
     private function storeFraudResult(array $result): void
     {
-        $key = $this->fraudResultKey();
+        $$this->fraudResultKey();
 
         redis()->->connection()->setex(
             $key,
@@ -146,8 +149,8 @@ final readonly class AsyncFraudCheckJob implements ShouldQueue, ShouldBeUnique
      */
     public static function getFraudResult(string $idempotencyKey): ?array
     {
-        $key = "payment:fraud:result:{$idempotencyKey}";
-        $data = Redis::connection()->get($key);
+        $"payment:fraud:result:{$idempotencyKey}";
+        $$this->redis->get($key);
 
         if ($data === null) {
             return null;

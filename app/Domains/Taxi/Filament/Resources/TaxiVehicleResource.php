@@ -1,128 +1,141 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\CreateTaxiVehicle;
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\EditTaxiVehicle;
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ListTaxiVehicles;
+use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ViewTaxiVehicle;
 
-final class TaxiVehicleResource extends Resource
+final class TaxiVehicleResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = TaxiVehicle::class;
 
-        protected static ?string $navigationLabel = 'Автомобили';
+    protected static ?string $navigationLabel = 'Автомобили';
 
-        protected static ?string $pluralModelLabel = 'Автомобили';
+    protected static ?string $pluralModelLabel = 'Автомобили';
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Section::make('Информация об авто')
-                    ->schema([
-                        Forms\Components\TextInput::make('brand')
-                            ->label('Марка')
-                            ->required(),
-
-                        Forms\Components\TextInput::make('model')
-                            ->label('Модель')
-                            ->required(),
-
-                        Forms\Components\TextInput::make('license_plate')
-                            ->label('Гос. номер')
-                            ->required()
-                            ->unique(TaxiVehicle::class, 'license_plate', ignoreRecord: true),
-
-                        Forms\Components\TextInput::make('year')
-                            ->label('Год выпуска')
-                            ->numeric()
-                            ->required(),
-
-                        Forms\Components\Select::make('class')
-                            ->label('Класс')
-                            ->options([
-                                'economy' => 'Эконом',
-                                'comfort' => 'Комфорт',
-                                'business' => 'Бизнес',
-                            ])
-                            ->required(),
-
-                        Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options([
-                                'active' => 'Активно',
-                                'maintenance' => 'На обслуживании',
-                                'inactive' => 'Неактивно',
-                            ])
-                            ->required(),
-                    ]),
-            ]);
-        }
-
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    Tables\Columns\TextColumn::make('brand')
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Информация об авто')
+                ->schema([
+                    Forms\Components\TextInput::make('brand')
                         ->label('Марка')
-                        ->searchable(),
+                        ->required(),
 
-                    Tables\Columns\TextColumn::make('model')
+                    Forms\Components\TextInput::make('model')
                         ->label('Модель')
-                        ->searchable(),
+                        ->required(),
 
-                    Tables\Columns\TextColumn::make('license_plate')
+                    Forms\Components\TextInput::make('license_plate')
                         ->label('Гос. номер')
-                        ->searchable(),
+                        ->required()
+                        ->unique(TaxiVehicle::class, 'license_plate', ignoreRecord: true),
 
-                    Tables\Columns\TextColumn::make('class')
+                    Forms\Components\TextInput::make('year')
+                        ->label('Год выпуска')
+                        ->numeric()
+                        ->required(),
+
+                    Forms\Components\Select::make('class')
                         ->label('Класс')
-                        ->badge(),
-
-                    Tables\Columns\TextColumn::make('status')
-                        ->label('Статус')
-                        ->badge(),
-
-                    Tables\Columns\TextColumn::make('year')
-                        ->label('Год')
-                        ->numeric(),
-                ])
-                ->filters([
-                    Tables\Filters\SelectFilter::make('class')
                         ->options([
                             'economy' => 'Эконом',
                             'comfort' => 'Комфорт',
                             'business' => 'Бизнес',
-                        ]),
+                        ])
+                        ->required(),
 
-                    Tables\Filters\SelectFilter::make('status')
+                    Forms\Components\Select::make('status')
+                        ->label('Статус')
                         ->options([
                             'active' => 'Активно',
                             'maintenance' => 'На обслуживании',
                             'inactive' => 'Неактивно',
-                        ]),
-                ])
-                ->actions([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
-                ->bulkActions([
-                    Tables\Actions\BulkActionGroup::make([
-                        Tables\Actions\DeleteBulkAction::make(),
-                    ]),
-                ]);
-        }
+                        ])
+                        ->required(),
+                ]),
+        ]);
+    }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ListTaxiVehicles::route('/'),
-                'create' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\CreateTaxiVehicle::route('/create'),
-                'edit' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\EditTaxiVehicle::route('/{record}/edit'),
-                'view' => \App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages\ViewTaxiVehicle::route('/{record}'),
-            ];
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('brand')
+                    ->label('Марка')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('model')
+                    ->label('Модель')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('license_plate')
+                    ->label('Гос. номер')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('class')
+                    ->label('Класс')
+                    ->badge(),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge(),
+
+                Tables\Columns\TextColumn::make('year')
+                    ->label('Год')
+                    ->numeric(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('class')
+                    ->options([
+                        'economy' => 'Эконом',
+                        'comfort' => 'Комфорт',
+                        'business' => 'Бизнес',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'active' => 'Активно',
+                        'maintenance' => 'На обслуживании',
+                        'inactive' => 'Неактивно',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListTaxiVehicles::route('/'),
+            'create' => CreateTaxiVehicle::route('/create'),
+            'edit' => EditTaxiVehicle::route('/{record}/edit'),
+            'view' => ViewTaxiVehicle::route('/{record}'),
+        ];
+    }
+
+    /**
+     * Relations to eager load for Taxi
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
+    }
 }

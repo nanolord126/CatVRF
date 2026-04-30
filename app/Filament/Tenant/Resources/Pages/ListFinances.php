@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -17,15 +19,6 @@ use Filament\Tables\Table;
 final class ListFinances extends ListRecords
 {
     protected static string $resource = FinancesResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новая запись')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -57,7 +50,7 @@ final class ListFinances extends ListRecords
                     ]),
                 TextColumn::make('amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 TextColumn::make('correlation_id')
@@ -96,5 +89,14 @@ final class ListFinances extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новая запись')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

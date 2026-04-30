@@ -14,12 +14,6 @@ final class FashionDiscountServiceTest extends TestCase
 
     private FashionDiscountService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionDiscountService::class);
-    }
-
     public function test_apply_coupon(): void
     {
         $result = $this->service->applyCoupon('SUMMER20', 1000, 1);
@@ -79,5 +73,11 @@ final class FashionDiscountServiceTest extends TestCase
         $result = $this->service->calculateDiscountedPrice(1000, 25);
 
         $this->assertEquals(750, $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionDiscountService::class);
     }
 }

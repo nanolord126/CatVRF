@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,6 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 use App\Models\FraudModelVersion;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 /**
  * FraudML Shadow Promotion Job
@@ -20,21 +25,25 @@ use Illuminate\Log\LogManager;
  */
 final class FraudMLShadowPromotionJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 600; // 10 минут
+
     public int $tries = 2;
+
     public int $backoff = 300; // 5 минут
 
     private readonly string $correlationId;
+
     private readonly LogManager $logger;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly string $modelVersion,
-    )
-    {
+        private readonly LogManager $logger,) {
         $this->correlationId = (string) Str::uuid()->toString();
-        $this->logger = app(LogManager::class);
     }
 
     public function handle(): void
@@ -47,10 +56,11 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
                     'correlation_id' => $this->correlationId,
                     'model_version' => $this->modelVersion,
                 ]);
+
                 return;
             }
 
-            $this->logger->channel('audit')->info('FraudML shadow promotion check started', [
+            $this->logger->channel('audit')->$this->logger->info('FraudML shadow promotion check started', [
                 'correlation_id' => $this->correlationId,
                 'model_version' => $this->modelVersion,
                 'shadow_started_at' => $model->shadow_started_at?->toIso8601String(),
@@ -70,7 +80,7 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
             if ($model->isReadyForPromotion()) {
                 $model->promoteToActive();
 
-                $this->logger->channel('audit')->info('FraudML model promoted to active', [
+                $this->logger->channel('audit')->$this->logger->info('FraudML model promoted to active', [
                     'correlation_id' => $this->correlationId,
                     'model_version' => $this->modelVersion,
                     'shadow_auc_roc' => $shadowMetrics['auc_roc'],
@@ -79,7 +89,7 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
                 ]);
 
                 // Update cache with new active version
-                cache(['fraud_model_active_version' => $this->modelVersion], now()->addDays(30));
+                cache(['fraud_model_active_version' => $this->modelVersion], CarbonImmutable::now()->addDays(30));
             } else {
                 $this->logger->channel('audit')->warning('FraudML model not ready for promotion', [
                     'correlation_id' => $this->correlationId,
@@ -107,6 +117,15 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
         }
     }
 
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('FraudMLShadowPromotionJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'model_version' => $this->modelVersion,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     /**
      * Collect metrics from shadow mode predictions
      * In real implementation: query ClickHouse for predictions made during shadow period
@@ -131,7 +150,7 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
      */
     private function getPromotionFailureReason(FraudModelVersion $model): string
     {
-        if (!$model->is_shadow) {
+        if (! $model->is_shadow) {
             return 'Model is not in shadow mode';
         }
 
@@ -139,8 +158,9 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
             return 'Shadow start time not set';
         }
 
-        if ($model->shadow_started_at->diffInHours(now()) < 24) {
-            $hoursRemaining = 24 - $model->shadow_started_at->diffInHours(now());
+        if ($model->shadow_started_at->diffInHours(CarbonImmutable::now()) < 24) {
+            $hoursRemaining = 24 - $model->shadow_started_at->diffInHours(CarbonImmutable::now());
+
             return "Shadow period not complete ({$hoursRemaining}h remaining)";
         }
 
@@ -157,14 +177,5 @@ final class FraudMLShadowPromotionJob implements ShouldQueue
         }
 
         return 'Unknown reason';
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('FraudMLShadowPromotionJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'model_version' => $this->modelVersion,
-            'error' => $exception->getMessage(),
-        ]);
     }
 }

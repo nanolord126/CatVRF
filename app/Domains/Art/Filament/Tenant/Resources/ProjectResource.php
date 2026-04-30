@@ -1,9 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
 
-
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
@@ -19,13 +20,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final class ProjectResource extends Resource
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
-
     protected static ?string $model = Project::class;
+
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     public static function form(Form $form): Form
     {
@@ -57,7 +61,7 @@ final class ProjectResource extends Resource
                         ->searchable(),
                     Forms\Components\DateTimePicker::make('deadline_at')
                         ->label('Дедлайн')
-                        ->minDate(Carbon::now()->addDay()),
+                        ->minDate(CarbonImmutable::now()->addDay()),
                     Forms\Components\Select::make('status')
                         ->label('Статус')
                         ->options([
@@ -228,7 +232,7 @@ final class ProjectResource extends Resource
                 Tables\Filters\Filter::make('mode_b2b')->label('Только B2B')->query(fn (Builder $query) => $query->where('mode', 'b2b')),
                 Tables\Filters\Filter::make('deadline_next_week')
                     ->label('Дедлайн < 7 дней')
-                    ->query(fn (Builder $query) => $query->whereBetween('deadline_at', [Carbon::now(), Carbon::now()->addDays(7)])),
+                    ->query(fn (Builder $query) => $query->whereBetween('deadline_at', [CarbonImmutable::now(), CarbonImmutable::now()->addDays(7)])),
                 Tables\Filters\Filter::make('budget_over_100k')
                     ->label('Бюджет > 100 000 ₽')
                     ->query(fn (Builder $query) => $query->where('budget_cents', '>', 100_000_00)),
@@ -246,12 +250,12 @@ final class ProjectResource extends Resource
                         $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
                                 'status' => 'completed',
-                                'meta' => array_merge($record->meta ?? [], ['completed_at' => Carbon::now()->toIso8601String()]),
+                                'meta' => array_merge($record->meta ?? [], ['completed_at' => CarbonImmutable::now()->toIso8601String()]),
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        $this->logger->info('Project marked completed from Filament', [
+                        $this->logger->$this->logger->info('Project marked completed from Filament', [
                             'project_id' => $record->id,
                             'correlation_id' => $record->correlation_id ?: $correlationId,
                             'tenant_id' => $record->tenant_id,
@@ -274,7 +278,7 @@ final class ProjectResource extends Resource
                                 ]);
                             });
 
-                            $this->logger->info('Projects bulk-activated from Filament', [
+                            $this->logger->$this->logger->info('Projects bulk-activated from Filament', [
                                 'correlation_id' => $correlationId,
                                 'count' => count($records),
                             ]);
@@ -309,7 +313,7 @@ final class ProjectResource extends Resource
         $data['uuid'] = $data['uuid'] ?? (string) Str::uuid();
         $data['correlation_id'] = $data['correlation_id'] ?? (string) Str::uuid();
         $data['tenant_id'] = $data['tenant_id'] ?? (function_exists('tenant') && tenant() ? (int) tenant()->id : 0);
-        $data['mode'] = $data['mode'] ?? (!empty($data['inn']) || !empty($data['business_card_id']) ? 'b2b' : 'b2c');
+        $data['mode'] = $data['mode'] ?? (! empty($data['inn']) || ! empty($data['business_card_id']) ? 'b2b' : 'b2c');
 
         return $data;
     }

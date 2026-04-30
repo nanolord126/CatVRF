@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\RiskManagement\Models;
 
@@ -6,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class RiskAnalyst
@@ -25,13 +28,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Insurance\RiskManagement\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class RiskAnalyst extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
 
     protected $table = 'risk_analysts';
 
@@ -56,6 +60,6 @@ final class RiskAnalyst extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($q) => $q->where('risk_analysts.tenant_id', tenant()->id));
+        self::addGlobalScope('tenant', fn ($q) => $q->where('risk_analysts.tenant_id', tenant()->id));
     }
 }

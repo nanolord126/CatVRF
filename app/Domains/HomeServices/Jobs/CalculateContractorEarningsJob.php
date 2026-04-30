@@ -8,6 +8,7 @@ namespace App\Domains\HomeServices\Jobs;
 use Carbon\Carbon;
 
 use Psr\Log\LoggerInterface;
+use DateTime;
 use App\Domains\HomeServices\Models\Contractor;
 use App\Domains\HomeServices\Models\ContractorEarning;
 use Illuminate\Bus\Queueable;
@@ -15,13 +16,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+
 final class CalculateContractorEarningsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
         private readonly FraudControlService $fraud,
-        private ?string $correlationId = 'system', private readonly LoggerInterface $logger) {
+        private ?string $system,
+        private readonly LoggerInterface $logger
+    ) {
 
     }
 
@@ -92,5 +96,11 @@ final class CalculateContractorEarningsJob implements ShouldQueue
     {
         return 'default';
     }
-}
 
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('homeservices job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class SplitPaymentResponseDto
 {
     /**
-     * @param array<array{source: string, amount_kopecks: int, status: string, transaction_id: string}> $paymentResults
-     * @param array<string, mixed> $metadata
+     * @param  array<array{source: string, amount_kopecks: int, status: string, transaction_id: string}>  $paymentResults
+     * @param  array<string, mixed>  $metadata
      */
     public function __construct(
         public bool $success,
@@ -18,8 +20,7 @@ final readonly class SplitPaymentResponseDto
         public ?string $escrowReleaseDate,
         public array $metadata,
         public ?string $failureReason = null,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

@@ -26,21 +26,30 @@ use Illuminate\Queue\SerializesModels;
 use Carbon\Carbon;
 
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class UpdateDeliverableStatusJob
+
+final class UpdateDeliverableStatusJob implements ShouldQueue
 {
 
 
     use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
         public function __construct(
-            private int $deliverableId = 0,
-            private string $correlationId = '', private readonly LoggerInterface $logger) {
+            private readonly int $deliverableId,
+            private readonly string $correlationId,
+            private readonly LoggerInterface $logger,
+        ) {
             $this->onQueue('default');
 
         }
 
-        public function handle(): void
+        public function tags(): array
+    {
+        return ['freelance', 'job'];
+    }
+
+    public function handle(): void
         {
             $deliverable = FreelanceDeliverable::find($this->deliverableId);
             if (!$deliverable) {
@@ -63,7 +72,7 @@ final class UpdateDeliverableStatusJob
 
         public function retryUntil(): \DateTime
         {
-            return Carbon::now()->addHours(24);
+            return (new \Carbon\Carbon())->addHours(24);
         }
 
     /**
@@ -76,5 +85,13 @@ final class UpdateDeliverableStatusJob
      */
     private const MAX_RETRIES = 3;
 
+
+
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('freelance job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }
 

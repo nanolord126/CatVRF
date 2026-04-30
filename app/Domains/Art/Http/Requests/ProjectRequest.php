@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -8,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/projectrequest
  */
-
 
 namespace App\Domains\Art\Http\Requests;
 
@@ -30,8 +31,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Domains\Art\Http\Requests
  */
 final class ProjectRequest extends FormRequest
 {

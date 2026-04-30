@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Broadcasting;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Psr\Log\LoggerInterface;
@@ -11,11 +13,12 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 final class EditCompleted implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         private readonly ConfigRepository $config,
@@ -28,7 +31,7 @@ final class EditCompleted implements ShouldBroadcast
         private readonly array $editData,
         private readonly string $correlationId,
     ) {
-        $this->logger->info('EditCompleted event broadcasted', [
+        $this->logger->$this->logger->info('EditCompleted event broadcasted', [
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,
@@ -59,7 +62,7 @@ final class EditCompleted implements ShouldBroadcast
             'document_type' => $this->documentType,
             'document_id' => $this->documentId,
             'edit_data' => $this->editData,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $this->correlationId,
         ];
     }

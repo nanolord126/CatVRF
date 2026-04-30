@@ -2,33 +2,31 @@
 
 namespace App\Domains\Fashion\Jobs;
 
+use Psr\Log\LoggerInterface;
+
+use App\Domains\CRM\Services\CRMIntegrationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use App\Domains\CRM\Services\CRMIntegrationService;
 
-final readonly class SyncWithCRMJob implements ShouldQueue
+final class SyncWithCRMJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public readonly int $tries;
-    public readonly int $timeout;
+    public int $tries = 3;
+    public int $timeout = 60;
 
     public function __construct(
-        public int $userId,
-        public string $vertical,
-        public string $action,
-        public array $data,
-        public string $correlationId,
-        int $tries = 3,
-        int $timeout = 60,
-    ) {
-        $this->tries = $tries;
-        $this->timeout = $timeout;
-    }
+        private readonly LoggerInterface $logger,
+        private readonly int $userId,
+        private readonly string $vertical,
+        private readonly string $action,
+        private readonly array $data,
+        private readonly string $correlationId,
+        private readonly LogManager $log,
+    ) {}
 
     public function handle(CRMIntegrationService $crm): void
     {
@@ -41,14 +39,14 @@ final readonly class SyncWithCRMJob implements ShouldQueue
                 correlationId: $this->correlationId
             );
 
-            Log::channel('audit')->info('CRM sync completed successfully', [
+            $this->log->channel('audit')->info('CRM sync completed successfully', [
                 'user_id' => $this->userId,
                 'vertical' => $this->vertical,
                 'action' => $this->action,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('CRM sync failed', [
+            $this->log->channel('audit')->error('CRM sync failed', [
                 'user_id' => $this->userId,
                 'vertical' => $this->vertical,
                 'action' => $this->action,
@@ -62,7 +60,7 @@ final readonly class SyncWithCRMJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::channel('audit')->error('SyncWithCRMJob failed', [
+        $this->logger->channel('audit')->error('SyncWithCRMJob failed', [
             'user_id' => $this->userId,
             'vertical' => $this->vertical,
             'action' => $this->action,

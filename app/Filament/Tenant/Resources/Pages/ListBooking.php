@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListBooking extends ListRecords
     public function getTitle(): string
     {
         return 'Бронирования';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать бронирование')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -64,11 +57,11 @@ final class ListBooking extends ListRecords
                     ->toggleable(),
                 TextColumn::make('total_amount_kopecks')
                     ->label('Сумма')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('paid_amount_kopecks')
                     ->label('Оплачено')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->toggleable(),
                 BadgeColumn::make('status')
                     ->label('Статус')
@@ -106,5 +99,14 @@ final class ListBooking extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать бронирование')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\DTOs\SearchPropertyDto;
@@ -13,40 +16,45 @@ use Illuminate\Database\Eloquent\Collection;
 
 final readonly class PropertyService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LogManager $log
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log) {}
 
     public function searchNearby(SearchPropertyDto $dto): Collection
     {
         $this->fraud->check([
-            "action" => "search_real_estate",
-            "lat" => $dto->lat,
-            "lon" => $dto->lon,
-            "correlation_id" => $dto->correlationId,
+            'action' => 'search_real_estate',
+            'lat' => $dto->lat,
+            'lon' => $dto->lon,
+            'correlation_id' => $dto->correlationId,
         ]);
 
         $query = Property::query()
             ->selectRaw(
-                "*, (6371 * acos(cos(radians(?)) * cos(radians(lat)) * cos(radians(lon) - radians(?)) + sin(radians(?)) * sin(radians(lat)))) AS distance",
+                '*, (6371 * acos(cos(radians(?)) * cos(radians(lat)) * cos(radians(lon) - radians(?)) + sin(radians(?)) * sin(radians(lat)))) AS distance',
                 [$dto->lat, $dto->lon, $dto->lat]
             )
-            ->having("distance", "<", $dto->radiusKm)
-            ->where("is_active", true)
-            ->where("status", "active");
+            ->having('distance', '<', $dto->radiusKm)
+            ->where('is_active', true)
+            ->where('status', 'active');
 
-        if ($dto->type !== null) { $query->where("type", $dto->type); }
-        if ($dto->minPrice !== null) { $query->where("price", ">=", $dto->minPrice); }
-        if ($dto->maxPrice !== null) { $query->where("price", "<=", $dto->maxPrice); }
+        if ($dto->type !== null) {
+            $query->where('type', $dto->type);
+        }
+        if ($dto->minPrice !== null) {
+            $query->where('price', '>=', $dto->minPrice);
+        }
+        if ($dto->maxPrice !== null) {
+            $query->where('price', '<=', $dto->maxPrice);
+        }
 
-        $results = $query->orderBy("distance")->limit(100)->get();
+        $results = $query->orderBy('distance')->limit(100)->get();
 
-        $this->log->channel("audit")->info("Real Estate public search executed", [
-            "results_count" => $results->count(),
-            "correlation_id" => $dto->correlationId,
+        $this->log->channel('audit')->$this->logger->info('Real Estate public search executed', [
+            'results_count' => $results->count(),
+            'correlation_id' => $dto->correlationId,
         ]);
 
         return $results;
@@ -56,14 +64,14 @@ final readonly class PropertyService
     {
         return $this->db->transaction(function () use ($property, $newStatus, $correlationId): Property {
             $oldStatus = $property->status;
-            $property->update(["status" => $newStatus]);
-            
+            $property->update(['status' => $newStatus]);
+
             $this->audit->log(
-                action: "property_status_changed",
+                action: 'property_status_changed',
                 subjectType: Property::class,
                 subjectId: $property->id,
-                old: ["status" => $oldStatus],
-                new: ["status" => $newStatus],
+                old: ['status' => $oldStatus],
+                new: ['status' => $newStatus],
                 correlationId: $correlationId
             );
 

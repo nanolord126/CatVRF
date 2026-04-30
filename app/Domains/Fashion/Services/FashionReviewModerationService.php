@@ -1,34 +1,44 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * ML-модерация отзывов Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Анализ тональности, детекция спама, фильтрация нецензурной лексики,
  * определение фейковых отзывов, автоматическая модерация.
  */
 final readonly class FashionReviewModerationService
 {
     private const SPAM_THRESHOLD = 0.7;
+
     private const TOXICITY_THRESHOLD = 0.6;
+
     private const FAKE_REVIEW_THRESHOLD = 0.8;
+
     private const MIN_REVIEW_LENGTH = 20;
+
     private const MAX_REVIEW_LENGTH = 2000;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Модерировать отзыв с ML.
@@ -55,7 +65,7 @@ final readonly class FashionReviewModerationService
         $sentiment = $this->analyzeSentiment($review['comment'], $correlationId);
 
         $moderationResult = $this->determineModerationAction($spamScore, $toxicityScore, $fakeScore);
-        
+
         $this->saveModerationResult(
             $reviewId,
             $tenantId,
@@ -82,7 +92,7 @@ final readonly class FashionReviewModerationService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion review moderated', [
+        $this->log->channel('audit')->$this->logger->info('Fashion review moderated', [
             'review_id' => $reviewId,
             'tenant_id' => $tenantId,
             'action' => $moderationResult,
@@ -114,7 +124,7 @@ final readonly class FashionReviewModerationService
                 $result = $this->moderateReview($reviewId, $correlationId);
                 $results[] = $result;
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to moderate review', [
+                $this->log->channel('audit')->warning('Failed to moderate review', [
                     'review_id' => $reviewId,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -141,7 +151,7 @@ final readonly class FashionReviewModerationService
 
         $stats = $this->db->table('fashion_review_moderations')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->selectRaw('
                 COUNT(*) as total_reviews,
                 SUM(CASE WHEN action = "approve" THEN 1 ELSE 0 END) as approved,
@@ -248,7 +258,7 @@ final readonly class FashionReviewModerationService
 
         $userReviewsCount = $this->db->table('fashion_reviews')
             ->where('user_id', $review['user_id'])
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         if ($userReviewsCount > 10) {
@@ -373,9 +383,9 @@ final readonly class FashionReviewModerationService
                 'sentiment' => $sentiment,
                 'action' => $action,
                 'manual_review_required' => $manualReviewRequired,
-                'moderated_at' => Carbon::now(),
+                'moderated_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
 

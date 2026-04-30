@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Beauty\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class BeautyLoyaltyDto
 {
@@ -31,7 +32,7 @@ final readonly class BeautyLoyaltyDto
             action: $request->input('action'),
             appointmentId: $request->input('appointment_id') ? (int) $request->input('appointment_id') : null,
             referralCode: $request->input('referral_code'),
-            correlationId: $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid(),
+            correlationId: $request->header('X-Correlation-ID') ?? (string) Str::uuid(),
             idempotencyKey: $request->header('X-Idempotency-Key'),
             isB2B: $request->has('inn') && $request->has('business_card_id'),
         );

@@ -1,26 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Ritual\FuneralOrderResource\Pages;
 
+use FraudControlService;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\Ritual\FuneralOrderResource;
 use App\Services\FraudControlService;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Model;
 
 final class CreateFuneralOrder extends CreateRecord
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = FuneralOrderResource::class;
+
+    public function __construct(private readonly FraudControlService $fraudControlService,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Мутация данных перед сохранением (Канон: Correlation ID + Tenant ID).
@@ -42,7 +45,7 @@ final class CreateFuneralOrder extends CreateRecord
     protected function beforeCreate(): void
     {
         /** @var FraudControlService $fraud */
-        $fraud = app(FraudControlService::class);
+        $fraud = $this->fraudControlService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
 
         $fraud->check([
             'operation' => 'ritual_order_create_filament',
@@ -51,7 +54,7 @@ final class CreateFuneralOrder extends CreateRecord
             'correlation_id' => $this->data['correlation_id'] ?? null,
         ]);
 
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Creating ritual order from Filament', [
+        $this->log->channel('audit')->$this->logger->info('Creating ritual order from Filament', [
             'data' => $this->data,
         ]);
     }
@@ -59,12 +62,12 @@ final class CreateFuneralOrder extends CreateRecord
     /**
      * Выполнение в транзакции (Канон 2026).
      */
-    protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
+    protected function handleRecordCreation(array $data): Model
     {
         return $this->db->transaction(function () use ($data) {
             $record = parent::handleRecordCreation($data);
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Ritual order record created in DB', [
+            $this->log->channel('audit')->$this->logger->info('Ritual order record created in DB', [
                 'order_id' => $record->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * SystemController — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/systemcontroller
  * @see https://catvrf.ru/docs/systemcontroller
  * @see https://catvrf.ru/docs/systemcontroller
@@ -21,16 +24,12 @@
  * @see https://catvrf.ru/docs/systemcontroller
  */
 
-
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 
 final class SystemController extends Controller
 {
-
-
-
     /**
      * Version identifier for this component.
      */
@@ -53,15 +52,15 @@ final class SystemController extends Controller
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -70,5 +69,4 @@ final class SystemController extends Controller
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

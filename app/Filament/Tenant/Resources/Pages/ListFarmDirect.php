@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -15,15 +17,6 @@ use Filament\Tables\Table;
 final class ListFarmDirect extends ListRecords
 {
     protected static string $resource = FarmDirectResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый продукт')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -44,7 +37,7 @@ final class ListFarmDirect extends ListRecords
                     ->badge(),
                 TextColumn::make('price')
                     ->label('Цена')
-                    ->formatStateUsing(fn ($state) => number_format((float)$state, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 TextColumn::make('tenant_id')
@@ -64,5 +57,14 @@ final class ListFarmDirect extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый продукт')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

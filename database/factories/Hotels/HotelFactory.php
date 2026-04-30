@@ -19,7 +19,7 @@ final class HotelFactory extends Factory
         return [
             'tenant_id' => 1,
             'business_group_id' => null,
-            'name' => $this->faker->company() . ' Hotel',
+            'name' => $this->faker->company().' Hotel',
             'slug' => $this->faker->slug(),
             'description' => $this->faker->paragraph(3),
             'address' => $this->faker->address(),

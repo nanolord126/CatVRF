@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Jobs;
 
@@ -89,7 +91,7 @@ final class FraudMLShadowPromotionJobTest extends TestCase
     public function test_handle_logs_warning_when_model_not_found(): void
     {
         $job = new FraudMLShadowPromotionJob('non-existent-version');
-        
+
         // Should not throw exception
         $this->expectNotToPerformAssertions();
         $job->handle();

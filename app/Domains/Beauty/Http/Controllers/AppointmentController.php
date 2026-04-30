@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -21,7 +22,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::store', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AppointmentController::store', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -34,7 +35,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::show', ['correlation_id' => $correlationId, 'show' => $id, ]);
+        $this->logger->$this->logger->info('AppointmentController::show', ['correlation_id' => $correlationId, 'show' => $id]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -47,7 +48,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::cancel', ['correlation_id' => $correlationId, 'cancel' => $id, ]);
+        $this->logger->$this->logger->info('AppointmentController::cancel', ['correlation_id' => $correlationId, 'cancel' => $id]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -60,7 +61,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::confirm', ['correlation_id' => $correlationId, 'confirm' => $id, ]);
+        $this->logger->$this->logger->info('AppointmentController::confirm', ['correlation_id' => $correlationId, 'confirm' => $id]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -73,7 +74,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::reschedule', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AppointmentController::reschedule', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -86,7 +87,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController::index', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AppointmentController::index', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -99,7 +100,7 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AppointmentController invoked', ['correlation_id' => $correlationId]);
+        $this->logger->$this->logger->info('AppointmentController invoked', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,

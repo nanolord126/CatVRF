@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services\AI;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\RealEstate\Models\Property;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Psr\Log\LoggerInterface;
@@ -22,7 +24,7 @@ final readonly class RealEstateAIConstructorService
     {
         $cacheKey = "ai:description:{$property->id}";
 
-        return $this->cache->remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): string {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($property, $correlationId): string {
             $features = $property->features ?? [];
             $type = $property->type ?? 'property';
             $area = $property->area_sqm ?? 0;
@@ -30,7 +32,7 @@ final readonly class RealEstateAIConstructorService
 
             $description = $this->buildDescription($type, $area, $price, $features);
 
-            $this->logger->info('AI property description generated', [
+            $this->logger->$this->logger->info('AI property description generated', [
                 'property_id' => $property->id,
                 'correlation_id' => $correlationId,
                 'description_length' => strlen($description),
@@ -44,7 +46,7 @@ final readonly class RealEstateAIConstructorService
     {
         $cacheKey = "ai:tags:{$property->id}";
 
-        return $this->cache->tags(['realestate', 'ai', 'tags'])->remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): array {
+        return $this->cache->tags(['realestate', 'ai', 'tags'])->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): array {
             $tags = [];
 
             $features = $property->features ?? [];
@@ -85,7 +87,7 @@ final readonly class RealEstateAIConstructorService
                 $tags[] = 'new_construction';
             }
 
-            $this->logger->info('AI property tags generated', [
+            $this->logger->$this->logger->info('AI property tags generated', [
                 'property_id' => $property->id,
                 'tags' => $tags,
                 'correlation_id' => $correlationId,
@@ -99,7 +101,7 @@ final readonly class RealEstateAIConstructorService
     {
         $cacheKey = "ai:score:{$property->id}";
 
-        return Cemem::eKCHE_TTL_SECONDS), function () use ($property, $correlationId): array {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($property, $correlationId): array {
             $features = $property->features ?? [];
             $area = (float) ($property->area_sqm ?? 0);
             $price = (float) ($property->price ?? 0);
@@ -123,7 +125,7 @@ final readonly class RealEstateAIConstructorService
                 'improvements' => $this->suggestImprovements($features, $overallScore),
             ];
 
-            $this->logger->info('AI property score calculated', [
+            $this->logger->$this->logger->info('AI property score calculated', [
                 'property_id' => $property->id,
                 'overall_score' => $overallScore,
                 'correlation_id' => $correlationId,
@@ -137,7 +139,7 @@ final readonly class RealEstateAIConstructorService
     {
         $cacheKey = "ai:similar:{$property->id}:{$limit}";
 
-        return $this->cache->tags(['realestate', 'ai', 'similar'])->remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $limit, $correlationId): array {
+        return $this->cache->tags(['realestate', 'ai', 'similar'])->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $limit, $correlationId): array {
             $type = $property->type ?? '';
             $price = (float) ($property->price ?? 0);
             $priceRange = $price * 0.2; // 20% variance
@@ -151,7 +153,7 @@ final readonly class RealEstateAIConstructorService
                 ->get(['id', 'uuid', 'title', 'address', 'price', 'area_sqm', 'type'])
                 ->toArray();
 
-            $this->logger->info('AI similar properties generated', [
+            $this->logger->$this->logger->info('AI similar properties generated', [
                 'property_id' => $property->id,
                 'similar_count' => count($similar),
                 'correlation_id' => $correlationId,
@@ -165,7 +167,7 @@ final readonly class RealEstateAIConstructorService
     {
         $cacheKey = "ai:investment:{$property->id}";
 
-        return $this->cache->tags(['realestate', 'ai', 'investment'])->remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): array {
+        return $this->cache->tags(['realestate', 'ai', 'investment'])->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($property, $correlationId): array {
             $price = (float) ($property->price ?? 0);
 use App\Services\AI\Prompts\RealEstatePromptBuilder;
             $area = (float) ($property->area_sqm ?? 0);
@@ -192,7 +194,7 @@ use App\Services\AI\Prompts\RealEstatePromptBuilder;
                 'recommendation' => $this->getInvestmentRecommendation($yield, $appreciationRate),
             ];
 
-            $this->logger->info('AI investment analysis generated', [
+            $this->logger->$this->logger->info('AI investment analysis generated', [
                 'property_id' => $property->id,
                 'rental_yield' => $yield,
                 'correlation_id' => $correlationId,
@@ -384,7 +386,7 @@ use App\Services\AI\Prompts\RealEstatePromptBuilder;
             $this->cache->forget($key);
         }
 
-        $this->logger->info('AI property cache cleared', [
+        $this->logger->$this->logger->info('AI property cache cleared', [
             'property_id' => $propertyId,
             'keys_cleared' => count($keys),
         ]);

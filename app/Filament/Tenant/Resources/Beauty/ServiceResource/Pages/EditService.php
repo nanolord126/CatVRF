@@ -7,6 +7,7 @@ namespace App\Filament\Tenant\Resources\Beauty\ServiceResource\Pages;
 use App\Filament\Tenant\Resources\Beauty\ServiceResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Str;
 
 final class EditService extends EditRecord
 {
@@ -22,7 +23,7 @@ final class EditService extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['correlation_id'] = \Illuminate\Support\Str::uuid()->toString();
+        $data['correlation_id'] = Str::uuid()->toString();
 
         return $data;
     }

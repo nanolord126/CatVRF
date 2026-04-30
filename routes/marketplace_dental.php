@@ -12,6 +12,6 @@ use App\Livewire\Marketplace\Dental\DentalShowcase;
 Route::middleware(['web'])->group(function () {
     // Главная витрина стоматологии
     Route::get('/dental', DentalShowcase::class)->name('marketplace.dental.index');
-    
+
     // Группа маршрутов внутри /dental может быть расширена (карточка врача и тд)
 });

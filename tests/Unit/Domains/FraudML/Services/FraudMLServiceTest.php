@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML\Services;
 
@@ -14,13 +16,6 @@ final class FraudMLServiceTest extends TestCase
     use RefreshDatabase;
 
     private FraudMLService $fraudMLService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->fraudMLService = app(FraudMLService::class);
-        Cache::flush();
-    }
 
     public function test_score_operation_returns_float(): void
     {
@@ -148,7 +143,7 @@ final class FraudMLServiceTest extends TestCase
 
         // First call - populates cache
         $model1 = $this->fraudMLService->getActiveModel();
-        
+
         // Set cache manually
         Cache::put('fraud_model_active_version', 'test-v1', 60);
 
@@ -195,12 +190,12 @@ final class FraudMLServiceTest extends TestCase
     public function test_predict_with_fallback_returns_conservative_score(): void
     {
         $features = ['test' => 'value'];
-        
+
         // Access via reflection since it's private
         $reflection = new \ReflectionClass($this->fraudMLService);
         $method = $reflection->getMethod('predictWithFallback');
         $method->setAccessible(true);
-        
+
         $score = $method->invoke($this->fraudMLService, $features);
 
         $this->assertEquals(0.5, $score); // Conservative fallback
@@ -209,7 +204,7 @@ final class FraudMLServiceTest extends TestCase
     public function test_simulate_prediction_with_different_models(): void
     {
         $features = ['amount_log' => 5.0];
-        
+
         $model1 = FraudModelVersion::factory()->make(['version' => 'v1']);
         $model2 = FraudModelVersion::factory()->make(['version' => 'v2']);
 
@@ -244,5 +239,12 @@ final class FraudMLServiceTest extends TestCase
         // The method should log with feature_source: 'feature_store'
         // This is tested implicitly by ensuring no exception is thrown
         $this->assertTrue(true);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->fraudMLService = app(FraudMLService::class);
+        Cache::flush();
     }
 }

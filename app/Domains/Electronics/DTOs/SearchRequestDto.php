@@ -1,15 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class SearchRequestDto
 {
     /**
-     * @param array<string> $brands
-     * @param array<string> $categories
-     * @param array<string> $colors
-     * @param array<string, mixed> $specsFilters
-     * @param array<string> $sort
+     * @param  array<string>  $brands
+     * @param  array<string>  $categories
+     * @param  array<string>  $colors
+     * @param  array<string, mixed>  $specsFilters
+     * @param  array<string>  $sort
      */
     public function __construct(
         public string $query,
@@ -26,8 +28,7 @@ final readonly class SearchRequestDto
         public array $sort,
         public ?string $type,
         public string $correlationId,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(array $data, string $correlationId): self
     {

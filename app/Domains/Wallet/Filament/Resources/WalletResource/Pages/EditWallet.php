@@ -18,6 +18,12 @@ final class EditWallet extends EditRecord
 {
     protected static string $resource = WalletResource::class;
 
+    /** Заголовок страницы. */
+    public function getTitle(): string
+    {
+        return 'Редактировать кошелёк #'.$this->record->getKey();
+    }
+
     /** Действия в заголовке. */
     protected function getHeaderActions(): array
     {
@@ -31,11 +37,5 @@ final class EditWallet extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
-    }
-
-    /** Заголовок страницы. */
-    public function getTitle(): string
-    {
-        return 'Редактировать кошелёк #' . $this->record->getKey();
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -37,15 +39,6 @@ final class B2BApiKey extends Model
     /** Ключ никогда не выдаётся в ответе API. */
     protected $hidden = ['key', 'hashed_key'];
 
-    protected static function booted(): void
-    {
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
     public function businessGroup(): BelongsTo
     {
         return $this->belongsTo(BusinessGroup::class);
@@ -66,6 +59,16 @@ final class B2BApiKey extends Model
         if (empty($this->permissions)) {
             return true; // null → все права
         }
+
         return in_array($permission, (array) $this->permissions, true);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

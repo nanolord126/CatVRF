@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Analytics\Infrastructure\Services;
 
 use App\Domains\Analytics\Domain\Interfaces\FraudScoringInterface;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * ML-based fraud scoring service.
@@ -17,9 +19,8 @@ use App\Domains\Analytics\Domain\Interfaces\FraudScoringInterface;
  * inference endpoint becomes available, only {@see self::callMlEndpoint()}
  * needs to be swapped.
  *
- * @see \App\Services\FraudControlService  orchestrator that consumes the score
- * @see \App\Services\AuditService
- * @package App\Domains\Analytics\Infrastructure\Services
+ * @see FraudControlService  orchestrator that consumes the score
+ * @see AuditService
  */
 final readonly class MlFraudScoringService implements FraudScoringInterface
 {
@@ -45,13 +46,12 @@ final readonly class MlFraudScoringService implements FraudScoringInterface
      * Calculate a fraud-risk score based on the supplied feature vector.
      *
      * @param  array<string, mixed>  $features  Associative array of features:
-     *   - events_last_hour   (int)   — number of events in the last 60 min
-     *   - distinct_ips_last_day (int) — unique IP addresses in 24 h
-     *   - device_changed      (bool)  — fingerprint changed since last session
-     *   - account_age_hours   (int)   — age of the account in hours
-     *   - amount              (float) — transaction amount in roubles
-     *
-     * @return float  Normalised score 0.0 (safe) … 1.0 (fraudulent).
+     *                                          - events_last_hour   (int)   — number of events in the last 60 min
+     *                                          - distinct_ips_last_day (int) — unique IP addresses in 24 h
+     *                                          - device_changed      (bool)  — fingerprint changed since last session
+     *                                          - account_age_hours   (int)   — age of the account in hours
+     *                                          - amount              (float) — transaction amount in roubles
+     * @return float Normalised score 0.0 (safe) … 1.0 (fraudulent).
      *
      * @throws \DomainException If the feature vector is empty.
      */

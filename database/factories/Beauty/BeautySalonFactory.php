@@ -25,7 +25,7 @@ final class BeautySalonFactory extends Factory
             'business_group_id' => null,
             'uuid' => Str::uuid()->toString(),
             'correlation_id' => Str::uuid()->toString(),
-            'name' => $this->faker->company() . ' ' . $this->faker->randomElement(['Beauty Salon', 'Hair Studio', 'Spa Center']),
+            'name' => $this->faker->company().' '.$this->faker->randomElement(['Beauty Salon', 'Hair Studio', 'Spa Center']),
             'address' => $this->faker->address(),
             'phone' => $this->faker->phoneNumber(),
             'email' => $this->faker->unique()->safeEmail(),

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
@@ -17,19 +19,10 @@ final class TaxiAnalyticsServiceTest extends TestCase
 
     private TaxiAnalyticsService $analyticsService;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->analyticsService = new TaxiAnalyticsService(
-            $this->app->make('db'),
-        );
-    }
-
     public function test_aggregate_daily_analytics(): void
     {
         $date = Carbon::today();
-        
+
         TaxiRide::factory()->count(10)->create([
             'status' => TaxiRide::STATUS_COMPLETED,
             'total_price' => 50000,
@@ -56,7 +49,7 @@ final class TaxiAnalyticsServiceTest extends TestCase
     {
         $driver = Driver::factory()->create();
         $date = Carbon::today();
-        
+
         TaxiRide::factory()->count(5)->create([
             'driver_id' => $driver->id,
             'status' => TaxiRide::STATUS_COMPLETED,
@@ -77,7 +70,7 @@ final class TaxiAnalyticsServiceTest extends TestCase
     {
         $startDate = Carbon::today()->subDays(7);
         $endDate = Carbon::today();
-        
+
         for ($i = 0; $i < 7; $i++) {
             $date = $startDate->copy()->addDays($i);
             TaxiAnalyticsDaily::factory()->create([
@@ -102,7 +95,7 @@ final class TaxiAnalyticsServiceTest extends TestCase
         $driver = Driver::factory()->create(['rating' => 4.5]);
         $startDate = Carbon::today()->subDays(30);
         $endDate = Carbon::today();
-        
+
         for ($i = 0; $i < 30; $i++) {
             $date = $startDate->copy()->addDays($i);
             TaxiDriverAnalytics::factory()->create([
@@ -127,7 +120,7 @@ final class TaxiAnalyticsServiceTest extends TestCase
     public function test_predict_demand(): void
     {
         $date = Carbon::today()->addWeek();
-        
+
         // Create historical data for same day of week
         for ($i = 1; $i <= 4; $i++) {
             TaxiAnalyticsDaily::factory()->create([
@@ -188,5 +181,14 @@ final class TaxiAnalyticsServiceTest extends TestCase
         ]);
 
         $this->assertEquals(7.81, round($analytics->getAverageHourlyEarningsRubles(), 2));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->analyticsService = new TaxiAnalyticsService(
+            $this->app->make('db'),
+        );
     }
 }

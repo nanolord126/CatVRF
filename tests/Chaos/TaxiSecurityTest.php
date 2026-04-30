@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -7,22 +9,13 @@ use Modules\Taxi\Services\TaxiRideService;
 use Modules\Taxi\Services\TaxiRideCreateDto;
 use Modules\Taxi\Models\TaxiRide;
 use Modules\Taxi\Models\TaxiDriver;
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 
 final class TaxiSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
     private TaxiRideService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiRideService::class);
-    }
 
     public function test_fake_ride_blocked_by_fraud(): void
     {
@@ -43,7 +36,7 @@ final class TaxiSecurityTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('blocked by fraud detection');
-        
+
         $this->service->createRide($dto);
     }
 
@@ -60,7 +53,7 @@ final class TaxiSecurityTest extends TestCase
         ]);
 
         $this->expectException(\RuntimeException::class);
-        
+
         $this->service->matchDriver($ride->id, 'impersonation-test');
     }
 
@@ -102,7 +95,7 @@ final class TaxiSecurityTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('blocked by fraud detection');
-        
+
         $this->service->completeRide($ride->id, 'fraud-payment-test');
     }
 
@@ -122,7 +115,7 @@ final class TaxiSecurityTest extends TestCase
         );
 
         $ride = $this->service->createRide($dto);
-        
+
         $this->assertLessThan(999999999, $ride->final_price_kopeki);
     }
 
@@ -194,5 +187,11 @@ final class TaxiSecurityTest extends TestCase
         $ride2 = $this->service->createRide($dtoTenant2);
 
         $this->assertNotEquals($ride1->tenant_id, $ride2->tenant_id);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiRideService::class);
     }
 }

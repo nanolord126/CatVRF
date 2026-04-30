@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * EditVehicleInsurance — CatVRF 2026 Component.
@@ -7,51 +9,22 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/editvehicleinsurance
  */
 
-
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
-
 
 use Psr\Log\LoggerInterface;
 use Filament\Resources\Pages\EditRecord;
 
 final class EditVehicleInsurance extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger) {}
-
-
-    protected static string $resource = VehicleInsuranceResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\DeleteAction::make()
-                    ->after(function () {
-                        $this->logger->info('VehicleInsurance deleted', [
-                            'correlation_id' => $this->record->correlation_id,
-                            'policy_id' => $this->record->id,
-                        ]);
-                    }),
-            ];
-        }
-
-        protected function afterSave(): void
-        {
-            $this->logger->info('VehicleInsurance updated', [
-                'correlation_id' => $this->record->correlation_id,
-                'policy_id' => $this->record->id,
-                'status' => $this->record->status,
-            ]);
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -67,4 +40,32 @@ final class EditVehicleInsurance extends EditRecord
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = VehicleInsuranceResource::class;
+
+    public function __construct(
+        private readonly LoggerInterface $logger
+    ) {}
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make()
+                ->after(function () {
+                    $this->logger->$this->logger->info('VehicleInsurance deleted', [
+                        'correlation_id' => $this->record->correlation_id,
+                        'policy_id' => $this->record->id,
+                    ]);
+                }),
+        ];
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->$this->logger->info('VehicleInsurance updated', [
+            'correlation_id' => $this->record->correlation_id,
+            'policy_id' => $this->record->id,
+            'status' => $this->record->status,
+        ]);
+    }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * EditTicket — CatVRF 2026 Component.
@@ -7,47 +9,32 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/editticket
  * @see https://catvrf.ru/docs/editticket
  * @see https://catvrf.ru/docs/editticket
  */
 
-
 namespace App\Filament\Tenant\Resources\Entertainment\TicketResource\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Log\LogManager;
 
 final class EditTicket extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = TicketResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-            ];
-        }
-
-        protected function beforeSave(): void
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Ticket modification', [
-                'ticket_id' => $this->record->id,
-                'correlation_id' => $this->record->correlation_id,
-            ]);
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +43,7 @@ final class EditTicket extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +54,24 @@ final class EditTicket extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function beforeSave(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Entertainment Ticket modification', [
+            'ticket_id' => $this->record->id,
+            'correlation_id' => $this->record->correlation_id,
+        ]);
     }
 }

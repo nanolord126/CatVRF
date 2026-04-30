@@ -1,10 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Traits;
 
+use App\Models\Verification;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+
 trait CanBeVerified
 {
-    public function verifications(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function verifications(): MorphMany
     {
         return $this->morphMany(Verification::class, 'verifiable');
     }

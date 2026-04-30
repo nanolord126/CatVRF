@@ -1,11 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Payment\PaymentController;
 
 /**
  * Payment Gateway API Routes v1 — Production 2026 CANON
- * 
+ *
  * MIDDLEWARE ORDERING (CRITICAL):
  * 1. correlation-id      - Generate/validate X-Correlation-ID
  * 2. auth:sanctum        - API token validation
@@ -14,7 +16,7 @@ use App\Http\Controllers\Api\V1\Payment\PaymentController;
  * 5. b2c-b2b             - Mode determination
  * 6. fraud-check         - STRICT fraud ML scoring
  * 7. rate-limit:10,1     - 10 req/min MAX (very strict)
- * 
+ *
  * Version: 2026.03.27
  */
 
@@ -35,17 +37,17 @@ Route::prefix('payments')
         Route::post('/init', [PaymentController::class, 'init'])
             ->name('api.payments.init')
             ->middleware('throttle:5,1');  // Extra strict on init
-        
+
         // Payment capture (списать со счёта)
         Route::post('/{payment}/capture', [PaymentController::class, 'capture'])
             ->name('api.payments.capture')
             ->middleware('throttle:5,1');  // Extra strict on capture
-        
+
         // Payment refund (вернуть деньги)
         Route::post('/{payment}/refund', [PaymentController::class, 'refund'])
             ->name('api.payments.refund')
             ->middleware('throttle:3,1');  // Most strict on refund
-        
+
         // Payment status check (read-only)
         Route::get('/{payment}', [PaymentController::class, 'show'])
             ->name('api.payments.show');
@@ -68,12 +70,12 @@ Route::prefix('webhooks')
         Route::post('/tinkoff', [PaymentController::class, 'webhookTinkoff'])
             ->name('api.webhook.tinkoff')
             ->withoutMiddleware(['auth:sanctum', 'tenant']);  // Webhooks don't have auth
-        
+
         // Tochka Bank webhook
         Route::post('/tochka', [PaymentController::class, 'webhookTochka'])
             ->name('api.webhook.tochka')
             ->withoutMiddleware(['auth:sanctum', 'tenant']);
-        
+
         // Sber webhook
         Route::post('/sber', [PaymentController::class, 'webhookSber'])
             ->name('api.webhook.sber')
@@ -87,38 +89,37 @@ Route::prefix('webhooks')
 
 /**
  * PAYMENT ARCHITECTURE NOTES (PRODUCTION-READY 2026):
- * 
+ *
  * 1. IDEMPOTENCY CHECK (prevent duplicate payments):
  *    - Payload hash stored in payment_idempotency_records
  *    - Expires after 24 hours
  *    - Same payload_hash = return cached response
- * 
+ *
  * 2. FRAUD DETECTION (Multi-layer):
  *    - ML-score > threshold → block
  *    - Duplicate card attempts → block
  *    - High amount + new device → review
  *    - 3+ failed attempts → block
- * 
+ *
  * 3. RATE LIMITING (Tenant-aware):
  *    - Payment init: 5/min per tenant
  *    - Payment capture: 5/min per tenant
  *    - Payment refund: 3/min per tenant (strictest)
  *    - Global: 10/min per tenant
- * 
+ *
  * 4. WEBHOOK SECURITY:
  *    - HMAC-SHA256 signature verification
  *    - IP whitelist for payment gateways
  *    - Idempotent processing
  *    - Retry logic (exponential backoff)
- * 
+ *
  * 5. WALLET INTEGRATION:
  *    - After capture → WalletService::credit()
  *    - After refund → WalletService::credit()
  *    - All operations in DB::transaction()
- * 
+ *
  * 6. AUDIT LOGGING:
  *    - All payments logged with correlation_id
  *    - Fraud attempts logged to fraud_alert channel
  *    - 3-year retention
  */
-

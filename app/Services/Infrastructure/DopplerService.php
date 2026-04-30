@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * DopplerService — CatVRF 2026 Component.
@@ -7,18 +9,21 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/dopplerservice
  * @see https://catvrf.ru/docs/dopplerservice
  * @see https://catvrf.ru/docs/dopplerservice
  */
 
-
 namespace App\Services\Infrastructure;
+
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class DopplerService
@@ -30,9 +35,8 @@ namespace App\Services\Infrastructure;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Services\Infrastructure
+ * @see FraudControlService
+ * @see AuditService
  */
 final class DopplerService
 {
@@ -41,7 +45,7 @@ final class DopplerService
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return env($key, $default);
+        return config($key, $default);
     }
 
     /**
@@ -54,18 +58,14 @@ final class DopplerService
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {

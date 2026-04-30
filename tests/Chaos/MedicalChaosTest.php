@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -7,6 +9,10 @@ use App\Models\User;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use App\Domains\Medical\MedicalHealthcare\Services\AI\HealthcareAIDiagnosticService;
+use App\Services\Compliance\PIIAnonymizationService;
+use App\Services\ML\EmbeddingService;
+use App\Services\Notifications\NotificationService;
 
 /**
  * Chaos Engineering Tests for Medical Vertical
@@ -20,20 +26,13 @@ use Tests\TestCase;
  * - Concurrent appointment conflicts
  * - PII anonymization failure
  */
-
 class MedicalChaosTest extends TestCase
 {
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_system_works_when_redis_is_down(): void
     {
@@ -60,7 +59,7 @@ class MedicalChaosTest extends TestCase
     public function test_ai_diagnostic_fallback_when_unavailable(): void
     {
         // Mock AI diagnostic service as unavailable
-        $this->mock(\App\Domains\Medical\MedicalHealthcare\Services\AI\HealthcareAIDiagnosticService::class, function ($mock) {
+        $this->mock(HealthcareAIDiagnosticService::class, function ($mock) {
             $mock->shouldReceive('diagnose')
                 ->andThrow(new \Exception('AI service unavailable'));
             $mock->shouldReceive('fallbackRules')
@@ -88,6 +87,7 @@ class MedicalChaosTest extends TestCase
         // Mock slow query (simulate delay)
         DB::shouldReceive('transaction')->andReturnUsing(function ($callback) {
             sleep(1); // Simulate delay
+
             return $callback();
         });
 
@@ -129,7 +129,7 @@ class MedicalChaosTest extends TestCase
             if ($i >= 3) {
                 // After threshold, should fail fast with circuit breaker
                 $this->assertTrue(
-                    $response->status() === 503 || 
+                    $response->status() === 503 ||
                     $response->status() === 422
                 );
             }
@@ -160,8 +160,8 @@ class MedicalChaosTest extends TestCase
         }
 
         // Only one should succeed, others should fail with conflict
-        $successCount = count(array_filter($responses, fn($r) => $r->status() === 201));
-        $conflictCount = count(array_filter($responses, fn($r) => $r->status() === 409));
+        $successCount = count(array_filter($responses, fn ($r) => $r->status() === 201));
+        $conflictCount = count(array_filter($responses, fn ($r) => $r->status() === 409));
 
         $this->assertEquals(1, $successCount);
         $this->assertGreaterThan(0, $conflictCount);
@@ -170,7 +170,7 @@ class MedicalChaosTest extends TestCase
     public function test_pii_anonymization_fallback(): void
     {
         // Mock anonymization service as unavailable
-        $this->mock(\App\Services\Compliance\PIIAnonymizationService::class, function ($mock) {
+        $this->mock(PIIAnonymizationService::class, function ($mock) {
             $mock->shouldReceive('anonymize')
                 ->andThrow(new \Exception('Anonymization service unavailable'));
             $mock->shouldReceive('blockOnFailure')
@@ -195,7 +195,7 @@ class MedicalChaosTest extends TestCase
     public function test_emergency_flow_when_notification_fails(): void
     {
         // Mock notification service as unavailable
-        $this->mock(\App\Services\Notifications\NotificationService::class, function ($mock) {
+        $this->mock(NotificationService::class, function ($mock) {
             $mock->shouldReceive('sendEmergencyAlert')
                 ->andThrow(new \Exception('Notification service unavailable'));
         });
@@ -252,7 +252,7 @@ class MedicalChaosTest extends TestCase
     public function test_health_score_calculation_fallback(): void
     {
         // Mock embedding service as unavailable
-        $this->mock(\App\Services\ML\EmbeddingService::class, function ($mock) {
+        $this->mock(EmbeddingService::class, function ($mock) {
             $mock->shouldReceive('generateEmbedding')
                 ->andThrow(new \Exception('Embedding service unavailable'));
         });
@@ -306,7 +306,7 @@ class MedicalChaosTest extends TestCase
         }
 
         // At least one should succeed (retry logic)
-        $successCount = count(array_filter($responses, fn($r) => $r->status() === 201));
+        $successCount = count(array_filter($responses, fn ($r) => $r->status() === 201));
         $this->assertGreaterThan(0, $successCount);
     }
 
@@ -367,5 +367,13 @@ class MedicalChaosTest extends TestCase
 
         // Should reject entire bulk or process only valid
         $this->assertTrue($response->status() === 422 || $response->status() === 207);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

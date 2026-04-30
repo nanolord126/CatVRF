@@ -19,7 +19,6 @@ use App\Domains\Auto\Taxi\Domain\Enums\RideStatusEnum;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Auto\Taxi\Application\Shared\DTOs
  */
 final readonly class RideDTO
 {
@@ -33,7 +32,6 @@ final readonly class RideDTO
         public ?int $price,
         public string $createdAt,
         public string $updatedAt,
-        public string $correlationId) {
-
-    }
+        public string $correlationId
+    ) {}
 }

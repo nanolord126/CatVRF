@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Factories;
@@ -31,7 +32,7 @@ final class RestaurantFactory extends Factory
             'business_group_id' => null,
             'uuid' => Str::uuid()->toString(),
             'correlation_id' => Str::uuid()->toString(),
-            'name' => fake()->company() . ' Restaurant',
+            'name' => fake()->company().' Restaurant',
             'description' => fake()->paragraph(),
             'address' => fake()->streetAddress(),
             'city' => fake()->city(),

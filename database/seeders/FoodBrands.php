@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -6,8 +7,10 @@ namespace Database\Seeders;
 /**
  * Бренды пищевой отрасли (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-final class FoodBrands extends BaseBrandSeeder {
-    public function run(): void {
+final class FoodBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('FoodDelivery', [
             ['name' => 'Nestlé', 'country' => 'Switzerland'], ['name' => 'PepsiCo', 'country' => 'USA'],
             ['name' => 'Coca-Cola', 'country' => 'USA'], ['name' => 'Unilever', 'country' => 'UK/Netherlands'],
@@ -38,5 +41,3 @@ final class FoodBrands extends BaseBrandSeeder {
         ]);
     }
 }
-
-

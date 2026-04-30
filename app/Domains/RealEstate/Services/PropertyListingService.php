@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
+use App\Domains\RealEstate\Exceptions\RealEstateValidationException;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Security\IdempotencyService;
 use App\Services\ML\RecommendationService;
 use App\Domains\RealEstate\Models\Property;
-use App\Domains\RealEstate\Models\PropertyTransaction;
 use App\Domains\RealEstate\DTOs\CreateListingDto;
 use App\Domains\RealEstate\DTOs\UpdateListingDto;
 use App\Domains\RealEstate\DTOs\PublishListingDto;
@@ -17,34 +24,46 @@ use App\Domains\RealEstate\Domain\Enums\PropertyStatusEnum;
 use App\Domains\RealEstate\Domain\Events\PropertyListed;
 use App\Domains\RealEstate\Domain\Events\PropertyPublished;
 use App\Domains\RealEstate\Domain\Events\PropertyUpdated;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Exception;
 use Illuminate\Http\UploadedFile;
+use Intervention\Image\ImageManager;
 
 final readonly class PropertyListingService
 {
     private const MAX_IMAGES_PER_LISTING = 50;
+
     private const MAX_VIDEO_DURATION_SECONDS = 300;
+
     private const MAX_3D_MODEL_SIZE_MB = 500;
+
     private const IMAGE_QUALITY_THRESHOLD = 0.7;
+
     private const MIN_TITLE_LENGTH = 20;
+
     private const MAX_TITLE_LENGTH = 150;
+
     private const MIN_DESCRIPTION_LENGTH = 100;
+
     private const MAX_DESCRIPTION_LENGTH = 5000;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private IdempotencyService $idempotency,
-        private RecommendationService $recommendation,
-        private RealEstateDynamicPricingService $dynamicPricing,
-        private RealEstateBlockchainVerificationService $blockchain,
-        private RealEstatePredictiveScoringService $predictiveScoring,
-        private RealEstateVirtualTourService $virtualTour,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly IdempotencyService $idempotency,
+        private readonly RecommendationService $recommendation,
+        private readonly RealEstateDynamicPricingService $dynamicPricing,
+        private readonly RealEstateBlockchainVerificationService $blockchain,
+        private readonly RealEstatePredictiveScoringService $predictiveScoring,
+        private readonly RealEstateVirtualTourService $virtualTour,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly FilesystemManager $storage,
+        private readonly ImageManager $imageManager,) {}
 
     public function createListing(CreateListingDto $dto): Property
     {
@@ -69,7 +88,7 @@ final readonly class PropertyListingService
             }
         }
 
-        return DB::transaction(function () use ($dto) {
+        return $this->db->transaction(function () use ($dto) {
             $property = Property::create([
                 'tenant_id' => $dto->tenantId,
                 'business_group_id' => $dto->businessGroupId,
@@ -135,7 +154,7 @@ final readonly class PropertyListingService
 
             $this->generateAIEnhancements($property);
 
-            Log::channel('audit')->info('Property listing created', [
+            $this->log->channel('audit')->$this->logger->info('Property listing created', [
                 'property_id' => $property->id,
                 'property_uuid' => $property->uuid,
                 'seller_id' => $dto->sellerId,
@@ -145,7 +164,7 @@ final readonly class PropertyListingService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new PropertyListed($property, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new PropertyListed($property, $dto->correlationId));
 
             if ($dto->idempotencyKey !== null) {
                 $this->idempotency->store($dto->idempotencyKey, 'property_listing', [
@@ -176,7 +195,7 @@ final readonly class PropertyListingService
 
         $this->validateListingUpdate($property, $dto);
 
-        return DB::transaction(function () use ($dto, $property) {
+        return $this->db->transaction(function () use ($dto, $property) {
             $updateData = array_filter([
                 'title' => $dto->title,
                 'description' => $dto->description,
@@ -194,7 +213,7 @@ final readonly class PropertyListingService
                 'video_url' => $dto->video !== null ? $this->processVideo($dto->video) : null,
                 'tour_3d_url' => $dto->tour3DModel !== null ? $this->process3DModel($dto->tour3DModel) : null,
                 'virtual_tour_enabled' => $dto->tour3DModel !== null,
-            ], fn($value) => $value !== null);
+            ], fn ($value) => $value !== null);
 
             $property->update($updateData);
 
@@ -202,7 +221,7 @@ final readonly class PropertyListingService
                 $this->generateAIEnhancements($property);
             }
 
-            Log::channel('audit')->info('Property listing updated', [
+            $this->log->channel('audit')->$this->logger->info('Property listing updated', [
                 'property_id' => $property->id,
                 'property_uuid' => $property->uuid,
                 'seller_id' => $dto->sellerId,
@@ -210,7 +229,7 @@ final readonly class PropertyListingService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new PropertyUpdated($property, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new PropertyUpdated($property, $dto->correlationId));
 
             return $property->fresh();
         });
@@ -235,7 +254,7 @@ final readonly class PropertyListingService
 
         $this->validateListingPublish($property);
 
-        return DB::transaction(function () use ($dto, $property) {
+        return $this->db->transaction(function () use ($dto, $property) {
             $blockchainResult = null;
             if ($dto->enableBlockchainVerification) {
                 $blockchainResult = $this->blockchain->verifyPropertyDocuments(
@@ -255,7 +274,7 @@ final readonly class PropertyListingService
 
             $property->update([
                 'status' => PropertyStatusEnum::AVAILABLE->value,
-                'published_at' => now(),
+                'published_at' => CarbonImmutable::now(),
                 'is_verified' => $dto->enableBlockchainVerification && $blockchainResult['verified'],
                 'blockchain_verified' => $dto->enableBlockchainVerification && $blockchainResult['verified'],
                 'blockchain_tx_hash' => $blockchainResult['tx_hash'] ?? null,
@@ -275,7 +294,7 @@ final readonly class PropertyListingService
 
             $this->recommendation->indexPropertyForRecommendations($property->id);
 
-            Log::channel('audit')->info('Property listing published', [
+            $this->log->channel('audit')->$this->logger->info('Property listing published', [
                 'property_id' => $property->id,
                 'property_uuid' => $property->uuid,
                 'seller_id' => $dto->sellerId,
@@ -285,7 +304,7 @@ final readonly class PropertyListingService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new PropertyPublished($property, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new PropertyPublished($property, $dto->correlationId));
 
             return $property->fresh();
         });
@@ -300,16 +319,16 @@ final readonly class PropertyListingService
             ->firstOrFail();
 
         if ($property->status === PropertyStatusEnum::SOLD->value) {
-            throw new Exception('Cannot archive sold property');
+            throw new RealEstateValidationException('Cannot archive sold property');
         }
 
-        return DB::transaction(function () use ($property, $correlationId) {
+        return $this->db->transaction(function () use ($property, $correlationId) {
             $property->update([
                 'status' => PropertyStatusEnum::ARCHIVED->value,
-                'archived_at' => now(),
+                'archived_at' => CarbonImmutable::now(),
             ]);
 
-            Log::channel('audit')->info('Property listing archived', [
+            $this->log->channel('audit')->$this->logger->info('Property listing archived', [
                 'property_id' => $property->id,
                 'property_uuid' => $property->uuid,
                 'correlation_id' => $correlationId,
@@ -329,19 +348,19 @@ final readonly class PropertyListingService
             ->firstOrFail();
 
         if ($property->status !== PropertyStatusEnum::AVAILABLE->value) {
-            throw new Exception('Property must be available to mark as sold');
+            throw new RealEstateValidationException('Property must be available to mark as sold');
         }
 
-        return DB::transaction(function () use ($property, $correlationId, $transactionId) {
+        return $this->db->transaction(function () use ($property, $correlationId, $transactionId) {
             $property->update([
                 'status' => PropertyStatusEnum::SOLD->value,
-                'sold_at' => now(),
+                'sold_at' => CarbonImmutable::now(),
                 'transaction_id' => $transactionId,
             ]);
 
             $this->recommendation->removePropertyFromRecommendations($property->id);
 
-            Log::channel('audit')->info('Property marked as sold', [
+            $this->log->channel('audit')->$this->logger->info('Property marked as sold', [
                 'property_id' => $property->id,
                 'property_uuid' => $property->uuid,
                 'transaction_id' => $transactionId,
@@ -356,61 +375,61 @@ final readonly class PropertyListingService
     private function validateListingData(CreateListingDto $dto): void
     {
         if (strlen($dto->title) < self::MIN_TITLE_LENGTH || strlen($dto->title) > self::MAX_TITLE_LENGTH) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('Title must be between %d and %d characters', self::MIN_TITLE_LENGTH, self::MAX_TITLE_LENGTH)
             );
         }
 
         if (strlen($dto->description) < self::MIN_DESCRIPTION_LENGTH || strlen($dto->description) > self::MAX_DESCRIPTION_LENGTH) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('Description must be between %d and %d characters', self::MIN_DESCRIPTION_LENGTH, self::MAX_DESCRIPTION_LENGTH)
             );
         }
 
         if ($dto->price <= 0) {
-            throw new Exception('Price must be greater than 0');
+            throw new RealEstateValidationException('Price must be greater than 0');
         }
 
         if ($dto->area <= 0) {
-            throw new Exception('Area must be greater than 0');
+            throw new RealEstateValidationException('Area must be greater than 0');
         }
 
         if ($dto->rooms <= 0) {
-            throw new Exception('Rooms must be greater than 0');
+            throw new RealEstateValidationException('Rooms must be greater than 0');
         }
 
         if ($dto->lat < -90 || $dto->lat > 90) {
-            throw new Exception('Invalid latitude');
+            throw new RealEstateValidationException('Invalid latitude');
         }
 
         if ($dto->lon < -180 || $dto->lon > 180) {
-            throw new Exception('Invalid longitude');
+            throw new RealEstateValidationException('Invalid longitude');
         }
     }
 
     private function validateImages(?array $images): void
     {
         if ($images === null || count($images) === 0) {
-            throw new Exception('At least one image is required');
+            throw new RealEstateValidationException('At least one image is required');
         }
 
         if (count($images) > self::MAX_IMAGES_PER_LISTING) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('Maximum %d images allowed', self::MAX_IMAGES_PER_LISTING)
             );
         }
 
         foreach ($images as $image) {
-            if (!$image instanceof UploadedFile) {
-                throw new Exception('Invalid image format');
+            if (! $image instanceof UploadedFile) {
+                throw new RealEstateValidationException('Invalid image format');
             }
 
-            if (!in_array($image->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'webp'], true)) {
-                throw new Exception('Only JPG, PNG, and WebP images are allowed');
+            if (! in_array($image->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                throw new RealEstateValidationException('Only JPG, PNG, and WebP images are allowed');
             }
 
             if ($image->getSize() > 10 * 1024 * 1024) {
-                throw new Exception('Image size must be less than 10MB');
+                throw new RealEstateValidationException('Image size must be less than 10MB');
             }
         }
     }
@@ -421,12 +440,12 @@ final readonly class PropertyListingService
             return;
         }
 
-        if (!in_array($video->getClientOriginalExtension(), ['mp4', 'webm', 'mov'], true)) {
-            throw new Exception('Only MP4, WebM, and MOV videos are allowed');
+        if (! in_array($video->getClientOriginalExtension(), ['mp4', 'webm', 'mov'], true)) {
+            throw new RealEstateValidationException('Only MP4, WebM, and MOV videos are allowed');
         }
 
         if ($video->getSize() > 500 * 1024 * 1024) {
-            throw new Exception('Video size must be less than 500MB');
+            throw new RealEstateValidationException('Video size must be less than 500MB');
         }
     }
 
@@ -436,12 +455,12 @@ final readonly class PropertyListingService
             return;
         }
 
-        if (!in_array($model->getClientOriginalExtension(), ['glb', 'gltf', 'obj'], true)) {
-            throw new Exception('Only GLB, GLTF, and OBJ 3D models are allowed');
+        if (! in_array($model->getClientOriginalExtension(), ['glb', 'gltf', 'obj'], true)) {
+            throw new RealEstateValidationException('Only GLB, GLTF, and OBJ 3D models are allowed');
         }
 
         if ($model->getSize() > self::MAX_3D_MODEL_SIZE_MB * 1024 * 1024) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('3D model size must be less than %dMB', self::MAX_3D_MODEL_SIZE_MB)
             );
         }
@@ -450,38 +469,38 @@ final readonly class PropertyListingService
     private function validateListingUpdate(Property $property, UpdateListingDto $dto): void
     {
         if ($property->status === PropertyStatusEnum::SOLD->value) {
-            throw new Exception('Cannot update sold property');
+            throw new RealEstateValidationException('Cannot update sold property');
         }
 
         if ($property->status === PropertyStatusEnum::ARCHIVED->value) {
-            throw new Exception('Cannot update archived property');
+            throw new RealEstateValidationException('Cannot update archived property');
         }
 
         if ($dto->title !== null) {
             if (strlen($dto->title) < self::MIN_TITLE_LENGTH || strlen($dto->title) > self::MAX_TITLE_LENGTH) {
-                throw new Exception(
+                throw new RealEstateValidationException(
                     sprintf('Title must be between %d and %d characters', self::MIN_TITLE_LENGTH, self::MAX_TITLE_LENGTH)
                 );
             }
         }
 
         if ($dto->price !== null && $dto->price <= 0) {
-            throw new Exception('Price must be greater than 0');
+            throw new RealEstateValidationException('Price must be greater than 0');
         }
     }
 
     private function validateListingPublish(Property $property): void
     {
         if ($property->status !== PropertyStatusEnum::DRAFT->value) {
-            throw new Exception('Only draft listings can be published');
+            throw new RealEstateValidationException('Only draft listings can be published');
         }
 
         if (empty($property->images) || count($property->images) === 0) {
-            throw new Exception('At least one image is required to publish');
+            throw new RealEstateValidationException('At least one image is required to publish');
         }
 
         if (empty($property->title) || empty($property->description)) {
-            throw new Exception('Title and description are required to publish');
+            throw new RealEstateValidationException('Title and description are required to publish');
         }
     }
 
@@ -490,10 +509,10 @@ final readonly class PropertyListingService
         $processedImages = [];
 
         foreach ($images as $index => $image) {
-            $path = $image->store('real-estate/images/' . date('Y/m/d'), 'public');
+            $path = $image->store('real-estate/images/'.date('Y/m/d'), 'public');
             $processedImages[] = [
-                'url' => Storage::url($path),
-                'thumbnail_url' => Storage::url($this->generateThumbnail($image)),
+                'url' => $this->storage->url($path),
+                'thumbnail_url' => $this->storage->url($this->generateThumbnail($image)),
                 'order' => $index,
                 'is_primary' => $index === 0,
                 'width' => getimagesize($image->getRealPath())[0] ?? 0,
@@ -512,8 +531,9 @@ final readonly class PropertyListingService
             return null;
         }
 
-        $path = $video->store('real-estate/videos/' . date('Y/m/d'), 'public');
-        return Storage::url($path);
+        $path = $video->store('real-estate/videos/'.date('Y/m/d'), 'public');
+
+        return $this->storage->url($path);
     }
 
     private function process3DModel(?UploadedFile $model): ?string
@@ -522,21 +542,22 @@ final readonly class PropertyListingService
             return null;
         }
 
-        $path = $model->store('real-estate/3d-models/' . date('Y/m/d'), 'public');
-        return Storage::url($path);
+        $path = $model->store('real-estate/3d-models/'.date('Y/m/d'), 'public');
+
+        return $this->storage->url($path);
     }
 
     private function generateThumbnail(UploadedFile $image): string
     {
-        $thumbnail = \Intervention\Image\Facades\Image::make($image->getRealPath())
+        $thumbnail = $this->imageManager->make($image->getRealPath())
             ->resize(300, 200, function ($constraint) {
                 $constraint->aspectRatio();
                 $constraint->upsize();
             })
             ->encode('jpg', 80);
 
-        $thumbnailPath = 'real-estate/thumbnails/' . date('Y/m/d') . '/' . Str::random(40) . '.jpg';
-        Storage::disk('public')->put($thumbnailPath, $thumbnail);
+        $thumbnailPath = 'real-estate/thumbnails/'.date('Y/m/d').'/'.Str::random(40).'.jpg';
+        $this->storage->disk('public')->put($thumbnailPath, $thumbnail);
 
         return $thumbnailPath;
     }

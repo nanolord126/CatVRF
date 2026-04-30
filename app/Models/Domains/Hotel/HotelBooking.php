@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Domains\Hotel;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\HotelBookingFactory;
 
 /**
  * Class HotelBooking
@@ -23,40 +26,38 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Hotel
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class HotelBooking extends Model
 {
+    protected $table = 'hotel_bookings';
 
-        protected $table = 'hotel_bookings';
-
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'tenant_id',
-            'hotel_id',
-            'room_id',
-            'guest_id',
-            'check_in',
-            'check_out',
-            'total_price',
-            'status',
-        ];
+        'tenant_id',
+        'hotel_id',
+        'room_id',
+        'guest_id',
+        'check_in',
+        'check_out',
+        'total_price',
+        'status',
+    ];
 
-        protected static function newFactory()
-        {
-            return \Database\Factories\HotelBookingFactory::new();
-        }
+    protected static function newFactory()
+    {
+        return HotelBookingFactory::new();
+    }
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

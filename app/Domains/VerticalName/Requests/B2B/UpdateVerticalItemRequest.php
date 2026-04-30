@@ -12,8 +12,6 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * CANON 2026 — Layer 7: Requests.
  * Partial update: все поля nullable (кроме id).
- *
- * @package App\Domains\VerticalName\Requests\B2B
  */
 final class UpdateVerticalItemRequest extends FormRequest
 {
@@ -44,7 +42,7 @@ final class UpdateVerticalItemRequest extends FormRequest
             'name' => ['sometimes', 'string', 'min:2', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'price_kopecks' => ['sometimes', 'integer', 'min:100', 'max:100000000'],
-            'sku' => ['nullable', 'string', 'max:100', 'unique:vertical_name_items,sku,' . $itemId],
+            'sku' => ['nullable', 'string', 'max:100', 'unique:vertical_name_items,sku,'.$itemId],
             'category' => ['nullable', 'string', 'max:100'],
             'stock_quantity' => ['sometimes', 'integer', 'min:0', 'max:1000000'],
             'is_active' => ['boolean'],

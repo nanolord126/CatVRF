@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  */
-
 
 namespace App\Domains\Advertising\Domain\Interfaces;
 
@@ -26,8 +26,12 @@ use Illuminate\Support\Collection;
 interface AdCampaignRepositoryInterface
 {
     public function findById(int $id): ?AdCampaign;
+
     public function findByUuid(string $uuid): ?AdCampaign;
+
     public function save(AdCampaign $campaign): AdCampaign;
+
     public function getActiveCampaignsForTenant(int $tenantId): Collection;
+
     public function updateSpent(int $campaignId, int $amount): void;
 }

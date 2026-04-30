@@ -12,9 +12,9 @@ use Illuminate\Contracts\Auth\Guard;
 final class UpdateMasterAction
 {
     public function __construct(
-        private DatabaseManager $db,
-        private AuditService $audit,
-        private Guard $guard,
+        private readonly DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly Guard $guard,
     ) {}
 
     public function execute(int $tenantId, int $masterId, array $data): Master

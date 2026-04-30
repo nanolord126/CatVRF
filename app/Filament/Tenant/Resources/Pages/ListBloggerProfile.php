@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -8,14 +10,8 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-
-
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Class ListBloggerProfile
@@ -23,8 +19,6 @@ use Illuminate\Database\Eloquent\Builder;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListBloggerProfile extends ListRecords
 {
@@ -40,13 +34,6 @@ final class ListBloggerProfile extends ListRecords
         return 'List BloggerProfile';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -57,5 +44,12 @@ final class ListBloggerProfile extends ListRecords
             ->filters([])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->bulkActions([DeleteBulkAction::make()]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
     }
 }

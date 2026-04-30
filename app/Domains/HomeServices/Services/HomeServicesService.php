@@ -1,29 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Services;
 
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use App\Services\AuditService;
+use App\Domains\Shared\Geo\GeoLogisticsAdapter;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class HomeServicesService
 {
-    public function __construct(private FraudControlService $fraud,
-        private \App\Services\AuditService $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterf
+    ) {}
 
-        public function bookService(array $data, int $userId, int $tenantId): HomeServiceJob
-        {
-            $correlationId = $data['correlation_id'] ?? \Illuminate\Support\Str::uuid()->toString();
+    public function bookService(array $data, int $userId, int $tenantId): HomeServiceJob
+    {
+        $correlationId = $data['correlation_id'] ?? \Illuminate\Support\Str::uuid()->toString();
 
-            $this->fraud->check(
-                userId: $this->guard->id() ?? 0,
-                operationType: 'home_service_booking',
-                amount: (int) ($data['price'] ?? 0),
-                correlationId: $correlationId
+        $this->fraud->check(
+            userId: $this->guard->id() ?? 0,
+            operationType: 'home_service_booking',
+            amount: (int) ($data['price'] ?? 0),
+            correlationId: $correlationId
+        );
+
+        // Check if address is in service delivery zone
+        if (isset($data['address'])) {
+            $isInZone = $this->geoAdapter->isAddressInDeliveryZone(
+                address: $data['address'],
+                vertical: 'home_services'
             );
+            if (!$isInZone) {
+                throw new \RuntimeException('Address is outside service delivery zone');
+            }
+        }
 
-            return $this->db->transaction(function () use ($data, $userId, $tenantId, $correlationId) {
+        return $this->db->transaction(function () use ($data, $userId, $tenantId) {
             $job = HomeServiceJob::create([
                 'tenant_id' => $tenantId,
                 'uuid' => Str::uuid(),
@@ -37,24 +55,24 @@ final readonly class HomeServicesService
                 'status' => 'pending',
             ]);
 
-            $this->logger->info('Home service job booked', [
+            $this->logger->$this->logger->info('Home service job booked', [
                 'correlation_id' => $this->correlationId,
                 'job_id' => $job->id,
             ]);
 
             return $job;
-            });
-        }
+        });
+    }
 
-        /**
-         * Выполняет операцию в транзакции с аудитом.
-         */
-        public function executeInTransaction(callable $callback)
-        {
+    /**
+     * Выполняет операцию в транзакции с аудитом.
+     */
+    public function executeInTransaction(callable $callback)
+    {
 
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-    $this->db->transaction(function () use ($callback) {
-                return $callback();
-            });
-        }
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+        $this->db->transaction(function () use ($callback) {
+            return $callback();
+        });
+    }
 }

@@ -7,9 +7,13 @@ namespace App\Domains\Art\Filament\Resources;
 use App\Domains\Art\Models\Artist;
 use Filament\Forms;
 use Filament\Forms\Form;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Art\Filament\Resources\ArtistResource\Pages\CreateArtist;
+use App\Domains\Art\Filament\Resources\ArtistResource\Pages\EditArtist;
+use App\Domains\Art\Filament\Resources\ArtistResource\Pages\ListArtists;
 
 /**
  * Filament Resource: Artist.
@@ -17,7 +21,7 @@ use Filament\Tables\Table;
  * CANON 2026 — Layer 9: Filament admin panel resource.
  * Tenant-scoped через global scope.
  */
-final class ArtistResource extends Resource
+final class ArtistResource extends BaseOptimizedResource
 {
     protected static ?string $model = Artist::class;
 
@@ -76,9 +80,17 @@ final class ArtistResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Domains\Art\Filament\Resources\ArtistResource\Pages\ListArtists::route('/'),
-            'create' => \App\Domains\Art\Filament\Resources\ArtistResource\Pages\CreateArtist::route('/create'),
-            'edit'   => \App\Domains\Art\Filament\Resources\ArtistResource\Pages\EditArtist::route('/{record}/edit'),
+            'index'  => ListArtists::route('/'),
+            'create' => CreateArtist::route('/create'),
+            'edit'   => EditArtist::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Art
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

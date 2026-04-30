@@ -14,12 +14,6 @@ final class FashionReviewAggregationServiceTest extends TestCase
 
     private FashionReviewAggregationService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionReviewAggregationService::class);
-    }
-
     public function test_aggregate_product_reviews(): void
     {
         $result = $this->service->aggregateProductReviews(1, 1);
@@ -80,5 +74,11 @@ final class FashionReviewAggregationServiceTest extends TestCase
         $this->assertIsArray($result);
         $this->assertArrayHasKey('average_rating', $result);
         $this->assertArrayHasKey('recent_trend', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionReviewAggregationService::class);
     }
 }

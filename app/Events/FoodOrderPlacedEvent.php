@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Events;
@@ -9,10 +10,11 @@ use Illuminate\Queue\SerializesModels;
 
 final class FoodOrderPlacedEvent
 {
-    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use SerializesModels;
 
     public function __construct(
-        public readonly FoodOrder $order
+        public readonly FoodOrder $order,
+        public readonly string $correlationId = '',
     ) {}
 }
-

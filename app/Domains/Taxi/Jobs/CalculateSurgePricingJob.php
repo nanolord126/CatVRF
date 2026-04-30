@@ -2,6 +2,8 @@
 
 namespace App\Domains\Taxi\Jobs;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Taxi\Models\TaxiTariff;
 use App\Services\FraudControlService;
 use Illuminate\Bus\Queueable;
@@ -15,14 +17,12 @@ use Psr\Log\LoggerInterface;
 
 final readonly class CalculateSurgePricingJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private const CACHE_TTL = 60;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $loggerInterface,
         public readonly int $tenantId,
-        public readonly string $correlationId,
-    ) {}
+        public readonly string $correlationId,) {}
 
     public function handle(
         FraudControlService $fraud,
@@ -54,7 +54,7 @@ final readonly class CalculateSurgePricingJob implements ShouldQueue
 
         $cache->forget("taxi:surge:{$this->tenantId}");
 
-        $logger->info('Surge pricing calculated', [
+        $logger->$this->logger->info('Surge pricing calculated', [
             'tenant_id' => $this->tenantId,
             'tariffs_updated' => $tariffs->count(),
             'correlation_id' => $this->correlationId,
@@ -76,7 +76,7 @@ final readonly class CalculateSurgePricingJob implements ShouldQueue
 
         $ratio = $availableDrivers > 0 ? $pendingRides / $availableDrivers : 2.0;
 
-        $hour = now()->hour;
+        $hour = CarbonImmutable::now()->hour;
         $isRushHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
 
         $surgeMultiplier = match(true) {
@@ -104,5 +104,12 @@ final readonly class CalculateSurgePricingJob implements ShouldQueue
             ->where('taxi_vehicles.vehicle_class', $vehicleClass)
             ->where('taxi_vehicles.is_active', true)
             ->count();
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('taxi job failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

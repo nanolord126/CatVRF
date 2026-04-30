@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Requests;
 
@@ -57,8 +59,8 @@ final class CreateSalonRequest extends FormRequest
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
      */

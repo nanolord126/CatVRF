@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -13,31 +15,12 @@ class PaymentE2ETest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
+
     private Wallet $wallet;
+
     private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Create user
-        $this->user = User::factory()->create();
-
-        // Create tenant
-        $this->tenant = Tenant::factory()->create([
-            'owner_id' => $this->user->id,
-        ]);
-
-        // Create wallet
-        $this->wallet = Wallet::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'current_balance' => 100000, // 1000 руб
-        ]);
-
-        // Create token
-        $this->token = $this->user->createToken('test-token')->plainTextToken;
-    }
 
     /**
      * Test: Get wallet balance
@@ -104,7 +87,7 @@ class PaymentE2ETest extends TestCase
             ]);
 
         $response->assertStatus(201);
-        
+
         // Verify balance updated
         $this->wallet->refresh();
         $this->assertEquals($balanceBefore - 25000, $this->wallet->current_balance);
@@ -210,7 +193,7 @@ class PaymentE2ETest extends TestCase
 
         // Should return 201 or 200 depending on implementation
         $this->assertTrue($response->status() >= 200 && $response->status() < 400);
-        
+
         if ($response->status() < 300) {
             $response->assertJsonStructure([
                 'data' => [
@@ -220,5 +203,27 @@ class PaymentE2ETest extends TestCase
                 'correlation_id',
             ]);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Create user
+        $this->user = User::factory()->create();
+
+        // Create tenant
+        $this->tenant = Tenant::factory()->create([
+            'owner_id' => $this->user->id,
+        ]);
+
+        // Create wallet
+        $this->wallet = Wallet::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'current_balance' => 100000, // 1000 руб
+        ]);
+
+        // Create token
+        $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 }

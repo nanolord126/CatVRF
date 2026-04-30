@@ -1,97 +1,102 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Services;
 
-use Carbon\Carbon;
-
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class RepairService
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
-
+
     /**
-         * Открытие нового заказа на ремонт.
-         */
-        public function createOrder(Vehicle $vehicle, int $clientId, array $data, string $correlationId): AutoRepairOrder
-        {
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-            return $this->db->transaction(function () use ($vehicle, $clientId, $data, $correlationId) {
-                $data['uuid'] = (string) Str::uuid();
-                $data['tenant_id'] = tenant()->id;
-                $data['vehicle_id'] = $vehicle->id;
-                $data['client_id'] = $clientId;
-                $data['status'] = 'pending';
-                $data['correlation_id'] = $correlationId;
+     * Открытие нового заказа на ремонт.
+     */
+    public function createOrder(Vehicle $vehicle, int $clientId, array $data, string $correlationId): AutoRepairOrder
+    {
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
 
-                $order = AutoRepairOrder::create($data);
+        return $this->db->transaction(function () use ($vehicle, $clientId, $data, $correlationId) {
+            $data['uuid'] = (string) Str::uuid();
+            $data['tenant_id'] = tenant()->id;
+            $data['vehicle_id'] = $vehicle->id;
+            $data['client_id'] = $clientId;
+            $data['status'] = 'pending';
+            $data['correlation_id'] = $correlationId;
 
-                // Перевод авто в статус ремонта
-                $vehicle->update(['status' => 'repair']);
+            $order = AutoRepairOrder::create($data);
 
-                $this->logger->info('Repair order created', [
-                    'order_uuid' => $order->uuid,
-                    'vehicle_uuid' => $vehicle->uuid,
-                    'correlation_id' => $correlationId,
-                ]);
+            // Перевод авто в статус ремонта
+            $vehicle->update(['status' => 'repair']);
 
-                return $order;
-            });
-        }
+            $this->logger->$this->logger->info('Repair order created', [
+                'order_uuid' => $order->uuid,
+                'vehicle_uuid' => $vehicle->uuid,
+                'correlation_id' => $correlationId,
+            ]);
 
-        /**
-         * Обновление стоимости работ и добавление запчастей.
-         */
-        public function addPartsAndLabor(AutoRepairOrder $order, int $laborCost, array $parts, string $correlationId): void
-        {
-            $this->db->transaction(function () use ($order, $laborCost, $parts, $correlationId) {
-                $order->labor_cost_kopecks = $laborCost;
-                $order->parts_list = array_merge($order->parts_list ?? [], $parts);
+            return $order;
+        });
+    }
 
-                // Расчет стоимости запчастей
-                $partsTotal = array_reduce($parts, fn($carry, $item) => $carry + $item['price'], 0);
-                $order->parts_cost_kopecks = $partsTotal;
+    /**
+     * Обновление стоимости работ и добавление запчастей.
+     */
+    public function addPartsAndLabor(AutoRepairOrder $order, int $laborCost, array $parts, string $correlationId): void
+    {
+        $this->db->transaction(function () use ($order, $laborCost, $parts, $correlationId) {
+            $order->labor_cost_kopecks = $laborCost;
+            $order->parts_list = array_merge($order->parts_list ?? [], $parts);
 
-                $order->recalculateTotal();
-                $order->correlation_id = $correlationId;
-                $order->save();
+            // Расчет стоимости запчастей
+            $partsTotal = array_reduce($parts, fn ($carry, $item) => $carry + $item['price'], 0);
+            $order->parts_cost_kopecks = $partsTotal;
 
-                $this->logger->info('Repair costs updated', [
-                    'order_uuid' => $order->uuid,
-                    'labor' => $laborCost,
-                    'parts_count' => count($parts),
-                    'total' => $order->total_cost_kopecks,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-        }
+            $order->recalculateTotal();
+            $order->correlation_id = $correlationId;
+            $order->save();
 
-        /**
-         * Завершение ремонта.
-         */
-        public function completeOrder(AutoRepairOrder $order, string $mechanicReport, string $correlationId): void
-        {
-            $this->db->transaction(function () use ($order, $mechanicReport, $correlationId) {
-                $order->update([
-                    'status' => 'completed',
-                    'mechanic_report' => $mechanicReport,
-                    'finished_at' => Carbon::now(),
-                    'correlation_id' => $correlationId,
-                ]);
+            $this->logger->$this->logger->info('Repair costs updated', [
+                'order_uuid' => $order->uuid,
+                'labor' => $laborCost,
+                'parts_count' => count($parts),
+                'total' => $order->total_cost_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 
-                // Возврат авто в статус "active"
-                $order->vehicle->update(['status' => 'active']);
+    /**
+     * Завершение ремонта.
+     */
+    public function completeOrder(AutoRepairOrder $order, string $mechanicReport, string $correlationId): void
+    {
+        $this->db->transaction(function () use ($order, $mechanicReport, $correlationId) {
+            $order->update([
+                'status' => 'completed',
+                'mechanic_report' => $mechanicReport,
+                'finished_at' => CarbonImmutable::now(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                $this->logger->info('Repair order completed', [
-                    'order_uuid' => $order->uuid,
-                    'vehicle_uuid' => $order->vehicle->uuid,
-                    'final_cost' => $order->total_cost_kopecks,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-        }
+            // Возврат авто в статус "active"
+            $order->vehicle->update(['status' => 'active']);
+
+            $this->logger->$this->logger->info('Repair order completed', [
+                'order_uuid' => $order->uuid,
+                'vehicle_uuid' => $order->vehicle->uuid,
+                'final_cost' => $order->total_cost_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
 }

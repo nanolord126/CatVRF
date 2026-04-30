@@ -15,7 +15,7 @@ use Illuminate\Redis\Connections\Connection;
 final class MasterMatchingController
 {
     public function __construct(
-        private MasterMatchingByPhotoService $matchingService,
+        private readonly MasterMatchingByPhotoService $matchingService,
         private readonly Connection $redis,
     ) {}
 
@@ -25,7 +25,7 @@ final class MasterMatchingController
 
         $result = $this->matchingService->match($dto);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => [
                 'analysis' => $result['analysis'],
@@ -42,9 +42,9 @@ final class MasterMatchingController
         $key = "beauty:user_search_history:{$userId}";
         $history = $this->redis->lrange($key, 0, 9);
 
-        $parsedHistory = array_map(fn($item) => json_decode($item, true), $history);
+        $parsedHistory = array_map(fn ($item) => json_decode($item, true), $history);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $parsedHistory,
         ]);

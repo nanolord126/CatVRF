@@ -1,20 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\Events\SlotHeldEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Log\Logger;
-use Illuminate\Support\Facades\Log;
 
-final readonly class SendSlotHeldNotificationListener implements ShouldQueue
+final class SendSlotHeldNotificationListener implements ShouldQueue
 {
     public int $delay = 5;
 
     public function __construct(
-        private NotificationService $notificationService,
-        private Logger $logger,
+        private readonly LoggerInterface $logger,
+        private readonly NotificationService $notificationService,
     ) {
         $this->onQueue('beauty-notifications');
     }

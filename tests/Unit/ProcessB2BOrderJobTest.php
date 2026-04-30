@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit;
 
@@ -58,6 +60,7 @@ final class ProcessB2BOrderJobTest extends TestCase
         $mock = $this->createMock(WalletService::class);
         $mock->method('debit')->willReturn(null);
         $mock->method('credit')->willReturn(null);
+
         return $mock;
     }
 
@@ -65,6 +68,7 @@ final class ProcessB2BOrderJobTest extends TestCase
     {
         $mock = $this->createMock(CommissionService::class);
         $mock->method('calculateCommission')->willReturn(120000);
+
         return $mock;
     }
 
@@ -72,6 +76,7 @@ final class ProcessB2BOrderJobTest extends TestCase
     {
         $mock = $this->createMock(NotificationService::class);
         $mock->method('send')->willReturn(true);
+
         return $mock;
     }
 
@@ -82,6 +87,7 @@ final class ProcessB2BOrderJobTest extends TestCase
             'score' => 10,
             'decision' => 'allow',
         ]);
+
         return $mock;
     }
 }

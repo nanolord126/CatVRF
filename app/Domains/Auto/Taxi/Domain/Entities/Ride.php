@@ -19,15 +19,14 @@ final class Ride extends Entity
     public function __construct(
         private readonly RideId $id,
         private readonly int $clientId,
-        private ?DriverId $driverId,
-        private RideStatusEnum $status,
+        private readonly ?DriverId $driverId,
+        private readonly RideStatusEnum $status,
         private readonly Coordinate $pickupLocation,
         private readonly Coordinate $dropoffLocation,
-        private ?int $price,
+        private readonly ?int $price,
         private readonly \DateTimeImmutable $createdAt,
-        private \DateTimeImmutable $updatedAt) {
-
-    }
+        private readonly \DateTimeImmutable $updatedAt
+    ) {}
 
     public static function request(
         RideId $id,
@@ -97,7 +96,7 @@ final class Ride extends Entity
     {
         return $this->clientId;
     }
-    
+
     public function getDriverId(): ?DriverId
     {
         return $this->driverId;

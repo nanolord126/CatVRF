@@ -1,8 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
-use App\Domains\Education\Models\CorporateContract;
 use App\Domains\Education\Models\Course;
 use App\Domains\Education\Models\Enrollment;
 use App\Domains\Education\Models\VerticalCourse;
@@ -11,21 +12,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
+use App\Domains\Education\Services\EducationManagementService;
 
 final class B2BVerticalTrainingServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private B2BVerticalTrainingService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = new B2BVerticalTrainingService(
-            $this->app->make(\App\Domains\Education\Services\EducationManagementService::class),
-            Log::channel(),
-        );
-    }
 
     public function test_get_courses_for_vertical(): void
     {
@@ -51,14 +44,14 @@ final class B2BVerticalTrainingServiceTest extends TestCase
         // Arrange
         $course1 = Course::factory()->create();
         $course2 = Course::factory()->create();
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course1->id,
             'vertical' => 'beauty',
             'target_role' => 'master',
             'difficulty_level' => 'beginner',
         ]);
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course2->id,
             'vertical' => 'beauty',
@@ -84,7 +77,7 @@ final class B2BVerticalTrainingServiceTest extends TestCase
             'vertical' => 'beauty',
             'is_required' => true,
         ]);
-        
+
         VerticalCourse::factory()->create([
             'vertical' => 'beauty',
             'is_required' => false,
@@ -171,14 +164,14 @@ final class B2BVerticalTrainingServiceTest extends TestCase
         // Arrange
         $course1 = Course::factory()->create();
         $course2 = Course::factory()->create();
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course1->id,
             'vertical' => 'beauty',
             'target_role' => 'master',
             'difficulty_level' => 'beginner',
         ]);
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course2->id,
             'vertical' => 'beauty',
@@ -199,12 +192,12 @@ final class B2BVerticalTrainingServiceTest extends TestCase
         // Arrange
         $user = User::factory()->create();
         $course = Course::factory()->create();
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course->id,
             'vertical' => 'beauty',
         ]);
-        
+
         Enrollment::factory()->create([
             'user_id' => $user->id,
             'course_id' => $course->id,
@@ -229,12 +222,12 @@ final class B2BVerticalTrainingServiceTest extends TestCase
         $user1 = User::factory()->create(['tenant_id' => $tenantId]);
         $user2 = User::factory()->create(['tenant_id' => $tenantId]);
         $course = Course::factory()->create();
-        
+
         VerticalCourse::factory()->create([
             'course_id' => $course->id,
             'vertical' => 'beauty',
         ]);
-        
+
         Enrollment::factory()->create([
             'user_id' => $user1->id,
             'course_id' => $course->id,
@@ -242,7 +235,7 @@ final class B2BVerticalTrainingServiceTest extends TestCase
             'progress_percent' => 100,
             'completed_at' => now(),
         ]);
-        
+
         Enrollment::factory()->create([
             'user_id' => $user2->id,
             'course_id' => $course->id,
@@ -256,5 +249,14 @@ final class B2BVerticalTrainingServiceTest extends TestCase
         // Assert
         $this->assertCount(2, $progress);
         $this->assertEquals('beauty', $progress->first()['vertical']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = new B2BVerticalTrainingService(
+            $this->app->make(EducationManagementService::class),
+            Log::channel(),
+        );
     }
 }

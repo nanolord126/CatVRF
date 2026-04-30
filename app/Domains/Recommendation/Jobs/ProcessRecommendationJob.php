@@ -1,17 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\Jobs;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Recommendation\Models\Recommendation;
 use App\Services\AuditService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+
 /**
  * Class ProcessRecommendationJob
  *
@@ -22,26 +19,25 @@ use Illuminate\Queue\SerializesModels;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Domains\Recommendation\Jobs
+ * @see ShouldQueue
  */
 final class ProcessRecommendationJob implements ShouldQueue
 {
-
-    public int $tries = 3;
-    public int $backoff = 60;
+    public int $3;
 
     public function __construct(
         private readonly int $modelId,
-        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        private readonly string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {
         $this->onQueue('recommendation');
     }
 
     public function handle(AuditService $audit): void
     {
-        $model = Recommendation::findOrFail($this->modelId);
+        $Recommendation::findOrFail($this->modelId);
 
-        $this->logger->info('ProcessRecommendationJob processed', [
+        $this->logger->$this->logger->info('ProcessRecommendationJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id ?? null,
@@ -55,7 +51,7 @@ final class ProcessRecommendationJob implements ShouldQueue
         );
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Exception $e): void
     {
         $this->logger->error('ProcessRecommendationJob failed', [
             'model_id' => $this->modelId,

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -9,29 +11,17 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\QueryException;
 
-final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
+final class RealEstateChaosTest extends ChaosEngineeringTest
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-    }
 
     public function test_property_service_survives_cache_failure(): void
     {
@@ -162,7 +152,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         $response = $this->actingAs($this->user)
             ->postJson('/api/real-estate/blockchain/verify', [
                 'property_id' => $this->property->id,
-                'document_hash' => '0x' . str_repeat('0', 64),
+                'document_hash' => '0x'.str_repeat('0', 64),
             ]);
 
         $this->assertNotEquals(500, $response->status(), 'Blockchain service should handle external API failure');
@@ -194,7 +184,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
                 ]);
         }
 
-        $successfulUpdates = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulUpdates = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertGreaterThan(0, $successfulUpdates, 'Some updates should succeed despite lock contention');
         $this->restoreNormalLocks();
     }
@@ -257,9 +247,23 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
                 ->getJson('/api/real-estate/properties');
         }
 
-        $successfulRequests = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulRequests = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertGreaterThan(5, $successfulRequests, 'Rate limiting should recover from Redis restart');
         $this->restoreRedis();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
     }
 
     private function simulateCacheFailure(): void
@@ -277,7 +281,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
     {
         DB::listen(function ($query) {
             if (str_contains($query->sql, 'properties')) {
-                throw new \Illuminate\Database\QueryException('Simulated timeout', [], new \Exception());
+                throw new QueryException('Simulated timeout', [], new \Exception());
             }
         });
     }
@@ -302,9 +306,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         usleep($ms * 1000);
     }
 
-    private function restoreNormalLatency(): void
-    {
-    }
+    private function restoreNormalLatency(): void {}
 
     private function simulateRandomFailures(float $probability): void
     {
@@ -333,9 +335,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         // Simulation - would mock filesystem in real implementation
     }
 
-    private function restoreDiskSpace(): void
-    {
-    }
+    private function restoreDiskSpace(): void {}
 
     private function simulateHighMemoryPressure(): void
     {
@@ -352,9 +352,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         // Would mock HTTP client in real implementation
     }
 
-    private function restoreExternalAPI(): void
-    {
-    }
+    private function restoreExternalAPI(): void {}
 
     private function simulateConnectionTimeout(): void
     {
@@ -385,9 +383,7 @@ final class RealEstateChaosTest extends \Tests\Chaos\ChaosEngineeringTest
         // Simulation
     }
 
-    private function restoreService(): void
-    {
-    }
+    private function restoreService(): void {}
 
     private function simulateServiceCrash(): void
     {

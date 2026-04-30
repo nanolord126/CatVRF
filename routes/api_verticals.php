@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -431,4 +432,3 @@ Route::middleware(['api', 'auth:sanctum', 'throttle:api'])->prefix('api/v1')->gr
     // Route::resource('toy-orders', ToysKidsOrderController::class)
     //     ->only(['index', 'store']);
 });
-

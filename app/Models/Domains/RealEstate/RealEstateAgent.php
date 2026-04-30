@@ -6,11 +6,11 @@ namespace App\Models\Domains\RealEstate;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Tenant;
 use App\Models\BusinessGroup;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 final class RealEstateAgent extends Model
 {
@@ -37,24 +37,6 @@ final class RealEstateAgent extends Model
         'is_active' => 'boolean',
         'tags' => 'json',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function (Builder $query): void {
-            if (app()->bound('tenant') && app('tenant') instanceof Tenant) {
-                $query->where('tenant_id', app('tenant')->id);
-            }
-        });
-
-        static::creating(function (Model $model): void {
-            if (!$model->uuid) {
-                $model->uuid = (string) \Illuminate\Support\Str::uuid();
-            }
-            if (!$model->correlation_id) {
-                $model->correlation_id = request()->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            }
-        });
-    }
 
     public function tenant(): BelongsTo
     {
@@ -84,5 +66,23 @@ final class RealEstateAgent extends Model
     public function scopeExperienced(Builder $query): Builder
     {
         return $query->where('deals_count', '>=', 10);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $query): void {
+            if (app()->bound('tenant') && app('tenant') instanceof Tenant) {
+                $query->where('tenant_id', app('tenant')->id);
+            }
+        });
+
+        self::creating(function (Model $model): void {
+            if (! $model->uuid) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (! $model->correlation_id) {
+                $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
+            }
+        });
     }
 }

@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * FraudML Model Validation Service
@@ -14,15 +16,17 @@ use Illuminate\Database\DatabaseManager;
  * - KS-test (Kolmogorov-Smirnov) for distribution drift
  * - PSI (Population Stability Index) for feature drift
  * - AUC-ROC threshold checking
- * 
+ *
  * Provides auto-rollback capability if model fails validation.
  */
 final readonly class FraudMLModelValidator
 {
     private const AUC_THRESHOLD = 0.92;
+
     private const PSI_THRESHOLD = 0.25;  // > 0.25 indicates significant drift
+
     private const KS_THRESHOLD = 0.1;     // > 0.1 indicates distribution shift
-    
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
@@ -37,7 +41,7 @@ final readonly class FraudMLModelValidator
         array $validationFeatures,
         ?string $previousModelVersion = null
     ): array {
-        $this->logger->info('FraudML model validation started', [
+        $this->logger->$this->logger->info('FraudML model validation started', [
             'training_samples' => count($trainingFeatures),
             'validation_samples' => count($validationFeatures),
             'previous_model_version' => $previousModelVersion,
@@ -65,12 +69,37 @@ final readonly class FraudMLModelValidator
                 'psi_max' => self::PSI_THRESHOLD,
                 'ks_max' => self::KS_THRESHOLD,
             ],
-            'validation_timestamp' => now()->toIso8601String(),
+            'validation_timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
 
-        $this->logger->info('FraudML model validation completed', $result);
+        $this->logger->$this->logger->info('FraudML model validation completed', $result);
 
         return $result;
+    }
+
+    /**
+     * Rollback to previous model if validation fails
+     */
+    public function rollbackIfFailed(string $modelVersion, array $validationResult): bool
+    {
+        if ($validationResult['passes_validation']) {
+            return false; // No rollback needed
+        }
+
+        $this->logger->warning('Initiating model rollback due to validation failure', [
+            'model_version' => $modelVersion,
+            'validation_result' => $validationResult,
+        ]);
+
+        // In real implementation: trigger rollback via FraudModelVersion::rollbackToPrevious()
+        // Логирование отката модели
+
+        $this->logger->$this->logger->info('Model rollback completed', [
+            'model_version' => $modelVersion,
+            'rolled_back_to' => 'previous_version',
+        ]);
+
+        return true;
     }
 
     /**
@@ -83,6 +112,7 @@ final readonly class FraudMLModelValidator
                 'auc' => $aucRoc,
                 'threshold' => self::AUC_THRESHOLD,
             ]);
+
             return false;
         }
 
@@ -91,6 +121,7 @@ final readonly class FraudMLModelValidator
                 'psi' => $psiScore,
                 'threshold' => self::PSI_THRESHOLD,
             ]);
+
             return false;
         }
 
@@ -99,6 +130,7 @@ final readonly class FraudMLModelValidator
                 'ks' => $ksScore,
                 'threshold' => self::KS_THRESHOLD,
             ]);
+
             return false;
         }
 
@@ -113,7 +145,7 @@ final readonly class FraudMLModelValidator
     {
         // Simulate AUC calculation
         // In real implementation: use Python scikit-learn or PHP ML library
-        
+
         $truePositives = 0;
         $falsePositives = 0;
         $totalPositives = 0;
@@ -155,7 +187,7 @@ final readonly class FraudMLModelValidator
     {
         // Simulate PSI calculation
         // In real implementation: bin features and calculate distribution differences
-        
+
         if (empty($trainingFeatures) || empty($validationFeatures)) {
             return 0.0;
         }
@@ -181,8 +213,8 @@ final readonly class FraudMLModelValidator
             $binEnd = $binStart + $binWidth;
 
             // Count samples in bin
-            $trainingCount = count(array_filter($trainingValues, fn($v) => $v >= $binStart && $v < $binEnd));
-            $validationCount = count(array_filter($validationValues, fn($v) => $v >= $binStart && $v < $binEnd));
+            $trainingCount = count(array_filter($trainingValues, fn ($v) => $v >= $binStart && $v < $binEnd));
+            $validationCount = count(array_filter($validationValues, fn ($v) => $v >= $binStart && $v < $binEnd));
 
             // Calculate percentages
             $trainingPct = $trainingCount / max(1, count($trainingValues));
@@ -211,7 +243,7 @@ final readonly class FraudMLModelValidator
     {
         // Simulate KS-test calculation
         // In real implementation: use scipy.stats.ks_2samp or similar PHP implementation
-        
+
         if (empty($trainingFeatures) || empty($validationFeatures)) {
             return 0.0;
         }
@@ -252,7 +284,7 @@ final readonly class FraudMLModelValidator
     private function calculateECDF(array $values): callable
     {
         $n = count($values);
-        
+
         return function (float $x) use ($values, $n): float {
             $count = 0;
             foreach ($values as $value) {
@@ -260,32 +292,8 @@ final readonly class FraudMLModelValidator
                     $count++;
                 }
             }
+
             return $count / max(1, $n);
         };
-    }
-
-    /**
-     * Rollback to previous model if validation fails
-     */
-    public function rollbackIfFailed(string $modelVersion, array $validationResult): bool
-    {
-        if ($validationResult['passes_validation']) {
-            return false; // No rollback needed
-        }
-
-        $this->logger->warning('Initiating model rollback due to validation failure', [
-            'model_version' => $modelVersion,
-            'validation_result' => $validationResult,
-        ]);
-
-        // In real implementation: trigger rollback via FraudModelVersion::rollbackToPrevious()
-        // For demo: just log the rollback action
-        
-        $this->logger->info('Model rollback completed', [
-            'model_version' => $modelVersion,
-            'rolled_back_to' => 'previous_version',
-        ]);
-
-        return true;
     }
 }

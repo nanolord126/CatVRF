@@ -17,7 +17,7 @@ use RuntimeException;
 final class PaymentFailedException extends RuntimeException
 {
     public function __construct(
-        private readonly ?int   $paymentRecordId,
+        private readonly ?int $paymentRecordId,
         private readonly string $providerCode,
         private readonly string $reason,
         private readonly string $correlationId,

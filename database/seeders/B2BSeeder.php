@@ -43,7 +43,7 @@ final class B2BSeeder extends Seeder
 
             B2BContract::create([
                 'partner_id' => $partner->id,
-                'contract_number' => 'CTR-' . strtoupper(Str::random(6)),
+                'contract_number' => 'CTR-'.strtoupper(Str::random(6)),
                 'start_date' => now()->subDays(30),
                 'discount_percent' => 15.00,
                 'credit_limit' => 500000.00,

@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Bonus;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\BonusTransaction;
@@ -12,7 +15,11 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Carbon\CarbonImmutable;
 use Throwable;
+use Illuminate\Pagination\Paginator;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * Сервис управления бонусами (Bonus Service)
@@ -32,14 +39,18 @@ use Throwable;
  */
 final readonly class BonusService
 {
+    use WithAuditLogging;
+
     private const HOLD_PERIOD_DAYS = 14;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConnectionInterface $db,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
         private readonly FraudControlService $fraud,
         private readonly WalletService $wallet,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -48,15 +59,8 @@ final readonly class BonusService
      * Бонусы идут в статус PENDING на 14 дней, потом → CREDITED
      * После CREDITED → зачисляются на основной баланс через WalletService
      *
-     * @param int $userId
-     * @param int $tenantId
-     * @param int $amount (копейки)
-     * @param string $type (loyalty, referral, turnover, promo, migration)
-     * @param ?string $sourceType
-     * @param ?int $sourceId
-     * @param ?string $correlationId
-     * @param array $metadata
-     * @return BonusTransaction
+     * @param  int  $amount  (копейки)
+     * @param  string  $type  (loyalty, referral, turnover, promo, migration)
      *
      * @throws RuntimeException (fraud check failed)
      * @throws Throwable
@@ -84,7 +88,7 @@ final readonly class BonusService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Bonus: Award initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Award initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -93,7 +97,14 @@ final readonly class BonusService
 
             // 2. DATABASE TRANSACTION
             $bonus = $this->db->transaction(function () use (
-                $userId, $tenantId, $amount, $type, $sourceType, $sourceId, $correlationId, $metadata
+                $userId,
+                $tenantId,
+                $amount,
+                $type,
+                $sourceType,
+                $sourceId,
+                $correlationId,
+                $metadata
             ) {
                 $wallet = Wallet::where('tenant_id', $tenantId)
                     ->firstOrFail();
@@ -109,15 +120,15 @@ final readonly class BonusService
                     'source_type' => $sourceType,
                     'source_id' => $sourceId,
                     'correlation_id' => $correlationId,
-                    'hold_until' => now()->addDays(self::HOLD_PERIOD_DAYS),
+                    'hold_until' => CarbonImmutable::now()->addDays(self::HOLD_PERIOD_DAYS),
                     'metadata' => $metadata,
-                    'expires_at' => now()->addDays(365), // 1 year expiry
+                    'expires_at' => CarbonImmutable::now()->addDays(365), // 1 year expiry
                     'tags' => ['bonus', 'pending', $type],
                 ]);
             });
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Bonus: Award succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Award succeeded', [
                 'correlation_id' => $correlationId,
                 'bonus_id' => $bonus->id,
                 'user_id' => $userId,
@@ -159,12 +170,12 @@ final readonly class BonusService
         $unlockedCount = 0;
 
         try {
-            $this->logger->channel('audit')->info('Bonus: Unlock expired holds started', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Unlock expired holds started', [
                 'correlation_id' => $correlationId,
             ]);
 
             $pendingBonuses = BonusTransaction::where('status', 'pending')
-                ->where('hold_until', '<=', now())
+                ->where('hold_until', '<=', CarbonImmutable::now())
                 ->limit(100)
                 ->get();
 
@@ -174,7 +185,7 @@ final readonly class BonusService
                         // 1. UPDATE status
                         $bonus->update([
                             'status' => 'credited',
-                            'credited_at' => now(),
+                            'credited_at' => CarbonImmutable::now(),
                             'correlation_id' => $correlationId,
                         ]);
 
@@ -192,7 +203,7 @@ final readonly class BonusService
                         );
 
                         // 3. LOG
-                        $this->logger->channel('audit')->info('Bonus: Hold unlocked', [
+                        $this->logger->channel('audit')->$this->logger->info('Bonus: Hold unlocked', [
                             'correlation_id' => $correlationId,
                             'bonus_id' => $bonus->id,
                             'amount' => $bonus->amount,
@@ -209,13 +220,13 @@ final readonly class BonusService
                 }
             }
 
-            $this->logger->channel('audit')->info('Bonus: Unlock expired holds completed', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Unlock expired holds completed', [
                 'correlation_id' => $correlationId,
                 'unlocked_count' => $unlockedCount,
             ]);
 
             return $unlockedCount;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->channel('audit')->error('Bonus: Unlock process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -229,12 +240,8 @@ final readonly class BonusService
     /**
      * Потратить бонусы пользователем (в checkout)
      *
-     * @param int $userId
-     * @param int $tenantId
-     * @param int $amount (копейки)
-     * @param string $reason (checkout, order, purchase)
-     * @param ?string $correlationId
-     * @return void
+     * @param  int  $amount  (копейки)
+     * @param  string  $reason  (checkout, order, purchase)
      *
      * @throws Throwable
      */
@@ -258,7 +265,7 @@ final readonly class BonusService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Bonus: Spending initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Spending initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -275,7 +282,7 @@ final readonly class BonusService
             );
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Bonus: Spending succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Spending succeeded', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -302,8 +309,6 @@ final readonly class BonusService
     /**
      * Получить доступный баланс бонусов пользователя
      *
-     * @param int $userId
-     * @param int $tenantId
      * @return int (копейки)
      */
     public function getAvailableBonusBalance(int $userId, int $tenantId): int
@@ -311,19 +316,14 @@ final readonly class BonusService
         return BonusTransaction::where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->where('status', 'credited')
-            ->where('expires_at', '>', now())
+            ->where('expires_at', '>', CarbonImmutable::now())
             ->sum('amount');
     }
 
     /**
      * Получить историю бонусных транзакций
-     *
-     * @param int $userId
-     * @param int $tenantId
-     * @param int $perPage
-     * @return \Illuminate\Pagination\Paginator
      */
-    public function getHistory(int $userId, int $tenantId, int $perPage = 20): \Illuminate\Pagination\Paginator
+    public function getHistory(int $userId, int $tenantId, int $perPage = 20): Paginator
     {
         return BonusTransaction::where('user_id', $userId)
             ->where('tenant_id', $tenantId)
@@ -343,20 +343,20 @@ final readonly class BonusService
         $correlationId = Str::uuid()->toString();
 
         try {
-            $expiredCount = BonusTransaction::where('expires_at', '<', now())
+            $expiredCount = BonusTransaction::where('expires_at', '<', CarbonImmutable::now())
                 ->where('status', 'credited')
                 ->update([
                     'status' => 'expired',
                     'correlation_id' => $correlationId,
                 ]);
 
-            $this->logger->channel('audit')->info('Bonus: Expired bonuses processed', [
+            $this->logger->channel('audit')->$this->logger->info('Bonus: Expired bonuses processed', [
                 'correlation_id' => $correlationId,
                 'expired_count' => $expiredCount,
             ]);
 
             return $expiredCount;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->channel('audit')->error('Bonus: Expiry process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),

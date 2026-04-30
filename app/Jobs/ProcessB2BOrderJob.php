@@ -1,40 +1,45 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Bus\Dispatcher;
-
 use App\Services\Wallet\WalletService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
 use App\Services\FraudControlService;
-
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\BalanceTransaction;
+use Carbon\CarbonImmutable;
 
 final class ProcessB2BOrderJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 600;
+
     public int $tries = 3;
+
     public int $backoff = 60;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly int $orderId,
         private readonly int $tenantId,
         private readonly string $correlationId,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     public function handle(
         WalletService $wallet,
@@ -47,7 +52,7 @@ final class ProcessB2BOrderJob implements ShouldQueue
         Dispatcher $bus,
     ): void {
         try {
-            $logger->channel('audit')->info('B2B Order processing started', [
+            $logger->channel('audit')->$this->logger->info('B2B Order processing started', [
                 'order_id' => $this->orderId,
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
@@ -59,11 +64,12 @@ final class ProcessB2BOrderJob implements ShouldQueue
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if (!$order->is_b2b) {
+                if (! $order->is_b2b) {
                     $logger->channel('audit')->warning('Attempted to process non-B2B order as B2B', [
                         'order_id' => $this->orderId,
                         'correlation_id' => $this->correlationId,
                     ]);
+
                     return $order;
                 }
 
@@ -81,7 +87,7 @@ final class ProcessB2BOrderJob implements ShouldQueue
                     'metadata' => array_merge($order->metadata ?? [], [
                         'fraud_score' => $fraudResult['score'],
                         'fraud_decision' => $fraudResult['decision'],
-                        'b2b_processed_at' => now()->toIso8601String(),
+                        'b2b_processed_at' => CarbonImmutable::now()->toIso8601String(),
                     ]),
                 ]);
 
@@ -123,7 +129,7 @@ final class ProcessB2BOrderJob implements ShouldQueue
                 $notification->sendB2BOrderConfirmation($order, $this->correlationId);
                 $notification->sendB2BOrderToSeller($order, $this->correlationId);
 
-                $logger->channel('audit')->info('B2B Order processed successfully', [
+                $logger->channel('audit')->$this->logger->info('B2B Order processed successfully', [
                     'order_id' => $this->orderId,
                     'order_uuid' => $order->uuid,
                     'commission' => $commissionAmount,
@@ -154,13 +160,24 @@ final class ProcessB2BOrderJob implements ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        $logger = $this->logger;
+        $logger->channel('audit')->error('ProcessB2BOrderJob failed permanently', [
+            'order_id' => $this->orderId,
+            'tenant_id' => $this->tenantId,
+            'error' => $exception->getMessage(),
+            'correlation_id' => $this->correlationId,
+        ]);
+    }
+
     private function getSellerWalletId(Order $order, DatabaseManager $db): int
     {
         $sellerId = $db->table('order_items')
             ->where('order_id', $order->id)
             ->value('seller_id');
 
-        if (!$sellerId) {
+        if (! $sellerId) {
             return 0;
         }
 
@@ -169,16 +186,5 @@ final class ProcessB2BOrderJob implements ShouldQueue
             ->first();
 
         return $wallet ? (int) $wallet->id : 0;
-    }
-
-    public function failed(\Throwable $exception): void
-    {
-        $logger = app(LogManager::class);
-        $logger->channel('audit')->error('ProcessB2BOrderJob failed permanently', [
-            'order_id' => $this->orderId,
-            'tenant_id' => $this->tenantId,
-            'error' => $exception->getMessage(),
-            'correlation_id' => $this->correlationId,
-        ]);
     }
 }

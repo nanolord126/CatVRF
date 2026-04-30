@@ -15,8 +15,6 @@ use Illuminate\Support\Str;
  * Трансформирует модель Artwork в JSON для B2B API.
  * Всегда включает correlation_id, tenant_id в meta.
  * B2B-поля (оптовые цены, business_group) видны только для B2B-запросов.
- *
- * @package App\Domains\Art\Resources\B2B
  */
 final class ArtworkResource extends JsonResource
 {

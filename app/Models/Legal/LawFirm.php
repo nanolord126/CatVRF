@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Legal;
 
@@ -11,81 +13,82 @@ use Illuminate\Support\Str;
 
 final class LawFirm extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
-        protected $table = 'law_firms';
+    protected $table = 'law_firms';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'name',
-            'license_number',
-            'address',
-            'city',
-            'specializations',
-            'rating',
-            'is_verified',
-            'correlation_id',
-            'tags',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'name',
+        'license_number',
+        'address',
+        'city',
+        'specializations',
+        'rating',
+        'is_verified',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $casts = [
-            'uuid' => 'string',
-            'specializations' => 'json',
-            'tags' => 'json',
-            'is_verified' => 'boolean',
-            'rating' => 'integer',
-            'tenant_id' => 'integer',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-            'deleted_at' => 'datetime',
-        ];
+    protected $casts = [
+        'uuid' => 'string',
+        'specializations' => 'json',
+        'tags' => 'json',
+        'is_verified' => 'boolean',
+        'rating' => 'integer',
+        'tenant_id' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
-        protected $hidden = [
-            'deleted_at',
-        ];
+    protected $hidden = [
+        'deleted_at',
+    ];
 
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
-            });
+    public function lawyers(): HasMany
+    {
+        return $this->hasMany(Lawyer::class, 'law_firm_id');
+    }
 
-            static::addGlobalScope('tenant_id', function (Builder $builder) {
-                if (function_exists('tenant')) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(LegalReview::class, 'law_firm_id');
+    }
 
-        public function lawyers(): HasMany
-        {
-            return $this->hasMany(Lawyer::class, 'law_firm_id');
-        }
+    public function scopeVerified(Builder $query): Builder
+    {
+        return $query->where('is_verified', true);
+    }
 
-        public function reviews(): HasMany
-        {
-            return $this->hasMany(LegalReview::class, 'law_firm_id');
-        }
+    public function scopeInCity(Builder $query, string $city): Builder
+    {
+        return $query->where('city', $city);
+    }
 
-        public function scopeVerified(Builder $query): Builder
-        {
-            return $query->where('is_verified', true);
-        }
+    public function getAverageRating(): float
+    {
+        return (float) $this->rating / 100;
+    }
 
-        public function scopeInCity(Builder $query, string $city): Builder
-        {
-            return $query->where('city', $city);
-        }
+    public function isQualifiedForB2B(): bool
+    {
+        return $this->is_verified && count($this->specializations ?? []) > 2;
+    }
 
-        public function getAverageRating(): float
-        {
-            return (float) $this->rating / 100;
-        }
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
+        });
 
-        public function isQualifiedForB2B(): bool
-        {
-            return $this->is_verified && count($this->specializations ?? []) > 2;
-        }
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            if (function_exists('tenant')) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }
