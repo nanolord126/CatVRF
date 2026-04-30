@@ -29,7 +29,7 @@
     },
     "dependencies": {
         "@heroicons/vue": "^2.2.0",
-        "@inertiajs/vue3": "^2.3.17",
+        "@inertiajs/vue3": "^3.0.3",
         "@vitejs/plugin-vue": "^6.0.4",
         "@vueuse/core": "^14.2.1",
         "@zxing/library": "^0.21.3",
