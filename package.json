@@ -38,7 +38,7 @@
         "lucide-vue-next": "^0.577.0",
         "motion": "^12.35.1",
         "serialize-javascript": "^7.0.5",
-        "vue": "^3.5.29",
+        "vue": "^3.5.33",
         "vue-chartjs": "^5.3.3",
         "workbox-window": "^7.4.0",
         "xlsx": "^0.18.5"
