@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService;
 
 /**
  * Unit tests for FraudMLCoordinatorService.
@@ -14,7 +17,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class
+            FraudMLCoordinatorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'FraudMLCoordinatorService must be final');
     }
@@ -22,7 +25,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class
+            FraudMLCoordinatorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'FraudMLCoordinatorService must be readonly');
     }
@@ -30,7 +33,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class
+            FraudMLCoordinatorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'FraudMLCoordinatorService must have __construct');
@@ -40,7 +43,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class, 'create'),
+            method_exists(FraudMLCoordinatorService::class, 'create'),
             'FraudMLCoordinatorService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_update_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class, 'update'),
+            method_exists(FraudMLCoordinatorService::class, 'update'),
             'FraudMLCoordinatorService must implement update()'
         );
     }
@@ -56,7 +59,7 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_delete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class, 'delete'),
+            method_exists(FraudMLCoordinatorService::class, 'delete'),
             'FraudMLCoordinatorService must implement delete()'
         );
     }
@@ -64,17 +67,16 @@ final class FraudMLCoordinatorServiceTest extends TestCase
     public function test_list_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class, 'list'),
+            method_exists(FraudMLCoordinatorService::class, 'list'),
             'FraudMLCoordinatorService must implement list()'
         );
     }
 
-    public function test_getById_method_exists(): void
+    public function test_get_by_id_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLCoordinatorService::class, 'getById'),
+            method_exists(FraudMLCoordinatorService::class, 'getById'),
             'FraudMLCoordinatorService must implement getById()'
         );
     }
-
 }

@@ -1,98 +1,111 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Jobs;
+
+use LoggerInterface;
+
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
-
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-
-use Carbon\Carbon;
-
-
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class ElectronicsInventoryAuditJob
+use App\Domains\Electronics\Models\ElectronicsProduct;
+use App\Domains\Electronics\Services\ElectronicsService;
+use App\Services\AI\DemandForecastService;
+use Illuminate\Support\Str;
+use DateTime;
+use Exception;
+
+final class ElectronicsInventoryAuditJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
+    public int $timeout = 120;
 
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    public int $tries = 3;
 
-        public int $tries = 3;
-        public int $backoff = 60;
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly int $tenantId,
+        private readonly string $correlationId) {}
 
-        /**
-         * Create a new job instance.
-         */
-        public function __construct(
-            private readonly int $tenantId,
-            private string $correlationId = '', private readonly LoggerInterface $logger) {}
+    /**
+     * Execute the job.
+     */
+    public function handle(
+        ElectronicsService $electronicsService,
+        DemandForecastService $demandForecast,
+        LoggerInterface $logger
+    ): void {
+        $correlationId = $this->correlationId !== '' ? $this->correlationId : Str::uuid()->toString();
 
-        /**
-         * Execute the job.
-         */
-        public function handle(
-            ElectronicsService $electronicsService,
-            DemandForecastService $demandForecast,
-        ): void {
-            $correlationId = $this->correlationId ?: (string) Str::uuid();
+        $logger->$this->logger->info('LAYER-8: Electronics Inventory Audit JOB START', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $correlationId,
+        ]);
 
-            $this->logger->info('LAYER-8: Electronics Inventory Audit JOB START', [
+        try {
+            // 1. Fetch low stock products for this electronics domain
+            $lowStockItems = ElectronicsProduct::where('availability_status', 'low_stock')
+                ->orWhere('availability_status', 'out_of_stock')
+                ->get();
+
+            $logger->$this->logger->info('LAYER-8: Found gadgets for reorder check', [
+                'count' => iterator_iterator_count($lowStockItems),
+                'correlation_id' => $correlationId,
+            ]);
+
+            // 2. Predict demand for each item using ML Domain Service
+            foreach ($lowStockItems as $product) {
+                $now = new DateTime();
+                $endDate = (clone $now)->modify('+30 days');
+                $forecast = $demandForecast->forecastForItem(
+                    $product->id,
+                    $now,
+                    $endDate
+                );
+
+                if ($forecast['predicted_demand'] > 50) {
+                    $logger->warning('LAYER-8: HIGH DEMAND GADGET ALERT', [
+                        'sku' => $product->sku,
+                        'forecast' => $forecast['predicted_demand'],
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    // Trigger restocking logic if necessary
+                    $electronicsService->adjustStock($product->id, 10, 'Automated reorder based on forecast', $correlationId);
+                }
+            }
+
+            $logger->$this->logger->info('LAYER-8: Electronics Inventory Audit JOB COMPLETE', [
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $correlationId,
             ]);
 
-            try {
-                // 1. Fetch low stock products for this electronics domain
-                $lowStockItems = ElectronicsProduct::where('availability_status', 'low_stock')
-                    ->orWhere('availability_status', 'out_of_stock')
-                    ->get();
+        } catch (Exception $e) {
+            $logger->error('LAYER-8: Electronics Inventory Audit JOB FAILED', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
 
-                $this->logger->info('LAYER-8: Found gadgets for reorder check', [
-                    'count' => $lowStockItems->count(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                // 2. Predict demand for each item using ML Domain Service
-                foreach ($lowStockItems as $product) {
-                    $forecast = $demandForecast->forecastForItem(
-                        $product->id,
-                        Carbon::now(),
-                        Carbon::now()->addDays(30)
-                    );
-
-                    if ($forecast['predicted_demand'] > 50) {
-                        $this->logger->warning('LAYER-8: HIGH DEMAND GADGET ALERT', [
-                            'sku' => $product->sku,
-                            'forecast' => $forecast['predicted_demand'],
-                            'correlation_id' => $correlationId,
-                        ]);
-
-                        // Trigger restocking logic if necessary
-                        $electronicsService->adjustStock($product->id, 10, 'Automated reorder based on forecast', $correlationId);
-                    }
-                }
-
-                $this->logger->info('LAYER-8: Electronics Inventory Audit JOB COMPLETE', [
-                    'tenant_id' => $this->tenantId,
-                    'correlation_id' => $correlationId,
-                ]);
-
-            } catch (\Throwable $e) {
-                $this->logger->error('LAYER-8: Electronics Inventory Audit JOB FAILED', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                throw $e;
-            }
+            throw $e;
         }
+    }
 
-        /**
-         * Define job tags for Horizon monitoring.
-         */
-        public function tags(): array
-        {
-            return ['electronics', 'inventory', 'tenant:' . $this->tenantId];
-        }
+    
+    public function failed(\Throwable $exception): void
+    {
+        $this->loggerInterface->error('electronics job failed', [
+            'error' => $exception->getMessage(),
+            'correlation_id' => $this->correlationId,
+        ]);
+    }
 }
-

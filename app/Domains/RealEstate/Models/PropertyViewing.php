@@ -4,16 +4,24 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Tenant;
 use App\Models\BusinessGroup;
 use App\Models\User;
+use App\Models\Domains\RealEstate\RealEstateAgent;
+use Illuminate\Support\Str;
 
 final class PropertyViewing extends Model
 {
+    use TenantScoped;
+
     protected $table = 'property_viewings';
 
     protected $fillable = [
@@ -49,34 +57,8 @@ final class PropertyViewing extends Model
         'tags' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function (Builder $query): void {
-            if (app()->bound('tenant') && app('tenant') instanceof Tenant) {
-                $query->where('tenant_id', app('tenant')->id);
-            }
-        });
-
-        static::creating(function (Model $model): void {
-            if (!$model->uuid) {
-                $model->uuid = (string) \Illuminate\Support\Str::uuid();
-            }
-            if (!$model->correlation_id) {
-                $model->correlation_id = request()->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            }
-        });
-
-        static::created(function (PropertyViewing $viewing): void {
-            \Log::channel('audit')->info('Property viewing created', [
-                'viewing_id' => $viewing->id,
-                'property_id' => $viewing->property_id,
-                'user_id' => $viewing->user_id,
-                'scheduled_at' => $viewing->scheduled_at,
-                'is_b2b' => $viewing->is_b2b,
-                'correlation_id' => $viewing->correlation_id,
-            ]);
-        });
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LoggerInterface $logger,) {}
 
     public function tenant(): BelongsTo
     {
@@ -100,7 +82,7 @@ final class PropertyViewing extends Model
 
     public function agent(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Domains\RealEstate\RealEstateAgent::class, 'agent_id');
+        return $this->belongsTo(RealEstateAgent::class, 'agent_id');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -111,13 +93,13 @@ final class PropertyViewing extends Model
     public function scopeHeld(Builder $query): Builder
     {
         return $query->where('status', 'held')
-            ->where('hold_expires_at', '>', now());
+            ->where('hold_expires_at', '>', CarbonImmutable::now());
     }
 
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where('status', 'held')
-            ->where('hold_expires_at', '<=', now());
+            ->where('hold_expires_at', '<=', CarbonImmutable::now());
     }
 
     public function scopeB2C(Builder $query): Builder
@@ -163,5 +145,34 @@ final class PropertyViewing extends Model
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $query): void {
+            if (app()->bound('tenant') && app('tenant') instanceof Tenant) {
+                $query->where('tenant_id', app('tenant')->id);
+            }
+        });
+
+        self::creating(function (Model $model): void {
+            if (! $model->uuid) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (! $model->correlation_id) {
+                $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
+            }
+        });
+
+        self::created(function (PropertyViewing $viewing): void {
+            \$this->logger->channel('audit')->$this->logger->info('Property viewing created', [
+                'viewing_id' => $viewing->id,
+                'property_id' => $viewing->property_id,
+                'user_id' => $viewing->user_id,
+                'scheduled_at' => $viewing->scheduled_at,
+                'is_b2b' => $viewing->is_b2b,
+                'correlation_id' => $viewing->correlation_id,
+            ]);
+        });
     }
 }

@@ -4,26 +4,36 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\DTOs\VideoCallDto;
 use App\Domains\Beauty\Events\VideoCallEndedEvent;
 use App\Domains\Beauty\Models\Master;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final readonly class VideoCallService
 {
     private const CACHE_TTL = 600;
+
     private const MAX_DURATION = 1800;
+
     private const DEFAULT_DURATION = 300;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function initiate(VideoCallDto $dto): array
     {
@@ -36,7 +46,7 @@ final readonly class VideoCallService
             correlationId: $dto->correlationId,
         );
 
-        return DB::transaction(function () use ($dto) {
+        return $this->db->transaction(function () use ($dto) {
             $master = Master::findOrFail($dto->masterId);
 
             $callId = $this->generateCallId();
@@ -53,14 +63,14 @@ final readonly class VideoCallService
                 'master_id' => $master->id,
                 'master_name' => $master->full_name,
                 'duration_seconds' => $duration * 60,
-                'scheduled_for' => $dto->scheduledFor ?? now()->toIso8601String(),
-                'expires_at' => now()->addSeconds($duration * 60 + 300)->toIso8601String(),
+                'scheduled_for' => $dto->scheduledFor ?? CarbonImmutable::now()->toIso8601String(),
+                'expires_at' => CarbonImmutable::now()->addSeconds($duration * 60 + 300)->toIso8601String(),
                 'correlation_id' => $dto->correlationId,
             ];
 
             $this->storeCallSession($callId, $dto, $result);
 
-            Log::channel('audit')->info('Video call initiated', [
+            $this->log->channel('audit')->$this->logger->info('Video call initiated', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'master_id' => $dto->masterId,
@@ -68,7 +78,7 @@ final readonly class VideoCallService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new VideoCallInitiatedEvent(
+            $this->eventDispatcher->dispatch(new VideoCallInitiatedEvent(
                 userId: $dto->userId,
                 masterId: $dto->masterId,
                 callId: $callId,
@@ -96,22 +106,22 @@ final readonly class VideoCallService
     {
         $session = $this->getCallSession($callId);
 
-        if (!$session) {
+        if (! $session) {
             return [
                 'success' => false,
                 'error' => 'Call session not found',
             ];
         }
 
-        Redis::del("beauty:video_call:{$callId}");
+        $this->redis->del("beauty:video_call:{$callId}");
 
-        Log::channel('audit')->info('Video call ended', [
+        $this->log->channel('audit')->$this->logger->info('Video call ended', [
             'call_id' => $callId,
             'duration_seconds' => $durationSeconds,
             'reason' => $reason,
         ]);
 
-        event(new VideoCallEndedEvent(
+        $this->eventDispatcher->dispatch(new VideoCallEndedEvent(
             callId: $callId,
             userId: $session['user_id'],
             masterId: $session['master_id'],
@@ -129,7 +139,7 @@ final readonly class VideoCallService
 
     private function generateCallId(): string
     {
-        return 'vc_' . Str::random(16);
+        return 'vc_'.Str::random(16);
     }
 
     private function generateWebRTCToken(int $userId, int $masterId, string $callId): string
@@ -138,7 +148,7 @@ final readonly class VideoCallService
             'user_id' => $userId,
             'master_id' => $masterId,
             'call_id' => $callId,
-            'exp' => now()->addHours(1)->timestamp,
+            'exp' => CarbonImmutable::now()->addHours(1)->timestamp,
         ];
 
         return base64_encode(json_encode($payload));
@@ -153,16 +163,17 @@ final readonly class VideoCallService
             'tenant_id' => $dto->tenantId,
             'correlation_id' => $dto->correlationId,
             'room_name' => $result['room_name'],
-            'started_at' => now()->toIso8601String(),
+            'started_at' => CarbonImmutable::now()->toIso8601String(),
             'expires_at' => $result['expires_at'],
         ];
 
-        Redis::setex("beauty:video_call:{$callId}", self::CACHE_TTL, json_encode($session));
+        $this->redis->setex("beauty:video_call:{$callId}", self::CACHE_TTL, json_encode($session));
     }
 
     private function getCallSession(string $callId): ?array
     {
-        $session = Redis::get("beauty:video_call:{$callId}");
+        $session = $this->redis->get("beauty:video_call:{$callId}");
+
         return $session ? json_decode($session, true) : null;
     }
 }

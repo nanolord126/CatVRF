@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Wallet\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * DTO для пополнения кошелька.
@@ -31,7 +32,7 @@ final readonly class CreateTopUpDto
             tenantId: (int) $request->input('tenant_id'),
             businessGroupId: $request->filled('business_group_id') ? (int) $request->input('business_group_id') : null,
             amount: (int) $request->input('amount'),
-            correlationId: $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: $request->header('X-Correlation-ID', Str::uuid()->toString()),
             idempotencyKey: $request->input('idempotency_key'),
             description: $request->input('description'),
         );

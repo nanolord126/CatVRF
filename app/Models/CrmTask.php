@@ -1,29 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * CrmTask — задача CRM-оператора (звонок, письмо, встреча и т.д.).
  * Канон CatVRF 2026 — PRODUCTION MANDATORY.
  *
- * @property int         $id
- * @property int|null    $tenant_id
- * @property int|null    $assignee_id
- * @property int|null    $related_lead_id
- * @property string      $title
- * @property string      $type          call|email|meeting|follow_up|demo
- * @property string      $priority      low|normal|high|urgent
- * @property string      $status        open|in_progress|done|cancelled
+ * @property int $id
+ * @property int|null $tenant_id
+ * @property int|null $assignee_id
+ * @property int|null $related_lead_id
+ * @property string $title
+ * @property string $type call|email|meeting|follow_up|demo
+ * @property string $priority low|normal|high|urgent
+ * @property string $status open|in_progress|done|cancelled
  * @property string|null $description
  * @property string|null $result
- * @property \Carbon\Carbon $due_at
+ * @property Carbon $due_at
  * @property string|null $correlation_id
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CrmTask extends Model
 {
@@ -49,15 +55,6 @@ final class CrmTask extends Model
         'due_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (self $model): void {
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-        });
-    }
-
     // ── Relations ────────────────────────────────────────────
 
     public function tenant(): BelongsTo
@@ -77,18 +74,27 @@ final class CrmTask extends Model
 
     // ── Scopes ───────────────────────────────────────────────
 
-    public function scopeOpen($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeOpen($query): Builder
     {
         return $query->whereNotIn('status', ['done', 'cancelled']);
     }
 
-    public function scopeOverdue($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeOverdue($query): Builder
     {
-        return $query->open()->where('due_at', '<', now());
+        return $query->open()->where('due_at', '<', CarbonImmutable::now());
     }
 
-    public function scopeUrgent($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeUrgent($query): Builder
     {
         return $query->where('priority', 'urgent')->open();
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model): void {
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+        });
     }
 }

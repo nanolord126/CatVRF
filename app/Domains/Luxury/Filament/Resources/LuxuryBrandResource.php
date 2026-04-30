@@ -1,16 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Luxury\Filament\Resources;
-
 
 use App\Domains\Luxury\Models\LuxuryBrand;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\CreateLuxuryBrand;
+use App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\EditLuxuryBrand;
+use App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\ListLuxuryBrands;
+use Illuminate\Support\Str;
 
-final class LuxuryBrandResource extends Resource
+final class LuxuryBrandResource extends BaseOptimizedResource
 {
     protected static ?string $model = LuxuryBrand::class;
 
@@ -37,7 +42,7 @@ final class LuxuryBrandResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,17 @@ final class LuxuryBrandResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\ListLuxuryBrands::route('/'),
-            'create' => \App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\CreateLuxuryBrand::route('/create'),
-            'edit' => \App\Domains\Luxury\Filament\Resources\LuxuryBrandResource\Pages\EditLuxuryBrand::route('/{record}/edit'),
+            'index' => ListLuxuryBrands::route('/'),
+            'create' => CreateLuxuryBrand::route('/create'),
+            'edit' => EditLuxuryBrand::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Luxury
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

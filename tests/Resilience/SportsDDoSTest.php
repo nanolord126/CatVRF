@@ -21,28 +21,8 @@ final class SportsDDoSTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $fraud = $this->createMock(FraudControlService::class);
-        $fraud->method('check')->willReturn(null);
-        $audit = $this->createMock(AuditService::class);
-        $db = $this->app->make(DatabaseManager::class);
-        $cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $fraud,
-            audit: $audit,
-            db: $db,
-            cache: $cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_rate_limiter_blocks_excessive_requests(): void
     {
@@ -51,10 +31,11 @@ final class SportsDDoSTest extends TestCase
         $maxRequestsPerMinute = 60;
 
         for ($i = 0; $i < 100; $i++) {
-            $key = "sports:booking:rate_limit:1";
-            
+            $key = 'sports:booking:rate_limit:1';
+
             if (RateLimiter::tooManyAttempts($key, $maxRequestsPerMinute)) {
                 $blockedRequests++;
+
                 continue;
             }
 
@@ -132,7 +113,7 @@ final class SportsDDoSTest extends TestCase
                 );
 
                 $result = $this->service->holdSlot($dto);
-                if (!$result['success']) {
+                if (! $result['success']) {
                     $failures++;
                 }
             } catch (\Exception $e) {
@@ -185,7 +166,7 @@ final class SportsDDoSTest extends TestCase
                 gc_collect_cycles();
                 $currentMemory = memory_get_usage(true);
                 $memoryUsage = ($currentMemory - $initialMemory) / 1024 / 1024;
-                
+
                 if ($memoryUsage > 100) {
                     $this->assertTrue(true, 'Service should handle memory pressure');
                     break;
@@ -223,7 +204,7 @@ final class SportsDDoSTest extends TestCase
         $startTime = microtime(true);
 
         for ($i = 0; $i < $iterations; $i++) {
-            $hash = hash('sha256', Str::random(1000) . $i);
+            $hash = hash('sha256', Str::random(1000).$i);
             $hash = hash('sha256', $hash);
         }
 
@@ -278,9 +259,9 @@ final class SportsDDoSTest extends TestCase
 
         try {
             $this->redis->disconnect();
-            
+
             $releaseResult = $this->service->releaseSlot(1, null, $dto->slotStart, 1, $dto->correlationId);
-            
+
             $this->assertIsArray($releaseResult);
         } catch (\Exception $e) {
             $this->assertStringContainsString('connection', strtolower($e->getMessage()));
@@ -321,10 +302,10 @@ final class SportsDDoSTest extends TestCase
             }
         }
 
-        $successfulHolds = count(array_filter($results, fn($r) => $r['success'] ?? false));
+        $successfulHolds = count(array_filter($results, fn ($r) => $r['success'] ?? false));
 
         $this->assertEquals(1, $successfulHolds, 'Only one hold should succeed for concurrent same-slot requests');
-        $this->assertEquals($concurrentRequests - 1, count(array_filter($results, fn($r) => !($r['success'] ?? false))), 'Others should fail');
+        $this->assertEquals($concurrentRequests - 1, count(array_filter($results, fn ($r) => ! ($r['success'] ?? false))), 'Others should fail');
 
         $slotKey = "sports:slot:hold:1::{$slotStart}";
         $this->redis->del($slotKey);
@@ -369,7 +350,7 @@ final class SportsDDoSTest extends TestCase
         for ($i = 0; $i < $iterations; $i++) {
             $key = "sports:cache_storm:{$i}";
             $value = ['data' => $i, 'timestamp' => now()->toIso8601String()];
-            
+
             $this->redis->setex($key, 60, json_encode($value));
             $keys[] = $key;
         }
@@ -444,7 +425,7 @@ final class SportsDDoSTest extends TestCase
             try {
                 $result = $this->service->holdSlot($dto);
                 $results[] = ['user_id' => $i + 1, 'success' => $result['success']];
-                
+
                 if ($result['success']) {
                     $slotKey = "sports:slot:hold:1::{$dto->slotStart}";
                     $this->redis->del($slotKey);
@@ -454,8 +435,29 @@ final class SportsDDoSTest extends TestCase
             }
         }
 
-        $successfulRequests = count(array_filter($results, fn($r) => $r['success']));
-        
+        $successfulRequests = count(array_filter($results, fn ($r) => $r['success']));
+
         $this->assertGreaterThan(80, $successfulRequests, 'Should handle >80% of concurrent user requests');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $fraud = $this->createMock(FraudControlService::class);
+        $fraud->method('check')->willReturn(null);
+        $audit = $this->createMock(AuditService::class);
+        $db = $this->app->make(DatabaseManager::class);
+        $cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $fraud,
+            audit: $audit,
+            db: $db,
+            cache: $cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

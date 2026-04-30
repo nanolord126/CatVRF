@@ -32,10 +32,10 @@ use ReflectionClass;
  */
 final class InventoryStructureTest extends TestCase
 {
-    private const BASE = __DIR__ . '/../../../../app/Domains/Inventory';
+    private const BASE = __DIR__.'/../../../../app/Domains/Inventory';
 
     /* ================================================================== */
-    /*  Layer 1 — Models                                                   */
+    /*  Layer 1 — Models */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -54,7 +54,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('modelsProvider')]
     public function layer1_model_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Models/{$name}.php";
+        $path = self::BASE."/Models/{$name}.php";
         self::assertFileExists($path, "Layer 1 — Model {$name} must exist");
     }
 
@@ -68,18 +68,18 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer1_model_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Models');
+        self::assertDirectoryExists(self::BASE.'/Models');
     }
 
     #[Test]
     public function layer1_models_count(): void
     {
-        $files = glob(self::BASE . '/Models/*.php');
+        $files = glob(self::BASE.'/Models/*.php');
         self::assertGreaterThanOrEqual(5, count($files ?: []), 'Inventory must have at least 5 models');
     }
 
     /* ================================================================== */
-    /*  Layer 2 — DTOs                                                     */
+    /*  Layer 2 — DTOs */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -98,7 +98,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('dtosProvider')]
     public function layer2_dto_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/DTOs/{$name}.php";
+        $path = self::BASE."/DTOs/{$name}.php";
         self::assertFileExists($path, "Layer 2 — DTO {$name} must exist");
     }
 
@@ -114,11 +114,11 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer2_dto_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/DTOs');
+        self::assertDirectoryExists(self::BASE.'/DTOs');
     }
 
     /* ================================================================== */
-    /*  Layer 3 — Services (+ AI Constructor)                              */
+    /*  Layer 3 — Services (+ AI Constructor) */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -154,19 +154,19 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer3_ai_constructor_exists(): void
     {
-        $path = self::BASE . '/Services/AI/InventoryConstructorService.php';
+        $path = self::BASE.'/Services/AI/InventoryConstructorService.php';
         self::assertFileExists($path, 'CANON: AI Constructor MANDATORY for every vertical');
     }
 
     #[Test]
     public function layer3_services_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Services');
-        self::assertDirectoryExists(self::BASE . '/Services/AI');
+        self::assertDirectoryExists(self::BASE.'/Services');
+        self::assertDirectoryExists(self::BASE.'/Services/AI');
     }
 
     /* ================================================================== */
-    /*  Layer 4 — Requests                                                 */
+    /*  Layer 4 — Requests */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -182,7 +182,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('requestsProvider')]
     public function layer4_request_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Http/Requests/{$name}.php";
+        $path = self::BASE."/Http/Requests/{$name}.php";
         self::assertFileExists($path, "Layer 4 — Request {$name} must exist");
     }
 
@@ -196,11 +196,11 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer4_requests_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Http/Requests');
+        self::assertDirectoryExists(self::BASE.'/Http/Requests');
     }
 
     /* ================================================================== */
-    /*  Layer 5 — Resources (API JsonResource)                             */
+    /*  Layer 5 — Resources (API JsonResource) */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -217,7 +217,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('resourcesProvider')]
     public function layer5_resource_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Http/Resources/{$name}.php";
+        $path = self::BASE."/Http/Resources/{$name}.php";
         self::assertFileExists($path, "Layer 5 — Resource {$name} must exist");
     }
 
@@ -231,11 +231,11 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer5_resources_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Http/Resources');
+        self::assertDirectoryExists(self::BASE.'/Http/Resources');
     }
 
     /* ================================================================== */
-    /*  Layer 6 — Events                                                   */
+    /*  Layer 6 — Events */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -254,7 +254,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('eventsProvider')]
     public function layer6_event_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Events/{$name}.php";
+        $path = self::BASE."/Events/{$name}.php";
         self::assertFileExists($path, "Layer 6 — Event {$name} must exist");
     }
 
@@ -268,18 +268,18 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer6_events_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Events');
+        self::assertDirectoryExists(self::BASE.'/Events');
     }
 
     #[Test]
     public function layer6_events_count(): void
     {
-        $files = glob(self::BASE . '/Events/*.php');
+        $files = glob(self::BASE.'/Events/*.php');
         self::assertGreaterThanOrEqual(5, count($files ?: []), 'Inventory must have at least 5 events');
     }
 
     /* ================================================================== */
-    /*  Layer 7 — Listeners                                                */
+    /*  Layer 7 — Listeners */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -298,7 +298,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('listenersProvider')]
     public function layer7_listener_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Listeners/{$name}.php";
+        $path = self::BASE."/Listeners/{$name}.php";
         self::assertFileExists($path, "Layer 7 — Listener {$name} must exist");
     }
 
@@ -314,11 +314,11 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer7_listeners_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Listeners');
+        self::assertDirectoryExists(self::BASE.'/Listeners');
     }
 
     /* ================================================================== */
-    /*  Layer 8 — Jobs                                                     */
+    /*  Layer 8 — Jobs */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -334,7 +334,7 @@ final class InventoryStructureTest extends TestCase
     #[DataProvider('jobsProvider')]
     public function layer8_job_file_exists(string $name, string $fqcn): void
     {
-        $path = self::BASE . "/Jobs/{$name}.php";
+        $path = self::BASE."/Jobs/{$name}.php";
         self::assertFileExists($path, "Layer 8 — Job {$name} must exist");
     }
 
@@ -348,18 +348,18 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer8_jobs_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Jobs');
+        self::assertDirectoryExists(self::BASE.'/Jobs');
     }
 
     /* ================================================================== */
-    /*  Layer 9 — Filament                                                 */
+    /*  Layer 9 — Filament */
     /* ================================================================== */
 
     #[Test]
     public function layer9_filament_resource_exists(): void
     {
         self::assertFileExists(
-            self::BASE . '/Filament/Resources/InventoryCheckResource.php',
+            self::BASE.'/Filament/Resources/InventoryCheckResource.php',
             'Layer 9 — Filament Resource must exist',
         );
     }
@@ -375,7 +375,7 @@ final class InventoryStructureTest extends TestCase
 
         foreach ($pages as $page) {
             self::assertFileExists(
-                self::BASE . "/Filament/Resources/InventoryCheckResource/Pages/{$page}",
+                self::BASE."/Filament/Resources/InventoryCheckResource/Pages/{$page}",
                 "Layer 9 — Filament page {$page} must exist",
             );
         }
@@ -384,65 +384,65 @@ final class InventoryStructureTest extends TestCase
     #[Test]
     public function layer9_filament_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Filament');
-        self::assertDirectoryExists(self::BASE . '/Filament/Resources');
+        self::assertDirectoryExists(self::BASE.'/Filament');
+        self::assertDirectoryExists(self::BASE.'/Filament/Resources');
     }
 
     /* ================================================================== */
-    /*  Mandatory extras: Enums, Exceptions, Controllers, Policies         */
+    /*  Mandatory extras: Enums, Exceptions, Controllers, Policies */
     /* ================================================================== */
 
     #[Test]
     public function enums_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Enums');
+        self::assertDirectoryExists(self::BASE.'/Enums');
     }
 
     #[Test]
     public function enums_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Enums/StockMovementType.php');
-        self::assertFileExists(self::BASE . '/Enums/InventoryCheckStatus.php');
+        self::assertFileExists(self::BASE.'/Enums/StockMovementType.php');
+        self::assertFileExists(self::BASE.'/Enums/InventoryCheckStatus.php');
     }
 
     #[Test]
     public function exceptions_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Exceptions');
+        self::assertDirectoryExists(self::BASE.'/Exceptions');
     }
 
     #[Test]
     public function exceptions_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Exceptions/InsufficientStockException.php');
+        self::assertFileExists(self::BASE.'/Exceptions/InsufficientStockException.php');
     }
 
     #[Test]
     public function controllers_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Http/Controllers');
+        self::assertDirectoryExists(self::BASE.'/Http/Controllers');
     }
 
     #[Test]
     public function controllers_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Http/Controllers/InventoryController.php');
+        self::assertFileExists(self::BASE.'/Http/Controllers/InventoryController.php');
     }
 
     #[Test]
     public function policies_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Policies');
+        self::assertDirectoryExists(self::BASE.'/Policies');
     }
 
     #[Test]
     public function policies_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Policies/InventoryCheckPolicy.php');
+        self::assertFileExists(self::BASE.'/Policies/InventoryCheckPolicy.php');
     }
 
     /* ================================================================== */
-    /*  CANON: strict_types in EVERY file                                  */
+    /*  CANON: strict_types in EVERY file */
     /* ================================================================== */
 
     #[Test]
@@ -454,16 +454,16 @@ final class InventoryStructureTest extends TestCase
         $violations = [];
         foreach ($files as $file) {
             $content = (string) file_get_contents($file);
-            if (!str_contains($content, 'declare(strict_types=1);')) {
+            if (! str_contains($content, 'declare(strict_types=1);')) {
                 $violations[] = basename($file);
             }
         }
 
-        self::assertEmpty($violations, 'Files missing strict_types: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Files missing strict_types: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  CANON: NO facades anywhere                                         */
+    /*  CANON: NO facades anywhere */
     /* ================================================================== */
 
     #[Test]
@@ -479,18 +479,18 @@ final class InventoryStructureTest extends TestCase
             }
         }
 
-        self::assertEmpty($violations, 'Files importing facades: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Files importing facades: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  CANON: correlation_id used in services and events                   */
+    /*  CANON: correlation_id used in services and events */
     /* ================================================================== */
 
     #[Test]
     public function all_services_reference_correlation_id(): void
     {
-        $serviceFiles = glob(self::BASE . '/Services/*.php') ?: [];
-        $aiFiles      = glob(self::BASE . '/Services/AI/*.php') ?: [];
+        $serviceFiles = glob(self::BASE.'/Services/*.php') ?: [];
+        $aiFiles      = glob(self::BASE.'/Services/AI/*.php') ?: [];
         $all          = array_merge($serviceFiles, $aiFiles);
 
         self::assertNotEmpty($all);
@@ -498,36 +498,36 @@ final class InventoryStructureTest extends TestCase
         $violations = [];
         foreach ($all as $file) {
             $content = (string) file_get_contents($file);
-            if (!str_contains($content, 'correlation_id') && !str_contains($content, 'correlationId')) {
+            if (! str_contains($content, 'correlation_id') && ! str_contains($content, 'correlationId')) {
                 $violations[] = basename($file);
             }
         }
 
-        self::assertEmpty($violations, 'Services missing correlation_id: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Services missing correlation_id: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  9-Layer Summary (informational, always passes)                     */
+    /*  9-Layer Summary (informational, always passes) */
     /* ================================================================== */
 
     #[Test]
     public function nine_layer_compliance_summary(): void
     {
         $layers = [
-            '1-Models'     => is_dir(self::BASE . '/Models'),
-            '2-DTOs'       => is_dir(self::BASE . '/DTOs'),
-            '3-Services'   => is_dir(self::BASE . '/Services'),
-            '3-AI'         => is_dir(self::BASE . '/Services/AI'),
-            '4-Requests'   => is_dir(self::BASE . '/Http/Requests'),
-            '5-Resources'  => is_dir(self::BASE . '/Http/Resources'),
-            '6-Events'     => is_dir(self::BASE . '/Events'),
-            '7-Listeners'  => is_dir(self::BASE . '/Listeners'),
-            '8-Jobs'       => is_dir(self::BASE . '/Jobs'),
-            '9-Filament'   => is_dir(self::BASE . '/Filament'),
-            'Enums'        => is_dir(self::BASE . '/Enums'),
-            'Exceptions'   => is_dir(self::BASE . '/Exceptions'),
-            'Controllers'  => is_dir(self::BASE . '/Http/Controllers'),
-            'Policies'     => is_dir(self::BASE . '/Policies'),
+            '1-Models'     => is_dir(self::BASE.'/Models'),
+            '2-DTOs'       => is_dir(self::BASE.'/DTOs'),
+            '3-Services'   => is_dir(self::BASE.'/Services'),
+            '3-AI'         => is_dir(self::BASE.'/Services/AI'),
+            '4-Requests'   => is_dir(self::BASE.'/Http/Requests'),
+            '5-Resources'  => is_dir(self::BASE.'/Http/Resources'),
+            '6-Events'     => is_dir(self::BASE.'/Events'),
+            '7-Listeners'  => is_dir(self::BASE.'/Listeners'),
+            '8-Jobs'       => is_dir(self::BASE.'/Jobs'),
+            '9-Filament'   => is_dir(self::BASE.'/Filament'),
+            'Enums'        => is_dir(self::BASE.'/Enums'),
+            'Exceptions'   => is_dir(self::BASE.'/Exceptions'),
+            'Controllers'  => is_dir(self::BASE.'/Http/Controllers'),
+            'Policies'     => is_dir(self::BASE.'/Policies'),
         ];
 
         foreach ($layers as $layer => $exists) {
@@ -536,7 +536,7 @@ final class InventoryStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Helpers                                                            */
+    /*  Helpers */
     /* ================================================================== */
 
     /** @return list<string> */

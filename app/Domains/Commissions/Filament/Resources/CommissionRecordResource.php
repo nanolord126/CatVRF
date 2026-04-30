@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Commissions\Filament\Resources;
 
@@ -13,7 +15,9 @@ final class CommissionRecordResource extends Resource
     protected static ?string $model = CommissionRecord::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+
     protected static ?string $navigationGroup = 'Finance';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -32,7 +36,7 @@ final class CommissionRecordResource extends Resource
                 Tables\Columns\TextColumn::make('commission')
                     ->money('rub'),
                 Tables\Columns\TextColumn::make('rate')
-                    ->formatStateType(fn ($state) => $state . '%'),
+                    ->formatStateType(fn ($state) => $state.'%'),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
+use Carbon\CarbonImmutable;
+
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
@@ -20,6 +23,7 @@ use Illuminate\Support\Str;
  *     schema="Notification",
  *     type="object",
  *     required={"id", "user_id", "type", "status"},
+ *
  *     @OpenApi\Property(property="id", type="string", format="uuid"),
  *     @OpenApi\Property(property="user_id", type="integer"),
  *     @OpenApi\Property(property="type", type="string", enum={"payment", "order", "appointment", "referral"}),
@@ -34,57 +38,57 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     /**
      * UUID для трейсинга через систему
      */
-    private string $correlationId;
+    private readonly string $correlationId;
 
     /**
      * Tenant ID для изоляции данных
      */
-    private int $tenantId;
+    private readonly int $tenantId;
 
     /**
      * User ID получателя
      */
-    private int $userId;
+    private readonly int $userId;
 
     /**
      * Тип уведомления (payment, order, appointment, etc)
      */
-    private string $type = 'generic';
+    private readonly string $type = 'generic';
 
     /**
      * Приоритет доставки (high, normal, low)
      */
-    private string $priority = 'normal';
+    private readonly string $priority = 'normal';
 
     /**
      * Каналы доставки (mail, sms, push, database, web)
      */
-    private array $channels = ['database'];
+    private readonly array $channels = ['database'];
 
     /**
      * Данные для шаблонов
      */
-    private array $data = [];
+    private readonly array $data = [];
 
     /**
      * Время жизни уведомления (сек)
      */
-    private ?int $ttl = null;
+    private readonly ?int $ttl = null;
 
     /**
      * Попытки отправки
      */
-    private int $maxAttempts = 3;
+    private readonly int $maxAttempts = 3;
 
     /**
      * Задержка между попытками (сек)
      */
-    private int $backoffDelay = 300;
+    private readonly int $backoffDelay = 300;
 
     /**
      * Проверка дозволения уведомления (opt-out)
      */
-    private bool $checkPreferences = true;
+    private readonly bool $checkPreferences = true;
 
     /**
      * Конструктор
@@ -101,7 +105,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
         $this->data = $data;
         $this->correlationId = $correlationId ?? Str::uuid()->toString();
 
-        if (!empty($channels)) {
+        if (! empty($channels)) {
             $this->channels = $channels;
         }
     }
@@ -125,7 +129,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
             'correlation_id' => $this->correlationId,
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
-            'sent_at' => now()->toIso8601String(),
+            'sent_at' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 
@@ -150,6 +154,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function withCorrelationId(string $id): self
     {
         $this->correlationId = $id;
+
         return $this;
     }
 
@@ -159,6 +164,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function setChannels(string ...$channels): self
     {
         $this->channels = $channels;
+
         return $this;
     }
 
@@ -168,6 +174,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function addChannel(string $channel): self
     {
         $this->channels[] = $channel;
+
         return $this;
     }
 
@@ -177,6 +184,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function priority(string $priority): self
     {
         $this->priority = $priority;
+
         return $this;
     }
 
@@ -186,6 +194,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function ttl(int $seconds): self
     {
         $this->ttl = $seconds;
+
         return $this;
     }
 
@@ -195,6 +204,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function tries(int $count): self
     {
         $this->maxAttempts = $count;
+
         return $this;
     }
 
@@ -204,6 +214,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function backoff(int $seconds): self
     {
         $this->backoffDelay = $seconds;
+
         return $this;
     }
 
@@ -213,6 +224,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     public function skipPreferenceCheck(): self
     {
         $this->checkPreferences = false;
+
         return $this;
     }
 

@@ -9,16 +9,22 @@ use App\Domains\Payment\Enums\PaymentStatus;
 use App\Domains\Payment\Jobs\PaymentFraudCheckJob;
 use App\Domains\Payment\Models\PaymentRecord;
 use App\Domains\Payment\Services\PaymentEngineService;
-use App\Domains\Payment\Services\PaymentService;
 use App\Domains\Payment\Services\IdempotencyService;
 use App\Domains\Payment\Services\PaymentGatewayService;
 use App\Domains\Wallet\Services\AtomicWalletService;
+use App\Domains\FraudML\Services\FraudControlService;
 use App\Services\AuditService;
-use App\Services\FraudControlService;
+use App\Domains\Wallet\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 use Tests\TestCase;
 
 /**
@@ -31,39 +37,8 @@ final class PaymentEngineServiceTest extends TestCase
     use RefreshDatabase;
 
     private PaymentEngineService $paymentEngine;
+
     private IdempotencyService $idempotencyService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->idempotencyService = app(IdempotencyService::class);
-
-        $this->paymentEngine = new PaymentEngineService(
-            app(\Illuminate\Database\DatabaseManager::class),
-            app(\Psr\Log\LoggerInterface::class),
-            app(\Illuminate\Contracts\Auth\Guard::class),
-            app(FraudControlService::class),
-            app(AuditService::class),
-            app(PaymentService::class),
-            $this->idempotencyService,
-            app(PaymentGatewayService::class),
-            app(AtomicWalletService::class),
-        );
-
-        // Clear Redis
-        \Illuminate\Support\Facades\Redis::flushdb();
-
-        // Fake queue for job dispatch
-        Queue::fake();
-        Bus::fake();
-    }
-
-    protected function tearDown(): void
-    {
-        \Illuminate\Support\Facades\Redis::flushdb();
-        parent::tearDown();
-    }
 
     public function test_create_payment_with_new_correlation_id(): void
     {
@@ -77,14 +52,13 @@ final class PaymentEngineServiceTest extends TestCase
         ]);
 
         $dto = new CreatePaymentRecordDto(
-            userId: 1,
-            walletId: null,
             tenantId: 1,
-            amountKopecks: 10000,
+            businessGroupId: null,
             providerCode: 'yookassa',
-            correlationId: 'test_' . uniqid(),
+            amountKopecks: 10000,
+            idempotencyKey: 'test_'.uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
-            verticalCode: 'medical',
         );
 
         $payment = $this->paymentEngine->createPayment($dto, 'https://example.com/return');
@@ -109,17 +83,16 @@ final class PaymentEngineServiceTest extends TestCase
             ], 200),
         ]);
 
-        $correlationId = 'duplicate_test_' . uniqid();
+        $correlationId = 'duplicate_test_'.uniqid();
 
         $dto1 = new CreatePaymentRecordDto(
-            userId: 1,
-            walletId: null,
             tenantId: 1,
-            amountKopecks: 10000,
+            businessGroupId: null,
             providerCode: 'yookassa',
+            amountKopecks: 10000,
+            idempotencyKey: 'test1_'.uniqid(),
             correlationId: $correlationId,
             description: 'Test payment 1',
-            verticalCode: 'medical',
         );
 
         $payment1 = $this->paymentEngine->createPayment($dto1, 'https://example.com/return');
@@ -154,20 +127,19 @@ final class PaymentEngineServiceTest extends TestCase
         ]);
 
         // Create wallet
-        $wallet = \App\Domains\Wallet\Models\Wallet::factory()->create([
+        $wallet = Wallet::factory()->create([
             'current_balance' => 50000, // 500 RUB
             'hold_amount' => 0,
         ]);
 
         $dto = new CreatePaymentRecordDto(
-            userId: 1,
-            walletId: $wallet->id,
             tenantId: 1,
-            amountKopecks: 10000, // 100 RUB
+            businessGroupId: null,
             providerCode: 'yookassa',
-            correlationId: 'test_' . uniqid(),
+            amountKopecks: 10000,
+            idempotencyKey: 'test_'.uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment with hold',
-            verticalCode: 'medical',
         );
 
         $payment = $this->paymentEngine->createPayment($dto, 'https://example.com/return');
@@ -187,14 +159,13 @@ final class PaymentEngineServiceTest extends TestCase
         ]);
 
         $dto = new CreatePaymentRecordDto(
-            userId: 1,
-            walletId: null,
             tenantId: 1,
-            amountKopecks: 10000,
+            businessGroupId: null,
             providerCode: 'yookassa',
-            correlationId: 'test_' . uniqid(),
+            amountKopecks: 10000,
+            idempotencyKey: 'test_'.uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment with failure',
-            verticalCode: 'medical',
         );
 
         $this->expectException(\RuntimeException::class);
@@ -224,9 +195,9 @@ final class PaymentEngineServiceTest extends TestCase
             'provider_code' => 'yookassa',
         ]);
 
-        $result = $this->paymentEngine->capturePayment($payment->id, 'test_' . uniqid());
+        $result = $this->paymentEngine->capturePayment($payment->id, 'test_'.uniqid());
 
-        $this->assertSame(PaymentStatus::COMPLETED, $result->status);
+        $this->assertSame(PaymentStatus::CAPTURED, $result->status);
     }
 
     public function test_capture_payment_fails_for_invalid_status(): void
@@ -238,7 +209,7 @@ final class PaymentEngineServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('cannot be captured from status');
 
-        $this->paymentEngine->capturePayment($payment->id, 'test_' . uniqid());
+        $this->paymentEngine->capturePayment($payment->id, 'test_'.uniqid());
     }
 
     public function test_refund_payment_full(): void
@@ -252,13 +223,13 @@ final class PaymentEngineServiceTest extends TestCase
         ]);
 
         $payment = PaymentRecord::factory()->create([
-            'status' => PaymentStatus::COMPLETED,
+            'status' => PaymentStatus::CAPTURED,
             'provider_payment_id' => 'gateway_payment_id',
             'amount_kopecks' => 10000,
             'provider_code' => 'yookassa',
         ]);
 
-        $result = $this->paymentEngine->refundPayment($payment->id, null, 'test_' . uniqid());
+        $result = $this->paymentEngine->refundPayment($payment->id, null, 'test_'.uniqid());
 
         $this->assertSame(PaymentStatus::REFUNDED, $result->status);
     }
@@ -274,14 +245,46 @@ final class PaymentEngineServiceTest extends TestCase
         ]);
 
         $payment = PaymentRecord::factory()->create([
-            'status' => PaymentStatus::COMPLETED,
+            'status' => PaymentStatus::CAPTURED,
             'provider_payment_id' => 'gateway_payment_id',
             'amount_kopecks' => 10000,
             'provider_code' => 'yookassa',
         ]);
 
-        $result = $this->paymentEngine->refundPayment($payment->id, 5000, 'test_' . uniqid());
+        $result = $this->paymentEngine->refundPayment($payment->id, 5000, 'test_'.uniqid());
 
-        $this->assertSame(PaymentStatus::PARTIALLY_REFUNDED, $result->status);
+        $this->assertSame(PaymentStatus::REFUNDED, $result->status);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->idempotencyService = app(IdempotencyService::class);
+
+        $this->paymentEngine = new PaymentEngineService(
+            app(DatabaseManager::class),
+            app(BusDispatcher::class),
+            app(LoggerInterface::class),
+            app(Guard::class),
+            app(FraudControlService::class),
+            app(AuditService::class),
+            $this->idempotencyService,
+            app(PaymentGatewayService::class),
+            app(AtomicWalletService::class),
+        );
+
+        // Clear Redis
+        Redis::flushdb();
+
+        // Fake queue for job dispatch
+        Queue::fake();
+        Bus::fake();
+    }
+
+    protected function tearDown(): void
+    {
+        Redis::flushdb();
+        parent::tearDown();
     }
 }

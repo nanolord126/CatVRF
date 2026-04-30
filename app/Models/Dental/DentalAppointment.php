@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Dental;
-
-
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -14,121 +14,122 @@ use Illuminate\Support\Str;
 
 final class DentalAppointment extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
+
+    protected $table = 'dental_appointments';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'dentist_id',
+        'client_id',
+        'scheduled_at',
+        'status',
+        'total_price',
+        'is_prepaid',
+        'internal_notes',
+        'correlation_id',
+        'tags',
+    ];
+
+    protected $casts = [
+        'scheduled_at' => 'datetime',
+        'tags' => 'json',
+        'total_price' => 'integer',
+        'is_prepaid' => 'boolean',
+        'tenant_id' => 'integer',
+    ];
+
     public function __construct(
         private readonly Request $request,
         private readonly LoggerInterface $logger,
     ) {}
 
-    use HasFactory, SoftDeletes;
+    /**
+     * Relations: Clinic the appointment is at.
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(DentalClinic::class, 'clinic_id');
+    }
 
-        protected $table = 'dental_appointments';
+    /**
+     * Relations: Dentist performing the service.
+     */
+    public function dentist(): BelongsTo
+    {
+        return $this->belongsTo(Dentist::class, 'dentist_id');
+    }
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'clinic_id',
-            'dentist_id',
-            'client_id',
-            'scheduled_at',
-            'status',
-            'total_price',
-            'is_prepaid',
-            'internal_notes',
-            'correlation_id',
-            'tags',
-        ];
+    /**
+     * Relations: Service performed (if applicable to one service).
+     */
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(DentalService::class, 'service_id');
+    }
 
-        protected $casts = [
-            'scheduled_at' => 'datetime',
-            'tags' => 'json',
-            'total_price' => 'integer',
-            'is_prepaid' => 'boolean',
-            'tenant_id' => 'integer',
-        ];
+    /**
+     * Check if the appointment is for a new patient.
+     * New patient appointments often have different fraud scoring.
+     */
+    public function isNewPatient(): bool
+    {
+        return self::where('client_id', $this->client_id)
+            ->where('id', '!=', $this->id)
+            ->where('status', 'completed')
+            ->count() === 0;
+    }
 
-        /**
-         * Boot logic for automatic UUID and tenant scoping.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
-
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                    $model->tenant_id = tenant()->id;
-                }
-            });
-
-            static::addGlobalScope('tenant', function ($builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
+    /**
+     * Health Privacy Guard (ФЗ-152).
+     * Sensitive notes should not be exposed by default.
+     */
+    public function getObfuscatedNotes(): string
+    {
+        if ($this->request->user()?->can('view_medical_notes', $this)) {
+            return $this->internal_notes ?? '';
         }
 
-        /**
-         * Relations: Clinic the appointment is at.
-         */
-        public function clinic(): BelongsTo
-        {
-            return $this->belongsTo(DentalClinic::class, 'clinic_id');
-        }
+        return '[HIDDEN - MEDICAL CONFIDENTIALITY ФЗ-152]';
+    }
 
-        /**
-         * Relations: Dentist performing the service.
-         */
-        public function dentist(): BelongsTo
-        {
-            return $this->belongsTo(Dentist::class, 'dentist_id');
-        }
+    /**
+     * Change status with auditing.
+     */
+    public function transitionTo(string $newStatus): void
+    {
+        $oldStatus = $this->status;
+        $this->update(['status' => $newStatus]);
 
-        /**
-         * Relations: Service performed (if applicable to one service).
-         */
-        public function service(): BelongsTo
-        {
-            return $this->belongsTo(DentalService::class, 'service_id');
-        }
+        $this->logger->$this->logger->info('Appointment status changed', [
+            'appointment_id' => $this->id,
+            'old' => $oldStatus,
+            'new' => $newStatus,
+            'correlation_id' => $this->correlation_id,
+        ]);
+    }
 
-        /**
-         * Check if the appointment is for a new patient.
-         * New patient appointments often have different fraud scoring.
-         */
-        public function isNewPatient(): bool
-        {
-            return self::where('client_id', $this->client_id)
-                ->where('id', '!=', $this->id)
-                ->where('status', 'completed')
-                ->count() === 0;
-        }
+    /**
+     * Boot logic for automatic UUID and tenant scoping.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
-        /**
-         * Health Privacy Guard (ФЗ-152).
-         * Sensitive notes should not be exposed by default.
-         */
-        public function getObfuscatedNotes(): string
-        {
-            if ($this->request->user()?->can('view_medical_notes', $this)) {
-                return $this->internal_notes ?? '';
+            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
             }
+        });
 
-            return '[HIDDEN - MEDICAL CONFIDENTIALITY ФЗ-152]';
-        }
-
-        /**
-         * Change status with auditing.
-         */
-        public function transitionTo(string $newStatus): void
-        {
-            $oldStatus = $this->status;
-            $this->update(['status' => $newStatus]);
-
-            $this->logger->info('Appointment status changed', [
-                'appointment_id' => $this->id,
-                'old' => $oldStatus,
-                'new' => $newStatus,
-                'correlation_id' => $this->correlation_id,
-            ]);
-        }
+        self::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

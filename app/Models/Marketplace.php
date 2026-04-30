@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Marketplace (общий маркетплейс)
- *
- * @package App\Models
  */
 final class Marketplace extends Model
 {
-
     protected $table = 'marketplace';
 
     protected $fillable = [

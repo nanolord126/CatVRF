@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Services\AuditService;
@@ -11,11 +13,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Schema\Builder as SchemaBuilder;
+use Carbon\CarbonImmutable;
 
 /**
  * AnnualAnonymizationJob — ежегодная анонимизация персональных данных.
@@ -36,27 +38,30 @@ use Illuminate\Database\DatabaseManager;
  */
 final class AnnualAnonymizationJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries   = 1;
+
     public int $timeout = 1800;  // 30 минут
 
-    private string $correlationId;
+    private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    )
-    {
+        private readonly SchemaBuilder $schema,) {
         $this->correlationId = Str::uuid()->toString();
     }
 
     public function handle(AuditService $audit): void
     {
-        $cutoff = now()->subDays(365)->toDateTimeString();
+        $cutoff = CarbonImmutable::now()->subDays(365)->toDateTimeString();
 
-        $this->logger->channel('audit')->info('AnnualAnonymizationJob started', [
+        $this->logger->channel('audit')->$this->logger->info('AnnualAnonymizationJob started', [
             'cutoff'         => $cutoff,
             'correlation_id' => $this->correlationId,
         ]);
@@ -86,7 +91,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
 
         $audit->record('annual_anonymization_completed', 'system', null, [], $stats, $this->correlationId);
 
-        $this->logger->channel('audit')->info('AnnualAnonymizationJob completed', array_merge(
+        $this->logger->channel('audit')->$this->logger->info('AnnualAnonymizationJob completed', array_merge(
             $stats,
             ['correlation_id' => $this->correlationId]
         ));
@@ -101,7 +106,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
      */
     private function anonymizeInactiveUsers(string $cutoff): int
     {
-        if (!$this->tableExists('users')) {
+        if (! $this->tableExists('users')) {
             return 0;
         }
 
@@ -114,7 +119,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
             ->orderBy('id')
             ->chunk(500, function ($users) use (&$count): void {
                 foreach ($users as $user) {
-                    $anonEmail = 'anon_' . substr(hash('sha256', $user->id . $this->config->get('app.anonymization_salt', 'default')), 0, 16) . '@anon.local';
+                    $anonEmail = 'anon_'.substr(hash('sha256', $user->id.$this->config->get('app.anonymization_salt', 'default')), 0, 16).'@anon.local';
 
                     $this->db->table('users')
                         ->where('id', $user->id)
@@ -123,15 +128,15 @@ final class AnnualAnonymizationJob implements ShouldQueue
                             'phone'          => null,
                             'full_name'      => 'Аноним',
                             'is_anonymized'  => true,
-                            'anonymized_at'  => now()->toDateTimeString(),
-                            'updated_at'     => now()->toDateTimeString(),
+                            'anonymized_at'  => CarbonImmutable::now()->toDateTimeString(),
+                            'updated_at'     => CarbonImmutable::now()->toDateTimeString(),
                         ]);
 
                     $count++;
                 }
             });
 
-        $this->logger->channel('audit')->info('Users anonymized', [
+        $this->logger->channel('audit')->$this->logger->info('Users anonymized', [
             'count'          => $count,
             'correlation_id' => $this->correlationId,
         ]);
@@ -145,7 +150,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
      */
     private function blurDeliveryTracks(string $cutoff): int
     {
-        if (!$this->tableExists('delivery_tracks')) {
+        if (! $this->tableExists('delivery_tracks')) {
             return 0;
         }
 
@@ -156,7 +161,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
                 'lon' => $this->db->raw('ROUND(lon::numeric, 2)'),
             ]);
 
-        $this->logger->channel('audit')->info('Delivery tracks blurred', [
+        $this->logger->channel('audit')->$this->logger->info('Delivery tracks blurred', [
             'affected'       => $affected,
             'correlation_id' => $this->correlationId,
         ]);
@@ -173,7 +178,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
         $total = 0;
 
         foreach (['user_behavior_events', 'behavior_events'] as $table) {
-            if (!$this->tableExists($table)) {
+            if (! $this->tableExists($table)) {
                 continue;
             }
 
@@ -185,7 +190,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
             $total += $affected;
         }
 
-        $this->logger->channel('audit')->info('Behavior events user_id cleared', [
+        $this->logger->channel('audit')->$this->logger->info('Behavior events user_id cleared', [
             'affected'       => $total,
             'correlation_id' => $this->correlationId,
         ]);
@@ -198,7 +203,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
      */
     private function anonymizeFraudAttempts(string $cutoff): int
     {
-        if (!$this->tableExists('fraud_attempts')) {
+        if (! $this->tableExists('fraud_attempts')) {
             return 0;
         }
 
@@ -209,7 +214,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
                 'device_fingerprint' => null,
             ]);
 
-        $this->logger->channel('audit')->info('Fraud attempts anonymized', [
+        $this->logger->channel('audit')->$this->logger->info('Fraud attempts anonymized', [
             'affected'       => $affected,
             'correlation_id' => $this->correlationId,
         ]);
@@ -226,7 +231,7 @@ final class AnnualAnonymizationJob implements ShouldQueue
         $total = 0;
 
         foreach (['newsletter_opens', 'newsletter_clicks'] as $table) {
-            if (!$this->tableExists($table)) {
+            if (! $this->tableExists($table)) {
                 continue;
             }
 
@@ -245,7 +250,6 @@ final class AnnualAnonymizationJob implements ShouldQueue
 
     private function tableExists(string $table): bool
     {
-        return \Illuminate\Support\Facades\Schema::hasTable($table);
+        return $this->schema->hasTable($table);
     }
 }
-

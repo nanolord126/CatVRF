@@ -5,7 +5,7 @@
     "noEmit": true,
     "strict": true,
     "lib": ["ES2020", "DOM"],
-    "types": ["cypress", "chai", "mocha", "node"]
+    "types": ["cypress", "chai", "node"]
   },
   "include": [
     "**/*.ts",

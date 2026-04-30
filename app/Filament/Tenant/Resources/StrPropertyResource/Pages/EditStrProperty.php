@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\StrPropertyResource\Pages;
-
 
 use Illuminate\Http\Request;
 use App\Filament\Tenant\Resources\StrPropertyResource;
@@ -15,16 +16,30 @@ use Illuminate\Support\Str;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\StrPropertyResource\Pages
  */
 final class EditStrProperty extends EditRecord
 {
+    protected static string $resource = StrPropertyResource::class;
+
     public function __construct(
         private readonly Request $request,
     ) {}
 
-    protected static string $resource = StrPropertyResource::class;
+    /**
+     * Get the string representation of this object.
+     */
+    public function __toString(): string
+    {
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 
     protected function getHeaderActions(): array
     {
@@ -38,25 +53,5 @@ final class EditStrProperty extends EditRecord
         $data['correlation_id'] = $this->request->header('X-Correlation-ID', (string) Str::uuid());
 
         return $data;
-    }
-
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
     }
 }

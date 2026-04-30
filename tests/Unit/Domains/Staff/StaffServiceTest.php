@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Staff;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for StaffService.
- *
- * @covers \App\Domains\Staff\Domain\Services\StaffService
- */
-final class StaffServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Staff\Domain\Services\StaffService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'StaffService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Staff\Domain\Services\StaffService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'StaffService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Staff');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Staff\Domain\Services\StaffService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'StaffService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('StaffService exists and is instantiable', function () {
+    $this->assertServiceExists('StaffService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Staff\Domain\Services\StaffService::class, 'create'),
-            'StaffService must implement create()'
-        );
-    }
+test('StaffService follows clean architecture', function () {
+    $this->assertCleanArchitecture('StaffService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Staff\Domain\Services\StaffService::class, 'update'),
-            'StaffService must implement update()'
-        );
-    }
+test('StaffService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('StaffService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Staff\Domain\Services\StaffService::class, 'delete'),
-            'StaffService must implement delete()'
-        );
-    }
+test('StaffService enforces quota limits', function () {
+    $this->testServiceWithQuota('StaffService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Staff\Domain\Services\StaffService::class, 'list'),
-            'StaffService must implement list()'
-        );
-    }
+test('StaffService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('StaffService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Staff\Domain\Services\StaffService::class, 'getById'),
-            'StaffService must implement getById()'
-        );
-    }
+test('StaffService has proper caching', function () {
+    $cacheKey = 'staff:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('StaffService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('StaffService dispatches proper events', function () {
+    $eventClass = "App\Domains\Staff\Events\StaffProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('StaffService'));
+        $service->process([]);
+    });
+});
+
+test('StaffService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Staff\Jobs\ProcessStaffJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('StaffService'));
+        $service->processAsync([]);
+    });
+});
+
+test('StaffService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('StaffService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('StaffService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('StaffService'));
+        $service->process([]);
+    }, 'StaffService processed');
+});
+
+test('StaffService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

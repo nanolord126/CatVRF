@@ -1,21 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Models\TaxiDriver;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 use Psr\Log\LoggerInterface;
 
 /**
  * TaxiCRMIntegrationService - CRM integration for taxi ride status synchronization
- * 
+ *
  * Syncs all ride status changes with CRM system for:
  * - Customer journey tracking
  * - Automated follow-up campaigns
@@ -25,13 +26,15 @@ use Psr\Log\LoggerInterface;
 final readonly class TaxiCRMIntegrationService
 {
     private const CACHE_TTL = 300;
+
     private const CRM_API_URL = 'https://api.catvrf-crm.com/v1';
-    
+
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
+        private readonly HttpClientFactory $http,
     ) {}
 
     public function syncOrderCreated(TaxiRide $ride, string $correlationId): void
@@ -47,7 +50,7 @@ final readonly class TaxiCRMIntegrationService
 
         $crmData = [
             'event_type' => 'taxi_order_created',
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
             'order_id' => $ride->uuid,
             'customer_id' => $ride->passenger_id,
             'tenant_id' => $ride->tenant_id,
@@ -71,7 +74,7 @@ final readonly class TaxiCRMIntegrationService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Taxi order creation synced to CRM', [
+        $this->logger->$this->logger->info('Taxi order creation synced to CRM', [
             'ride_uuid' => $ride->uuid,
             'passenger_id' => $ride->passenger_id,
             'correlation_id' => $correlationId,
@@ -91,7 +94,7 @@ final readonly class TaxiCRMIntegrationService
 
         $crmData = [
             'event_type' => 'taxi_driver_assigned',
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
             'order_id' => $ride->uuid,
             'customer_id' => $ride->passenger_id,
             'driver_id' => $driver->id,
@@ -113,7 +116,7 @@ final readonly class TaxiCRMIntegrationService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Driver assignment synced to CRM', [
+        $this->logger->$this->logger->info('Driver assignment synced to CRM', [
             'ride_uuid' => $ride->uuid,
             'driver_id' => $driver->id,
             'correlation_id' => $correlationId,
@@ -133,7 +136,7 @@ final readonly class TaxiCRMIntegrationService
 
         $crmData = [
             'event_type' => 'taxi_ride_started',
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
             'order_id' => $ride->uuid,
             'customer_id' => $ride->passenger_id,
             'driver_id' => $ride->driver_id,
@@ -152,7 +155,7 @@ final readonly class TaxiCRMIntegrationService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Ride start synced to CRM', [
+        $this->logger->$this->logger->info('Ride start synced to CRM', [
             'ride_uuid' => $ride->uuid,
             'driver_id' => $ride->driver_id,
             'correlation_id' => $correlationId,
@@ -172,7 +175,7 @@ final readonly class TaxiCRMIntegrationService
 
         $crmData = [
             'event_type' => 'taxi_ride_completed',
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
             'order_id' => $ride->uuid,
             'customer_id' => $ride->passenger_id,
             'driver_id' => $ride->driver_id,
@@ -194,7 +197,7 @@ final readonly class TaxiCRMIntegrationService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Ride completion synced to CRM', [
+        $this->logger->$this->logger->info('Ride completion synced to CRM', [
             'ride_uuid' => $ride->uuid,
             'final_price' => $ride->final_price,
             'correlation_id' => $correlationId,
@@ -214,7 +217,7 @@ final readonly class TaxiCRMIntegrationService
 
         $crmData = [
             'event_type' => 'taxi_ride_cancelled',
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
             'order_id' => $ride->uuid,
             'customer_id' => $ride->passenger_id,
             'driver_id' => $ride->driver_id,
@@ -236,7 +239,7 @@ final readonly class TaxiCRMIntegrationService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Ride cancellation synced to CRM', [
+        $this->logger->$this->logger->info('Ride cancellation synced to CRM', [
             'ride_uuid' => $ride->uuid,
             'cancelled_by' => $ride->cancelled_by,
             'reason' => $ride->cancellation_reason,
@@ -247,17 +250,17 @@ final readonly class TaxiCRMIntegrationService
     private function sendToCRM(array $data, string $correlationId): void
     {
         try {
-            $response = Http::timeout(5)->post(
-                self::CRM_API_URL . '/events',
+            $response = $this->http->timeout(5)->post(
+                self::CRM_API_URL.'/events',
                 $data,
                 [
-                    'Authorization' => 'Bearer ' . config('services.crm.api_key'),
+                    'Authorization' => 'Bearer '.config('services.crm.api_key'),
                     'X-Correlation-ID' => $correlationId,
                     'Content-Type' => 'application/json',
                 ]
             );
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->logger->warning('CRM sync failed', [
                     'status' => $response->status(),
                     'response' => $response->body(),

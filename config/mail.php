@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Services\Infrastructure\DopplerService;
+
 return [
 
     /*
@@ -14,7 +18,7 @@ return [
     |
     */
 
-    'default' => App\Services\Infrastructure\DopplerService::get('MAIL_MAILER', 'log'),
+    'default' => DopplerService::get('MAIL_MAILER', 'log'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,14 +43,14 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => App\Services\Infrastructure\DopplerService::get('MAIL_SCHEME'),
-            'url' => App\Services\Infrastructure\DopplerService::get('MAIL_URL'),
-            'host' => App\Services\Infrastructure\DopplerService::get('MAIL_HOST', '127.0.0.1'),
-            'port' => App\Services\Infrastructure\DopplerService::get('MAIL_PORT', 2525),
-            'username' => App\Services\Infrastructure\DopplerService::get('MAIL_USERNAME'),
-            'password' => App\Services\Infrastructure\DopplerService::get('MAIL_PASSWORD'),
+            'scheme' => DopplerService::get('MAIL_SCHEME'),
+            'url' => DopplerService::get('MAIL_URL'),
+            'host' => DopplerService::get('MAIL_HOST', '127.0.0.1'),
+            'port' => DopplerService::get('MAIL_PORT', 2525),
+            'username' => DopplerService::get('MAIL_USERNAME'),
+            'password' => DopplerService::get('MAIL_PASSWORD'),
             'timeout' => null,
-            'local_domain' => App\Services\Infrastructure\DopplerService::get('MAIL_EHLO_DOMAIN', parse_url((string) App\Services\Infrastructure\DopplerService::get('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'local_domain' => DopplerService::get('MAIL_EHLO_DOMAIN', parse_url((string) DopplerService::get('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
         'ses' => [
@@ -67,12 +71,12 @@ return [
 
         'sendmail' => [
             'transport' => 'sendmail',
-            'path' => App\Services\Infrastructure\DopplerService::get('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
+            'path' => DopplerService::get('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
         ],
 
         'log' => [
             'transport' => 'log',
-            'channel' => App\Services\Infrastructure\DopplerService::get('MAIL_LOG_CHANNEL'),
+            'channel' => DopplerService::get('MAIL_LOG_CHANNEL'),
         ],
 
         'array' => [
@@ -111,8 +115,8 @@ return [
     */
 
     'from' => [
-        'address' => App\Services\Infrastructure\DopplerService::get('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => App\Services\Infrastructure\DopplerService::get('MAIL_FROM_NAME', 'Example'),
+        'address' => DopplerService::get('MAIL_FROM_ADDRESS', 'hello@example.com'),
+        'name' => DopplerService::get('MAIL_FROM_NAME', 'Example'),
     ],
 
 ];

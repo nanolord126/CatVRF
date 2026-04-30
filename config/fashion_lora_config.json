@@ -1,0 +1,281 @@
+{
+  "version": "1.0.0",
+  "description": "LoRA configuration for PBR texture generation in CatVRF Fashion vertical",
+  "base_model": "flux.1-dev",
+  "alternative_models": ["sdxl-1.0", "pony-diffusion-v6"],
+  "loras": {
+    "fashion_realism": {
+      "name": "FashionRealism_v2",
+      "file": "FashionRealism_v2.safetensors",
+      "strength": 0.78,
+      "trigger_words": [
+        "fashion product photography",
+        "studio lighting",
+        "detailed fabric",
+        "realistic texture"
+      ],
+      "description": "Main LoRA for realistic fashion product photography",
+      "priority": 1,
+      "enabled": true
+    },
+    "fabric_textile": {
+      "name": "FabricTextile",
+      "file": "FabricTextile.safetensors",
+      "strength": 0.72,
+      "trigger_words": [
+        "detailed weave",
+        "knit texture",
+        "denim",
+        "cotton",
+        "silk",
+        "linen",
+        "wool"
+      ],
+      "description": "Specialized LoRA for fabric and textile textures",
+      "priority": 2,
+      "enabled": true
+    },
+    "leather_materials": {
+      "name": "LeatherMaterials",
+      "file": "LeatherMaterials.safetensors",
+      "strength": 0.82,
+      "trigger_words": [
+        "genuine leather texture",
+        "suede",
+        "patent leather",
+        "stitching details"
+      ],
+      "description": "LoRA for leather and synthetic leather materials",
+      "priority": 3,
+      "enabled": true
+    },
+    "garment_construction": {
+      "name": "GarmentConstruction",
+      "file": "GarmentConstruction.safetensors",
+      "strength": 0.68,
+      "trigger_words": [
+        "seams",
+        "stitching",
+        "buttons",
+        "zippers",
+        "hems",
+        "tailoring"
+      ],
+      "description": "LoRA for garment construction details",
+      "priority": 4,
+      "enabled": true
+    },
+    "denim_specialized": {
+      "name": "DenimSpecialized",
+      "file": "DenimSpecialized.safetensors",
+      "strength": 0.75,
+      "trigger_words": [
+        "detailed denim weave",
+        "jeans fabric",
+        "indigo dye",
+        "cotton twill"
+      ],
+      "description": "Specialized LoRA for denim fabrics",
+      "priority": 5,
+      "enabled": true
+    },
+    "knitwear_specialized": {
+      "name": "KnitwearSpecialized",
+      "file": "KnitwearSpecialized.safetensors",
+      "strength": 0.78,
+      "trigger_words": [
+        "cable knit",
+        "ribbed texture",
+        "soft wool",
+        "knitted pattern",
+        "yarn detail"
+      ],
+      "description": "Specialized LoRA for knitwear and wool textures",
+      "priority": 6,
+      "enabled": true
+    },
+    "luxury_fabrics": {
+      "name": "LuxuryFabrics",
+      "file": "LuxuryFabrics.safetensors",
+      "strength": 0.80,
+      "trigger_words": [
+        "smooth silk",
+        "sheen fabric",
+        "luxurious drape",
+        "rich depth",
+        "velvet texture"
+      ],
+      "description": "LoRA for luxury fabrics (silk, velvet, satin)",
+      "priority": 7,
+      "enabled": true
+    },
+    "technical_fabric": {
+      "name": "TechnicalFabric",
+      "file": "TechnicalFabric.safetensors",
+      "strength": 0.70,
+      "trigger_words": [
+        "technical fabric",
+        "mesh panels",
+        "breathable material",
+        "sportswear texture",
+        "performance fabric"
+      ],
+      "description": "LoRA for technical and synthetic fabrics",
+      "priority": 8,
+      "enabled": true
+    },
+    "natural_fabrics": {
+      "name": "NaturalFabrics",
+      "file": "NaturalFabrics.safetensors",
+      "strength": 0.70,
+      "trigger_words": [
+        "linen texture",
+        "natural weave",
+        "breathable fabric",
+        "organic fibers",
+        "canvas texture"
+      ],
+      "description": "LoRA for natural fabrics (linen, cotton, canvas)",
+      "priority": 9,
+      "enabled": true
+    },
+    "synthetic_materials": {
+      "name": "SyntheticMaterials",
+      "file": "SyntheticMaterials.safetensors",
+      "strength": 0.72,
+      "trigger_words": [
+        "synthetic material",
+        "flexible surface",
+        "rubber texture",
+        "plastic texture",
+        "molded detail"
+      ],
+      "description": "LoRA for synthetic materials (rubber, plastic)",
+      "priority": 10,
+      "enabled": true
+    },
+    "mesh_texture": {
+      "name": "MeshTexture",
+      "file": "MeshTexture.safetensors",
+      "strength": 0.70,
+      "trigger_words": [
+        "mesh texture",
+        "perforated fabric",
+        "breathable pattern",
+        "grid structure"
+      ],
+      "description": "LoRA for mesh and perforated fabrics",
+      "priority": 11,
+      "enabled": true
+    },
+    "wool_texture": {
+      "name": "WoolTexture",
+      "file": "WoolTexture.safetensors",
+      "strength": 0.72,
+      "trigger_words": [
+        "wool texture",
+        "natural fibers",
+        "warm fabric",
+        "fleece detail"
+      ],
+      "description": "LoRA for wool and fleece textures",
+      "priority": 12,
+      "enabled": true
+    }
+  },
+  "material_type_lora_mapping": {
+    "fabric": ["fashion_realism:0.78", "fabric_textile:0.72"],
+    "leather": ["leather_materials:0.82", "fashion_realism:0.78", "garment_construction:0.68"],
+    "denim": ["fabric_textile:0.85", "fashion_realism:0.78", "denim_specialized:0.75"],
+    "knitwear": ["fabric_textile:0.78", "knitwear_specialized:0.78", "fashion_realism:0.75"],
+    "silk": ["luxury_fabrics:0.80", "fashion_realism:0.78"],
+    "synthetic": ["technical_fabric:0.70", "fashion_realism:0.75"],
+    "wool": ["fabric_textile:0.75", "wool_texture:0.72", "fashion_realism:0.75"],
+    "linen": ["natural_fabrics:0.70", "fabric_textile:0.68"],
+    "velvet": ["luxury_fabrics:0.82", "fashion_realism:0.78"],
+    "suede": ["leather_materials:0.80", "fashion_realism:0.78"],
+    "canvas": ["fabric_textile:0.70", "natural_fabrics:0.68"],
+    "technical": ["technical_fabric:0.75", "sportswear_texture:0.70"],
+    "mesh": ["technical_fabric:0.72", "mesh_texture:0.70"],
+    "rubber": ["synthetic_materials:0.75", "fashion_realism:0.70"],
+    "plastic": ["synthetic_materials:0.72", "fashion_realism:0.70"]
+  },
+  "ip_adapter_config": {
+    "enabled": true,
+    "model": "ip-adapter_sd15",
+    "weight": 0.8,
+    "description": "IP-Adapter for preserving exact color and style from reference image"
+  },
+  "controlnet_config": {
+    "canny": {
+      "model": "control_v11p_sd15_canny",
+      "weight": 0.85,
+      "guidance_start": 0.0,
+      "guidance_end": 1.0,
+      "description": "Canny edge detection for structure preservation"
+    },
+    "depth": {
+      "model": "control_v11f1p_sd15_depth",
+      "weight": 0.70,
+      "guidance_start": 0.0,
+      "guidance_end": 1.0,
+      "description": "Depth map for volume and 3D structure"
+    },
+    "openpose": {
+      "model": "control_v11p_sd15_openpose",
+      "weight": 0.70,
+      "guidance_start": 0.0,
+      "guidance_end": 1.0,
+      "description": "OpenPose for body/garment pose"
+    },
+    "normal": {
+      "model": "control_v11p_sd15_normalbae",
+      "weight": 0.65,
+      "guidance_start": 0.0,
+      "guidance_end": 1.0,
+      "description": "Normal map for surface details",
+      "optional": true
+    }
+  },
+  "sampler_config": {
+    "default": "DPM++ 2M Karras",
+    "alternatives": [
+      "Euler a",
+      "DPM++ SDE Karras",
+      "DPM++ 2M SDE Karras"
+    ],
+    "steps": {
+      "default": 50,
+      "min": 35,
+      "max": 70
+    },
+    "cfg_scale": {
+      "default": 7.5,
+      "min": 6.5,
+      "max": 8.5
+    },
+    "resolution": {
+      "default": [1024, 1024],
+      "portrait": [768, 1024],
+      "landscape": [1024, 768]
+    }
+  },
+  "negative_prompt": {
+    "universal": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, deformed, ugly, plastic skin, doll-like, disfigured, poorly drawn face, mutation, mutated, extra limb, ugly, poorly drawn hands, missing limb, floating limbs, disconnected limbs, malformed hands, blur, out of focus, long neck, long body, disgusting, childish, cartoon, 3d, disfigured, bad art, deformed, watermark, out of frame"
+  },
+  "custom_lora_training": {
+    "catvrf_fashion": {
+      "name": "CatVRFFashion_v1",
+      "file": "catvrf_fashion_v1.safetensors",
+      "strength": 0.75,
+      "trigger_words": [
+        "catvrf fashion product",
+        "studio product shot",
+        "detailed clothing texture"
+      ],
+      "description": "Custom LoRA trained on CatVRF fashion dataset",
+      "enabled": false,
+      "requires_training": true
+    }
+  }
+}

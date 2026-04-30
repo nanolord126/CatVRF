@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace Tests\Unit\Jobs\Analytics;
 
 use App\Jobs\Analytics\SyncQuotaUsageToClickHouseJob;
-use App\Services\Analytics\QuotaClickHouseRepository;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
 /**
  * Unit Tests for SyncQuotaUsageToClickHouseJob
- * 
+ *
  * Production 2026 CANON - ClickHouse Sync Job Tests
- * 
+ *
  * Tests cover:
  * - Job dispatching with quota event data
  * - Idempotency via quota_event_id
@@ -69,7 +68,7 @@ final class SyncQuotaUsageToClickHouseJobTest extends TestCase
 
         $job = new SyncQuotaUsageToClickHouseJob($quotaEvent);
 
-        $this->assertInstanceOf(\Illuminate\Contracts\Queue\ShouldBeUnique::class, $job);
+        $this->assertInstanceOf(ShouldBeUnique::class, $job);
     }
 
     public function test_unique_id_is_quota_event_id(): void
@@ -98,7 +97,7 @@ final class SyncQuotaUsageToClickHouseJobTest extends TestCase
         $job = new SyncQuotaUsageToClickHouseJob($quotaEvent);
 
         $uniqueId = $job->uniqueId();
-        
+
         $this->assertIsString($uniqueId);
         $this->assertNotEmpty($uniqueId);
     }
@@ -107,7 +106,7 @@ final class SyncQuotaUsageToClickHouseJobTest extends TestCase
     {
         // This test would require mocking the ClickHouse repository
         // For now, we'll skip it as it requires full ClickHouse setup
-        
+
         $this->markTestSkipped('Requires ClickHouse mock setup');
     }
 
@@ -123,7 +122,7 @@ final class SyncQuotaUsageToClickHouseJobTest extends TestCase
 
         // Should generate unique ID if not provided
         $uniqueId = $job->uniqueId();
-        
+
         $this->assertIsString($uniqueId);
         $this->assertNotEmpty($uniqueId);
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -11,8 +13,8 @@ final class FraudModelVersionFactory extends Factory
 
     public function definition(): array
     {
-        $version = now()->format('Y-m-d') . '-v' . rand(1, 10);
-        
+        $version = now()->format('Y-m-d').'-v'.rand(1, 10);
+
         return [
             'version' => $version,
             'model_type' => $this->faker->randomElement(['lightgbm', 'xgboost']),

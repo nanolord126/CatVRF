@@ -1,16 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\FurnitureCustomOrderResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -19,17 +18,14 @@ use Illuminate\Support\Str;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class CreateFurnitureCustomOrder extends CreateRecord
 {
-    public function __construct(
-        private readonly Request $request,
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = FurnitureCustomOrderResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly Request $request,
+        private readonly LogManager $log,) {}
 
     public function getTitle(): string
     {
@@ -50,7 +46,7 @@ final class CreateFurnitureCustomOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Furniture custom order created', [
+        $this->log->channel('audit')->$this->logger->info('Furniture custom order created', [
             'order_id' => $this->record->id ?? null,
             'tenant_id' => $this->record->tenant_id ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,

@@ -17,7 +17,6 @@ use Psr\Log\LoggerInterface;
  * Используется PaymentService для получения конкретной реализации шлюза.
  *
  * @see PaymentGatewayInterface
- * @package App\Domains\Payment\Services\Gateways
  */
 final readonly class PaymentGatewayFactory
 {
@@ -26,24 +25,25 @@ final readonly class PaymentGatewayFactory
         'tinkoff' => TinkoffGateway::class,
         'sber'    => SberGateway::class,
         'tochka'  => TochkaGateway::class,
+        'sbp'     => SBPGateway::class,
     ];
 
     public function __construct(
-        private Container $container,
-        private LoggerInterface $logger,
+        private readonly Container $container,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * Создать инстанс шлюза для выбранного провайдера.
      *
-     * @param PaymentProvider $provider Enum провайдера (TINKOFF, SBER, TOCHKA)
+     * @param  PaymentProvider  $provider  Enum провайдера (TINKOFF, SBER, TOCHKA)
      * @return PaymentGatewayInterface Реализация шлюза, готовая к использованию
      *
      * @throws InvalidArgumentException Если провайдер не поддерживается
      */
     public function make(PaymentProvider $provider): PaymentGatewayInterface
     {
-        if (!$this->supports($provider)) {
+        if (! $this->supports($provider)) {
             throw new InvalidArgumentException("Gateway for provider {$provider->value} is not implemented.");
         }
 
@@ -51,6 +51,7 @@ final readonly class PaymentGatewayFactory
             PaymentProvider::TINKOFF => $this->container->make(TinkoffGateway::class),
             PaymentProvider::SBER    => $this->container->make(SberGateway::class),
             PaymentProvider::TOCHKA  => $this->container->make(TochkaGateway::class),
+            PaymentProvider::SBP     => $this->container->make(SBPGateway::class),
         };
 
         $this->logger->info('Payment gateway resolved', [
@@ -64,7 +65,7 @@ final readonly class PaymentGatewayFactory
     /**
      * Проверить, поддерживается ли данный провайдер фабрикой.
      *
-     * @param PaymentProvider $provider Провайдер для проверки
+     * @param  PaymentProvider  $provider  Провайдер для проверки
      * @return bool true если провайдер реализован
      */
     public function supports(PaymentProvider $provider): bool

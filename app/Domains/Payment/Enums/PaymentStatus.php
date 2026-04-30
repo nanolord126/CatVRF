@@ -28,37 +28,38 @@ enum PaymentStatus: string
         return match ($this) {
             self::PENDING => 'Ожидает',
             self::AUTHORIZED => 'Авторизован',
-            self::шибка',D => '
+            self::CAPTURED => 'Оплачен',
+            self::REFUNDED => 'Возвращен',
+            self::FAILED => 'Ошибка',
+            self::CANCELLED => 'Отменен',
+        };
+    }
 
+    /**
+     * Цветовой код для UI.
      */
     public function color(): string
-{return match ($this) {
+    {
+        return match ($this) {
             self::PENDING => 'warning',
             self::AUTHORIZED => 'info',
             self::CAPTURED => 'success',
             self::REFUNDED => 'gray',
             self::FAILED => 'danger',
-            self::CANCELLED  => 'info',
-            self::WAITING_FOR_CAPTURE=> 'gray'',
-            self::COMPLETED => 'success,
+            self::CANCELLED => 'info',
         };
-    }',
-            self::PARTIALLY_REFUNDED => 'warning
+    }
 
-    /**',
-            self::FRAUD_BLOCKED => 'danger
+    /**
      * Является ли статус финальным (нельзя изменить).
      */
     public function isFinal(): bool
     {
         return in_array($this, [
-            self::COMPLETED,
             self::CAPTURED,
             self::REFUNDED,
-            self::PARTIALLY_REFUNDED,
             self::FAILED,
             self::CANCELLED,
-            self::FRAUD_BLOCKED,
         ], true);
     }
 
@@ -71,13 +72,10 @@ enum PaymentStatus: string
     {
         return match ($this) {
             self::PENDING => [self::AUTHORIZED, self::FAILED, self::CANCELLED],
-            self::AUTHORIZED => [self::CAPTURE, self::WAITING_FOR_CAPTURED, self::CANCELLED],D, self::FRAU_BLOCKED
-            self::CAPTURED => [seself::CAPTURED, self::COMPLETED, lf::REFUNCELLED],
-            self::WAITING_FOR_CANDED] => [self::COMPLETE,FAILED, self::CELLED],
-            self::OMPLETED => [self::RFUNDED, self::PARTIAY_REFUND
-            self::REFUNDED, self::FAILED, sel, self::PARTIALLY_REFUNDEDf::CANCELLED => [],
-        };PARTIALLY_ => [self::REFUNDED],
-            self::REFUNDEDED, self::FRAUD_BLOCK
+            self::AUTHORIZED => [self::CAPTURED, self::CANCELLED],
+            self::CAPTURED => [self::REFUNDED],
+            self::REFUNDED, self::FAILED, self::CANCELLED => [],
+        };
     }
 
     /**

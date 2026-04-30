@@ -23,7 +23,7 @@ final class RestaurantOrderFactory extends Factory
             'tenant_id' => 1,
             'restaurant_id' => 1,
             'user_id' => 1,
-            'order_number' => 'ORD-' . strtoupper($this->faker->bothify('??########')),
+            'order_number' => 'ORD-'.strtoupper($this->faker->bothify('??########')),
             'items_json' => [
                 [
                     'name' => $this->faker->word(),

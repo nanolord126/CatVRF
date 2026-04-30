@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Notifications;
 
@@ -40,11 +42,11 @@ final class ViewingReminderNotification extends Notification
 
         return (new MailMessage())
             ->subject('Напоминание о просмотре недвижимости — CatVRF')
-            ->greeting('Добрый день, ' . $notifiable->name . '!')
+            ->greeting('Добрый день, '.$notifiable->name.'!')
             ->line('Напоминаем о предстоящем просмотре объекта недвижимости.')
-            ->line('Дата и время: ' . $scheduledAt)
-            ->line('Адрес: ' . $address)
-            ->action('Подробнее на сайте', url('/realestate/viewing/' . $this->appointment->id))
+            ->line('Дата и время: '.$scheduledAt)
+            ->line('Адрес: '.$address)
+            ->action('Подробнее на сайте', url('/realestate/viewing/'.$this->appointment->id))
             ->salutation('С уважением, команда CatVRF');
     }
 

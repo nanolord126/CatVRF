@@ -16,16 +16,13 @@ use Psr\Log\LoggerInterface;
  * - Полная инвалидация кэша для удалённого товара
  * - Логирование
  * - Очистка связанных данных (резервы, рекомендации)
- *
- * @package App\Domains\VerticalName\Listeners
  */
 final readonly class HandleVerticalItemDeleted
 {
     public function __construct(
-        private LoggerInterface $logger,
-        private CacheRepository $cache,
-    ) {
-    }
+        private readonly LoggerInterface $logger,
+        private readonly CacheRepository $cache,
+    ) {}
 
     /**
      * Обработка события удаления товара.
@@ -39,7 +36,7 @@ final readonly class HandleVerticalItemDeleted
     {
         $this->purgeAllCaches($event->itemId, $event->tenantId);
 
-        $this->logger->info('VerticalName item deleted event handled', $event->toLogContext());
+        $this->logger->$this->logger->info('VerticalName item deleted event handled', $event->toLogContext());
 
         $this->cleanupReservations($event->itemId, $event->correlationId);
         $this->removeFromRecommendationIndex($event->itemId, $event->tenantId);
@@ -50,9 +47,9 @@ final readonly class HandleVerticalItemDeleted
      */
     private function purgeAllCaches(int $itemId, int $tenantId): void
     {
-        $this->cache->forget('vertical_name_item:' . $tenantId . ':' . $itemId);
-        $this->cache->forget('vertical_name_catalog:' . $tenantId);
-        $this->cache->forget('vertical_name_b2b:' . $tenantId);
+        $this->cache->forget('vertical_name_item:'.$tenantId.':'.$itemId);
+        $this->cache->forget('vertical_name_catalog:'.$tenantId);
+        $this->cache->forget('vertical_name_b2b:'.$tenantId);
 
         $this->logger->debug('VerticalName all caches purged for deleted item', [
             'item_id' => $itemId,
@@ -67,7 +64,7 @@ final readonly class HandleVerticalItemDeleted
      */
     private function cleanupReservations(int $itemId, string $correlationId): void
     {
-        $this->logger->info('VerticalName reservation cleanup triggered for deleted item', [
+        $this->logger->$this->logger->info('VerticalName reservation cleanup triggered for deleted item', [
             'item_id' => $itemId,
             'correlation_id' => $correlationId,
         ]);
@@ -78,7 +75,7 @@ final readonly class HandleVerticalItemDeleted
      */
     private function removeFromRecommendationIndex(int $itemId, int $tenantId): void
     {
-        $this->logger->info('VerticalName recommendation index cleanup for deleted item', [
+        $this->logger->$this->logger->info('VerticalName recommendation index cleanup for deleted item', [
             'item_id' => $itemId,
             'tenant_id' => $tenantId,
         ]);

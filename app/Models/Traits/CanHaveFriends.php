@@ -1,10 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Traits;
 
+use App\Models\Friendship;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+
 trait CanHaveFriends
 {
-    public function friends(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function friends(): MorphMany
     {
         return $this->morphMany(Friendship::class, 'friendable');
     }

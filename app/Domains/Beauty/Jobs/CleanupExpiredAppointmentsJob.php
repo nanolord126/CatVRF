@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Jobs;
+
+use LogManager;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\Models\Appointment;
 use App\Services\AuditService;
@@ -12,16 +18,21 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 
-/**
- * CleanupExpiredAppointmentsJob — очистка просроченных записей.
- * Канон CatVRF 2026 — PRODUCTION MANDATORY.
- *
- * Запускается каждую минуту через Scheduler.
- * Отменяет записи, резерв которых истёк (20 минут по канону корзин).
- * Логирует все изменения через AuditService + correlation_id.
- */
 final class CleanupExpiredAppointmentsJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    /**
+     * CleanupExpiredAppointmentsJob — очистка просроченных записей.
+     * Канон CatVRF 2026 — PRODUCTION MANDATORY.
+     *
+     * Запускается каждую минуту через Scheduler.
+     * Отменяет записи, резерв которых истёк (20 минут по канону корзин).
+     * Логирует все изменения через AuditService + correlation_id.
+     */
 
     /**
      * Максимальное количество попыток.
@@ -33,9 +44,18 @@ final class CleanupExpiredAppointmentsJob implements ShouldQueue
      */
     public int $timeout = 120;
 
-    public function __construct(
-        private readonly string $correlationId,
-    ) {}
+    public array $backoff = [60, 300, 900];
+
+    public function __construct(private readonly LogManager $logManager,
+        private readonly LoggerInterface $logger,
+        private readonly string $correlationId,) {
+        $this->onQueue('default');
+    }
+
+    public function tags(): array
+    {
+        return ['beauty', 'cleanup-expired', 'correlation:'.$this->correlationId];
+    }
 
     /**
      * Выполнение задания.
@@ -46,7 +66,7 @@ final class CleanupExpiredAppointmentsJob implements ShouldQueue
     ): void {
         $expiredAppointments = Appointment::query()
             ->where('status', 'pending')
-            ->where('created_at', '<', Carbon::now()->subMinutes(20))
+            ->where('created_at', '<', new DateTime()->subMinutes(20))
             ->get();
 
         if ($expiredAppointments->isEmpty()) {
@@ -73,7 +93,7 @@ final class CleanupExpiredAppointmentsJob implements ShouldQueue
             $cancelledCount++;
         }
 
-        $logger->channel('audit')->info('Expired appointments cleanup completed', [
+        $logger->channel('audit')->$this->logger->info('Expired appointments cleanup completed', [
             'correlation_id'  => $this->correlationId,
             'cancelled_count' => $cancelledCount,
         ]);
@@ -82,15 +102,11 @@ final class CleanupExpiredAppointmentsJob implements ShouldQueue
     /**
      * Обработка провала задания.
      */
-    public function failed(\Throwable $exception): void
+    public function failed(Exception $exception): void
     {
-        app(LogManager::class)->channel('audit')->error('CleanupExpiredAppointmentsJob failed', [
+        $this->logManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->channel('audit')->error('CleanupExpiredAppointmentsJob failed', [
             'correlation_id' => $this->correlationId,
             'error'          => $exception->getMessage(),
         ]);
     }
 }
-
-
-
-

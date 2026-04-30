@@ -1,18 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
  * TaxiWebRTCService - Video call service for passenger-driver communication
- * 
+ *
  * Enables video calls before trip for safety and verification
  * Uses WebRTC for peer-to-peer video communication
  * Includes biometric verification through video analysis
@@ -20,8 +23,9 @@ use Psr\Log\LoggerInterface;
 final readonly class TaxiWebRTCService
 {
     private const CALL_CACHE_TTL = 600;
+
     private const MAX_CALL_DURATION_SECONDS = 120;
-    
+
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
@@ -65,11 +69,11 @@ final readonly class TaxiWebRTCService
             'call_id' => $callId,
             'ride_id' => $rideId,
             'ride_uuid' => $ride->uuid,
-            'caller_id' => (int)$callerId,
-            'callee_id' => (int)$calleeId,
+            'caller_id' => (int) $callerId,
+            'callee_id' => (int) $calleeId,
             'status' => 'initiated',
-            'initiated_at' => now()->toIso8601String(),
-            'expires_at' => now()->addSeconds(self::MAX_CALL_DURATION_SECONDS)->toIso8601String(),
+            'initiated_at' => CarbonImmutable::now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::MAX_CALL_DURATION_SECONDS)->toIso8601String(),
             'signaling_key' => $signalingKey,
             'turn_servers' => $turnServerCredentials,
             'max_duration_seconds' => self::MAX_CALL_DURATION_SECONDS,
@@ -82,8 +86,8 @@ final readonly class TaxiWebRTCService
             'callee_id' => $calleeId,
             'status' => 'initiated',
             'signaling_key' => $signalingKey,
-            'initiated_at' => now(),
-            'expires_at' => now()->addSeconds(self::MAX_CALL_DURATION_SECONDS),
+            'initiated_at' => CarbonImmutable::now(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::MAX_CALL_DURATION_SECONDS),
             'correlation_id' => $correlationId,
         ]);
 
@@ -98,7 +102,7 @@ final readonly class TaxiWebRTCService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Pre-trip video call initiated', [
+        $this->logger->$this->logger->info('Pre-trip video call initiated', [
             'call_id' => $callId,
             'ride_id' => $rideId,
             'caller_id' => $callerId,
@@ -132,6 +136,7 @@ final readonly class TaxiWebRTCService
                 'driver_id' => $driverId,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
@@ -139,7 +144,7 @@ final readonly class TaxiWebRTCService
             ->where('uuid', $callId)
             ->update([
                 'status' => 'accepted',
-                'accepted_at' => now(),
+                'accepted_at' => CarbonImmutable::now(),
             ]);
 
         $this->cache->forget("taxi:webrtc:call:{$callId}");
@@ -153,7 +158,7 @@ final readonly class TaxiWebRTCService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Video call accepted', [
+        $this->logger->$this->logger->info('Video call accepted', [
             'call_id' => $callId,
             'driver_id' => $driverId,
             'correlation_id' => $correlationId,
@@ -184,17 +189,18 @@ final readonly class TaxiWebRTCService
                 'ended_by' => $endedBy,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
-        $duration = now()->diffInSeconds($call->initiated_at);
+        $duration = CarbonImmutable::now()->diffInSeconds($call->initiated_at);
 
         $this->db->table('taxi_webrtc_calls')
             ->where('uuid', $callId)
             ->update([
                 'status' => 'ended',
-                'ended_at' => now(),
-                'ended_by' => (int)$endedBy,
+                'ended_at' => CarbonImmutable::now(),
+                'ended_by' => (int) $endedBy,
                 'end_reason' => $reason,
                 'duration_seconds' => $duration,
             ]);
@@ -215,7 +221,7 @@ final readonly class TaxiWebRTCService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Video call ended', [
+        $this->logger->$this->logger->info('Video call ended', [
             'call_id' => $callId,
             'ended_by' => $endedBy,
             'reason' => $reason,
@@ -250,9 +256,9 @@ final readonly class TaxiWebRTCService
 
     private function generateSignalingKey(string $callId, string $correlationId): string
     {
-        $timestamp = now()->timestamp;
-        $signature = hash_hmac('sha256', $callId . $timestamp, config('app.webrtc_signing_secret'));
-        
+        $timestamp = CarbonImmutable::now()->timestamp;
+        $signature = hash_hmac('sha256', $callId.$timestamp, config('app.webrtc_signing_secret'));
+
         return base64_encode("{$callId}:{$timestamp}:{$signature}");
     }
 

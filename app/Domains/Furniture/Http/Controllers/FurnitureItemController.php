@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Furniture\Http\Controllers;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +30,7 @@ final class FurnitureItemController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Мебель listed', [
+        $this->logger->$this->logger->info('Мебель listed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'count' => $items->total(),
@@ -57,15 +60,17 @@ final class FurnitureItemController extends Controller
                 'tenant_id' => $request->get('tenant_id'),
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
-            if (isset($data['dimensions'])) { $data['dimensions'] = json_encode($data['dimensions']); }
+            if (isset($data['dimensions'])) {
+                $data['dimensions'] = json_encode($data['dimensions']);
+            }
 
             return $this->db->table('furniture_items')->insertGetId($data);
         });
 
-        $this->logger->info('Мебель created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Мебель created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Мебель создан(а)'], 201);
     }
@@ -95,8 +100,10 @@ final class FurnitureItemController extends Controller
         ]);
 
         $this->db->transaction(function () use ($validated, $id, $request) {
-            $data = array_merge($validated, ['updated_at' => now()]);
-            if (isset($data['dimensions'])) { $data['dimensions'] = json_encode($data['dimensions']); }
+            $data = array_merge($validated, ['updated_at' => CarbonImmutable::now()]);
+            if (isset($data['dimensions'])) {
+                $data['dimensions'] = json_encode($data['dimensions']);
+            }
 
             $this->db->table('furniture_items')
                 ->where('id', $id)
@@ -104,7 +111,7 @@ final class FurnitureItemController extends Controller
                 ->update($data);
         });
 
-        $this->logger->info('Мебель updated', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Мебель updated', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Мебель обновлён(а)']);
     }
@@ -120,7 +127,7 @@ final class FurnitureItemController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Мебель deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Мебель deleted', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Мебель удалён(а)']);
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListFreelance extends ListRecords
 {
     protected static string $resource = FreelanceResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый заказ')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -40,12 +33,12 @@ final class ListFreelance extends ListRecords
                     ->wrap(),
                 TextColumn::make('budget_kopecks')
                     ->label('Бюджет')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 TextColumn::make('commission_kopecks')
                     ->label('Комиссия')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->color('warning')
                     ->alignRight(),
                 BadgeColumn::make('status')
@@ -96,5 +89,14 @@ final class ListFreelance extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый заказ')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

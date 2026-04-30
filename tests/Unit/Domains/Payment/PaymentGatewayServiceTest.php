@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
  * PaymentGatewayService Unit Tests.
@@ -24,24 +25,6 @@ final class PaymentGatewayServiceTest extends TestCase
     use RefreshDatabase;
 
     private PaymentGatewayService $gatewayService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->gatewayService = new PaymentGatewayService(
-            $this->app->make(\Psr\Log\LoggerInterface::class),
-        );
-
-        // Clear circuit breaker state
-        Cache::flush();
-    }
-
-    protected function tearDown(): void
-    {
-        Cache::flush();
-        parent::tearDown();
-    }
 
     public function test_create_payment_returns_response(): void
     {
@@ -57,7 +40,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
             returnUrl: 'https://example.com/return',
             tenantId: 1,
@@ -87,7 +70,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
             returnUrl: 'https://example.com/return',
             tenantId: 1,
@@ -129,7 +112,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
             returnUrl: 'https://example.com/return',
             tenantId: 1,
@@ -167,6 +150,7 @@ final class PaymentGatewayServiceTest extends TestCase
             if ($attemptCount < 3) {
                 return Http::response(null, 500);
             }
+
             return Http::response([
                 'id' => 'test_payment_id',
                 'status' => 'pending',
@@ -177,7 +161,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
             returnUrl: 'https://example.com/return',
             tenantId: 1,
@@ -202,7 +186,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Capture payment',
             returnUrl: '',
             tenantId: 1,
@@ -227,7 +211,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Refund payment',
             returnUrl: '',
             tenantId: 1,
@@ -252,7 +236,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::YOOKASSA,
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Get status',
             returnUrl: '',
             tenantId: 1,
@@ -269,7 +253,7 @@ final class PaymentGatewayServiceTest extends TestCase
         $dto = new GatewayRequestDto(
             provider: GatewayProvider::STRIPE, // Not implemented
             amountKopecks: 10000,
-            correlationId: 'test_' . uniqid(),
+            correlationId: 'test_'.uniqid(),
             description: 'Test payment',
             returnUrl: 'https://example.com/return',
             tenantId: 1,
@@ -279,5 +263,23 @@ final class PaymentGatewayServiceTest extends TestCase
         $this->expectExceptionMessage('Unsupported provider');
 
         $this->gatewayService->createPayment($dto);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->gatewayService = new PaymentGatewayService(
+            $this->app->make(LoggerInterface::class),
+        );
+
+        // Clear circuit breaker state
+        Cache::flush();
+    }
+
+    protected function tearDown(): void
+    {
+        Cache::flush();
+        parent::tearDown();
     }
 }

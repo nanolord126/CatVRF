@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use App\Domains\Travel\Models\TravelBooking;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 final class TravelBookingSeeder extends Seeder
 {
@@ -28,7 +31,7 @@ final class TravelBookingSeeder extends Seeder
             TravelBooking::updateOrCreate(
                 ['traveler_email' => $item['traveler_email'], 'tenant_id' => 1],
                 array_merge($item, [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'booking_date' => $bookingDate,
                     'departure_date' => $departureDate,

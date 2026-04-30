@@ -1,21 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\HR;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\Employee;
-use App\Models\Payroll;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use App\Services\WalletService;
 use Carbon\Carbon;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use App\Traits\WithAuditLogging;
 
 /**
  * EmployeeService — управление персоналом.
@@ -29,12 +29,15 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class EmployeeService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService $fraud,
-        private AuditService        $audit,
-        private PayrollService      $payroll,
-        private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly PayrollService $payroll,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
     ) {}
@@ -43,16 +46,16 @@ final readonly class EmployeeService
      * Принять нового сотрудника.
      */
     public function hire(
-        int     $tenantId,
-        ?int    $businessGroupId,
-        ?int    $userId,
-        string  $fullName,
-        string  $position,
-        string  $employmentType,
-        int     $baseSalaryKopecks,
-        string  $hireDate,
-        string  $correlationId,
-        ?array  $additionalPayments = null,
+        int $tenantId,
+        ?int $businessGroupId,
+        ?int $userId,
+        string $fullName,
+        string $position,
+        string $employmentType,
+        int $baseSalaryKopecks,
+        string $hireDate,
+        string $correlationId,
+        ?array $additionalPayments = null,
     ): Employee {
         $this->fraud->check(
             (int) $this->guard->id(),
@@ -64,8 +67,16 @@ final readonly class EmployeeService
         );
 
         return $this->db->transaction(static function () use (
-            $tenantId, $businessGroupId, $userId, $fullName, $position,
-            $employmentType, $baseSalaryKopecks, $hireDate, $additionalPayments, $correlationId
+            $tenantId,
+            $businessGroupId,
+            $userId,
+            $fullName,
+            $position,
+            $employmentType,
+            $baseSalaryKopecks,
+            $hireDate,
+            $additionalPayments,
+            $correlationId
         ): Employee {
             $employee = Employee::create([
                 'tenant_id'            => $tenantId,
@@ -82,7 +93,7 @@ final readonly class EmployeeService
                 'correlation_id'       => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Employee hired', [
+            $this->logger->channel('audit')->$this->logger->info('Employee hired', [
                 'employee_id'    => $employee->id,
                 'tenant_id'      => $tenantId,
                 'position'       => $position,
@@ -114,7 +125,7 @@ final readonly class EmployeeService
                 'correlation_id'   => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Employee terminated', [
+            $this->logger->channel('audit')->$this->logger->info('Employee terminated', [
                 'employee_id'      => $employee->id,
                 'termination_date' => $terminationDate,
                 'correlation_id'   => $correlationId,
@@ -144,7 +155,7 @@ final readonly class EmployeeService
                 'correlation_id'      => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Employee salary updated', [
+            $this->logger->channel('audit')->$this->logger->info('Employee salary updated', [
                 'employee_id'     => $employee->id,
                 'old_kopecks'     => $oldSalary,
                 'new_kopecks'     => $newSalaryKopecks,

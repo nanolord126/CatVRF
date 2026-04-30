@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Electronics\DTOs\ReturnFraudDetectionDto;
 use App\Domains\Electronics\DTOs\FraudDetectionResultDto;
@@ -9,24 +15,22 @@ use App\Domains\Electronics\Events\ReturnFraudDetectedEvent;
 use App\Services\FraudControlService;
 use App\Services\FraudMLService;
 use App\Services\ML\UserBehaviorAnalyzerService;
-use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
+use Illuminate\Log\LogManager;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final readonly class ReturnFraudDetectionService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private FraudMLService $fraudML,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {
-    }
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly FraudMLService $fraudML,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function detectReturnFraud(ReturnFraudDetectionDto $dto): FraudDetectionResultDto
     {
@@ -48,7 +52,7 @@ final readonly class ReturnFraudDetectionService
 
         $cachedResult = $this->cache->get($cacheKey);
         if ($cachedResult !== null) {
-            $this->logger->info('Return fraud detection cache hit', [
+            $this->logger->$this->logger->info('Return fraud detection cache hit', [
                 'order_id' => $dto->orderId,
                 'correlation_id' => $correlationId,
             ]);
@@ -87,10 +91,10 @@ final readonly class ReturnFraudDetectionService
             $this->saveDetectionRecord($dto, $result);
 
             if ($isFraudulent) {
-                event(new ReturnFraudDetectedEvent($dto, $result, $correlationId));
+                $this->eventDispatcher->dispatch(new ReturnFraudDetectedEvent($dto, $result, $correlationId));
             }
 
-            $this->cache->put($cacheKey, $result->toArray(), now()->addHours(12));
+            $this->cache->put($cacheKey, $result->toArray(), CarbonImmutable::now()->addHours(12));
 
             return $result;
         });
@@ -128,7 +132,7 @@ final readonly class ReturnFraudDetectionService
             'behavior_pattern' => $behaviorPattern,
             'device_condition_score' => $deviceConditionScore,
             'return_reason_risk' => $returnReasonRisk,
-            'has_device_metadata' => !empty($dto->deviceMetadata) ? 1 : 0,
+            'has_device_metadata' => ! empty($dto->deviceMetadata) ? 1 : 0,
             'device_metadata_completeness' => $this->calculateMetadataCompleteness($dto->deviceMetadata),
             'same_serial_multiple_returns' => $this->checkSerialMultipleReturns($dto->serialNumber, $dto->userId),
             'return_frequency_7d' => $this->getReturnFrequency($dto->userId, 7),
@@ -145,10 +149,10 @@ final readonly class ReturnFraudDetectionService
     {
         $cacheKey = "order_data:{$orderId}";
 
-        return $this->cache->remember($cacheKey, now()->addHours(2), function () use ($orderId) {
-            $order = DB::table('orders')->where('id', $orderId)->first();
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHours(2), function () use ($orderId) {
+            $order = $this->db->table('orders')->where('id', $orderId)->first();
 
-            if (!$order) {
+            if (! $order) {
                 return [
                     'total_kopecks' => 0,
                     'item_count' => 0,
@@ -158,26 +162,26 @@ final readonly class ReturnFraudDetectionService
                 ];
             }
 
-            $items = DB::table('order_items')
+            $items = $this->db->table('order_items')
                 ->where('order_id', $orderId)
                 ->count();
 
-            $shipping = DB::table('electronics_shipments')
+            $shipping = $this->db->table('electronics_shipments')
                 ->where('order_id', $orderId)
                 ->first();
 
             $shippingSpeed = 0;
             if ($shipping && isset($shipping->delivered_at) && isset($shipping->shipped_at)) {
-                $shippingSpeed = now()->diffInDays(
-                    \Carbon\Carbon::parse($shipping->delivered_at),
-                    \Carbon\Carbon::parse($shipping->shipped_at)
+                $shippingSpeed = CarbonImmutable::now()->diffInDays(
+                    Carbon::parse($shipping->delivered_at),
+                    Carbon::parse($shipping->shipped_at)
                 );
             }
 
             return [
                 'total_kopecks' => $order->total_kopecks ?? 0,
                 'item_count' => $items,
-                'days_since_purchase' => $order->created_at ? now()->diffInDays($order->created_at) : 0,
+                'days_since_purchase' => $order->created_at ? CarbonImmutable::now()->diffInDays($order->created_at) : 0,
                 'payment_method' => $order->payment_method ?? 'unknown',
                 'shipping_speed_days' => $shippingSpeed,
             ];
@@ -188,21 +192,21 @@ final readonly class ReturnFraudDetectionService
     {
         $cacheKey = "user_return_history:{$userId}";
 
-        return $this->cache->remember($cacheKey, now()->addHours(4), function () use ($userId) {
-            $user = DB::table('users')->where('id', $userId)->first();
-            $accountAgeDays = $user ? now()->diffInDays($user->created_at) : 0;
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHours(4), function () use ($userId) {
+            $user = $this->db->table('users')->where('id', $userId)->first();
+            $accountAgeDays = $user ? CarbonImmutable::now()->diffInDays($user->created_at) : 0;
 
-            $totalOrders = (int) DB::table('orders')
+            $totalOrders = (int) $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->count();
 
-            $totalReturns = (int) DB::table('electronics_returns')
+            $totalReturns = (int) $this->db->table('electronics_returns')
                 ->where('user_id', $userId)
                 ->count();
 
             $returnRate = $totalOrders > 0 ? $totalReturns / $totalOrders : 0.0;
 
-            $avgReturnDays = DB::table('electronics_returns')
+            $avgReturnDays = $this->db->table('electronics_returns')
                 ->where('user_id', $userId)
                 ->selectRaw('AVG(DATEDIFF(created_at, purchase_date)) as avg_days')
                 ->value('avg_days') ?? 0;
@@ -219,18 +223,18 @@ final readonly class ReturnFraudDetectionService
 
     private function getSerialValidation(string $serialNumber): array
     {
-        $validation = DB::table('electronics_serial_validations')
+        $validation = $this->db->table('electronics_serial_validations')
             ->where('serial_number', $serialNumber)
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$validation) {
+        if (! $validation) {
             return ['score' => 0.5, 'is_validated' => false];
         }
 
         return [
             'score' => $validation->fraud_probability < 0.3 ? 1.0 : (1 - $validation->fraud_probability),
-            'is_validated' => !$validation->is_fraudulent,
+            'is_validated' => ! $validation->is_fraudulent,
         ];
     }
 
@@ -304,7 +308,7 @@ final readonly class ReturnFraudDetectionService
         $presentFields = 0;
 
         foreach ($requiredFields as $field) {
-            if (isset($metadata[$field]) && !empty($metadata[$field])) {
+            if (isset($metadata[$field]) && ! empty($metadata[$field])) {
                 $presentFields++;
             }
         }
@@ -314,7 +318,7 @@ final readonly class ReturnFraudDetectionService
 
     private function checkSerialMultipleReturns(string $serialNumber, int $userId): int
     {
-        return (int) DB::table('electronics_returns')
+        return (int) $this->db->table('electronics_returns')
             ->where('serial_number', $serialNumber)
             ->where('user_id', '!=', $userId)
             ->count();
@@ -322,15 +326,15 @@ final readonly class ReturnFraudDetectionService
 
     private function getReturnFrequency(int $userId, int $days): int
     {
-        return (int) DB::table('electronics_returns')
+        return (int) $this->db->table('electronics_returns')
             ->where('user_id', $userId)
-            ->where('created_at', '>=', now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->count();
     }
 
     private function isBusinessUser(int $userId): bool
     {
-        return DB::table('business_groups')
+        return $this->db->table('business_groups')
             ->where('owner_id', $userId)
             ->exists();
     }
@@ -344,7 +348,7 @@ final readonly class ReturnFraudDetectionService
                 'factor' => 'excessive_return_rate',
                 'severity' => 'high',
                 'description' => 'User return rate exceeds threshold',
-                'value' => round($mlFeatures['user_return_rate'] * 100, 2) . '%',
+                'value' => round($mlFeatures['user_return_rate'] * 100, 2).'%',
             ];
         }
 
@@ -371,7 +375,7 @@ final readonly class ReturnFraudDetectionService
                 'factor' => 'quick_return',
                 'severity' => 'medium',
                 'description' => 'Return initiated within 7 days of purchase',
-                'value' => $mlFeatures['days_since_purchase'] . ' days',
+                'value' => $mlFeatures['days_since_purchase'].' days',
             ];
         }
 
@@ -389,7 +393,7 @@ final readonly class ReturnFraudDetectionService
                 'factor' => 'reason_condition_mismatch',
                 'severity' => 'medium',
                 'description' => 'Return reason conflicts with device condition',
-                'value' => 'reason: ' . $mlFeatures['return_reason_risk'] . ', condition: ' . $mlFeatures['device_condition_score'],
+                'value' => 'reason: '.$mlFeatures['return_reason_risk'].', condition: '.$mlFeatures['device_condition_score'],
             ];
         }
 
@@ -398,7 +402,7 @@ final readonly class ReturnFraudDetectionService
                 'factor' => 'insufficient_metadata',
                 'severity' => 'low',
                 'description' => 'Device metadata is incomplete',
-                'value' => round($mlFeatures['device_metadata_completeness'] * 100, 2) . '%',
+                'value' => round($mlFeatures['device_metadata_completeness'] * 100, 2).'%',
             ];
         }
 
@@ -407,7 +411,7 @@ final readonly class ReturnFraudDetectionService
                 'factor' => 'high_cart_abandonment',
                 'severity' => 'low',
                 'description' => 'User has high cart abandonment rate',
-                'value' => round($mlFeatures['cart_abandonment_rate'] * 100, 2) . '%',
+                'value' => round($mlFeatures['cart_abandonment_rate'] * 100, 2).'%',
             ];
         }
 
@@ -455,7 +459,7 @@ final readonly class ReturnFraudDetectionService
 
     private function logDetectionResult(ReturnFraudDetectionDto $dto, FraudDetectionResultDto $result): void
     {
-        Log::channel('audit')->info('Return fraud detection completed', [
+        $this->log->channel('audit')->$this->logger->info('Return fraud detection completed', [
             'order_id' => $dto->orderId,
             'product_id' => $dto->productId,
             'serial_number' => $dto->serialNumber,
@@ -470,7 +474,7 @@ final readonly class ReturnFraudDetectionService
 
     private function saveDetectionRecord(ReturnFraudDetectionDto $dto, FraudDetectionResultDto $result): void
     {
-        DB::table('electronics_return_fraud_detections')->insert([
+        $this->db->table('electronics_return_fraud_detections')->insert([
             'order_id' => $dto->orderId,
             'product_id' => $dto->productId,
             'serial_number' => $dto->serialNumber,
@@ -485,8 +489,8 @@ final readonly class ReturnFraudDetectionService
             'ml_features' => json_encode($result->mlFeatures),
             'recommended_action' => $result->recommendedAction,
             'hold_duration_minutes' => $result->holdDurationMinutes,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }

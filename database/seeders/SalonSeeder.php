@@ -1,1 +1,20 @@
-<?php declare(strict_types=1); namespace Database\Seeders; use App\Models\Domains\Beauty\Salon; use Illuminate\Database\Seeder; use Illuminate\Support\Str; final class SalonSeeder extends Seeder { public function run(): void { $salons = [ ["name" => "Glamour Salon", "address" => "123 Main", "status" => "active"], ["name" => "Beauty Lab", "address" => "456 Oak Ave", "status" => "active"], ["name" => "Premium Hair Studio", "address" => "789 Pine", "status" => "inactive"], ]; foreach ($salons as $salon) { Salon::factory()->create(array_merge($salon, ["correlation_id" => (string) Str::uuid()])); } } }
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use App\Models\Domains\Beauty\Salon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+final class SalonSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $salons = [['name' => 'Glamour Salon', 'address' => '123 Main', 'status' => 'active'], ['name' => 'Beauty Lab', 'address' => '456 Oak Ave', 'status' => 'active'], ['name' => 'Premium Hair Studio', 'address' => '789 Pine', 'status' => 'inactive']];
+        foreach ($salons as $salon) {
+            Salon::factory()->create(array_merge($salon, ['correlation_id' => (string) Str::uuid()]));
+        }
+    }
+}

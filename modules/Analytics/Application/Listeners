@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Analytics\Listeners;
+
+use App\Events\OrderCreated;
+use App\Events\OrderCompletedEvent;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Log;
+use Modules\Analytics\Jobs\AggregateSellerDailyMetricsJob;
+use Modules\Analytics\Jobs\AggregateSellerProductMetricsJob;
+
+/**
+ * Trigger Seller Metrics Aggregation Listener
+ *
+ * Listens for order events and triggers seller metrics aggregation jobs.
+ * Ensures analytics tables are updated in near real-time.
+ *
+ * Performance: Jobs are queued to avoid blocking the order processing flow.
+ * Cache invalidation happens after aggregation completes.
+ */
+final class TriggerSellerMetricsAggregationListener implements ShouldQueue
+{
+    public int $tries = 3;
+    public int $timeout = 120;
+
+    public function __construct()
+    {
+        $this->onQueue('analytics');
+    }
+
+    /**
+     * Handle order created event.
+     * Triggers aggregation for the seller to update metrics.
+     */
+    public function handleOrderCreated(OrderCreated $event): void
+    {
+        $order = $event->order;
+        
+        if (!$order->seller_id) {
+            Log::debug('Order has no seller_id, skipping seller metrics aggregation', [
+                'order_id' => $order->id,
+            ]);
+            return;
+        }
+
+        Log::info('Triggering seller metrics aggregation on order created', [
+            'order_id' => $order->id,
+            'seller_id' => $order->seller_id,
+            'tenant_id' => $order->tenant_id,
+        ]);
+
+        // Dispatch aggregation jobs for today's date
+        AggregateSellerDailyMetricsJob::dispatch(
+            date: now()->toDateString(),
+            tenantId: $order->tenant_id,
+        );
+
+        AggregateSellerProductMetricsJob::dispatch(
+            date: now()->toDateString(),
+            tenantId: $order->tenant_id,
+            sellerId: $order->seller_id,
+        );
+    }
+
+    /**
+     * Handle order completed event.
+     * Triggers final aggregation with complete order data.
+     */
+    public function handleOrderCompleted(OrderCompletedEvent $event): void
+    {
+        $order = $event->order;
+        
+        if (!$order->seller_id) {
+            Log::debug('Order has no seller_id, skipping seller metrics aggregation', [
+                'order_id' => $order->id,
+            ]);
+            return;
+        }
+
+        Log::info('Triggering seller metrics aggregation on order completed', [
+            'order_id' => $order->id,
+            'seller_id' => $order->seller_id,
+            'tenant_id' => $order->tenant_id,
+        ]);
+
+        // Dispatch aggregation jobs for today's date
+        AggregateSellerDailyMetricsJob::dispatch(
+            date: now()->toDateString(),
+            tenantId: $order->tenant_id,
+        );
+
+        AggregateSellerProductMetricsJob::dispatch(
+            date: now()->toDateString(),
+            tenantId: $order->tenant_id,
+            sellerId: $order->seller_id,
+        );
+    }
+
+    /**
+     * Register the event listeners.
+     * This should be called in the AnalyticsServiceProvider.
+     */
+    public static function register(): void
+    {
+        // Use Laravel's event listener auto-discovery or register manually
+        // in the AnalyticsServiceProvider boot() method
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('Failed to trigger seller metrics aggregation', [
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+    }
+}

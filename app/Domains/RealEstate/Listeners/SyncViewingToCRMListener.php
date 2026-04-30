@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\RealEstate\Events\ViewingBookedEvent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Log\LogManager;
 
 final class SyncViewingToCRMListener
 {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly HttpFactory $http,) {}
     public function handle(ViewingBookedEvent $event): void
     {
         $viewing = $event->viewing;
-        
+
         try {
             $crmData = [
                 'event_type' => 'viewing_booked',
@@ -32,18 +37,18 @@ final class SyncViewingToCRMListener
                 'metadata' => $viewing->metadata,
             ];
 
-            $response = Http::timeout(5)
+            $response = $this->http->timeout(5)
                 ->retry(3, 100)
                 ->post(config('services.crm.endpoint', 'https://api.crm.internal/v1/events'), $crmData);
 
             if ($response->successful()) {
-                Log::channel('audit')->info('Viewing synced to CRM successfully', [
+                $this->log->channel('audit')->$this->logger->info('Viewing synced to CRM successfully', [
                     'viewing_id' => $viewing->id,
                     'crm_response' => $response->json(),
                     'correlation_id' => $event->correlationId,
                 ]);
             } else {
-                Log::channel('audit')->warning('CRM sync failed', [
+                $this->log->channel('audit')->warning('CRM sync failed', [
                     'viewing_id' => $viewing->id,
                     'status' => $response->status(),
                     'response' => $response->body(),
@@ -51,7 +56,7 @@ final class SyncViewingToCRMListener
                 ]);
             }
         } catch (\Exception $e) {
-            Log::channel('audit')->error('CRM sync error', [
+            $this->log->channel('audit')->error('CRM sync error', [
                 'viewing_id' => $viewing->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

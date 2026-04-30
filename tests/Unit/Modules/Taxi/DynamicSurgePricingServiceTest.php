@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Taxi;
 
@@ -11,24 +13,8 @@ use Mockery;
 final class DynamicSurgePricingServiceTest extends TestCase
 {
     private DynamicSurgePricingService $service;
+
     private AuditService $audit;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->audit = Mockery::mock(AuditService::class);
-
-        $this->service = new DynamicSurgePricingService(
-            $this->audit,
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_calculate_surge_multiplier(): void
     {
@@ -55,5 +41,22 @@ final class DynamicSurgePricingServiceTest extends TestCase
         $this->audit->shouldReceive('record')->once();
 
         $this->service->decaySurge(1, 'test-correlation');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->audit = Mockery::mock(AuditService::class);
+
+        $this->service = new DynamicSurgePricingService(
+            $this->audit,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

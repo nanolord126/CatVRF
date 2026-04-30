@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -23,7 +25,7 @@ final readonly class TaxiOrderController
     public function createOrder(CreateTaxiOrderRequest $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()->id ?? 0,
             operationType: 'taxi_order_create',
@@ -60,13 +62,13 @@ final readonly class TaxiOrderController
 
         $ride = $this->taxiOrderService->createOrder($dto);
 
-        $this->logger->info('Taxi order created', [
+        $this->logger->$this->logger->info('Taxi order created', [
             'ride_id' => $ride->id,
             'passenger_id' => $request->user()->id,
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new TaxiRideResource($ride),
             'correlation_id' => $correlationId,
@@ -79,7 +81,7 @@ final readonly class TaxiOrderController
 
         $ride = $this->taxiOrderService->getOrder($rideUuid, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new TaxiRideResource($ride),
             'correlation_id' => $correlationId,
@@ -114,7 +116,7 @@ final readonly class TaxiOrderController
             correlationId: $correlationId,
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new TaxiRideResource($ride),
             'correlation_id' => $correlationId,
@@ -142,14 +144,14 @@ final readonly class TaxiOrderController
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Taxi order cancelled', [
+        $this->logger->$this->logger->info('Taxi order cancelled', [
             'ride_id' => $ride->id,
             'passenger_id' => $request->user()->id,
             'reason' => $reason,
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new TaxiRideResource($ride),
             'correlation_id' => $correlationId,
@@ -177,7 +179,7 @@ final readonly class TaxiOrderController
             correlationId: $correlationId,
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new TaxiRideResource($ride),
             'correlation_id' => $correlationId,
@@ -197,7 +199,7 @@ final readonly class TaxiOrderController
             correlationId: $correlationId,
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => TaxiRideResource::collection($orders),
             'correlation_id' => $correlationId,
@@ -226,7 +228,7 @@ final readonly class TaxiOrderController
             correlationId: $correlationId,
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $estimate,
             'correlation_id' => $correlationId,

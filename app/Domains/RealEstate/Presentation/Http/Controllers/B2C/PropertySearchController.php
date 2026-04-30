@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Presentation\Http\Controllers\B2C;
@@ -42,7 +43,7 @@ final class PropertySearchController extends Controller
 
         $properties = $query->orderByDesc('created_at')->paginate(20);
 
-        $this->logger->info('Property search', ['correlation_id' => $correlationId, 'count' => $properties->total()]);
+        $this->logger->$this->logger->info('Property search', ['correlation_id' => $correlationId, 'count' => $properties->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -58,6 +59,6 @@ final class PropertySearchController extends Controller
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

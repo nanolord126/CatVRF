@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment\Gateways;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -12,6 +14,8 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Carbon\CarbonImmutable;
+use App\Exceptions\FraudException;
 
 /**
  * SBPGateway
@@ -27,33 +31,28 @@ use RuntimeException;
  * - Скорость: мгновенное зачисление
  * - Поддержка QR-кодов (Dynamic/Static)
  * - Универсальный QR для всех СБП-банков
- *
- * @final
  */
 final class SBPGateway implements PaymentGatewayInterface
 {
     private const BASE_URL = 'https://api.sbp.nspk.ru/v1';
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly string $merchantId,
         private readonly string $apiKey,
         private readonly string $webhookSecret,
-        private string $fiscalApiKey = '',
+        private readonly string $fiscalApiKey,
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Инициировать платёж через СБП (создать QR-код)
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      * @throws RuntimeException
      */
     public function initPayment(array $data): array
@@ -68,7 +67,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('SBP: Payment initialization started', [
+        $this->logger->channel('audit')->$this->logger->info('SBP: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -83,24 +82,24 @@ final class SBPGateway implements PaymentGatewayInterface
             'purpose' => $data['description'] ?? 'Оплата заказа',
             'qrType' => $data['qr_type'] ?? 'QRDynamic',  // QRStatic или QRDynamic
             'redirectUrl' => $data['return_url'] ?? '',
-            'expirationDate' => now()->addMinutes(15)->toIso8601String(),
+            'expirationDate' => CarbonImmutable::now()->addMinutes(15)->toIso8601String(),
             'customerId' => (string) ($data['customer_id'] ?? ''),
         ];
 
         try {
             $response = $this->http->withToken($this->apiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post(self::BASE_URL . '/qr/register', $payload);
+                ->post(self::BASE_URL.'/qr/register', $payload);
 
             if ($response->failed()) {
                 throw new RuntimeException(
-                    'SBP: не удалось создать QR-платёж. Код: ' . $response->status(),
+                    'SBP: не удалось создать QR-платёж. Код: '.$response->status(),
                 );
             }
 
             $result = $response->json();
 
-            $this->logger->channel('audit')->info('SBP: QR created', [
+            $this->logger->channel('audit')->$this->logger->info('SBP: QR created', [
                 'correlation_id' => $correlationId,
                 'qr_id' => $result['qrId'] ?? null,
                 'order_id' => $data['order_id'] ?? null,
@@ -120,17 +119,14 @@ final class SBPGateway implements PaymentGatewayInterface
 
     /**
      * Получить статус платежа СБП
-     *
-     * @param string $providerPaymentId
-     * @return array
      */
     public function getStatus(string $providerPaymentId): array
     {
         $response = $this->http->withToken($this->apiKey)
-            ->get(self::BASE_URL . '/qr/' . $providerPaymentId . '/payment-info');
+            ->get(self::BASE_URL.'/qr/'.$providerPaymentId.'/payment-info');
 
         if ($response->failed()) {
-            throw new RuntimeException('SBP: не удалось получить статус платежа: ' . $providerPaymentId);
+            throw new RuntimeException('SBP: не удалось получить статус платежа: '.$providerPaymentId);
         }
 
         return $response->json();
@@ -142,11 +138,8 @@ final class SBPGateway implements PaymentGatewayInterface
      * ВАЖНО: СБП по умолчанию работает в режиме немедленного списания (одностадийный).
      * Capture нужен только при двухстадийной оплате (twoStagePayment=true при initPayment).
      *
-     * @param PaymentTransaction $transaction
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function capture(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
@@ -161,7 +154,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('SBP: Payment capture started', [
+        $this->logger->channel('audit')->$this->logger->info('SBP: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -171,7 +164,7 @@ final class SBPGateway implements PaymentGatewayInterface
         try {
             $response = $this->http->withToken($this->apiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post(self::BASE_URL . '/payment/' . $transaction->provider_payment_id . '/confirm', [
+                ->post(self::BASE_URL.'/payment/'.$transaction->provider_payment_id.'/confirm', [
                     'merchantId' => $this->merchantId,
                     'amount' => $transaction->amount,
                 ]);
@@ -184,7 +177,7 @@ final class SBPGateway implements PaymentGatewayInterface
             $success = in_array($result['status'] ?? '', ['CONFIRMED', 'SUCCESS'], true);
 
             if ($success) {
-                $this->logger->channel('audit')->info('SBP: Payment capture succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('SBP: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'status' => $result['status'] ?? null,
@@ -212,12 +205,8 @@ final class SBPGateway implements PaymentGatewayInterface
     /**
      * Вернуть (возместить) платёж СБП
      *
-     * @param PaymentTransaction $transaction
-     * @param int $amount
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function refund(PaymentTransaction $transaction, int $amount, ?string $correlationId = null): bool
     {
@@ -232,7 +221,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('SBP: Payment refund initiated', [
+        $this->logger->channel('audit')->$this->logger->info('SBP: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -242,12 +231,12 @@ final class SBPGateway implements PaymentGatewayInterface
         try {
             $response = $this->http->withToken($this->apiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post(self::BASE_URL . '/refund', [
+                ->post(self::BASE_URL.'/refund', [
                     'merchantId' => $this->merchantId,
                     'originalTransactionId' => $transaction->provider_payment_id,
                     'amount' => $amount,
                     'currency' => 'RUB',
-                    'purpose' => 'Возврат по заказу ' . $transaction->id,
+                    'purpose' => 'Возврат по заказу '.$transaction->id,
                 ]);
 
             if ($response->failed()) {
@@ -258,7 +247,7 @@ final class SBPGateway implements PaymentGatewayInterface
             $success = in_array($result['status'] ?? '', ['REFUNDED', 'SUCCESS'], true);
 
             if ($success) {
-                $this->logger->channel('audit')->info('SBP: Payment refund succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('SBP: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -281,10 +270,8 @@ final class SBPGateway implements PaymentGatewayInterface
     /**
      * Создать выплату через СБП C2B (转移на счёт бизнеса)
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function createPayout(array $data): array
     {
@@ -298,7 +285,7 @@ final class SBPGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('SBP: Payout initiated', [
+        $this->logger->channel('audit')->$this->logger->info('SBP: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'account_number' => $data['account_number'] ?? null,
@@ -317,13 +304,13 @@ final class SBPGateway implements PaymentGatewayInterface
         try {
             $response = $this->http->withToken($this->apiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post(self::BASE_URL . '/payout/register', $payload);
+                ->post(self::BASE_URL.'/payout/register', $payload);
 
             if ($response->failed()) {
-                throw new RuntimeException('SBP: не удалось создать выплату. Код: ' . $response->status());
+                throw new RuntimeException('SBP: не удалось создать выплату. Код: '.$response->status());
             }
 
-            $this->logger->channel('audit')->info('SBP: Payout succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('SBP: Payout succeeded', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
             ]);
@@ -347,10 +334,8 @@ final class SBPGateway implements PaymentGatewayInterface
      * Формат подписи: X-Signature заголовок или _signature в payload
      * Гарантия: Вебхук только для completed платежей (ACSC статус)
      *
-     * @param array $payload
-     * @return array
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public function handleWebhook(array $payload): array
     {
@@ -367,18 +352,18 @@ final class SBPGateway implements PaymentGatewayInterface
 
             $expectedSig = hash_hmac('sha256', json_encode($payloadForHash, JSON_UNESCAPED_UNICODE), $this->webhookSecret);
 
-            if (!hash_equals($expectedSig, $signature)) {
+            if (! hash_equals($expectedSig, $signature)) {
                 $this->logger->channel('audit')->warning('SBP: Webhook signature invalid', [
                     'correlation_id' => $correlationId,
                     'transaction_id' => $payload['transactionId'] ?? null,
-                    'expected' => substr($expectedSig, 0, 8) . '...',
-                    'received' => substr($signature, 0, 8) . '...',
+                    'expected' => substr($expectedSig, 0, 8).'...',
+                    'received' => substr($signature, 0, 8).'...',
                 ]);
 
                 throw new RuntimeException('SBP: недействительная подпись вебхука.');
             }
 
-            $this->logger->channel('audit')->info('SBP: Webhook received', [
+            $this->logger->channel('audit')->$this->logger->info('SBP: Webhook received', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $payload['transactionId'] ?? null,
                 'status' => $payload['transactionStatus'] ?? null,
@@ -405,7 +390,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 'raw' => $payloadForHash,
             ];
 
-            $this->logger->channel('audit')->info('SBP: Webhook processed', [
+            $this->logger->channel('audit')->$this->logger->info('SBP: Webhook processed', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $payload['transactionId'] ?? null,
                 'status' => $result['status'],
@@ -428,10 +413,6 @@ final class SBPGateway implements PaymentGatewayInterface
      *
      * СБП с Яндекс.Касса использует встроенную fiscalization,
      * но для прямых СБП-платежей нужна отправка в отдельный ОФД-провайдер
-     *
-     * @param PaymentTransaction $transaction
-     * @param ?string $correlationId
-     * @return bool
      */
     public function fiscalize(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
@@ -446,7 +427,7 @@ final class SBPGateway implements PaymentGatewayInterface
             return false;
         }
 
-        $this->logger->channel('audit')->info('SBP: Fiscalizing', [
+        $this->logger->channel('audit')->$this->logger->info('SBP: Fiscalizing', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'amount' => $transaction->amount,
@@ -457,7 +438,7 @@ final class SBPGateway implements PaymentGatewayInterface
             // URL и параметры зависят от договора с ОФД-агентом
             $response = $this->http->withToken($this->fiscalApiKey)
                 ->withHeaders(['X-Correlation-ID' => $correlationId])
-                ->post($this->config->get('payments.fiscal_api_url', 'https://online.atol.ru/api/v4/') . 'sell', [
+                ->post($this->config->get('payments.fiscal_api_url', 'https://online.atol.ru/api/v4/').'sell', [
                     'external_id' => $transaction->id,
                     'correlation_id' => $correlationId,
                     'receipt' => [
@@ -501,7 +482,7 @@ final class SBPGateway implements PaymentGatewayInterface
                 return false;
             }
 
-            $this->logger->channel('audit')->info('SBP: Fiscalization succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('SBP: Fiscalization succeeded', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'uuid' => $response->json()['uuid'] ?? null,

@@ -7,6 +7,7 @@ namespace App\Domains\Medical\Analytics;
 use App\Domains\Medical\Models\MedicalAppointment;
 use App\Domains\Medical\Models\MedicalRecord;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 
 /**
  * Агрегирует аналитические метрики для медицинских клиник.
@@ -15,9 +16,8 @@ use Illuminate\Support\Collection;
  * и сводные финансовые показатели за период.  Все запросы scoped
  * по tenant через глобальные scopes моделей.
  *
- * @see \App\Domains\Medical\Models\MedicalAppointment
- * @see \App\Domains\Medical\Models\MedicalRecord
- * @package App\Domains\Medical\Analytics
+ * @see MedicalAppointment
+ * @see MedicalRecord
  */
 final readonly class MedicalAnalyticsService
 {
@@ -40,7 +40,7 @@ final readonly class MedicalAnalyticsService
      */
     public function getClinicStats(int $clinicId, int $periodDays = self::DEFAULT_PERIOD_DAYS): array
     {
-        $since = now()->subDays($periodDays);
+        $since = CarbonImmutable::now()->subDays($periodDays);
 
         $stats = MedicalAppointment::where('clinic_id', $clinicId)
             ->where('created_at', '>=', $since)
@@ -62,10 +62,10 @@ final readonly class MedicalAnalyticsService
      * Получить топ диагнозов по клинике за период.
      *
      * @param  int  $clinicId  Идентификатор клиники.
-     * @param  \Illuminate\Support\Carbon  $since  Начало периода.
-     * @return Collection  Коллекция [diagnosis_code, count].
+     * @param  Carbon  $since  Начало периода.
+     * @return Collection Коллекция [diagnosis_code, count].
      */
-    private function getTopDiagnoses(int $clinicId, \Illuminate\Support\Carbon $since): Collection
+    private function getTopDiagnoses(int $clinicId, Carbon $since): Collection
     {
         return MedicalRecord::whereHas(
             'appointment',
@@ -86,10 +86,10 @@ final readonly class MedicalAnalyticsService
      * Процент пациентов, у которых более одного приёма за период.
      *
      * @param  int  $clinicId  Идентификатор клиники.
-     * @param  \Illuminate\Support\Carbon  $since  Начало периода.
-     * @return float  Retention Rate в процентах (0.0 — 100.0).
+     * @param  Carbon  $since  Начало периода.
+     * @return float Retention Rate в процентах (0.0 — 100.0).
      */
-    private function calculateRetention(int $clinicId, \Illuminate\Support\Carbon $since): float
+    private function calculateRetention(int $clinicId, Carbon $since): float
     {
         $totalPatients = MedicalAppointment::where('clinic_id', $clinicId)
             ->where('created_at', '>=', $since)

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Furniture;
 
@@ -19,13 +21,6 @@ final class FurnitureDomainTest extends TestCase
 
     private FurnitureDomainService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // Setup service for testing without full Fraud check mocking for brevity
-        $this->service = app(FurnitureDomainService::class);
-    }
-
     /**
      * Test B2C Pricing Calculation (Standard)
      */
@@ -38,7 +33,7 @@ final class FurnitureDomainTest extends TestCase
 
         $calculated = $this->service->calculatePricing($product, false);
 
-        $this->assertEquals(100000, $calculated, "B2C Price Calculation Failed");
+        $this->assertEquals(100000, $calculated, 'B2C Price Calculation Failed');
     }
 
     /**
@@ -53,7 +48,7 @@ final class FurnitureDomainTest extends TestCase
 
         $calculated = $this->service->calculatePricing($product, true);
 
-        $this->assertEquals(80000, $calculated, "B2B Price Calculation Failed");
+        $this->assertEquals(80000, $calculated, 'B2B Price Calculation Failed');
     }
 
     /**
@@ -68,7 +63,7 @@ final class FurnitureDomainTest extends TestCase
         ]);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage("Insufficient stock");
+        $this->expectExceptionMessage('Insufficient stock');
 
         $this->service->createCustomOrder([
             'store_id' => $store->id,
@@ -77,7 +72,7 @@ final class FurnitureDomainTest extends TestCase
             'total_price_kopecks' => 500000,
             'room_type_id' => 1,
             'delivery_address' => 'Test Address',
-            'customer_phone' => '+79998887766'
+            'customer_phone' => '+79998887766',
         ]);
     }
 
@@ -91,9 +86,16 @@ final class FurnitureDomainTest extends TestCase
         session(['tenant_id' => $tenantId]);
 
         $product = FurnitureProduct::factory()->create([
-            'tenant_id' => $tenantId
+            'tenant_id' => $tenantId,
         ]);
 
-        $this->assertEquals($tenantId, $product->tenant_id, "Tenant ID not set correctly");
+        $this->assertEquals($tenantId, $product->tenant_id, 'Tenant ID not set correctly');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Setup service for testing without full Fraud check mocking for brevity
+        $this->service = app(FurnitureDomainService::class);
     }
 }

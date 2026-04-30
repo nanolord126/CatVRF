@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 return [
     // 3D Rendering Configuration
@@ -14,11 +16,11 @@ return [
         // Lighting
         'lighting' => [
             'ambient' => [
-                'color' => 0xffffff,
+                'color' => 0xFFFFFF,
                 'intensity' => 0.6,
             ],
             'directional' => [
-                'color' => 0xffffff,
+                'color' => 0xFFFFFF,
                 'intensity' => 0.8,
                 'position' => [5, 10, 5],
             ],
@@ -110,12 +112,12 @@ return [
         // Default Materials
         'materials' => [
             'standard' => [
-                'color' => 0xcccccc,
+                'color' => 0xCCCCCC,
                 'metalness' => 0.5,
                 'roughness' => 0.5,
             ],
             'glossy' => [
-                'color' => 0xffffff,
+                'color' => 0xFFFFFF,
                 'metalness' => 0.8,
                 'roughness' => 0.2,
             ],

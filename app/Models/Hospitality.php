@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Hospitality (отели, апартаменты, гостиницы)
- *
- * @package App\Models
  */
 final class Hospitality extends Model
 {
-
     protected $table = 'hospitality';
 
     protected $fillable = [

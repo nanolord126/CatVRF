@@ -4,50 +4,57 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Services;
 
+use Illuminate\Database\DatabaseManager;
+
+use Carbon\CarbonImmutable;
+
+use App\Services\Fraud\FraudControlService;
+
 use App\Domains\Payment\DTOs\GatewayRequestDto;
 use App\Domains\Payment\DTOs\GatewayResponseDto;
 use App\Domains\Payment\Enums\GatewayProvider;
 use App\Domains\Payment\Enums\PaymentStatus;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
 
 /**
  * PaymentGatewayService - Handles external payment gateway communication.
  *
  * CRITICAL: Includes circuit breaker to prevent cascading failures.
- * Never called inside DB::transaction - always external to database operations.
+ * Never called inside $this->db->transaction - always external to database operations.
  *
  * Architecture:
  * - Circuit breaker pattern for resilience
  * - Separate implementations per provider (YooKassa, Tinkoff, etc.)
  * - Timeout handling (5s default)
  * - Retry with exponential backoff (max 3 attempts)
- *
- * @package App\Domains\Payment\Services
  */
 final readonly class PaymentGatewayService
 {
     private const CIRCUIT_BREAKER_THRESHOLD = 5; // Failures before opening
+
     private const CIRCUIT_BREAKER_TIMEOUT = 60; // Seconds to stay open
+
     private const MAX_RETRIES = 3;
+
     private const DEFAULT_TIMEOUT = 5; // Seconds
 
     private const CIRCUIT_PREFIX = 'payment:circuit:';
 
-    public function __construct(
-        private LoggerInterface $logger,
-    ) {}
+    public function __construct(private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraudControlService,
+        private readonly LoggerInterface $logger,
+        private readonly HttpClientFactory $http,) {}
 
     /**
      * Create payment at external gateway.
      *
-     * @param GatewayRequestDto $dto
-     * @return GatewayResponseDto
      * @throws \RuntimeException If gateway unavailable or circuit open
      */
     public function createPayment(GatewayRequestDto $dto): GatewayResponseDto
     {
+        $this->fraudControlService->check('create', ['context' => __CLASS__]);
         $provider = $dto->provider;
 
         if ($this->isCircuitOpen($provider)) {
@@ -68,9 +75,6 @@ final readonly class PaymentGatewayService
 
     /**
      * Capture payment at external gateway.
-     *
-     * @param GatewayRequestDto $dto
-     * @return GatewayResponseDto
      */
     public function capturePayment(GatewayRequestDto $dto): GatewayResponseDto
     {
@@ -89,9 +93,6 @@ final readonly class PaymentGatewayService
 
     /**
      * Refund payment at external gateway.
-     *
-     * @param GatewayRequestDto $dto
-     * @return GatewayResponseDto
      */
     public function refundPayment(GatewayRequestDto $dto): GatewayResponseDto
     {
@@ -110,9 +111,6 @@ final readonly class PaymentGatewayService
 
     /**
      * Get payment status from external gateway.
-     *
-     * @param GatewayRequestDto $dto
-     * @return GatewayResponseDto
      */
     public function getPaymentStatus(GatewayRequestDto $dto): GatewayResponseDto
     {
@@ -190,7 +188,7 @@ final readonly class PaymentGatewayService
 
         $data = $response->json();
 
-        $this->logger->info('YooKassa payment created', [
+        $this->logger->$this->logger->info('YooKassa payment created', [
             'correlation_id' => $dto->correlationId,
             'payment_id' => $data['id'] ?? null,
             'status' => $data['status'] ?? null,
@@ -277,7 +275,7 @@ final readonly class PaymentGatewayService
 
         $data = $response->json();
 
-        $this->logger->info('Tinkoff payment initialized', [
+        $this->logger->$this->logger->info('Tinkoff payment initialized', [
             'correlation_id' => $dto->correlationId,
             'payment_id' => $data['PaymentId'] ?? null,
             'status' => $data['Status'] ?? null,
@@ -351,12 +349,13 @@ final readonly class PaymentGatewayService
     {
         $key = $this->circuitKey($provider);
         $failures = cache($key, 0);
-        $openedAt = cache($key . ':opened_at');
+        $openedAt = cache($key.':opened_at');
 
         // Check if circuit should be reset
-        if ($openedAt && now()->diffInSeconds($openedAt) > self::CIRCUIT_BREAKER_TIMEOUT) {
+        if ($openedAt && CarbonImmutable::now()->diffInSeconds($openedAt) > self::CIRCUIT_BREAKER_TIMEOUT) {
             cache()->forget($key);
-            cache()->forget($key . ':opened_at');
+            cache()->forget($key.':opened_at');
+
             return false;
         }
 
@@ -367,10 +366,10 @@ final readonly class PaymentGatewayService
     {
         $key = $this->circuitKey($provider);
         $failures = cache($key, 0) + 1;
-        cache([$key => $failures], now()->addHours(1));
+        cache([$key => $failures], CarbonImmutable::now()->addHours(1));
 
         if ($failures >= self::CIRCUIT_BREAKER_THRESHOLD) {
-            cache([$key . ':opened_at' => now()], now()->addHours(1));
+            cache([$key.':opened_at' => CarbonImmutable::now()], CarbonImmutable::now()->addHours(1));
             $this->logger->error('Payment gateway circuit breaker opened', [
                 'provider' => $provider->value,
                 'failures' => $failures,
@@ -382,7 +381,7 @@ final readonly class PaymentGatewayService
     {
         $key = $this->circuitKey($provider);
         cache()->forget($key);
-        cache()->forget($key . ':opened_at');
+        cache()->forget($key.':opened_at');
     }
 
     private function executeWithRetry(callable $operation, GatewayProvider $provider, string $correlationId): GatewayResponseDto
@@ -393,6 +392,7 @@ final readonly class PaymentGatewayService
             try {
                 $result = $operation();
                 $this->recordSuccess($provider);
+
                 return $result;
             } catch (\Exception $e) {
                 $lastException = $e;
@@ -421,7 +421,7 @@ final readonly class PaymentGatewayService
 
     private function yookassaClient(): PendingRequest
     {
-        return Http::timeout(self::DEFAULT_TIMEOUT)
+        return $this->http->timeout(self::DEFAULT_TIMEOUT)
             ->withHeaders([
                 'Idempotence-Key' => uniqid(),
                 'Content-Type' => 'application/json',
@@ -432,7 +432,7 @@ final readonly class PaymentGatewayService
 
     private function tinkoffClient(): PendingRequest
     {
-        return Http::timeout(self::DEFAULT_TIMEOUT)
+        return $this->http->timeout(self::DEFAULT_TIMEOUT)
             ->withHeaders([
                 'Content-Type' => 'application/json',
             ])
@@ -467,6 +467,6 @@ final readonly class PaymentGatewayService
 
     private function circuitKey(GatewayProvider $provider): string
     {
-        return self::CIRCUIT_PREFIX . $provider->value;
+        return self::CIRCUIT_PREFIX.$provider->value;
     }
 }

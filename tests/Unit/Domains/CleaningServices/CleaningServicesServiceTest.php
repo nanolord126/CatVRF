@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\CleaningServices;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for CleaningServicesService.
- *
- * @covers \App\Domains\CleaningServices\Domain\Services\CleaningServicesService
- */
-final class CleaningServicesServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'CleaningServicesService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'CleaningServicesService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('CleaningServices');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'CleaningServicesService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('CleaningServicesService exists and is instantiable', function () {
+    $this->assertServiceExists('CleaningServicesService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class, 'create'),
-            'CleaningServicesService must implement create()'
-        );
-    }
+test('CleaningServicesService follows clean architecture', function () {
+    $this->assertCleanArchitecture('CleaningServicesService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class, 'update'),
-            'CleaningServicesService must implement update()'
-        );
-    }
+test('CleaningServicesService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('CleaningServicesService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class, 'delete'),
-            'CleaningServicesService must implement delete()'
-        );
-    }
+test('CleaningServicesService enforces quota limits', function () {
+    $this->testServiceWithQuota('CleaningServicesService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class, 'list'),
-            'CleaningServicesService must implement list()'
-        );
-    }
+test('CleaningServicesService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('CleaningServicesService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CleaningServices\Domain\Services\CleaningServicesService::class, 'getById'),
-            'CleaningServicesService must implement getById()'
-        );
-    }
+test('CleaningServicesService has proper caching', function () {
+    $cacheKey = 'cleaningservices:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('CleaningServicesService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('CleaningServicesService dispatches proper events', function () {
+    $eventClass = "App\Domains\CleaningServices\Events\CleaningServicesProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('CleaningServicesService'));
+        $service->process([]);
+    });
+});
+
+test('CleaningServicesService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\CleaningServices\Jobs\ProcessCleaningServicesJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('CleaningServicesService'));
+        $service->processAsync([]);
+    });
+});
+
+test('CleaningServicesService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('CleaningServicesService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('CleaningServicesService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('CleaningServicesService'));
+        $service->process([]);
+    }, 'CleaningServicesService processed');
+});
+
+test('CleaningServicesService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

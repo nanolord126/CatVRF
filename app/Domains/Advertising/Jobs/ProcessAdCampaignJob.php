@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Jobs;
 
-
 use App\Domains\Advertising\Models\AdCampaign;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;
@@ -19,21 +18,22 @@ use Psr\Log\LoggerInterface;
  *
  * Maintains correlation_id for full traceability.
  * LoggerInterface resolved in handle() — NOT stored in constructor (serialization safety).
- *
- * @package App\Domains\Advertising\Jobs
  */
 final class ProcessAdCampaignJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     /**
      * Number of retry attempts.
      */
-    public int $tries = 3;
+    public array $backoff = [60, 300, 900];
 
-    /**
-     * Backoff in seconds between retries.
-     */
-    public int $backoff = 60;
+    public int $timeout = 120;
+
+    public int $tries = 3;
 
     /**
      * Create a new job instance.
@@ -56,7 +56,7 @@ final class ProcessAdCampaignJob implements ShouldQueue
     {
         $model = AdCampaign::findOrFail($this->modelId);
 
-        $logger->info('ProcessAdCampaignJob processed', [
+        $logger->$this->logger->info('ProcessAdCampaignJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id,
@@ -75,7 +75,7 @@ final class ProcessAdCampaignJob implements ShouldQueue
     /**
      * Handle a job failure.
      */
-    public function failed(\Throwable $exception): void
+    public function failed(Exception $exception): void
     {
         report(new \RuntimeException(
             sprintf(

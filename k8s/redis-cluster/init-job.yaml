@@ -1,0 +1,79 @@
+# Kubernetes Job to Initialize Redis Cluster
+# Execute this once after StatefulSet is ready
+# Production 2026 - CatVRF (28 Verticals)
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-cluster-init
+  namespace: catvrf-prod
+  labels:
+    app: redis-cluster-init
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: redis-cluster-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: redis-init
+        image: redis:7.2-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          
+          echo "Waiting for all Redis pods to be ready..."
+          kubectl wait --for=condition=ready pod -l app=redis-cluster -n catvrf-prod --timeout=300s
+          
+          echo "All Redis pods are ready. Initializing cluster..."
+          
+          # Get Redis password from secret
+          PASSWORD=$(cat /etc/redis-secret/password)
+          
+          # Create cluster with 6 nodes (3 master + 3 replica)
+          redis-cli --cluster create \
+            redis-cluster-0.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            redis-cluster-1.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            redis-cluster-2.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            redis-cluster-3.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            redis-cluster-4.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            redis-cluster-5.redis-cluster.catvrf-prod.svc.cluster.local:6379 \
+            --cluster-replicas 1 \
+            -a "$PASSWORD" \
+            --cluster-yes
+          
+          echo "Cluster initialization complete!"
+          echo ""
+          echo "Verifying cluster state..."
+          redis-cli -h redis-cluster-0.redis-cluster.catvrf-prod.svc.cluster.local -p 6379 -a "$PASSWORD" cluster info
+          echo ""
+          echo "Cluster nodes:"
+          redis-cli -h redis-cluster-0.redis-cluster.catvrf-prod.svc.cluster.local -p 6379 -a "$PASSWORD" cluster nodes
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: secret
+          mountPath: /etc/redis-secret
+          readOnly: true
+        volumes:
+        - name: secret
+          secret:
+            secretName: redis-cluster-secret
+            items:
+            - key: redis-password
+              path: password
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"

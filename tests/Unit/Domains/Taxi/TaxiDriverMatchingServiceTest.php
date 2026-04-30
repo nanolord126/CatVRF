@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
@@ -14,12 +16,6 @@ final class TaxiDriverMatchingServiceTest extends TestCase
     use RefreshDatabase;
 
     private readonly TaxiDriverMatchingService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiDriverMatchingService::class);
-    }
 
     public function test_match_driver_returns_best_driver(): void
     {
@@ -150,5 +146,11 @@ final class TaxiDriverMatchingServiceTest extends TestCase
 
         $this->assertNull($result->driverId);
         $this->assertEquals('no_drivers_available', $result->reason);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiDriverMatchingService::class);
     }
 }

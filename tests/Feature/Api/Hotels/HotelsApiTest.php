@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Api\Hotels;
 
@@ -14,34 +16,12 @@ final class HotelsApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $guestUser;
+
     protected User $hotelOwner;
+
     protected Hotel $hotel;
+
     protected Room $room;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->guestUser = User::factory()->create(['is_business' => false]);
-        $this->hotelOwner = User::factory()->create(['is_business' => true]);
-
-        $this->hotel = Hotel::factory()
-            ->for($this->hotelOwner, 'owner')
-            ->create([
-                'name' => 'Luxury Hotel',
-                'rating' => 4.8,
-                'is_active' => true,
-            ]);
-
-        $this->room = Room::factory()
-            ->for($this->hotel)
-            ->create([
-                'room_number' => '101',
-                'price_per_night' => 20000,  // 200 руб
-                'capacity' => 2,
-                'is_available' => true,
-            ]);
-    }
 
     /**
      * Тест: Гость может получить список доступных отелей
@@ -397,5 +377,30 @@ final class HotelsApiTest extends TestCase
 
         $this->assertContains($this->hotel->id, $hotelIds);
         $this->assertNotContains($b2bOnlyHotel->id, $hotelIds);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->guestUser = User::factory()->create(['is_business' => false]);
+        $this->hotelOwner = User::factory()->create(['is_business' => true]);
+
+        $this->hotel = Hotel::factory()
+            ->for($this->hotelOwner, 'owner')
+            ->create([
+                'name' => 'Luxury Hotel',
+                'rating' => 4.8,
+                'is_active' => true,
+            ]);
+
+        $this->room = Room::factory()
+            ->for($this->hotel)
+            ->create([
+                'room_number' => '101',
+                'price_per_night' => 20000,  // 200 руб
+                'capacity' => 2,
+                'is_available' => true,
+            ]);
     }
 }

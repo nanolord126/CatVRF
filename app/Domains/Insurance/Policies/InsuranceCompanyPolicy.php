@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Insurance\Models\InsuranceCompany;
+
 final class InsuranceCompanyPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class InsuranceCompanyPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, InsuranceCompany $insuranceCompany): bool
+    public function $this->viewFactory->make(User $user, InsuranceCompany $insuranceCompany): bool
     {
         return $user->tenant_id === $insuranceCompany->tenant_id;
     }

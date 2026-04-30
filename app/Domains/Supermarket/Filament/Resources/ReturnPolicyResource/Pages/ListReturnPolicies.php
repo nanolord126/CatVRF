@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Supermarket\Filament\Resources\ReturnPolicyResource\Pages;
+
+use App\Domains\Supermarket\Filament\Resources\ReturnPolicyResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListReturnPolicies extends ListRecords
+{
+    protected static string $resource = ReturnPolicyResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}

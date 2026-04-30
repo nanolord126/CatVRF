@@ -1,70 +1,81 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Models;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
+use App\Domains\Audit\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ElectronicOrder extends Model
 {
-
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
+    use Auditable; // Automatic audit logging for all model mutations
 
-        protected $table = 'electronic_orders';
-        protected $fillable = [
-            'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
-            'product_id', 'client_id', 'serial_num', 'imei_num',
-            'total_price', 'delivery_date', 'status', 'idempotency_key', 'tags',
-        ];
-        protected $casts = [
-            'total_price'   => 'int',
-            'delivery_date' => 'datetime',
-            'tags'          => 'json',
-        ];
+    protected $table = 'electronic_orders';
 
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \RuntimeException
-         */
-        public function product(): BelongsTo
-        {
-            return $this->belongsTo(ElectronicProduct::class, 'product_id');
-        }
+    protected $fillable = [
+        'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
+        'product_id', 'client_id', 'serial_num', 'imei_num',
+        'total_price', 'delivery_date', 'status', 'idempotency_key', 'tags',
+    ];
 
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \RuntimeException
-         */
-        public function isPending(): bool
-        {
-            return $this->status === 'pending';
-        }
+    protected $casts = [
+        'total_price'   => 'int',
+        'delivery_date' => 'datetime',
+        'tags'          => 'json',
+    ];
 
-        /**
-         * Выполнить операцию
-         *
-         * @return mixed
-         * @throws \RuntimeException
-         */
-        public function isDelivered(): bool
-        {
-            return $this->status === 'delivered';
-        }
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(ElectronicProduct::class, 'product_id');
+    }
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant()->id) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function isDelivered(): bool
+    {
+        return $this->status === 'delivered';
+    }
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

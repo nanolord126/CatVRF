@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  *  — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  * @see https://catvrf.ru/docs/component
  * @see https://catvrf.ru/docs/component
@@ -37,11 +40,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  * @see https://catvrf.ru/docs/component
  * @see https://catvrf.ru/docs/component
@@ -60,15 +64,14 @@
  * @see https://catvrf.ru/docs/component
  * @see https://catvrf.ru/docs/component
  */
-
 
 namespace App\Enums\AI;
 
-enum ConstructorType: string {
-
+enum ConstructorType: string
+{
     case INTERIOR = 'interior';
-        case BEAUTY_LOOK = 'beauty_look';
-        case OUTFIT = 'outfit';
-        case CAKE = 'cake';
-        case MENU = 'menu';
+    case BEAUTY_LOOK = 'beauty_look';
+    case OUTFIT = 'outfit';
+    case CAKE = 'cake';
+    case MENU = 'menu';
 }

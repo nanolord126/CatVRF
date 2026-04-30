@@ -1,18 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Casts\AsCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @mixin IdeHelperNotification
  */
 final class Notification extends Model
 {
-
     protected $table = 'notifications';
 
     protected $fillable = [
@@ -128,7 +130,7 @@ final class Notification extends Model
     public function markAsRead(): void
     {
         if ($this->read_at === null) {
-            $this->update(['read_at' => now()]);
+            $this->update(['read_at' => CarbonImmutable::now()]);
         }
     }
 
@@ -139,7 +141,7 @@ final class Notification extends Model
     {
         $this->update([
             'status' => 'sent',
-            'sent_at' => now(),
+            'sent_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -150,7 +152,7 @@ final class Notification extends Model
     {
         $this->update([
             'status' => 'delivered',
-            'delivered_at' => now(),
+            'delivered_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -161,7 +163,7 @@ final class Notification extends Model
     {
         $this->update([
             'status' => 'failed',
-            'failed_at' => now(),
+            'failed_at' => CarbonImmutable::now(),
             'error_message' => $errorMessage,
         ]);
     }

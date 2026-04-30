@@ -17,49 +17,32 @@ use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Exceptions\FraudBlockedException;
+use App\Services\ML\DTOs\UserTasteProfileDto;
 
 final class SportsPersonalTrainerAIServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private SportsPersonalTrainerAIService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private RecommendationService $recommendation;
+
     private OpenAIClientService $openai;
+
     private CircuitBreaker $circuitBreaker;
+
     private DatabaseManager $db;
+
     private Cache $cache;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->audit = $this->createMock(AuditService::class);
-        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
-        $this->recommendation = $this->createMock(RecommendationService::class);
-        $this->openai = $this->createMock(OpenAIClientService::class);
-        $this->circuitBreaker = $this->createMock(CircuitBreaker::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis');
-
-        $this->service = new SportsPersonalTrainerAIService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            tasteAnalyzer: $this->tasteAnalyzer,
-            recommendation: $this->recommendation,
-            openai: $this->openai,
-            circuitBreaker: $this->circuitBreaker,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_generate_adaptive_workout_plan_success(): void
     {
@@ -75,7 +58,7 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
         $this->tasteAnalyzer->expects($this->once())
             ->method('getProfile')
             ->with(1)
-            ->willReturn(new \App\Services\ML\DTOs\UserTasteProfileDto(
+            ->willReturn(new UserTasteProfileDto(
                 userId: 1,
                 preferences: [],
                 behaviorScore: 0.5,
@@ -138,7 +121,7 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
             );
 
         $this->redis->setex(
-            "sports:current_plan:1",
+            'sports:current_plan:1',
             2592000,
             json_encode([
                 'weekly_schedule' => [],
@@ -163,7 +146,7 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
         $this->assertEquals(1, $result['adjustment_count']);
         $this->assertArrayHasKey('adjusted_at', $result);
 
-        $this->redis->del("sports:current_plan:1");
+        $this->redis->del('sports:current_plan:1');
     }
 
     public function test_track_workout_progress_success(): void
@@ -191,14 +174,14 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
         $this->assertEquals(45, $result['total_minutes']);
         $this->assertArrayHasKey('last_updated', $result);
 
-        $this->redis->del("sports:progress:1");
+        $this->redis->del('sports:progress:1');
     }
 
     public function test_generate_adaptive_workout_plan_fraud_check_failure(): void
     {
         $this->fraud->expects($this->once())
             ->method('check')
-            ->willThrowException(new \App\Exceptions\FraudBlockedException('Fraud detected'));
+            ->willThrowException(new FraudBlockedException('Fraud detected'));
 
         $dto = new AdaptiveWorkoutPlanDto(
             userId: 1,
@@ -214,7 +197,7 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
             availableEquipment: [],
         );
 
-        $this->expectException(\App\Exceptions\FraudBlockedException::class);
+        $this->expectException(FraudBlockedException::class);
         $this->service->generateAdaptiveWorkoutPlan($dto);
     }
 
@@ -225,7 +208,7 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
 
         $this->tasteAnalyzer->expects($this->once())
             ->method('getProfile')
-            ->willReturn(new \App\Services\ML\DTOs\UserTasteProfileDto(
+            ->willReturn(new UserTasteProfileDto(
                 userId: 1,
                 preferences: [],
                 behaviorScore: 0.5,
@@ -252,5 +235,33 @@ final class SportsPersonalTrainerAIServiceTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('AI service temporarily unavailable');
         $this->service->generateAdaptiveWorkoutPlan($dto);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->audit = $this->createMock(AuditService::class);
+        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
+        $this->recommendation = $this->createMock(RecommendationService::class);
+        $this->openai = $this->createMock(OpenAIClientService::class);
+        $this->circuitBreaker = $this->createMock(CircuitBreaker::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis');
+
+        $this->service = new SportsPersonalTrainerAIService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            tasteAnalyzer: $this->tasteAnalyzer,
+            recommendation: $this->recommendation,
+            openai: $this->openai,
+            circuitBreaker: $this->circuitBreaker,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

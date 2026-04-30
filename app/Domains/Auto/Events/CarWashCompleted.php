@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\CarWashBooking;
 use Illuminate\Broadcasting\Channel;
@@ -12,18 +11,22 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 final class CarWashCompleted implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     /**
      * Create a new event instance.
      */
     public function __construct(
         public readonly CarWashBooking $booking,
-        public readonly string $correlationId, public readonly LoggerInterface $logger
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
     ) {
-        $this->logger->info('CarWashCompleted event dispatched', [
+        $this->logger->$this->logger->info('CarWashCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'booking_id' => $this->booking->id,
         ]);
@@ -32,12 +35,12 @@ final class CarWashCompleted implements ShouldBroadcast
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new Channel('tenant.' . $this->booking->tenant_id),
+            new Channel('tenant.'.$this->booking->tenant_id),
         ];
     }
 

@@ -1,16 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class PortfolioItem extends Model
 {
+    use TenantScoped;
 
     protected $table = 'portfolio_items';
 
@@ -37,20 +39,6 @@ final class PortfolioItem extends Model
         'published_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            $builder->where('tenant_id', self::resolveTenantId());
-        });
-
-        static::creating(static function (PortfolioItem $item): void {
-            $item->uuid = $item->uuid ?: (string) Str::uuid();
-            $item->correlation_id = $item->correlation_id ?: (string) Str::uuid();
-            $item->tenant_id = $item->tenant_id ?: self::resolveTenantId();
-            $item->business_group_id = $item->business_group_id ?? self::resolveBusinessGroupId();
-        });
-    }
-
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
@@ -64,6 +52,20 @@ final class PortfolioItem extends Model
     public function scopePublished(Builder $builder): Builder
     {
         return $builder->whereNotNull('published_at');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            $builder->where('tenant_id', self::resolveTenantId());
+        });
+
+        self::creating(static function (PortfolioItem $item): void {
+            $item->uuid = $item->uuid ?: (string) Str::uuid();
+            $item->correlation_id = $item->correlation_id ?: (string) Str::uuid();
+            $item->tenant_id = $item->tenant_id ?: self::resolveTenantId();
+            $item->business_group_id = $item->business_group_id ?? self::resolveBusinessGroupId();
+        });
     }
 
     private static function resolveTenantId(): int

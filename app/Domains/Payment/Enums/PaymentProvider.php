@@ -9,13 +9,6 @@ namespace App\Domains\Payment\Enums;
  */
 enum PaymentProvider: string
 {
-    case TINKOFF = 'tinkoff';
-    case SBER = 'sber';
-    case TOCHKA = 'tochka';
-    case SBP = 'sbp';
-    case YOOKASSA = 'yookassa';
-    case MANUAL = 'manual';
-
     /**
      * Человекочитаемая метка.
      */
@@ -63,4 +56,10 @@ enum PaymentProvider: string
             default => 60,
         };
     }
+    case TINKOFF = 'tinkoff';
+    case SBER = 'sber';
+    case TOCHKA = 'tochka';
+    case SBP = 'sbp';
+    case YOOKASSA = 'yookassa';
+    case MANUAL = 'manual';
 }

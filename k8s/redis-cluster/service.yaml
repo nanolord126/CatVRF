@@ -1,0 +1,25 @@
+# Headless Service for Redis Cluster StatefulSet
+# Required for DNS-based discovery and stable network identities
+# Production 2026 - CatVRF
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster
+  namespace: catvrf-prod
+  labels:
+    app: redis-cluster
+spec:
+  clusterIP: None  # Headless service - required for StatefulSet
+  publishNotReadyAddresses: true  # Allow cluster communication during startup
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  - name: cluster-bus
+    port: 16379
+    targetPort: 16379
+    protocol: TCP
+  selector:
+    app: redis-cluster

@@ -22,7 +22,7 @@ final class PaymentTransactionFactory extends Factory
             'user_id' => User::factory(),
             'idempotency_key' => Str::uuid(),
             'provider_code' => fake()->randomElement(['tinkoff', 'tochka', 'sber']),
-            'provider_payment_id' => 'pay_' . Str::random(20),
+            'provider_payment_id' => 'pay_'.Str::random(20),
             'amount' => fake()->numberBetween(10000, 1000000),
             'currency' => 'RUB',
             'status' => 'pending',
@@ -35,7 +35,7 @@ final class PaymentTransactionFactory extends Factory
             'ml_fraud_version' => 'v1',
             'correlation_id' => (string) Str::uuid(),
             'meta' => [
-                'order_id' => 'ORD-' . Str::random(10),
+                'order_id' => 'ORD-'.Str::random(10),
                 'ip_address' => fake()->ipv4(),
                 'user_agent' => fake()->userAgent(),
             ],

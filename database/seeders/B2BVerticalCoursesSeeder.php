@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Domains\Education\Models\Course;
 use App\Domains\Education\Models\VerticalCourse;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class B2BVerticalCoursesSeeder extends Seeder
 {
@@ -12,25 +15,25 @@ class B2BVerticalCoursesSeeder extends Seeder
     {
         // Создаем курсы для Beauty вертикали
         $this->seedBeautyCourses();
-        
+
         // Создаем курсы для Hotels вертикали
         $this->seedHotelsCourses();
-        
+
         // Создаем курсы для Flowers вертикали
         $this->seedFlowersCourses();
-        
+
         // Создаем курсы для Auto вертикали
         $this->seedAutoCourses();
-        
+
         // Создаем курсы для Medical вертикали
         $this->seedMedicalCourses();
-        
+
         // Создаем курсы для Fitness вертикали
         $this->seedFitnessCourses();
-        
+
         // Создаем курсы для Restaurants вертикали
         $this->seedRestaurantsCourses();
-        
+
         // Создаем курсы для Pharmacy вертикали
         $this->seedPharmacyCourses();
     }
@@ -431,7 +434,7 @@ class B2BVerticalCoursesSeeder extends Seeder
                     'title' => $courseData['title'],
                 ],
                 [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'description' => $courseData['description'],
                     'level' => $courseData['difficulty_level'],
@@ -439,7 +442,7 @@ class B2BVerticalCoursesSeeder extends Seeder
                     'corporate_price_kopecks' => $courseData['duration_hours'] * 3000, // 30 рублей за час для B2B
                     'syllabus' => json_encode(['modules' => []]),
                     'is_active' => true,
-                    'correlation_id' => \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => Str::uuid(),
                 ]
             );
 
@@ -449,13 +452,13 @@ class B2BVerticalCoursesSeeder extends Seeder
                     'vertical' => $courseData['vertical'],
                 ],
                 [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'target_role' => $courseData['target_role'],
                     'difficulty_level' => $courseData['difficulty_level'],
                     'duration_hours' => $courseData['duration_hours'],
                     'is_required' => $courseData['is_required'],
-                    'correlation_id' => \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => Str::uuid(),
                 ]
             );
         }

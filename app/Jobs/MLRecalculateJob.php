@@ -1,7 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Domains\FraudML\Services\PrometheusMetricsService;
@@ -13,7 +20,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
 use Ramsey\Uuid\Uuid;
-
 
 /**
  * MLRecalculateJob — онлайн-обновление ML-профиля пользователя.
@@ -29,17 +35,21 @@ use Ramsey\Uuid\Uuid;
  */
 final class MLRecalculateJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries  = 3;
+
     public int $backoff = 30; // секунд между попытками
 
-    public function __construct(
-        private readonly int  $userId,
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly int $userId,
         private readonly bool $isNewUser,
         private readonly LogManager $logger,
-        private readonly PrometheusMetricsService $prometheus,
-    ) {}
+        private readonly PrometheusMetricsService $prometheus,) {}
 
     public function handle(UserTasteAnalyzerService $tasteAnalyzer): void
     {
@@ -60,6 +70,7 @@ final class MLRecalculateJob implements ShouldQueue
             ]);
 
             $this->prometheus->recordRetrainSuccess('failed', $correlationId);
+
             return;
         }
 
@@ -72,7 +83,7 @@ final class MLRecalculateJob implements ShouldQueue
             $this->prometheus->recordRetrainDuration($duration, $correlationId);
             $this->prometheus->recordRetrainSuccess('completed', $correlationId);
 
-            $this->logger->channel('audit')->info('MLRecalculateJob completed', [
+            $this->logger->channel('audit')->$this->logger->info('MLRecalculateJob completed', [
                 'user_id'  => $this->userId,
                 'user_type' => 'returning',
                 'duration_seconds' => round($duration, 3),
@@ -97,13 +108,12 @@ final class MLRecalculateJob implements ShouldQueue
      */
     public static function dispatchFullRecalculation(): void
     {
-        User::where('created_at', '<', now()->subDays(7))
+        User::where('created_at', '<', CarbonImmutable::now()->subDays(7))
             ->whereHas('orders')
             ->chunkById(100, function ($users): void {
                 foreach ($users as $user) {
-                    self::dispatch($user->id, false)->onQueue('ml');
+                    self::$this->bus->dispatch($user->id, false)->onQueue('ml');
                 }
             });
     }
 }
-

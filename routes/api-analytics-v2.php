@@ -9,11 +9,10 @@ use Illuminate\Support\Facades\Route;
 
 /**
  * Phase 7: Advanced Analytics Routes
- * 
+ *
  * Prefix: /api/v2
  * Middleware: auth:sanctum, rate-limit-analytics
  */
-
 Route::middleware(['auth:sanctum', 'rate-limit-analytics'])->prefix('api/v2')->group(function () {
     // Analytics Endpoints
     Route::get('/analytics/metrics', [AnalyticsController::class, 'getMetrics']);

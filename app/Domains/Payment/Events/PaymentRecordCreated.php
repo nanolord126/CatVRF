@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Payment\Events;
 
 use App\Domains\Payment\Models\PaymentRecord;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Событие: платёжная запись создана.
@@ -17,7 +14,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class PaymentRecordCreated
 {
-
     public function __construct(
         public readonly PaymentRecord $paymentRecord,
         public readonly string $correlationId,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Services\AI;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\VerticalName\Models\VerticalItem;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
@@ -30,8 +32,6 @@ use Psr\Log\LoggerInterface;
  * 7. Audit log + correlation_id
  *
  * Кэш: Redis TTL 3600 сек, теги user_ai_designs:{userId}.
- *
- * @package App\Domains\VerticalName\Services\AI
  */
 final readonly class VerticalNameConstructorService
 {
@@ -40,27 +40,25 @@ final readonly class VerticalNameConstructorService
     private const CACHE_PREFIX = 'vertical_name_ai_design';
 
     private const VISION_PROMPT = 'Анализ изображения для вертикали VerticalName. '
-        . 'Определи ключевые характеристики, стиль, предпочтения пользователя. '
-        . 'Рекомендуй подходящие товары и услуги на основе анализа.';
+        .'Определи ключевые характеристики, стиль, предпочтения пользователя. '
+        .'Рекомендуй подходящие товары и услуги на основе анализа.';
 
     public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private CacheRepository $cache,
-    ) {
-    }
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly CacheRepository $cache,
+    ) {}
 
     /**
      * Анализировать входные данные и сгенерировать персонализированные рекомендации.
      *
-     * @param UploadedFile $file        Загруженное изображение/файл
-     * @param int          $userId      ID пользователя
-     * @param array        $preferences Дополнительные предпочтения пользователя
-     *
+     * @param  UploadedFile  $file  Загруженное изображение/файл
+     * @param  int  $userId  ID пользователя
+     * @param  array  $preferences  Дополнительные предпочтения пользователя
      * @return array{
      *     success: bool,
      *     analysis: array,
@@ -85,11 +83,11 @@ final readonly class VerticalNameConstructorService
             correlationId: $correlationId,
         );
 
-        $cacheKey = self::CACHE_PREFIX . ':' . $userId . ':' . md5($file->getClientOriginalName());
+        $cacheKey = self::CACHE_PREFIX.':'.$userId.':'.md5($file->getClientOriginalName());
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null && is_array($cached)) {
-            $this->logger->info('VerticalName AI constructor cache hit', [
+            $this->logger->$this->logger->info('VerticalName AI constructor cache hit', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -97,7 +95,7 @@ final readonly class VerticalNameConstructorService
             return $cached;
         }
 
-        return $this->db->transaction(function () use ($file, $userId, $preferences, $correlationId, $cacheKey): array {
+        return $this->db->transaction(function () use ($file, $userId, $correlationId, $cacheKey): array {
             $analysis = $this->performVisionAnalysis($file);
 
             $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -136,7 +134,7 @@ final readonly class VerticalNameConstructorService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('VerticalName AI constructor completed', [
+            $this->logger->$this->logger->info('VerticalName AI constructor completed', [
                 'user_id' => $userId,
                 'recommendations_count' => count($availableRecommendations),
                 'total_cost_kopecks' => $totalCostKopecks,
@@ -157,7 +155,7 @@ final readonly class VerticalNameConstructorService
     {
         $imagePath = $file->getRealPath();
 
-        $this->logger->info('VerticalName Vision API analysis started', [
+        $this->logger->$this->logger->info('VerticalName Vision API analysis started', [
             'file_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
         ]);
@@ -284,8 +282,8 @@ final readonly class VerticalNameConstructorService
                     'recommendations' => $recommendations,
                 ], JSON_THROW_ON_ERROR),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
     }
@@ -295,6 +293,6 @@ final readonly class VerticalNameConstructorService
      */
     private function generateArPreviewUrl(int $userId): string
     {
-        return '/vertical-name/ar-preview/' . $userId;
+        return '/vertical-name/ar-preview/'.$userId;
     }
 }

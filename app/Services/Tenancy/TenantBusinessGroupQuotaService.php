@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\Tenant;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
+use App\Exceptions\TenantQuotaExceededException;
 
 /**
  * Tenant Business Group Quota Service
@@ -19,24 +24,25 @@ use Illuminate\Log\LogManager;
  * - Provides group quota statistics and reporting
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final readonly class TenantBusinessGroupQuotaService
 {
     private const GROUP_QUOTA_PREFIX = 'tenant:group:quota:';
+
     private const GROUP_TTL = 86400; // 24 hours
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
-        private readonly TenantResourceLimiterService $tenantLimiter,
-    ) {}
+        private readonly TenantResourceLimiterService $tenantLimiter,) {}
 
     /**
      * Check if business group has quota for a resource
      *
-     * @throws \App\Exceptions\TenantQuotaExceededException
+     * @throws TenantQuotaExceededException
      */
     public function checkGroupQuota(int $businessGroupId, string $resourceType, int $amount = 1): bool
     {
@@ -56,48 +62,8 @@ final readonly class TenantBusinessGroupQuotaService
         }
 
         $this->recordGroupUsage($businessGroupId, $resourceType, $amount);
+
         return true;
-    }
-
-    /**
-     * Get group-level quota for a resource
-     */
-    private function getGroupQuota(int $businessGroupId, string $resourceType): int
-    {
-        $key = self::GROUP_QUOTA_PREFIX . "custom:{$resourceType}:{$businessGroupId}";
-        $customQuota = (int) $this->redis->connection()->get($key);
-
-        if ($customQuota > 0) {
-            return $customQuota;
-        }
-
-        // Get default group quota from config
-        return match ($resourceType) {
-            'ai_tokens' => 10000000, // 10M tokens/day for group
-            'redis_ops' => 1000000, // 1M ops/hour for group
-            'db_queries' => 500000, // 500K queries/hour for group
-            'storage_bytes' => 100 * 1024 * 1024 * 1024, // 100GB/day for group
-            default => PHP_INT_MAX,
-        };
-    }
-
-    /**
-     * Get current group usage for a resource
-     */
-    private function getGroupUsage(int $businessGroupId, string $resourceType): int
-    {
-        $key = self::GROUP_QUOTA_PREFIX . "{$resourceType}:{$businessGroupId}";
-        return (int) $this->redis->connection()->get($key) ?: 0;
-    }
-
-    /**
-     * Record group resource usage
-     */
-    private function recordGroupUsage(int $businessGroupId, string $resourceType, int $amount): void
-    {
-        $key = self::GROUP_QUOTA_PREFIX . "{$resourceType}:{$businessGroupId}";
-        $this->redis->connection()->incrby($key, $amount);
-        $this->redis->connection()->expire($key, self::GROUP_TTL);
     }
 
     /**
@@ -105,10 +71,10 @@ final readonly class TenantBusinessGroupQuotaService
      */
     public function setGroupQuota(int $businessGroupId, string $resourceType, int $quota): void
     {
-        $key = self::GROUP_QUOTA_PREFIX . "custom:{$resourceType}:{$businessGroupId}";
+        $key = self::GROUP_QUOTA_PREFIX."custom:{$resourceType}:{$businessGroupId}";
         $this->redis->connection()->set($key, $quota);
 
-        $this->logger->info('Business group quota set', [
+        $this->logger->$this->logger->info('Business group quota set', [
             'business_group_id' => $businessGroupId,
             'resource_type' => $resourceType,
             'quota' => $quota,
@@ -167,11 +133,11 @@ final readonly class TenantBusinessGroupQuotaService
         $resources = $resourceType ? [$resourceType] : ['ai_tokens', 'redis_ops', 'db_queries', 'storage_bytes'];
 
         foreach ($resources as $resource) {
-            $key = self::GROUP_QUOTA_PREFIX . "{$resource}:{$businessGroupId}";
+            $key = self::GROUP_QUOTA_PREFIX."{$resource}:{$businessGroupId}";
             $this->redis->connection()->del($key);
         }
 
-        $this->logger->info('Business group quota usage reset', [
+        $this->logger->$this->logger->info('Business group quota usage reset', [
             'business_group_id' => $businessGroupId,
             'resource_type' => $resourceType,
         ]);
@@ -180,14 +146,14 @@ final readonly class TenantBusinessGroupQuotaService
     /**
      * Check both group and tenant quota (group-first strategy)
      *
-     * @throws \App\Exceptions\TenantQuotaExceededException
+     * @throws TenantQuotaExceededException
      */
     public function checkQuotaWithGroup(int $tenantId, int $businessGroupId, string $resourceType, int $amount = 1): void
     {
         // First check group quota
         if ($businessGroupId > 0) {
-            if (!$this->checkGroupQuota($businessGroupId, $resourceType, $amount)) {
-                throw new \App\Exceptions\TenantQuotaExceededException(
+            if (! $this->checkGroupQuota($businessGroupId, $resourceType, $amount)) {
+                throw new TenantQuotaExceededException(
                     $tenantId,
                     "group_{$resourceType}",
                     $this->getGroupUsage($businessGroupId, $resourceType),
@@ -207,12 +173,13 @@ final readonly class TenantBusinessGroupQuotaService
     public function getGroupPlan(int $businessGroupId): string
     {
         $group = $this->db->table('business_groups')->where('id', $businessGroupId)->first();
-        
-        if (!$group) {
+
+        if (! $group) {
             return 'free';
         }
 
         $meta = is_string($group->meta) ? json_decode($group->meta, true) : $group->meta;
+
         return $meta['quota_plan'] ?? 'free';
     }
 
@@ -252,10 +219,52 @@ final readonly class TenantBusinessGroupQuotaService
             $this->setGroupQuota($businessGroupId, $resource, $quota);
         }
 
-        $this->logger->info('Business group quota plan applied', [
+        $this->logger->$this->logger->info('Business group quota plan applied', [
             'business_group_id' => $businessGroupId,
             'plan' => $plan,
             'quotas' => $quotas,
         ]);
+    }
+
+    /**
+     * Get group-level quota for a resource
+     */
+    private function getGroupQuota(int $businessGroupId, string $resourceType): int
+    {
+        $key = self::GROUP_QUOTA_PREFIX."custom:{$resourceType}:{$businessGroupId}";
+        $customQuota = (int) $this->redis->connection()->get($key);
+
+        if ($customQuota > 0) {
+            return $customQuota;
+        }
+
+        // Get default group quota from config
+        return match ($resourceType) {
+            'ai_tokens' => 10000000, // 10M tokens/day for group
+            'redis_ops' => 1000000, // 1M ops/hour for group
+            'db_queries' => 500000, // 500K queries/hour for group
+            'storage_bytes' => 100 * 1024 * 1024 * 1024, // 100GB/day for group
+            default => PHP_INT_MAX,
+        };
+    }
+
+    /**
+     * Get current group usage for a resource
+     */
+    private function getGroupUsage(int $businessGroupId, string $resourceType): int
+    {
+        $key = self::GROUP_QUOTA_PREFIX."{$resourceType}:{$businessGroupId}";
+
+        return (int) $this->redis->connection()->get($key) ?: 0;
+    }
+
+    /**
+     * Record group resource usage
+     */
+    private function recordGroupUsage(int $businessGroupId, string $resourceType, int $amount): void
+    {
+        $key = self::GROUP_QUOTA_PREFIX."{$resourceType}:{$businessGroupId}";
+        $this->redis->connection()->incrby($key, $amount);
+        $this->redis->connection()->expire($key, self::GROUP_TTL);
     }
 }

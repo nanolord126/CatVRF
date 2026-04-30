@@ -1,18 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use App\Domains\Fashion\Models\FashionTrendKeyword;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class FashionTrendKeywordResource extends Resource
+final class FashionTrendKeywordResource extends BaseOptimizedResource
 {
     protected static ?string $model = FashionTrendKeyword::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-fire';
+
     protected static ?string $navigationGroup = 'Fashion Advanced';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -47,5 +52,13 @@ final class FashionTrendKeywordResource extends Resource
                 Tables\Filters\SelectFilter::make('platform')
                     ->options(['instagram' => 'Instagram', 'tiktok' => 'TikTok', 'pinterest' => 'Pinterest', 'twitter' => 'Twitter']),
             ]);
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
+
+use Illuminate\Support\Str;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +15,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
 
 /**
  * GeotrackingJob — запрашивает у курьера обновление местоположения через push.
@@ -22,19 +26,25 @@ use Illuminate\Database\DatabaseManager;
  */
 final class GeotrackingJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries   = 1;
+
     public int $timeout = 10;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly int $deliveryOrderId,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+    ,
+        public readonly string $correlationId = '') {}
 
     public function handle(): void
     {
+        $correlationId = $this->correlationId ?: (string) Str::uuid();
         $order = $this->db->table('logistics_delivery_orders')
             ->where('id', $this->deliveryOrderId)
             ->first();
@@ -43,10 +53,11 @@ final class GeotrackingJob implements ShouldQueue
             $this->logger->channel('audit')->warning('GeotrackingJob: delivery order not found', [
                 'delivery_order_id' => $this->deliveryOrderId,
             ]);
+
             return;
         }
 
-        if (!in_array($order->status, ['assigned', 'picked_up', 'in_transit'], true)) {
+        if (! in_array($order->status, ['assigned', 'picked_up', 'in_transit'], true)) {
             return;
         }
 
@@ -60,13 +71,13 @@ final class GeotrackingJob implements ShouldQueue
                 'courier_id'        => $order->courier_id,
                 'delivery_order_id' => $this->deliveryOrderId,
             ]);
+
             return;
         }
 
-        $this->logger->channel('audit')->info('GeotrackingJob: tracking initiated', [
+        $this->logger->channel('audit')->$this->logger->info('GeotrackingJob: tracking initiated', [
             'delivery_order_id' => $this->deliveryOrderId,
             'courier_id'        => $order->courier_id,
         ]);
     }
 }
-

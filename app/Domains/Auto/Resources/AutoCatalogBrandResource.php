@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\CarbonImmutable;
 
 final class AutoCatalogBrandResource extends JsonResource
 {
@@ -32,7 +35,7 @@ final class AutoCatalogBrandResource extends JsonResource
         return [
             'meta' => [
                 'correlation_id' => $request->attributes->get('correlation_id'),
-                'generated_at'   => now()->toIso8601String(),
+                'generated_at'   => CarbonImmutable::now()->toIso8601String(),
             ],
         ];
     }

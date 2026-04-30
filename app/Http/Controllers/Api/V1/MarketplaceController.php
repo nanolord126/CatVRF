@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
@@ -30,12 +31,12 @@ final class MarketplaceController extends Controller
             $query->where('category', $request->get('category'));
         }
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->get('search') . '%');
+            $query->where('name', 'like', '%'.$request->get('search').'%');
         }
 
         $products = $query->orderByDesc('created_at')->paginate(20);
 
-        $this->logger->info('Marketplace products listed', ['correlation_id' => $correlationId, 'count' => $products->total()]);
+        $this->logger->$this->logger->info('Marketplace products listed', ['correlation_id' => $correlationId, 'count' => $products->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -53,7 +54,7 @@ final class MarketplaceController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $this->logger->info('Marketplace categories listed', ['correlation_id' => $correlationId, 'count' => $categories->count()]);
+        $this->logger->$this->logger->info('Marketplace categories listed', ['correlation_id' => $correlationId, 'count' => $categories->count()]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'data' => $categories]);
     }

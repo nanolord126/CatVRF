@@ -1,0 +1,98 @@
+name: Deployment Notifications
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline - Production Ready (Improved)"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  slack-notification:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "${{ steps.status.outputs.emoji }} CatVRF Deployment: ${{ steps.status.outputs.status }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "fields": [
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.event.workflow_run.head_branch }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Commit",
+                      "value": "${{ github.event.workflow_run.head_sha }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Actor",
+                      "value": "${{ github.event.workflow_run.actor }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Workflow",
+                      "value": "${{ github.event.workflow_run.name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Conclusion",
+                      "value": "${{ github.event.workflow_run.conclusion }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Run URL",
+                      "value": "${{ github.event.workflow_run.html_url }}",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  telegram-notification:
+    name: Telegram Notification
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
+          message: |
+            <b>CatVRF Deployment</b>
+            
+            Status: ${{ github.event.workflow_run.conclusion == 'success' && '✅ Success' || '❌ Failed' }}
+            Branch: <code>${{ github.event.workflow_run.head_branch }}</code>
+            Commit: <code>${{ github.event.workflow_run.head_sha }}</code>
+            Actor: <code>${{ github.event.workflow_run.actor }}</code>
+            
+            <a href="${{ github.event.workflow_run.html_url }}">View Workflow Run</a>

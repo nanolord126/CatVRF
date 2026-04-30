@@ -1,0 +1,113 @@
+# ═══════════════════════════════════════════════════════════════
+# PROMETHEUS CONFIGURATION - WebSocket Scaling Monitoring
+# ═══════════════════════════════════════════════════════════════
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'catvrf-websocket'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files for alerting
+# rule_files:
+#   - 'alerts/*.yml'
+
+scrape_configs:
+  # ═══════════════════════════════════════════════════════════════
+  # PROMETHEUS SELF-MONITORING
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ═══════════════════════════════════════════════════════════════
+  # LARAVEL APPLICATION METRICS
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'laravel-app'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'laravel'
+          component: 'application'
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERB INSTANCE 1
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'reverb-1'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['reverb-1:6001']
+        labels:
+          service: 'reverb'
+          instance: 'reverb-1'
+          component: 'websocket'
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERB INSTANCE 2
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'reverb-2'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['reverb-2:6001']
+        labels:
+          service: 'reverb'
+          instance: 'reverb-2'
+          component: 'websocket'
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERB INSTANCE 3
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'reverb-3'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['reverb-3:6001']
+        labels:
+          service: 'reverb'
+          instance: 'reverb-3'
+          component: 'websocket'
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERB INSTANCE 4
+  # ═══════════════════════════════════════════════════════════════
+  - job_name: 'reverb-4'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['reverb-4:6001']
+        labels:
+          service: 'reverb'
+          instance: 'reverb-4'
+          component: 'websocket'
+
+  # ═══════════════════════════════════════════════════════════════
+  # REDIS EXPORTER (if using redis_exporter)
+  # ═══════════════════════════════════════════════════════════════
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'redis'
+  #         component: 'cache'
+
+  # ═══════════════════════════════════════════════════════════════
+  # NODE EXPORTER (system metrics)
+  # ═══════════════════════════════════════════════════════════════
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+  #       labels:
+  #         service: 'node'
+  #         component: 'system'

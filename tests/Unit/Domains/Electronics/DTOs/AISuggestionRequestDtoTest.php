@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Electronics\DTOs\AISuggestionRequestDto;
 
 /**
  * Unit tests for AISuggestionRequestDto.
@@ -14,7 +17,7 @@ final class AISuggestionRequestDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Electronics\DTOs\AISuggestionRequestDto::class
+            AISuggestionRequestDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'AISuggestionRequestDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'AISuggestionRequestDto must be readonly');
@@ -23,11 +26,11 @@ final class AISuggestionRequestDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Electronics\DTOs\AISuggestionRequestDto::class
+            AISuggestionRequestDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('categorySlug', $params, 'Constructor must have categorySlug');
         $this->assertContains('budgetMaxKopecks', $params, 'Constructor must have budgetMaxKopecks');
         $this->assertContains('preferredBrands', $params, 'Constructor must have preferredBrands');
@@ -35,7 +38,7 @@ final class AISuggestionRequestDtoTest extends TestCase
         $this->assertContains('correlationId', $params, 'Constructor must have correlationId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -45,6 +48,6 @@ final class AISuggestionRequestDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Electronics\DTOs\AISuggestionRequestDto::class;
+        return AISuggestionRequestDto::class;
     }
 }

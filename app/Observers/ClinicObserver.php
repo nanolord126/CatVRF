@@ -1,10 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Observers;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Medical\Models\Clinic;
 use App\Services\Cache\CacheService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Clinic Observer
@@ -15,13 +19,14 @@ use Illuminate\Support\Facades\Log;
  * This ensures that clinic recommendations and slots are always based on fresh data.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.18
  */
 final readonly class ClinicObserver
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly CacheService $cache,
-    ) {}
+        private readonly LogManager $log,) {}
 
     /**
      * Handle the Clinic "created" event.
@@ -68,12 +73,12 @@ final readonly class ClinicObserver
             // Invalidate dynamic price cache for the clinic
             $this->cache->invalidateDynamicPrice($tenantId, 'clinic', $clinicId);
 
-            Log::info('Clinic cache invalidated', [
+            $this->log->$this->logger->info('Clinic cache invalidated', [
                 'tenant_id' => $tenantId,
                 'clinic_id' => $clinicId,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to invalidate clinic cache', [
+            $this->log->error('Failed to invalidate clinic cache', [
                 'tenant_id' => $tenantId,
                 'clinic_id' => $clinicId,
                 'error' => $e->getMessage(),

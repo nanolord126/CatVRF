@@ -1,12 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\CRM\Resources;
+
+use AuditService;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Carbon\CarbonImmutable;
 
 use App\Models\User;
 use App\Services\AuditService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -14,13 +21,14 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Hash;
+use App\Filament\CRM\Resources\CustomerResource\Pages\ListCustomers;
+use App\Filament\CRM\Resources\CustomerResource\Pages\ViewCustomer;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * CRM: управление клиентами (Users) с историей взаимодействий.
@@ -32,12 +40,19 @@ use Illuminate\Support\Facades\Hash;
 final class CustomerResource extends Resource
 {
     protected static ?string $model = User::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
     protected static ?string $navigationGroup = 'Клиенты';
+
     protected static ?string $navigationLabel = 'Клиенты';
+
     protected static ?string $modelLabel = 'Клиент';
+
     protected static ?string $pluralModelLabel = 'Клиенты';
+
     protected static ?int $navigationSort = 10;
+
     protected static ?string $slug = 'customers';
 
     public static function canCreate(): bool
@@ -45,7 +60,7 @@ final class CustomerResource extends Resource
         return false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -136,7 +151,7 @@ final class CustomerResource extends Resource
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('email_verified_at')),
                 Filter::make('new_30days')
                     ->label('Новые (30 дней)')
-                    ->query(fn (Builder $query): Builder => $query->where('created_at', '>=', now()->subDays(30))),
+                    ->query(fn (Builder $query): Builder => $query->where('created_at', '>=', CarbonImmutable::now()->subDays(30))),
             ])
             ->actions([
                 ViewAction::make(),
@@ -151,7 +166,7 @@ final class CustomerResource extends Resource
                             ->maxLength(2000),
                     ])
                     ->action(function (User $record, array $data): void {
-                        app(AuditService::class)->record(
+                        $this->auditService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->record(
                             'crm_note_added',
                             User::class,
                             $record->id,
@@ -159,7 +174,7 @@ final class CustomerResource extends Resource
                             ['note_preview' => mb_substr($data['note'], 0, 100)],
                         );
 
-                        Notification::make()
+                        $this->notificationManager->make()
                             ->title('Заметка сохранена')
                             ->success()
                             ->send();
@@ -172,8 +187,8 @@ final class CustomerResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\CRM\Resources\CustomerResource\Pages\ListCustomers::route('/'),
-            'view'  => \App\Filament\CRM\Resources\CustomerResource\Pages\ViewCustomer::route('/{record}'),
+            'index' => ListCustomers::route('/'),
+            'view'  => ViewCustomer::route('/{record}'),
         ];
     }
 }

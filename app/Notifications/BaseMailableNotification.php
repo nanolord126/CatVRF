@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
-
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Mail\Mailables\Address;
@@ -18,52 +19,52 @@ abstract class BaseMailableNotification extends BaseNotification
     /**
      * Email template blade file (resources/views/emails/...)
      */
-    private string $template = 'emails.generic';
+    private readonly string $template = 'emails.generic';
 
     /**
      * Email subject
      */
-    private string $subject = 'Notification';
+    private readonly string $subject = 'Notification';
 
     /**
      * Email from address (переопределять в подклассах)
      */
-    private ?string $fromAddress = null;
+    private readonly ?string $fromAddress = null;
 
     /**
      * Email from name
      */
-    private ?string $fromName = null;
+    private readonly ?string $fromName = null;
 
     /**
      * Reply-to address
      */
-    private ?string $replyTo = null;
+    private readonly ?string $replyTo = null;
 
     /**
      * CC addresses
      */
-    private array $cc = [];
+    private readonly array $cc = [];
 
     /**
      * BCC addresses
      */
-    private array $bcc = [];
+    private readonly array $bcc = [];
 
     /**
      * Вложения (файлы или inline)
      */
-    private array $attachments = [];
+    private readonly array $attachments = [];
 
     /**
      * Inline attachments (для логотипов, картинок)
      */
-    private array $inlineAttachments = [];
+    private readonly array $inlineAttachments = [];
 
     /**
      * Locale для email
      */
-    private ?string $locale = null;
+    private readonly ?string $locale = null;
 
     /**
      * Конструктор
@@ -119,6 +120,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function template(string $view): self
     {
         $this->template = $view;
+
         return $this;
     }
 
@@ -128,6 +130,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function subject(string $subject): self
     {
         $this->subject = $subject;
+
         return $this;
     }
 
@@ -138,6 +141,7 @@ abstract class BaseMailableNotification extends BaseNotification
     {
         $this->fromAddress = $address;
         $this->fromName = $name;
+
         return $this;
     }
 
@@ -147,6 +151,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function replyTo(string $address): self
     {
         $this->replyTo = $address;
+
         return $this;
     }
 
@@ -156,6 +161,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function cc(string ...$addresses): self
     {
         $this->cc = array_merge($this->cc, $addresses);
+
         return $this;
     }
 
@@ -165,6 +171,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function bcc(string ...$addresses): self
     {
         $this->bcc = array_merge($this->bcc, $addresses);
+
         return $this;
     }
 
@@ -174,6 +181,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function attach(string $path, array $options = []): self
     {
         $this->attachments[] = ['path' => $path, 'options' => $options];
+
         return $this;
     }
 
@@ -183,6 +191,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function attachInline(string $path, string $contentId): self
     {
         $this->inlineAttachments[] = ['path' => $path, 'contentId' => $contentId];
+
         return $this;
     }
 
@@ -192,6 +201,7 @@ abstract class BaseMailableNotification extends BaseNotification
     public function locale(string $locale): self
     {
         $this->locale = $locale;
+
         return $this;
     }
 

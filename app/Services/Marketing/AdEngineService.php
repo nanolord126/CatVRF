@@ -1,18 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Services\AuditService;
 use App\Services\FraudControl\FraudControlService;
 use App\Services\ML\AnonymizationService;
 use App\Services\ML\BigDataAggregatorService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * AdEngineService — рекламный движок.
@@ -27,16 +29,18 @@ use Illuminate\Database\DatabaseManager;
 final readonly class AdEngineService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private TargetingCriteriaService $targetingCriteria,
-        private ShortVideoAdService      $shortVideoAdService,
-        private BigDataAggregatorService $bigData,
-        private MarketingCampaignService $campaignService,
-        private FraudControlService      $fraud,
-        private AnonymizationService     $anonymizer,
-        private AuditService             $audit,
+        private readonly TargetingCriteriaService $targetingCriteria,
+        private readonly ShortVideoAdService $shortVideoAdService,
+        private readonly BigDataAggregatorService $bigData,
+        private readonly MarketingCampaignService $campaignService,
+        private readonly FraudControlService $fraud,
+        private readonly AnonymizationService $anonymizer,
+        private readonly AuditService $audit,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
+        private readonly AdExchangeService $adExchange,
     ) {}
 
     /**
@@ -56,6 +60,14 @@ final readonly class AdEngineService
         $correlationId = $request['correlation_id'] ?? Str::uuid()->toString();
 
         $this->fraud->check($userId, 'ad_serve', 0, (string) $this->request->ip(), null, $correlationId);
+
+        // Check for RTB placement
+        if (($request['placement'] ?? '') === 'rtb') {
+            $rtbAd = $this->adExchange->handleBidRequest($request);
+            if ($rtbAd !== null) {
+                return $rtbAd;
+            }
+        }
 
         // 1. Получить таргетинговый профиль (без raw user_id)
         $targeting = $this->targetingCriteria->match($userId, $vertical);
@@ -105,7 +117,7 @@ final readonly class AdEngineService
             'vertical'           => null,
             'device_type'        => $this->request->header('X-Device-Type', 'unknown'),
             'city_hash'          => 0,
-            'created_at'         => now()->toIso8601String(),
+            'created_at'         => CarbonImmutable::now()->toIso8601String(),
             'correlation_id'     => $correlationId,
         ]);
 
@@ -143,7 +155,7 @@ final readonly class AdEngineService
             'vertical'           => $vertical,
             'device_type'        => $this->request->header('X-Device-Type', 'unknown'),
             'city_hash'          => 0,
-            'created_at'         => now()->toIso8601String(),
+            'created_at'         => CarbonImmutable::now()->toIso8601String(),
             'correlation_id'     => $correlationId,
         ]);
     }

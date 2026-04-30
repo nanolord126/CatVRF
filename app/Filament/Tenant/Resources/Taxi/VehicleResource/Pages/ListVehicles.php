@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -8,11 +9,12 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listvehicles
  * @see https://catvrf.ru/docs/listvehicles
  * @see https://catvrf.ru/docs/listvehicles
@@ -20,7 +22,6 @@ declare(strict_types=1);
  * @see https://catvrf.ru/docs/listvehicles
  * @see https://catvrf.ru/docs/listvehicles
  */
-
 
 namespace App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages;
 
@@ -34,41 +35,34 @@ use Filament\Resources\Pages\ListRecords;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages
  */
 final class ListVehicles extends ListRecords
 {
-    protected static string $resource = VehicleResource::class;
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
 
-    protected function getHeaderActions(): array
-    {
-        return [Actions\CreateAction::make()];
-    }
+    protected static string $resource = VehicleResource::class;
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {
         return true;
     }
 
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
-
+    protected function getHeaderActions(): array
+    {
+        return [Actions\CreateAction::make()];
+    }
 }

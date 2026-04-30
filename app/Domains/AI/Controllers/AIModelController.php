@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\AI\Controllers;
 
@@ -12,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Class AIModelController
@@ -22,15 +25,13 @@ use Psr\Log\LoggerInterface;
  * API controller handling HTTP requests for AI models.
  * All responses include correlation_id header.
  * Write operations are protected by FraudControlService.
- *
- * @package App\Domains\AI\Controllers
  */
 final class AIModelController extends Controller
 {
     public function __construct(
         private readonly ResponseFactory $responseFactory,
         private readonly FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -42,7 +43,8 @@ final class AIModelController extends Controller
         $query = AIModel::query();
 
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->input('search') . '%');
+            $searchTerm = addcslashes($request->input('search'), '%_\\');
+            $query->where('name', 'like', '%'.$searchTerm.'%');
         }
 
         $items = $query->orderByDesc('created_at')

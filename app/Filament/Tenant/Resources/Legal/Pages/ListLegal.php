@@ -1,24 +1,34 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Legal\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Legal\LegalResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\View\View;
 
 final class ListLegal extends ListRecords
 {
+    protected static string $resource = LegalResource::class;
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
 
-    protected static string $resource = LegalResource::class;
+    public function render(): View
+    {
+        $this->logger->$this->logger->info('ListLegal page rendered', [
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+        ]);
+
+        return parent::render();
+    }
 
     protected function getHeaderActions(): array
     {
@@ -35,7 +45,7 @@ final class ListLegal extends ListRecords
         $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('Legal ListRecords accessed', [
+        $this->logger->$this->logger->info('Legal ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -55,14 +65,5 @@ final class ListLegal extends ListRecords
                 ->label('Удалить выбранные')
                 ->icon('heroicon-m-trash'),
         ];
-    }
-
-    public function render(): \Illuminate\Contracts\View\View {
-        $this->logger->info('ListLegal page rendered', [
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-        ]);
-
-        return parent::render();
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ServiceDispute — CatVRF 2026 Component.
@@ -7,40 +9,51 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/servicedispute
  */
 
-
 namespace App\Domains\HomeServices\Models;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 final class ServiceDispute extends Model
 {
-
+    use TenantScoped;
+
     protected $table = 'service_disputes';
-        protected $fillable = [
+
+    protected $fillable = [
         'uuid',
-        'correlation_id','tenant_id', 'job_id', 'initiator_id', 'type', 'description', 'status', 'resolution', 'resolved_by', 'refund_amount', 'evidence', 'resolved_at', 'correlation_id'];
-        protected $hidden = [];
-        protected $casts = ['evidence' => 'collection', 'refund_amount' => 'float', 'resolved_at' => 'datetime'];
+        'correlation_id', 'tenant_id', 'job_id', 'initiator_id', 'type', 'description', 'status', 'resolution', 'resolved_by', 'refund_amount', 'evidence', 'resolved_at', 'correlation_id'];
 
-        protected static function booted_disabled(): void
-        {
-            static::addGlobalScope('tenant_id', fn($q) => $q->where('tenant_id', tenant()->id));
-        }
+    protected $hidden = [];
 
-        public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
-        public function job(): BelongsTo { return $this->belongsTo(ServiceJob::class); }
-        public function initiator(): BelongsTo { return $this->belongsTo(User::class, 'initiator_id'); }
+    protected $casts = ['evidence' => 'collection', 'refund_amount' => 'float', 'resolved_at' => 'datetime'];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function job(): BelongsTo
+    {
+        return $this->belongsTo(ServiceJob::class);
+    }
+
+    public function initiator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'initiator_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -49,7 +62,7 @@ final class ServiceDispute extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -60,8 +73,13 @@ final class ServiceDispute extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        self::addGlobalScope('tenant_id', fn ($q) => $q->where('tenant_id', tenant()->id));
     }
 }

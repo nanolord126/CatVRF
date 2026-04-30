@@ -61,7 +61,7 @@ return [
             'Geo'             => ['key' => 'geo',            'desc' => 'Геолокация'],
             'GeoLogistics'    => ['key' => 'geo_logistics',  'desc' => 'Гео-логистика и маршруты'],
             'Recommendation'  => ['key' => 'recommendation', 'desc' => 'Система рекомендаций'],
-            'DemandForecast'  => ['key' => 'demand_forecast','desc' => 'Прогнозирование спроса'],
+            'DemandForecast'  => ['key' => 'demand_forecast', 'desc' => 'Прогнозирование спроса'],
             'Referral'        => ['key' => 'referral',       'desc' => 'Реферальная программа'],
             'Staff'           => ['key' => 'staff',          'desc' => 'Персонал и кадровый учёт'],
             'ML'              => ['key' => 'm_l',            'desc' => 'ML-инфраструктура (UserTaste, Clustering, ColdStart)', 'status' => 'completed'],
@@ -133,7 +133,7 @@ return [
         'description' => 'Все остальные вертикали. НЕ РАЗРАБАТЫВАТЬ до закрытия Q1+Q2',
         'domains'     => [
             'Art'               => ['key' => 'art',                 'desc' => 'Искусство и творчество'],
-            'BooksAndLiterature'=> ['key' => 'books_and_literature','desc' => 'Книги и литература'],
+            'BooksAndLiterature' => ['key' => 'books_and_literature', 'desc' => 'Книги и литература'],
             'Collectibles'      => ['key' => 'collectibles',        'desc' => 'Коллекционные товары'],
             'Consulting'        => ['key' => 'consulting',          'desc' => 'Консалтинг'],
             'Content'           => ['key' => 'content',             'desc' => 'Контент и медиа'],

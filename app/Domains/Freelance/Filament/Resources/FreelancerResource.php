@@ -1,63 +1,70 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms;
-use Filament\Tables;
 
-final class FreelancerResource extends Resource
+final class FreelancerResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = Freelancer::class;
 
-        protected static ?string $navigationIcon = 'heroicon-o-briefcase';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
-        protected static ?string $navigationGroup = 'Freelance';
+    protected static ?string $navigationGroup = 'Freelance';
 
-        protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 1;
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Section::make('Profile Information')->schema([
-                    TextInput::make('full_name')->required(),
-                    Textarea::make('bio')->rows(4),
-                    TextInput::make('hourly_rate')->numeric()->step(0.01),
-                    TagsInput::make('skills')->placeholder('Add skills'),
-                    TagsInput::make('languages')->placeholder('Add languages'),
-                    TextInput::make('experience_years')->numeric()->minValue(0),
-                ]),
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Section::make('Profile Information')->schema([
+                TextInput::make('full_name')->required(),
+                Textarea::make('bio')->rows(4),
+                TextInput::make('hourly_rate')->numeric()->step(0.01),
+                TagsInput::make('skills')->placeholder('Add skills'),
+                TagsInput::make('languages')->placeholder('Add languages'),
+                TextInput::make('experience_years')->numeric()->minValue(0),
+            ]),
 
-                Section::make('Links')->schema([
-                    TextInput::make('portfolio_url')->url(),
-                    TextInput::make('website')->url(),
-                ]),
+            Section::make('Links')->schema([
+                TextInput::make('portfolio_url')->url(),
+                TextInput::make('website')->url(),
+            ]),
 
-                Section::make('Status')->schema([
-                    Toggle::make('is_verified')->label('Verified'),
-                    Toggle::make('is_active')->label('Active'),
-                ]),
-            ]);
-        }
+            Section::make('Status')->schema([
+                Toggle::make('is_verified')->label('Verified'),
+                Toggle::make('is_active')->label('Active'),
+            ]),
+        ]);
+    }
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('full_name')->searchable()->sortable(),
-                    TextColumn::make('user.name')->label('User'),
-                    TextColumn::make('rating')->sortable(),
-                    TextColumn::make('review_count')->sortable(),
-                    TextColumn::make('jobs_completed')->sortable(),
-                    TextColumn::make('hourly_rate')->money('RUB'),
-                    ToggleColumn::make('is_verified'),
-                    ToggleColumn::make('is_active'),
-                ])
-                ->filters([])
-                ->actions([EditAction::make()])
-                ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
-        }
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('full_name')->searchable()->sortable(),
+                TextColumn::make('user.name')->label('User'),
+                TextColumn::make('rating')->sortable(),
+                TextColumn::make('review_count')->sortable(),
+                TextColumn::make('jobs_completed')->sortable(),
+                TextColumn::make('hourly_rate')->money('RUB'),
+                ToggleColumn::make('is_verified'),
+                ToggleColumn::make('is_active'),
+            ])
+            ->filters([])
+            ->actions([EditAction::make()])
+            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+    }
+
+    /**
+     * Relations to eager load for Freelance
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
+    }
 }

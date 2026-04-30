@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\HomeServices\Filament\Resources;
 
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables\Table;
 
-final class ServiceCategoryResource extends Resource
+final class ServiceCategoryResource extends BaseOptimizedResource
 {
     protected static ?string $model = null;
 
@@ -23,6 +23,14 @@ final class ServiceCategoryResource extends Resource
     }
 
     public static function getPages(): array
+    {
+        return [];
+    }
+
+    /**
+     * Relations to eager load for HomeServices
+     */
+    protected static function getEagerLoading(): array
     {
         return [];
     }

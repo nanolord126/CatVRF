@@ -1,17 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Collection;
 
 final class FraudModelVersion extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'version',
         'model_type',
         'trained_at',
@@ -63,6 +70,20 @@ final class FraudModelVersion extends Model
     /**
      * Relationship to the model this was rolled back from
      */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant', function ($query) {
+            if (app()->bound('tenant') && app('tenant') instanceof \App\Models\Tenant) {
+                $query->where('tenant_id', app('tenant')->id);
+            }
+        });
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Tenant::class);
+    }
+
     public function rolledBackFrom(): BelongsTo
     {
         return $this->belongsTo(FraudModelVersion::class, 'rolled_back_from_id');
@@ -73,7 +94,7 @@ final class FraudModelVersion extends Model
      */
     public static function getActive(): ?self
     {
-        return static::where('is_active', true)
+        return self::where('is_active', true)
             ->where('is_shadow', false)
             ->latest('promoted_at')
             ->first();
@@ -82,9 +103,9 @@ final class FraudModelVersion extends Model
     /**
      * Get models currently in shadow mode
      */
-    public static function getShadowModels(): \Illuminate\Database\Eloquent\Collection
+    public static function getShadowModels(): Collection
     {
-        return static::where('is_shadow', true)
+        return self::where('is_shadow', true)
             ->where('is_active', false)
             ->orderBy('shadow_started_at', 'desc')
             ->get();
@@ -95,7 +116,7 @@ final class FraudModelVersion extends Model
      */
     public function isReadyForPromotion(): bool
     {
-        if (!$this->is_shadow) {
+        if (! $this->is_shadow) {
             return false;
         }
 
@@ -104,7 +125,7 @@ final class FraudModelVersion extends Model
         }
 
         // Must be in shadow for at least 24 hours
-        if ($this->shadow_started_at->diffInHours(now()) < 24) {
+        if ($this->shadow_started_at->diffInHours(CarbonImmutable::now()) < 24) {
             return false;
         }
 
@@ -128,7 +149,7 @@ final class FraudModelVersion extends Model
     {
         $this->is_shadow = true;
         $this->is_active = false;
-        $this->shadow_started_at = now();
+        $this->shadow_started_at = CarbonImmutable::now();
         $this->save();
     }
 
@@ -138,7 +159,7 @@ final class FraudModelVersion extends Model
     public function promoteToActive(): void
     {
         // Deactivate all other active models
-        static::where('is_active', true)
+        self::where('is_active', true)
             ->where('id', '!=', $this->id)
             ->update([
                 'is_active' => false,
@@ -147,7 +168,7 @@ final class FraudModelVersion extends Model
 
         $this->is_shadow = false;
         $this->is_active = true;
-        $this->promoted_at = now();
+        $this->promoted_at = CarbonImmutable::now();
         $this->save();
     }
 
@@ -156,7 +177,7 @@ final class FraudModelVersion extends Model
      */
     public static function rollbackToPrevious(): ?self
     {
-        $previousModel = static::where('is_rollback_candidate', true)
+        $previousModel = self::where('is_rollback_candidate', true)
             ->where('is_shadow', false)
             ->latest('promoted_at')
             ->first();
@@ -166,7 +187,7 @@ final class FraudModelVersion extends Model
         }
 
         // Deactivate current active model
-        $currentActive = static::getActive();
+        $currentActive = self::getActive();
         if ($currentActive !== null) {
             $currentActive->is_active = false;
             $currentActive->save();

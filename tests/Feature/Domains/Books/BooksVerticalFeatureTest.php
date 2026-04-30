@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Books;
 
@@ -26,37 +28,12 @@ class BooksVerticalFeatureTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private BookStore $store;
+
     private BookGenre $genre;
+
     private BookAuthor $author;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->user = User::factory()->create();
-        $this->store = BookStore::create([
-            'uuid' => (string) Str::uuid(),
-            'tenant_id' => 1,
-            'name' => 'The Big Library',
-            'location' => 'Moscow, Central District',
-            'metadata' => ['working_hours' => '9:00-21:00']
-        ]);
-
-        $this->genre = BookGenre::create([
-            'uuid' => (string) Str::uuid(),
-            'tenant_id' => 1,
-            'name' => 'Science Fiction',
-            'slug' => 'sci-fi'
-        ]);
-
-        $this->author = BookAuthor::create([
-            'uuid' => (string) Str::uuid(),
-            'tenant_id' => 1,
-            'name' => 'Isaac Asimov',
-            'bio' => 'Grandmaster of SF.'
-        ]);
-    }
 
     /**
      * Test B2B vs B2C Pricing Logic in Domain Service.
@@ -74,7 +51,7 @@ class BooksVerticalFeatureTest extends TestCase
             'price_b2c' => 80000, // 800 RUB
             'price_b2b' => 45000, // 450 RUB
             'stock_quantity' => 100,
-            'format' => 'hardcover'
+            'format' => 'hardcover',
         ]);
 
         $service = app(BooksDomainService::class);
@@ -93,7 +70,7 @@ class BooksVerticalFeatureTest extends TestCase
         $this->assertEquals(900000, $orderB2B->total_amount);
         $this->assertDatabaseHas('book_orders', [
             'id' => $orderB2B->id,
-            'payment_status' => 'unpaid'
+            'payment_status' => 'unpaid',
         ]);
 
         // 2. Validate Inventory Decrement
@@ -123,12 +100,12 @@ class BooksVerticalFeatureTest extends TestCase
             'format' => 'paperback',
             'metadata' => [
                 'mood_tags' => ['intellectual', 'curious'],
-                'reading_difficulty' => 6
-            ]
+                'reading_difficulty' => 6,
+            ],
         ]);
 
         $aiConstructor = app(AIBookConstructor::class);
-        
+
         $requestDto = new BookAIRequestDto(
             userId: $this->user->id,
             mood: 'intellectual',
@@ -161,11 +138,11 @@ class BooksVerticalFeatureTest extends TestCase
             'price_b2c' => 70000,
             'price_b2b' => 60000,
             'stock_quantity' => 5,
-            'format' => 'hardcover'
+            'format' => 'hardcover',
         ]);
 
         $service = app(BooksDomainService::class);
-        
+
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Insufficient stock for some books.');
 
@@ -176,5 +153,33 @@ class BooksVerticalFeatureTest extends TestCase
             quantities: [100], // Order exceeds 5 stock
             correlationId: 'test-cid'
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->store = BookStore::create([
+            'uuid' => (string) Str::uuid(),
+            'tenant_id' => 1,
+            'name' => 'The Big Library',
+            'location' => 'Moscow, Central District',
+            'metadata' => ['working_hours' => '9:00-21:00'],
+        ]);
+
+        $this->genre = BookGenre::create([
+            'uuid' => (string) Str::uuid(),
+            'tenant_id' => 1,
+            'name' => 'Science Fiction',
+            'slug' => 'sci-fi',
+        ]);
+
+        $this->author = BookAuthor::create([
+            'uuid' => (string) Str::uuid(),
+            'tenant_id' => 1,
+            'name' => 'Isaac Asimov',
+            'bio' => 'Grandmaster of SF.',
+        ]);
     }
 }

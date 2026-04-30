@@ -1,184 +1,195 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies\Domains;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Model;
 
 final class HotelBookingPolicy extends Model
 {
-        /**
-         * Admins can do anything
-         */
-        public function before(User $user, string $ability): bool|null
-        {
-            if ($user->hasRole('admin')) {
-                return true;
-            }
+    /**
+     * Admins can do anything
+     */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
-            throw new \DomainException('Operation returned no result');
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
         }
 
-        /**
-         * View booking (guest, hotel staff, manager, admin)
-         */
-        public function view(User $user, Booking $booking): bool
-        {
-            // Tenant scoping
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
+        throw new \DomainException('Operation returned no result');
+    }
 
-            // Guest can view their own bookings
-            if ($user->id === $booking->guest_id) {
-                return true;
-            }
-
-            // Hotel staff and managers can view
-            if ($booking->hotel_id === $user->current_business_group_id) {
-                return $user->hasRole(['employee', 'manager']);
-            }
-
-            // Manager/accountant can view all
-            return $user->hasRole(['manager', 'accountant']);
+    /**
+     * View booking (guest, hotel staff, manager, admin)
+     */
+    public function $this->viewFactory->make(User $user, Booking $booking): bool
+    {
+        // Tenant scoping
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
         }
 
-        /**
-         * Create booking (guest, business_owner, manager)
-         */
-        public function create(User $user): bool
-        {
-            return $user->hasRole(['guest', 'business_owner', 'manager']);
+        // Guest can view their own bookings
+        if ($user->id === $booking->guest_id) {
+            return true;
         }
 
-        /**
-         * Update booking (guest before checkin, hotel staff, manager)
-         */
-        public function update(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
-
-            // Guest can update before checkin
-            if ($user->id === $booking->guest_id && now() < $booking->check_in_at) {
-                return true;
-            }
-
-            // Hotel staff can update
-            if ($booking->hotel_id === $user->current_business_group_id) {
-                return $user->hasRole(['employee', 'manager']);
-            }
-
-            return $user->hasRole(['manager', 'business_owner']);
+        // Hotel staff and managers can view
+        if ($booking->hotel_id === $user->current_business_group_id) {
+            return $user->hasRole(['employee', 'manager']);
         }
 
-        /**
-         * Check in guest (hotel staff)
-         */
-        public function checkIn(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
+        // Manager/accountant can view all
+        return $user->hasRole(['manager', 'accountant']);
+    }
 
-            return $booking->hotel_id === $user->current_business_group_id &&
-                   $user->hasRole(['employee', 'manager']) &&
-                   $booking->status === 'confirmed';
+    /**
+     * Create booking (guest, business_owner, manager)
+     */
+    public function create(User $user): bool
+    {
+        return $user->hasRole(['guest', 'business_owner', 'manager']);
+    }
+
+    /**
+     * Update booking (guest before checkin, hotel staff, manager)
+     */
+    public function update(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
         }
 
-        /**
-         * Check out guest (hotel staff)
-         */
-        public function checkOut(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
-
-            return $booking->hotel_id === $user->current_business_group_id &&
-                   $user->hasRole(['employee', 'manager']) &&
-                   $booking->status === 'checked_in';
+        // Guest can update before checkin
+        if ($user->id === $booking->guest_id && CarbonImmutable::now() < $booking->check_in_at) {
+            return true;
         }
 
-        /**
-         * Cancel booking
-         */
-        public function cancel(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
-
-            // Guest can cancel with conditions (cancellation policy)
-            if ($user->id === $booking->guest_id && $booking->status !== 'completed') {
-                return true;
-            }
-
-            // Hotel manager can cancel
-            if ($booking->hotel_id === $user->current_business_group_id) {
-                return $user->hasRole(['manager']);
-            }
-
-            return $user->hasRole(['manager', 'admin']);
+        // Hotel staff can update
+        if ($booking->hotel_id === $user->current_business_group_id) {
+            return $user->hasRole(['employee', 'manager']);
         }
 
-        /**
-         * Rate booking (guest after checkout)
-         */
-        public function rate(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
+        return $user->hasRole(['manager', 'business_owner']);
+    }
 
-            return $user->id === $booking->guest_id && $booking->status === 'completed';
+    /**
+     * Check in guest (hotel staff)
+     */
+    public function checkIn(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
         }
 
-        /**
-         * Delete booking (admin only)
-         */
-        public function delete(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
+        return $booking->hotel_id === $user->current_business_group_id &&
+               $user->hasRole(['employee', 'manager']) &&
+               $booking->status === 'confirmed';
+    }
 
-            return $user->hasRole('admin');
+    /**
+     * Check out guest (hotel staff)
+     */
+    public function checkOut(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
         }
 
-        /**
-         * View booking invoice
-         */
-        public function viewInvoice(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
+        return $booking->hotel_id === $user->current_business_group_id &&
+               $user->hasRole(['employee', 'manager']) &&
+               $booking->status === 'checked_in';
+    }
 
-            // Guest can view their own invoice
-            if ($user->id === $booking->guest_id) {
-                return true;
-            }
-
-            // Hotel accounting staff
-            return $booking->hotel_id === $user->current_business_group_id &&
-                   $user->hasRole(['accountant', 'manager']);
+    /**
+     * Cancel booking
+     */
+    public function cancel(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
         }
 
-        /**
-         * Modify pricing (hotel manager/business owner only)
-         */
-        public function modifyPrice(User $user, Booking $booking): bool
-        {
-            if ($booking->tenant_id !== $user->tenant_id) {
-                return false;
-            }
-
-            // Only before payment
-            if ($booking->payment_status !== 'pending') {
-                return false;
-            }
-
-            return $booking->hotel_id === $user->current_business_group_id &&
-                   $user->hasRole(['manager', 'business_owner']);
+        // Guest can cancel with conditions (cancellation policy)
+        if ($user->id === $booking->guest_id && $booking->status !== 'completed') {
+            return true;
         }
+
+        // Hotel manager can cancel
+        if ($booking->hotel_id === $user->current_business_group_id) {
+            return $user->hasRole(['manager']);
+        }
+
+        return $user->hasRole(['manager', 'admin']);
+    }
+
+    /**
+     * Rate booking (guest after checkout)
+     */
+    public function rate(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
+        return $user->id === $booking->guest_id && $booking->status === 'completed';
+    }
+
+    /**
+     * Delete booking (admin only)
+     */
+    public function delete(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
+        return $user->hasRole('admin');
+    }
+
+    /**
+     * View booking invoice
+     */
+    public function viewInvoice(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
+        // Guest can view their own invoice
+        if ($user->id === $booking->guest_id) {
+            return true;
+        }
+
+        // Hotel accounting staff
+        return $booking->hotel_id === $user->current_business_group_id &&
+               $user->hasRole(['accountant', 'manager']);
+    }
+
+    /**
+     * Modify pricing (hotel manager/business owner only)
+     */
+    public function modifyPrice(User $user, Booking $booking): bool
+    {
+        if ($booking->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
+        // Only before payment
+        if ($booking->payment_status !== 'pending') {
+            return false;
+        }
+
+        return $booking->hotel_id === $user->current_business_group_id &&
+               $user->hasRole(['manager', 'business_owner']);
+    }
 }

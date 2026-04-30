@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -8,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * Tourism Booking Factory
- * 
+ *
  * Factory for creating tourism booking test data.
  * Includes state methods for different booking statuses.
  */

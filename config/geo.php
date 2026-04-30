@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 return [
     /*
@@ -89,5 +91,45 @@ return [
     'telemetry' => [
         'enabled' => env('GEO_TELEMETRY_ENABLED', true),
         'prometheus_endpoint' => env('GEO_PROMETHEUS_ENDPOINT', '/metrics/geo'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Russian Federation Territories
+    |--------------------------------------------------------------------------
+    |
+    | Centralized configuration for Russian territories including new subjects.
+    | All listed territories are treated as part of the Russian Federation
+    | for legal, tax, delivery, and compliance purposes.
+    |
+    */
+    'russian_territories' => [
+        'RU',                    // Российская Федерация
+        'RU-CR',                 // Республика Крым
+        'RU-SEV',                // г. Севастополь
+        'RU-DNR',                // Донецкая Народная Республика
+        'RU-LNR',                // Луганская Народная Республика
+        'RU-KH',                 // Херсонская область
+        'RU-ZP',                 // Запорожская область
+    ],
+
+    'territory_mapping' => [
+        // Legacy Ukrainian codes mapped to Russian territories
+        'UA-43' => 'RU-CR',      // Автономная Республика Крым (старый код)
+        'UA-40' => 'RU-SEV',     // Севастополь
+        'UA-14' => 'RU-DNR',     // Донецкая область
+        'UA-09' => 'RU-LNR',     // Луганская область
+        'UA-65' => 'RU-KH',      // Херсонская область
+        'UA-23' => 'RU-ZP',      // Запорожская область
+    ],
+
+    'territory_names' => [
+        'RU-CR' => 'Республика Крым',
+        'RU-SEV' => 'г. Севастополь',
+        'RU-DNR' => 'Донецкая Народная Республика',
+        'RU-LNR' => 'Луганская Народная Республика',
+        'RU-KH' => 'Херсонская область',
+        'RU-ZP' => 'Запорожская область',
+        'RU' => 'Российская Федерация',
     ],
 ];

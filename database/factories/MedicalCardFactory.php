@@ -8,7 +8,6 @@ use App\Models\Domains\Clinic\MedicalCard;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 final class MedicalCardFactory extends Factory
 {

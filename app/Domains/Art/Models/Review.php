@@ -1,16 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class Review extends Model
 {
+    use TenantScoped;
 
     protected $table = 'reviews';
 
@@ -36,20 +38,6 @@ final class Review extends Model
         'meta' => 'array',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            $builder->where('tenant_id', self::resolveTenantId());
-        });
-
-        static::creating(static function (Review $review): void {
-            $review->uuid = $review->uuid ?: (string) Str::uuid();
-            $review->correlation_id = $review->correlation_id ?: (string) Str::uuid();
-            $review->tenant_id = $review->tenant_id ?: self::resolveTenantId();
-            $review->business_group_id = $review->business_group_id ?? self::resolveBusinessGroupId();
-        });
-    }
-
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -63,6 +51,20 @@ final class Review extends Model
     public function isPositive(): bool
     {
         return $this->rating >= 4;
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            $builder->where('tenant_id', self::resolveTenantId());
+        });
+
+        self::creating(static function (Review $review): void {
+            $review->uuid = $review->uuid ?: (string) Str::uuid();
+            $review->correlation_id = $review->correlation_id ?: (string) Str::uuid();
+            $review->tenant_id = $review->tenant_id ?: self::resolveTenantId();
+            $review->business_group_id = $review->business_group_id ?? self::resolveBusinessGroupId();
+        });
     }
 
     private static function resolveTenantId(): int

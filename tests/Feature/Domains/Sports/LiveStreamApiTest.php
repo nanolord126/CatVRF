@@ -9,52 +9,19 @@ use App\Domains\Sports\Models\Trainer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class LiveStreamApiTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private User $trainerUser;
+
     private Gym $gym;
+
     private Trainer $trainer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-
-        $this->trainerUser = User::factory()->create();
-        $this->trainerUser->assignRole('trainer');
-
-        $this->gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'tenant_id' => 1,
-            'business_group_id' => null,
-            'name' => 'Test Gym',
-            'address' => 'Test Address',
-            'single_visit_price' => 500,
-            'monthly_membership_price' => 3000,
-            'personal_training_price' => 1500,
-            'group_class_price' => 500,
-            'max_daily_capacity' => 200,
-            'is_active' => true,
-        ]);
-
-        $this->trainer = Trainer::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'tenant_id' => 1,
-            'business_group_id' => null,
-            'gym_id' => $this->gym->id,
-            'user_id' => $this->trainerUser->id,
-            'name' => 'Test Trainer',
-            'specialization' => 'fitness',
-            'hourly_rate' => 1500,
-            'is_active' => true,
-        ]);
-    }
 
     public function test_create_live_stream(): void
     {
@@ -114,5 +81,42 @@ final class LiveStreamApiTest extends TestCase
         $response = $this->postJson('/api/v1/sports/live-streams/1/start');
 
         $response->assertStatus(403);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
+
+        $this->trainerUser = User::factory()->create();
+        $this->trainerUser->assignRole('trainer');
+
+        $this->gym = Gym::create([
+            'uuid' => Str::uuid()->toString(),
+            'tenant_id' => 1,
+            'business_group_id' => null,
+            'name' => 'Test Gym',
+            'address' => 'Test Address',
+            'single_visit_price' => 500,
+            'monthly_membership_price' => 3000,
+            'personal_training_price' => 1500,
+            'group_class_price' => 500,
+            'max_daily_capacity' => 200,
+            'is_active' => true,
+        ]);
+
+        $this->trainer = Trainer::create([
+            'uuid' => Str::uuid()->toString(),
+            'tenant_id' => 1,
+            'business_group_id' => null,
+            'gym_id' => $this->gym->id,
+            'user_id' => $this->trainerUser->id,
+            'name' => 'Test Trainer',
+            'specialization' => 'fitness',
+            'hourly_rate' => 1500,
+            'is_active' => true,
+        ]);
     }
 }

@@ -2,11 +2,15 @@
 
 namespace App\Services\ML;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use App\Services\ML\FraudMLFeatureStore;
 use App\Services\ML\FraudMLExplainer;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Fraud ML Service
@@ -16,11 +20,14 @@ use App\Services\ML\FraudMLExplainer;
  */
 final readonly class FraudMLService
 {
+    use WithAuditLogging;
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly Connection $redis,
         private readonly DatabaseManager $db,
-        private readonly Request $request
+        private readonly Request $request,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -31,7 +38,7 @@ final readonly class FraudMLService
     public function predictCancellationFraud(int $userId, int $bookingId, string $reason): float
     {
         $cacheKey = "fraud_ml:cancellation:{$userId}:{$bookingId}";
-        $cached = Redis::get($cacheKey);
+        $cached = $this->redis->get($cacheKey);
         
         if ($cached !== null) {
             return (float) $cached;
@@ -39,7 +46,17 @@ final readonly class FraudMLService
 
         $userCancellationHistory = $this->getUserCancellationHistory($userId);
         $timeUntilDeparture = $this->getTimeUntilDeparture($bookingId);
-        $reasonRiskScore = $this->getReteing) $frat_return $fraudScore;
+        $reasonRiskScore = $this->getReasonRiskScore($reason);
+
+        $fraudScore = $this->calculateCancellationScore(
+            $userCancellationHistory,
+            $timeUntilDeparture,
+            $reasonRiskScore
+        );
+
+        $this->redis->setex($cacheKey, 3600, $fraudScore);
+
+        return $fraudScore;
     }
 
     /**
@@ -47,26 +64,16 @@ final readonly class FraudMLService
      */
     public function predictNoShowProbability(int $userId, int $bookingId): float
     {
-        $cacheKey = "fraud_ml:noshow:{$userId}:{$bookingId}"
+        $cacheKey = "fraud_ml:noshow:{$userId}:{$bookingId}";
+        $cached = $this->redis->get($cacheKey);
 
-      t $cachedowHistory = $this->getUserNoShowHistory($userId);
+        if ($cached !== null) {
+            return (float) $cached;
+        }
+
+        $userNoShowHistory = $this->getUserNoShowHistory($userId);
         $bookingValue = $this->getBookingValue($bookingId);
         $userLoyalty = $this->getUserLoyaltyScore($userId);
-
-        // Store features in Feature Store
-            'booking_id' => $bookingId,
-            'no_show_rate' => $userNoShowHistory['no_show_rate'],
-            'booking_value' => $bookingValue,
-            'loyalty_score' => $userLoyalty,
-            'vertical_code' => 'travel',
-        ];
-        
-        $this->featureStore->storeFeatures(
-            'user',
-            (string)$userId,
-            $features,
-            request()?->header('X-Correlation-ID')
-        );
 
         $noShowScore = $this->calculateNoShowScore(
             userNoShowHistory: $userNoShowHistory,
@@ -87,12 +94,12 @@ final readonly class FraudMLService
         $cancellations = $this->db->table('travel_bookings')
             ->where('user_id', $userId)
             ->where('status', 'cancelled')
-            ->where('cancelled_at', '>=', now()->subDays(90))
+            ->where('cancelled_at', '>=', CarbonImmutable::now()->subDays(90))
             ->count();
 
         $totalBookings = $this->db->table('travel_bookings')
             ->where('user_id', $userId)
-            ->where('created_at', '>=', now()->subDays(90))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(90))
             ->count();
 
         return [
@@ -115,7 +122,7 @@ final readonly class FraudMLService
             return 0;
         }
 
-        return now()->diffInHours(\Carbon\Carbon::parse($booking->start_date));
+        return CarbonImmutable::now()->diffInHours(\Carbon\Carbon::parse($booking->start_date));
     }
 
     /**
@@ -151,9 +158,9 @@ final readonly class FraudMLService
     }
 
     /**
-     * Calculate fraud score based on multiple factors.
+     * Calculate cancellation score based on multiple factors.
      */
-    private function calculateFraudScore(array $userCancellationHistory, int $timeUntilDeparture, float $reasonRiskScore): float
+    private function calculateCancellationScore(array $userCancellationHistory, int $timeUntilDeparture, float $reasonRiskScore): float
     {
         $cancellationRate = $userCancellationHistory['cancellation_rate'];
         
@@ -183,12 +190,12 @@ final readonly class FraudMLService
         $noShows = $this->db->table('travel_bookings')
             ->where('user_id', $userId)
             ->where('status', 'no_show')
-            ->where('start_date', '>=', now()->subDays(90))
+            ->where('start_date', '>=', CarbonImmutable::now()->subDays(90))
             ->count();
 
         $totalBookings = $this->db->table('travel_bookings')
             ->where('user_id', $userId)
-            ->where('start_date', '>=', now()->subDays(90))
+            ->where('start_date', '>=', CarbonImmutable::now()->subDays(90))
             ->count();
 
         return [
@@ -218,7 +225,7 @@ final readonly class FraudMLService
         $totalSpent = $this->db->table('balance_transactions')
             ->where('user_id', $userId)
             ->where('type', 'deposit')
-            ->where('created_at', '>=', now()->subDays(365))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(365))
             ->sum('amount');
 
         if ($totalSpent > 500000) {
@@ -228,50 +235,6 @@ final readonly class FraudMLService
         } elseif ($totalSpent > 50000) {
             return 0.5;
         }
-
-        return 0.2;
-    }
-
-    /**
-     * Calculate no-sho
-        }
-
-        return 0.2;
-    }
-
-    /**w score.
-     * Calculate no-show score.
-     */
-    private function calculateNoShowScore(array $userNoShowHistory, float $bookingValue,*float/$userLoyalty):float
-    {
-        $noShowRate = $userNoShowHistory['no_show_rate'];
-        
-        $historyScore = min($noShowRate * 3, 1.0);
-        
-        $valueScore = $bookingValue < 10000 ? 0.8 : 0.3;
-        
-        $loyaltyScore = 1 - $userLoyalty;
-
-        $noShowScore = ($historyScore * 0.5) + ($valueScore * 0.3) + ($loyaltyScore * 0.2);
-
-        return min(max($noShowScore, 0), 1);
-    }
-
-    private function calculateNoShowScore(array $userNoShowHistory, float $bookingValue, float $userLoyalty): float
-    {
-        $noShowRate = $userNoShowHistory['no_show_rate'];
-        
-        $historyScore = min($noShowRate * 3, 1.0);
-        
-        $valueScore = $bookingValue < 10000 ? 0.8 : 0.3;
-        
-        $loyaltyScore = 1 - $userLoyalty;
-
-        $noShowScore = ($historyScore * 0.5) + ($valueScore * 0.3) + ($loyaltyScore * 0.2);
-
-        return min(max($noShowScore, 0), 1);
-    }
-}
 
         return 0.2;
     }

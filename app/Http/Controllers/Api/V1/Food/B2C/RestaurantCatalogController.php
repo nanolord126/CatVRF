@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Http\Controllers\BaseApiController;
 
 /**
  * Class RestaurantCatalogController
@@ -19,8 +20,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * - Response via ResponseFactory DI
  * - correlation_id in all responses
  *
- * @see \App\Http\Controllers\BaseApiController
- * @package App\Http\Controllers\Api\V1\Food\B2C
+ * @see BaseApiController
  */
 final class RestaurantCatalogController extends Controller
 {

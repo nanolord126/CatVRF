@@ -1,6 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Str;
+use App\Services\Infrastructure\DopplerService;
 
 return [
 
@@ -32,9 +35,9 @@ return [
     |
     */
 
-    'lifetime' => (int) App\Services\Infrastructure\DopplerService::get('SESSION_LIFETIME', 120),
+    'lifetime' => (int) DopplerService::get('SESSION_LIFETIME', 120),
 
-    'expire_on_close' => App\Services\Infrastructure\DopplerService::get('SESSION_EXPIRE_ON_CLOSE', false),
+    'expire_on_close' => DopplerService::get('SESSION_EXPIRE_ON_CLOSE', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -47,7 +50,7 @@ return [
     |
     */
 
-    'encrypt' => App\Services\Infrastructure\DopplerService::get('SESSION_ENCRYPT', false),
+    'encrypt' => DopplerService::get('SESSION_ENCRYPT', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -73,7 +76,7 @@ return [
     |
     */
 
-    'connection' => App\Services\Infrastructure\DopplerService::get('SESSION_CONNECTION'),
+    'connection' => DopplerService::get('SESSION_CONNECTION'),
 
     /*
     |--------------------------------------------------------------------------
@@ -86,7 +89,7 @@ return [
     |
     */
 
-    'table' => App\Services\Infrastructure\DopplerService::get('SESSION_TABLE', 'sessions'),
+    'table' => DopplerService::get('SESSION_TABLE', 'sessions'),
 
     /*
     |--------------------------------------------------------------------------
@@ -101,7 +104,7 @@ return [
     |
     */
 
-    'store' => App\Services\Infrastructure\DopplerService::get('SESSION_STORE'),
+    'store' => DopplerService::get('SESSION_STORE'),
 
     /*
     |--------------------------------------------------------------------------
@@ -127,9 +130,9 @@ return [
     |
     */
 
-    'cookie' => App\Services\Infrastructure\DopplerService::get(
+    'cookie' => DopplerService::get(
         'SESSION_COOKIE',
-        Str::slug((string) App\Services\Infrastructure\DopplerService::get('APP_NAME', 'laravel')).'-session'
+        Str::slug((string) DopplerService::get('APP_NAME', 'laravel')).'-session'
     ),
 
     /*
@@ -143,7 +146,7 @@ return [
     |
     */
 
-    'path' => App\Services\Infrastructure\DopplerService::get('SESSION_PATH', '/'),
+    'path' => DopplerService::get('SESSION_PATH', '/'),
 
     /*
     |--------------------------------------------------------------------------
@@ -156,7 +159,7 @@ return [
     |
     */
 
-    'domain' => App\Services\Infrastructure\DopplerService::get('SESSION_DOMAIN'),
+    'domain' => DopplerService::get('SESSION_DOMAIN'),
 
     /*
     |--------------------------------------------------------------------------
@@ -169,7 +172,7 @@ return [
     |
     */
 
-    'secure' => App\Services\Infrastructure\DopplerService::get('SESSION_SECURE_COOKIE'),
+    'secure' => DopplerService::get('SESSION_SECURE_COOKIE'),
 
     /*
     |--------------------------------------------------------------------------
@@ -182,7 +185,7 @@ return [
     |
     */
 
-    'http_only' => App\Services\Infrastructure\DopplerService::get('SESSION_HTTP_ONLY', true),
+    'http_only' => DopplerService::get('SESSION_HTTP_ONLY', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,7 +202,7 @@ return [
     |
     */
 
-    'same_site' => App\Services\Infrastructure\DopplerService::get('SESSION_SAME_SITE', 'lax'),
+    'same_site' => DopplerService::get('SESSION_SAME_SITE', 'lax'),
 
     /*
     |--------------------------------------------------------------------------
@@ -212,6 +215,6 @@ return [
     |
     */
 
-    'partitioned' => App\Services\Infrastructure\DopplerService::get('SESSION_PARTITIONED_COOKIE', false),
+    'partitioned' => DopplerService::get('SESSION_PARTITIONED_COOKIE', false),
 
 ];

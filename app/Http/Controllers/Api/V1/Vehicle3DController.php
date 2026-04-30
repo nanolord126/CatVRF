@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
@@ -8,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Http\Controllers\BaseApiController;
 
 /**
  * Vehicle3DController
@@ -15,7 +18,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * Основной класс для работы с платформой CatVRF.
  *
  * @author CatVRF
- * @package App\Http\Controllers\API\V1
+ *
  * @version 1.0.0
  */
 /**
@@ -27,17 +30,14 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * - Response via ResponseFactory DI
  * - correlation_id in all responses
  *
- * @see \App\Http\Controllers\BaseApiController
- * @package App\Http\Controllers\Api\V1
+ * @see BaseApiController
  */
 final class Vehicle3DController extends Controller
 {
-    public function __construct(private readonly VehicleVisualizerService $service,
+    public function __construct(
+        private readonly VehicleVisualizerService $service,
         private readonly ResponseFactory $response,
-    )
-    {
-
-    }
+    ) {}
 
     public function visualize(int $vehicleId, Request $request): JsonResponse
     {
@@ -49,11 +49,13 @@ final class Vehicle3DController extends Controller
             'wheels' => 'integer',
         ]);
         $visualization = $this->service->generateVehicleVisualization($vehicleData);
+
         return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),
         ]);
     }
+
     public function getCameraAngles(int $vehicleId): JsonResponse
     {
         $angles = [
@@ -62,6 +64,7 @@ final class Vehicle3DController extends Controller
             'top' => ['position' => [0, 4, 0], 'target' => [0, 1, 0]],
             'interior' => ['position' => [0, 1, 0], 'target' => [0, 1, -1]],
         ];
+
         return $this->response->json([
             'data' => $angles,
             'correlation_id' => Str::uuid(),

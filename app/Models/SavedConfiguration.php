@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 /**
  * Class SavedConfiguration
@@ -23,47 +25,45 @@ use Illuminate\Database\Eloquent\Builder;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class SavedConfiguration extends Model
 {
-
     protected $table = 'saved_configurations';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'user_id',
-            'template_id',
-            'project_name',
-            'payload',
-            'total_price_kopeks',
-            'total_weight_grams',
-            'status',
-            'correlation_id',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'user_id',
+        'template_id',
+        'project_name',
+        'payload',
+        'total_price_kopeks',
+        'total_weight_grams',
+        'status',
+        'correlation_id',
+    ];
 
-        protected $casts = [
-            'payload' => 'json',
-        ];
+    protected $casts = [
+        'payload' => 'json',
+    ];
 
-        protected static function booted(): void
-        {
-            static::creating(function (SavedConfiguration $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-            });
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(ConfiguratorTemplate::class, 'template_id');
+    }
 
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $builder->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        self::creating(function (SavedConfiguration $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+        });
 
-        public function template(): BelongsTo
-        {
-            return $this->belongsTo(ConfiguratorTemplate::class, 'template_id');
-        }
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

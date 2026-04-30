@@ -1,11 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Domains\Taxi\Models\TaxiDriver;
-use App\Domains\Taxi\Models\TaxiVehicle;
 
 /**
  * TaxiDriverResource - Driver card with photo, car data, rating, stats
@@ -71,6 +71,11 @@ final class TaxiDriverResource extends JsonResource
         ];
     }
 
+    public static function collection($resource)
+    {
+        return parent::collection($resource);
+    }
+
     private function maskPhone(string $phone): string
     {
         return preg_replace('/(\d{1})(\d{3})(\d{3})(\d{2})(\d{2})/', '+$1 ($2) $3-$4-$5', $phone);
@@ -79,7 +84,7 @@ final class TaxiDriverResource extends JsonResource
     private function getBadges(): array
     {
         $badges = [];
-        
+
         if (($this->rating ?? 0) >= 4.9) {
             $badges[] = [
                 'code' => 'top_driver',
@@ -88,7 +93,7 @@ final class TaxiDriverResource extends JsonResource
                 'color' => 'gold',
             ];
         }
-        
+
         if (($this->total_rides ?? 0) >= 1000) {
             $badges[] = [
                 'code' => 'experienced',
@@ -97,7 +102,7 @@ final class TaxiDriverResource extends JsonResource
                 'color' => 'silver',
             ];
         }
-        
+
         if (($this->completion_rate ?? 0) >= 0.98) {
             $badges[] = [
                 'code' => 'reliable',
@@ -106,7 +111,7 @@ final class TaxiDriverResource extends JsonResource
                 'color' => 'green',
             ];
         }
-        
+
         if (($this->current_streak ?? 0) >= 10) {
             $badges[] = [
                 'code' => 'streak_master',
@@ -117,10 +122,5 @@ final class TaxiDriverResource extends JsonResource
         }
 
         return $badges;
-    }
-
-    public static function collection($resource)
-    {
-        return parent::collection($resource);
     }
 }

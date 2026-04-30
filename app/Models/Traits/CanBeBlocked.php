@@ -1,12 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Traits;
+
+use Carbon\CarbonImmutable;
 
 trait CanBeBlocked
 {
     public function block(): void
     {
-        $this->blocked_at = now();
+        $this->blocked_at = CarbonImmutable::now();
         $this->save();
     }
 
