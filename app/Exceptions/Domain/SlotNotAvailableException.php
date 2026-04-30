@@ -1,10 +1,25 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Exceptions\Domain;
 
 final class SlotNotAvailableException extends \RuntimeException
 {
+    /**
+     * Component: SlotNotAvailableException
+     *
+     * Part of the CatVRF 2026 multi-vertical marketplace platform.
+     * Implements tenant-aware, fraud-checked business logic
+     * with full correlation_id tracing and audit logging.
+     *
+     * @version 2026.1
+     */
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
     public function __construct(
         string $message = '',
         int $code = 0,
@@ -14,31 +29,17 @@ final class SlotNotAvailableException extends \RuntimeException
     }
 
     /**
-     * Component: SlotNotAvailableException
-     *
-     * Part of the CatVRF 2026 multi-vertical marketplace platform.
-     * Implements tenant-aware, fraud-checked business logic
-     * with full correlation_id tracing and audit logging.
-     *
-     * @package CatVRF
-     * @version 2026.1
-     */
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
-
-    /**
      * SlotNotAvailableException — CatVRF 2026 Component.
      *
      * Part of the CatVRF multi-vertical marketplace platform.
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
+     *
      * @see https://catvrf.ru/docs/slotnotavailableexception
      * @see https://catvrf.ru/docs/slotnotavailableexception
      * @see https://catvrf.ru/docs/slotnotavailableexception
@@ -55,5 +56,4 @@ final class SlotNotAvailableException extends \RuntimeException
      * @see https://catvrf.ru/docs/slotnotavailableexception
      * @see https://catvrf.ru/docs/slotnotavailableexception
      */
-
 }

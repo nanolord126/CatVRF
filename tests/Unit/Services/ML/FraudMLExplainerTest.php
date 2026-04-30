@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\ML;
 
@@ -11,12 +13,6 @@ final class FraudMLExplainerTest extends TestCase
     use RefreshDatabase;
 
     private FraudMLExplainer $explainer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->explainer = app(FraudMLExplainer::class);
-    }
 
     public function test_explain_prediction_with_low_score_returns_no_explanation(): void
     {
@@ -66,7 +62,7 @@ final class FraudMLExplainerTest extends TestCase
         $result = $this->explainer->explainPrediction($features, 0.9, 'test-v1');
 
         $this->assertNotEmpty($result['top_features']);
-        
+
         // Check that top features have required structure
         foreach ($result['top_features'] as $featureName => $featureData) {
             $this->assertArrayHasKey('value', $featureData);
@@ -177,7 +173,7 @@ final class FraudMLExplainerTest extends TestCase
 
         // amount_log should appear in all 3 explanations
         $this->assertEquals(3, $summary['amount_log']['count']);
-        
+
         // tx_count_24h should appear in 2 explanations
         $this->assertEquals(2, $summary['tx_count_24h']['count']);
     }
@@ -220,5 +216,11 @@ final class FraudMLExplainerTest extends TestCase
         // Should handle gracefully without error
         $this->assertEquals(0.8, $result['score']);
         $this->assertTrue($result['threshold_exceeded']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->explainer = app(FraudMLExplainer::class);
     }
 }

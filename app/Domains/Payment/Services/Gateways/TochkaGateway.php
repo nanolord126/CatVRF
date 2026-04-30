@@ -12,10 +12,10 @@ use Psr\Log\LoggerInterface;
 final readonly class TochkaGateway implements PaymentGatewayInterface
 {
     public function __construct(
-        private AuditService $audit,
-        private LoggerInterface $logger,
-        private string $clientId,
-        private string $clientSecret,
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger,
+        private readonly string $clientId,
+        private readonly string $clientSecret,
     ) {}
 
     public function initPayment(
@@ -24,13 +24,13 @@ final readonly class TochkaGateway implements PaymentGatewayInterface
         string $correlationId,
         string $description = '',
     ): array {
-        $this->logger->info('Tochka init payment called', [
+        $this->logger->$this->logger->info('Tochka init payment called', [
             'amount_kopecks' => $amountKopecks,
             'idempotency_key' => $idempotencyKey,
         ]);
 
-        $mockProviderId = 'tch_' . uniqid('', true);
-        $mockUrl = 'https://tochka.com/api/v1/payment/' . $mockProviderId . '/pay';
+        $mockProviderId = 'tch_'.uniqid('', true);
+        $mockUrl = 'https://tochka.com/api/v1/payment/'.$mockProviderId.'/pay';
 
         $response = [
             'payment_id' => $mockProviderId,
@@ -83,7 +83,7 @@ final readonly class TochkaGateway implements PaymentGatewayInterface
         string $correlationId,
     ): array {
         $response = [
-            'refund_id' => 'ref_' . uniqid('', true),
+            'refund_id' => 'ref_'.uniqid('', true),
             'status' => 'REFUNDED',
             'provider_response' => [
                 'paymentId' => $providerPaymentId,

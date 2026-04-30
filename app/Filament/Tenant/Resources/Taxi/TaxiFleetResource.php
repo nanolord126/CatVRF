@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Taxi\TaxiFleetResource;
@@ -9,12 +10,16 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\CreateTaxiFleet;
+use App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\EditTaxiFleet;
+use App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\ListTaxiFleets;
 
 final class TaxiFleetResource extends Resource
 {
     protected static ?string $model = TaxiFleet::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
     protected static ?string $navigationGroup = 'Taxi Management';
 
     public static function form(Form $form): Form
@@ -61,9 +66,9 @@ final class TaxiFleetResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\ListTaxiFleets::route('/'),
-            'create' => \App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\CreateTaxiFleet::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\Pages\EditTaxiFleet::route('/{record}/edit'),
+            'index' => ListTaxiFleets::route('/'),
+            'create' => CreateTaxiFleet::route('/create'),
+            'edit' => EditTaxiFleet::route('/{record}/edit'),
         ];
     }
 }

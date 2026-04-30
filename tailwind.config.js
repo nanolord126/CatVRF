@@ -11,6 +11,37 @@ export default {
     darkMode: 'class',
     theme: {
         extend: {
+            animation: {
+                'status-change': 'status-change 500ms ease-out forwards',
+                'success-pulse': 'success-pulse 2s ease-in-out infinite',
+                'gentle-shake': 'gentle-shake 0.5s ease-in-out',
+                'wave': 'wave 0.6s ease-out',
+                'danger-flash': 'danger-flash 0.8s ease-in-out 2',
+            },
+            keyframes: {
+                'status-change': {
+                    '0%': { transform: 'scale(0.95)', opacity: '0.7' },
+                    '50%': { transform: 'scale(1.05)' },
+                    '100%': { transform: 'scale(1)', opacity: '1' },
+                },
+                'success-pulse': {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)' },
+                    '70%': { boxShadow: '0 0 0 8px rgba(16, 185, 129, 0)' },
+                },
+                'gentle-shake': {
+                    '0%, 100%': { transform: 'translateX(0)' },
+                    '25%': { transform: 'translateX(-2px)' },
+                    '75%': { transform: 'translateX(2px)' },
+                },
+                'wave': {
+                    '0%': { transform: 'translateX(-10px)', opacity: '0.5' },
+                    '100%': { transform: 'translateX(0)', opacity: '1' },
+                },
+                'danger-flash': {
+                    '0%, 100%': { backgroundColor: 'rgb(254 226 226)' },
+                    '50%': { backgroundColor: 'rgb(248 113 113)' },
+                },
+            },
             colors: {
                 // 2026 Premium Palette
                 carbon: {

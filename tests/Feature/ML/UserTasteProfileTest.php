@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\ML;
 
@@ -21,14 +23,6 @@ final class UserTasteProfileTest extends TestCase
     private User $user;
 
     private int $tenantId = 1;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tasteService = app(UserTasteProfileService::class);
-        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
-    }
 
     // ========== PROFILE CREATION TESTS ==========
 
@@ -298,5 +292,13 @@ final class UserTasteProfileTest extends TestCase
 
         $influence = $profile->getRecommendationInfluence();
         $this->assertLessThanOrEqual(0.7, $influence);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tasteService = app(UserTasteProfileService::class);
+        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
     }
 }

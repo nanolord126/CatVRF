@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Beauty\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class BeautyFraudDetectionDto
 {
@@ -37,7 +38,7 @@ final readonly class BeautyFraudDetectionDto
             amount: $request->input('amount') ? (int) $request->input('amount') : null,
             ipAddress: $request->ip(),
             userAgent: $request->header('User-Agent'),
-            correlationId: $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid(),
+            correlationId: $request->header('X-Correlation-ID') ?? (string) Str::uuid(),
             idempotencyKey: $request->header('X-Idempotency-Key'),
             isB2B: $request->has('inn') && $request->has('business_card_id'),
         );

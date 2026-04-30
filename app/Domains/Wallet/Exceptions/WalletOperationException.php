@@ -17,7 +17,7 @@ use RuntimeException;
 final class WalletOperationException extends RuntimeException
 {
     public function __construct(
-        private readonly int    $walletId,
+        private readonly int $walletId,
         private readonly string $operationType,
         private readonly string $reason,
         private readonly string $correlationId,

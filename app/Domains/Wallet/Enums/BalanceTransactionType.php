@@ -12,15 +12,6 @@ namespace App\Domains\Wallet\Enums;
  */
 enum BalanceTransactionType: string
 {
-    case DEPOSIT = 'deposit';
-    case WITHDRAWAL = 'withdrawal';
-    case COMMISSION = 'commission';
-    case BONUS = 'bonus';
-    case REFUND = 'refund';
-    case PAYOUT = 'payout';
-    case HOLD = 'hold';
-    case RELEASE_HOLD = 'release_hold';
-
     /** Человекочитаемая метка. */
     public function label(): string
     {
@@ -56,4 +47,12 @@ enum BalanceTransactionType: string
     {
         return ! $this->isCredit();
     }
+    case DEPOSIT = 'deposit';
+    case WITHDRAWAL = 'withdrawal';
+    case COMMISSION = 'commission';
+    case BONUS = 'bonus';
+    case REFUND = 'refund';
+    case PAYOUT = 'payout';
+    case HOLD = 'hold';
+    case RELEASE_HOLD = 'release_hold';
 }

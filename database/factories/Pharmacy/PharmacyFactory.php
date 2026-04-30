@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories\Pharmacy;
 
@@ -9,6 +11,7 @@ use Illuminate\Support\Str;
 final class PharmacyFactory extends Factory
 {
     protected $model = Pharmacy::class;
+
     public function definition(): array
     {
         return [

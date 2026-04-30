@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Commerce;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Commerce;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -24,21 +22,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class CommerceResource extends Resource
 {
+    protected static ?string $model = Commerce::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 23;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Commerce::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 23;
 
     public static function form(Form $form): Form
     {
@@ -47,11 +46,11 @@ final class CommerceResource extends Resource
                 TextInput::make('store_code')->label('Код магазина')->required()->hidden(),
                 TextInput::make('store_name')->label('Название магазина')->required(),
                 Select::make('commerce_type')->label('Тип торговли')->options([
-                    'retail' => 'Розница','wholesale' => 'Оптом','e-commerce' => 'E-commerce','mixed' => 'Смешанная',
+                    'retail' => 'Розница', 'wholesale' => 'Оптом', 'e-commerce' => 'E-commerce', 'mixed' => 'Смешанная',
                 ])->required(),
                 Select::make('category')->label('Категория')->options([
-                    'apparel' => 'Одежда','electronics' => 'Электроника','home' => 'Дом','sports' => 'Спорт',
-                    'toys' => 'Игрушки','beauty' => 'Красота','food' => 'Еда','books' => 'Книги',
+                    'apparel' => 'Одежда', 'electronics' => 'Электроника', 'home' => 'Дом', 'sports' => 'Спорт',
+                    'toys' => 'Игрушки', 'beauty' => 'Красота', 'food' => 'Еда', 'books' => 'Книги',
                 ])->required(),
                 TextInput::make('phone')->label('Телефон')->tel()->required(),
                 FileUpload::make('logo')->label('Логотип')->image()->directory('commerce'),
@@ -97,8 +96,8 @@ final class CommerceResource extends Resource
                 TextInput::make('customer_retention_percent')->label('Удержание клиентов %')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -117,17 +116,18 @@ final class CommerceResource extends Resource
         ])->defaultSort('store_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Commerce store action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Commerce store action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

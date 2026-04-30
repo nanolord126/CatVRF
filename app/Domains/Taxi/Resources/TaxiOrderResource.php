@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Resources;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -39,7 +43,7 @@ final class TaxiOrderResource extends JsonResource
         return [
             'meta' => [
                 'correlation_id' => $request->attributes->get('correlation_id'),
-                'generated_at'   => now()->toIso8601String(),
+                'generated_at'   => CarbonImmutable::now()->toIso8601String(),
             ],
         ];
     }

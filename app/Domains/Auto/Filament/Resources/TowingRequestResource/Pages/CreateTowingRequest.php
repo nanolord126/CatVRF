@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\TowingRequestResource\Pages;
+
+use Illuminate\Notifications\ChannelManager;
 
 use App\Domains\Auto\Filament\Resources\TowingRequestResource;
 use Illuminate\Support\Str;
@@ -23,7 +27,7 @@ final class CreateTowingRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
-        Notification::make()
+        $this->notificationManager->make()
             ->success()
             ->title('Заявка на эвакуатор создана')
             ->body('Ожидайте назначения водителя')

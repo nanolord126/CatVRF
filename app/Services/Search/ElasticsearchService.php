@@ -1,17 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Search;
 
 use App\Domains\Search\Models\SearchIndex;
 use App\Domains\Search\Services\SearchService as DomainSearchService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
  * ElasticsearchService - wrapper service for search functionality.
- * 
+ *
  * This service provides an Elasticsearch-like API but internally uses
  * the domain SearchService and SearchIndex model for database-based search.
  * This allows the V1 SearchController to work without requiring actual Elasticsearch.
@@ -46,7 +46,7 @@ final readonly class ElasticsearchService
             $searchQuery = SearchIndex::where('tenant_id', $tenantId)
                 ->where(function ($q) use ($query) {
                     $q->where('title', 'like', "%{$query}%")
-                      ->orWhere('content', 'like', "%{$query}%");
+                        ->orWhere('content', 'like', "%{$query}%");
                 });
 
             // Filter by vertical (from metadata)

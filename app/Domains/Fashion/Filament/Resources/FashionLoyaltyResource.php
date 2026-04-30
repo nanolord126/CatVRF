@@ -1,20 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\FashionLoyaltyResource\Pages;
+use App\Models\FashionLoyaltyPoint;
 
-final class FashionLoyaltyResource extends Resource
+final class FashionLoyaltyResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Models\FashionLoyaltyPoint::class;
+    protected static ?string $model = FashionLoyaltyPoint::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-gift';
+
     protected static ?string $navigationGroup = 'Fashion AI';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -109,5 +115,13 @@ final class FashionLoyaltyResource extends Resource
             'view' => Pages\ViewFashionLoyalty::route('/{record}'),
             'edit' => Pages\EditFashionLoyalty::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

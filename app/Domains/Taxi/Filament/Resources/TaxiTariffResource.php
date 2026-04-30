@@ -1,15 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Filament\Resources;
 
 use App\Domains\Taxi\Models\TaxiTariff;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class TaxiTariffResource extends Resource
+final class TaxiTariffResource extends BaseOptimizedResource
 {
     protected static ?string $model = TaxiTariff::class;
 
@@ -188,5 +190,13 @@ final class TaxiTariffResource extends Resource
             'view' => Pages\ViewTaxiTariff::route('/{record}'),
             'edit' => Pages\EditTaxiTariff::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Taxi
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

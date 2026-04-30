@@ -10,34 +10,23 @@ use App\Domains\RealEstate\Models\Property;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 final class RealEstateBlockchainVerificationServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RealEstateBlockchainVerificationService $service;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(RealEstateBlockchainVerificationService::class);
-        $this->tenant = Tenant::factory()->create();
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-    }
 
     public function test_verify_document_on_blockchain_returns_valid_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $documentHash = hash('sha256', 'test_document');
-        
+
         $result = $this->service->verifyDocumentOnBlockchain(
             $this->property->id,
             'title_deed',
@@ -58,9 +47,9 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_verify_document_on_blockchain_caches_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $documentHash = hash('sha256', 'test_document');
-        
+
         $firstCall = $this->service->verifyDocumentOnBlockchain(
             $this->property->id,
             'title_deed',
@@ -82,8 +71,8 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_verify_all_property_documents_verifies_all_types(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        
+        $correlationId = Str::uuid()->toString();
+
         $result = $this->service->verifyAllPropertyDocuments(
             $this->property->id,
             1,
@@ -102,8 +91,8 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_verify_all_property_documents_marks_property_verified(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        
+        $correlationId = Str::uuid()->toString();
+
         $this->service->verifyAllPropertyDocuments(
             $this->property->id,
             1,
@@ -116,12 +105,12 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_generate_smart_contract_returns_valid_contract(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $documentHashes = [
             hash('sha256', 'doc1'),
             hash('sha256', 'doc2'),
         ];
-        
+
         $result = $this->service->generateSmartContract(
             $this->property->id,
             $documentHashes,
@@ -143,9 +132,9 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_generate_smart_contract_updates_property_metadata(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $documentHashes = [hash('sha256', 'doc1')];
-        
+
         $this->service->generateSmartContract(
             $this->property->id,
             $documentHashes,
@@ -160,14 +149,14 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_execute_contract_transaction_returns_valid_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        $contractAddress = '0x' . str_repeat('0', 40);
-        
+        $correlationId = Str::uuid()->toString();
+        $contractAddress = '0x'.str_repeat('0', 40);
+
         $result = $this->service->executeContractTransaction(
             $this->property->id,
             $contractAddress,
             'transferOwnership',
-            ['newOwner' => '0x' . str_repeat('1', 40)],
+            ['newOwner' => '0x'.str_repeat('1', 40)],
             1,
             $correlationId
         );
@@ -184,9 +173,9 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_get_contract_state_returns_state_data(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        $contractAddress = '0x' . str_repeat('0', 40);
-        
+        $correlationId = Str::uuid()->toString();
+        $contractAddress = '0x'.str_repeat('0', 40);
+
         $result = $this->service->getContractState(
             $contractAddress,
             1,
@@ -205,9 +194,9 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
 
     public function test_get_contract_state_caches_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        $contractAddress = '0x' . str_repeat('0', 40);
-        
+        $correlationId = Str::uuid()->toString();
+        $contractAddress = '0x'.str_repeat('0', 40);
+
         $firstCall = $this->service->getContractState(
             $contractAddress,
             1,
@@ -221,6 +210,20 @@ final class RealEstateBlockchainVerificationServiceTest extends TestCase
         );
 
         $this->assertEquals($firstCall, $secondCall);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(RealEstateBlockchainVerificationService::class);
+        $this->tenant = Tenant::factory()->create();
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
     }
 
     protected function tearDown(): void

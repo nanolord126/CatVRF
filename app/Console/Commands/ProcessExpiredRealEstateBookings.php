@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
@@ -6,11 +8,17 @@ use Illuminate\Console\Command;
 use Modules\RealEstate\Models\PropertyBooking;
 use Modules\RealEstate\Enums\BookingStatus;
 use Modules\RealEstate\Jobs\ProcessBookingExpirationJob;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class ProcessExpiredRealEstateBookings extends Command
 {
+    public function __construct(
+        private readonly LogManager $log,
+    ) {
+        parent::__construct();
+    }
     protected $signature = 'real-estate:process-expired-bookings';
+
     protected $description = 'Process expired pending bookings and cancel them';
 
     public function handle(): int
@@ -25,6 +33,7 @@ final class ProcessExpiredRealEstateBookings extends Command
 
         if ($count === 0) {
             $this->info('No expired bookings found.');
+
             return Command::SUCCESS;
         }
 
@@ -36,7 +45,7 @@ final class ProcessExpiredRealEstateBookings extends Command
             $this->line("Dispatched expiration job for booking {$booking->id}");
         }
 
-        Log::channel('audit')->info('real_estate.expired_bookings.processed', [
+        $this->log->channel('audit')->info('real_estate.expired_bookings.processed', [
             'count' => $count,
             'booking_ids' => $expiredBookings->pluck('id')->toArray(),
         ]);

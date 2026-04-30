@@ -1,83 +1,88 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\CreateCarDetailing;
+use App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\EditCarDetailing;
+use App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\ListCarDetailings;
+use Illuminate\Database\Eloquent\Builder;
 
-final class CarDetailingResource extends Resource
+final class CarDetailingResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = CarDetailing::class;
 
-        protected static ?string $navigationLabel = 'Детейлинг';
+    protected static ?string $navigationLabel = 'Детейлинг';
 
-        protected static ?string $pluralModelLabel = 'Детейлинг';
+    protected static ?string $pluralModelLabel = 'Детейлинг';
 
-        protected static ?string $navigationGroup = 'Авто';
+    protected static ?string $navigationGroup = 'Авто';
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Section::make('Информация о детейлинге')
-                    ->schema([
-                        Forms\Components\Select::make('vehicle_id')
-                            ->label('Автомобиль')
-                            ->relationship('vehicle', 'license_plate')
-                            ->searchable()
-                            ->required(),
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Информация о детейлинге')
+                ->schema([
+                    Forms\Components\Select::make('vehicle_id')
+                        ->label('Автомобиль')
+                        ->relationship('vehicle', 'license_plate')
+                        ->searchable()
+                        ->required(),
 
-                        Forms\Components\Select::make('client_id')
-                            ->label('Клиент')
-                            ->relationship('client', 'name')
-                            ->searchable()
-                            ->required(),
+                    Forms\Components\Select::make('client_id')
+                        ->label('Клиент')
+                        ->relationship('client', 'name')
+                        ->searchable()
+                        ->required(),
 
-                        Forms\Components\Select::make('type')
-                            ->label('Тип')
-                            ->options([
-                                'exterior' => 'Экстерьер',
-                                'interior' => 'Интерьер',
-                                'full' => 'Полный',
-                                'ceramic_coating' => 'Керамическое покрытие',
-                                'paint_correction' => 'Полировка ЛКП',
-                            ])
-                            ->required(),
+                    Forms\Components\Select::make('type')
+                        ->label('Тип')
+                        ->options([
+                            'exterior' => 'Экстерьер',
+                            'interior' => 'Интерьер',
+                            'full' => 'Полный',
+                            'ceramic_coating' => 'Керамическое покрытие',
+                            'paint_correction' => 'Полировка ЛКП',
+                        ])
+                        ->required(),
 
-                        Forms\Components\DateTimePicker::make('datetime_start')
-                            ->label('Дата и время начала')
-                            ->required(),
+                    Forms\Components\DateTimePicker::make('datetime_start')
+                        ->label('Дата и время начала')
+                        ->required(),
 
-                        Forms\Components\TextInput::make('duration_hours')
-                            ->label('Длительность (часы)')
-                            ->numeric()
-                            ->required(),
+                    Forms\Components\TextInput::make('duration_hours')
+                        ->label('Длительность (часы)')
+                        ->numeric()
+                        ->required(),
 
-                        Forms\Components\TextInput::make('price')
-                            ->label('Цена (копейки)')
-                            ->numeric()
-                            ->required(),
+                    Forms\Components\TextInput::make('price')
+                        ->label('Цена (копейки)')
+                        ->numeric()
+                        ->required(),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options([
-                                'pending' => 'Ожидает',
-                                'in_progress' => 'В процессе',
-                                'completed' => 'Завершено',
-                                'cancelled' => 'Отменено',
-                            ])
-                            ->default('pending')
-                            ->required(),
+                    Forms\Components\Select::make('status')
+                        ->label('Статус')
+                        ->options([
+                            'pending' => 'Ожидает',
+                            'in_progress' => 'В процессе',
+                            'completed' => 'Завершено',
+                            'cancelled' => 'Отменено',
+                        ])
+                        ->default('pending')
+                        ->required(),
 
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Примечания')
-                            ->columnSpanFull(),
-                    ]),
-            ]);
-        }
+                    Forms\Components\Textarea::make('notes')
+                        ->label('Примечания')
+                        ->columnSpanFull(),
+                ]),
+        ]);
+    }
 
     public static function table(Table $table): Table
     {
@@ -150,14 +155,22 @@ final class CarDetailingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\ListCarDetailings::route('/'),
-            'create' => \App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\CreateCarDetailing::route('/create'),
-            'edit' => \App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages\EditCarDetailing::route('/{record}/edit'),
+            'index' => ListCarDetailings::route('/'),
+            'create' => CreateCarDetailing::route('/create'),
+            'edit' => EditCarDetailing::route('/{record}/edit'),
         ];
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

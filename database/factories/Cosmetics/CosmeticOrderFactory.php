@@ -6,6 +6,7 @@ namespace Database\Factories\Cosmetics;
 
 use App\Domains\Beauty\Cosmetics\Models\CosmeticOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class CosmeticOrderFactory extends Factory
 {
@@ -14,7 +15,7 @@ final class CosmeticOrderFactory extends Factory
     public function definition(): array
     {
         return [
-            'order_number' => 'COS-' . strtoupper(\Illuminate\Support\Str::random(8)),
+            'order_number' => 'COS-'.strtoupper(Str::random(8)),
             'items_json' => json_encode([
                 ['product_id' => 1, 'quantity' => 1, 'price' => 150000],
             ]),
@@ -25,7 +26,7 @@ final class CosmeticOrderFactory extends Factory
             'payment_status' => 'pending',
             'shipping_address' => $this->faker->address(),
             'ordered_at' => now(),
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['order'],
             'meta' => [],
         ];

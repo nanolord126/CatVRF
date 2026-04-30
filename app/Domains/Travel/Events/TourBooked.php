@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * TourBooked — CatVRF 2026 Component.
@@ -7,40 +9,37 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/tourbooked
  */
 
-
 namespace App\Domains\Travel\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
+use Carbon\CarbonImmutable;
 
 final class TourBooked
 {
-
+    public function __construct(
+        public TravelBooking $booking,
+        public string $correlationId
+    ) {}
 
-        public function __construct(
-            public TravelBooking $booking,
-            public string $correlationId) {}
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('agency.'.$this->booking->agency_id),
+        ];
+    }
 
-        public function broadcastOn(): array
-        {
-            return [
-                new PrivateChannel('agency.' . $this->booking->agency_id),
-            ];
-        }
-
-        public function broadcastAs(): string
-        {
-            return 'tour.booked';
-        }
+    public function broadcastAs(): string
+    {
+        return 'tour.booked';
+    }
 
     /**
      * Get the string representation of this instance.
@@ -49,7 +48,7 @@ final class TourBooked
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -60,8 +59,8 @@ final class TourBooked
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

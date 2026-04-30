@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 final class DynamicPricingController
 {
     public function __construct(
-        private DynamicPricingService $pricingService,
+        private readonly DynamicPricingService $pricingService,
     ) {}
 
     public function calculate(DynamicPricingRequest $request): JsonResponse
@@ -23,7 +23,7 @@ final class DynamicPricingController
 
         $result = $this->pricingService->calculate($dto);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new DynamicPricingResource($result),
             'correlation_id' => $result['correlation_id'],
@@ -36,9 +36,9 @@ final class DynamicPricingController
         $key = "beauty:price_history:{$serviceId}";
         $history = $this->redis->lrange($key, 0, 19);
 
-        $parsedHistory = array_map(fn($item) => json_decode($item, true), $history);
+        $parsedHistory = array_map(fn ($item) => json_decode($item, true), $history);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $parsedHistory,
         ]);

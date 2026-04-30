@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionReviewModerationServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionReviewModerationService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionReviewModerationService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_moderate_review_returns_structure(): void
     {
@@ -77,6 +68,17 @@ final class FashionReviewModerationServiceTest extends BaseTestCase
         $sentiment = $method->invoke($this->service, $comment, 'test-123');
 
         $this->assertEquals('positive', $sentiment);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionReviewModerationService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createReview(array $overrides = []): int

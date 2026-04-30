@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Performance\Notifications;
 
@@ -11,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * NotificationPerformanceTest
- * 
+ *
  * Тесты производительности - throughput, memory, query count
  */
 final class NotificationPerformanceTest extends TestCase
@@ -72,7 +74,7 @@ final class NotificationPerformanceTest extends TestCase
         $this->assertLessThan(
             $maxMemory,
             $memoryUsed,
-            "Memory usage: " . round($memoryUsed / 1024 / 1024, 2) . "MB"
+            'Memory usage: '.round($memoryUsed / 1024 / 1024, 2).'MB'
         );
     }
 
@@ -145,7 +147,7 @@ final class NotificationPerformanceTest extends TestCase
         Notification::where('user_id', $user->id)->get();
 
         $queries = DB::getQueryLog();
-        
+
         // Should use index (EXPLAIN would show "Using index")
         $this->assertNotEmpty($queries);
 
@@ -156,7 +158,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_handles_concurrent_reads_efficiently(): void
     {
         $users = User::factory()->count(10)->create();
-        
+
         foreach ($users as $user) {
             Notification::factory()->count(50)->for($user)->create();
         }
@@ -198,7 +200,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_filters_preferences_with_optimal_queries(): void
     {
         $user = User::factory()->create();
-        
+
         for ($i = 0; $i < 20; $i++) {
             NotificationPreference::factory()
                 ->for($user)
@@ -264,7 +266,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_processes_eager_loading(): void
     {
         $users = User::factory()->count(10)->create();
-        
+
         foreach ($users as $user) {
             Notification::factory()->count(10)->for($user)->create();
         }
@@ -286,7 +288,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_deletes_old_notifications_efficiently(): void
     {
         $user = User::factory()->create();
-        
+
         // Create 100 old notifications
         Notification::factory()
             ->count(100)
@@ -351,7 +353,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_handles_json_column_queries_efficiently(): void
     {
         $user = User::factory()->create();
-        
+
         Notification::factory()
             ->count(50)
             ->for($user)
@@ -377,7 +379,7 @@ final class NotificationPerformanceTest extends TestCase
     public function it_streams_large_datasets_efficiently(): void
     {
         $users = User::factory()->count(100)->create();
-        
+
         foreach ($users as $user) {
             Notification::factory()->count(10)->for($user)->create();
         }

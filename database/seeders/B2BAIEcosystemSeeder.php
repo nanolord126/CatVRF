@@ -36,7 +36,7 @@ final class B2BAIEcosystemSeeder extends Seeder
             // 2. Create products for this supplier
             for ($i = 0; $i < 5; $i++) {
                 B2BProduct::updateOrCreate(
-                    ['name' => "{$s['vertical']} Product X" . ($i + 1), 'supplier_id' => $supplier->id],
+                    ['name' => "{$s['vertical']} Product X".($i + 1), 'supplier_id' => $supplier->id],
                     [
                         'sku' => Str::upper(Str::random(8)),
                         'price' => rand(100, 5000),
@@ -64,7 +64,7 @@ final class B2BAIEcosystemSeeder extends Seeder
                         'match_score' => rand(75, 99) / 100,
                         'type' => 'SupplierBuy',
                         'reasoning' => [
-                            'text' => 'Strong demand pattern in ' . $tenant->name . ' geographic region.',
+                            'text' => 'Strong demand pattern in '.$tenant->name.' geographic region.',
                             'confidence' => 0.95,
                         ],
                         'embeddings_version' => 'v1.1-march-2026',

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Veterinary;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Veterinary\Domain\Services\GroomingService;
 
 /**
  * Unit tests for GroomingService.
@@ -14,7 +17,7 @@ final class GroomingServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\GroomingService::class
+            GroomingService::class
         );
         $this->assertTrue($reflection->isFinal(), 'GroomingService must be final');
     }
@@ -22,7 +25,7 @@ final class GroomingServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\GroomingService::class
+            GroomingService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'GroomingService must be readonly');
     }
@@ -30,27 +33,26 @@ final class GroomingServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\GroomingService::class
+            GroomingService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'GroomingService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_bookSession_method_exists(): void
+    public function test_book_session_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Veterinary\Domain\Services\GroomingService::class, 'bookSession'),
+            method_exists(GroomingService::class, 'bookSession'),
             'GroomingService must implement bookSession()'
         );
     }
 
-    public function test_completeAndTag_method_exists(): void
+    public function test_complete_and_tag_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Veterinary\Domain\Services\GroomingService::class, 'completeAndTag'),
+            method_exists(GroomingService::class, 'completeAndTag'),
             'GroomingService must implement completeAndTag()'
         );
     }
-
 }

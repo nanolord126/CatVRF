@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Legal;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Legal;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -25,21 +23,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class LegalResource extends Resource
 {
+    protected static ?string $model = Legal::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-scale-3d';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 17;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Legal::class;
-    protected static ?string $navigationIcon = 'heroicon-o-scale-3d';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 17;
 
     public static function form(Form $form): Form
     {
@@ -48,8 +47,8 @@ final class LegalResource extends Resource
                 TextInput::make('firm_code')->label('Код фирмы')->required()->hidden(),
                 TextInput::make('firm_name')->label('Название фирмы')->required(),
                 Select::make('firm_type')->label('Тип фирмы')->options([
-                    'law_firm' => 'Юридическая фирма','solo_practice' => 'Частная практика','corporate' => 'Корпоративное',
-                    'non_profit' => 'НКО','government' => 'Государственное','educational' => 'Образовательное',
+                    'law_firm' => 'Юридическая фирма', 'solo_practice' => 'Частная практика', 'corporate' => 'Корпоративное',
+                    'non_profit' => 'НКО', 'government' => 'Государственное', 'educational' => 'Образовательное',
                 ])->required(),
                 TextInput::make('bar_license')->label('Лицензия коллегии адвокатов')->required(),
                 TextInput::make('year_founded')->label('Год основания')->numeric(),
@@ -94,8 +93,8 @@ final class LegalResource extends Resource
                 TextInput::make('min_case_fee')->label('Минимальный гонорар')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -114,17 +113,18 @@ final class LegalResource extends Resource
         ])->defaultSort('firm_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Legal firm action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Legal firm action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

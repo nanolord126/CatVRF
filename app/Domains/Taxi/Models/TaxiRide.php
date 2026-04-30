@@ -1,19 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Models\User;
-use App\Domains\Taxi\Models\Driver;
-use App\Domains\Taxi\Models\Vehicle;
 
 final class TaxiRide extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
+
+    /**
+     * Статусы поездки.
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_ACCEPTED = 'accepted';
+
+    public const STATUS_STARTED = 'started';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'taxi_rides';
 
@@ -37,7 +53,7 @@ final class TaxiRide extends Model
         'idempotency_key',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -53,38 +69,10 @@ final class TaxiRide extends Model
         'tenant_id' => 'integer',
         'passenger_id' => 'integer',
         'driver_id' => 'integer',
-        'vehicle_id' => 'integer'
+        'vehicle_id' => 'integer',
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Статусы поездки.
-     */
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_ACCEPTED = 'accepted';
-    public const STATUS_STARTED = 'started';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_CANCELLED = 'cancelled';
-
-    /**
-     * Глобальный скоупинг тенанта.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiRide $ride) {
-            $ride->uuid = $ride->uuid ?? (string) Str::uuid();
-            $ride->tenant_id = $ride->tenant_id ?? (tenant()->id ?? 1);
-            $ride->status = $ride->status ?? self::STATUS_PENDING;
-            $ride->correlation_id = $ride->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -150,6 +138,7 @@ final class TaxiRide extends Model
     public function calculateDriverEarnings(): int
     {
         $commission = $this->fleet_commission + $this->platform_commission;
+
         return $this->total_price - $commission;
     }
 
@@ -158,7 +147,7 @@ final class TaxiRide extends Model
      */
     public function canBeCancelled(): bool
     {
-        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED]);
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED], true);
     }
 
     /**
@@ -166,7 +155,7 @@ final class TaxiRide extends Model
      */
     public function isInProgress(): bool
     {
-        return in_array($this->status, [self::STATUS_ACCEPTED, self::STATUS_STARTED]);
+        return in_array($this->status, [self::STATUS_ACCEPTED, self::STATUS_STARTED], true);
     }
 
     /**
@@ -198,6 +187,25 @@ final class TaxiRide extends Model
             self::STATUS_COMPLETED => [],
         ];
 
-        return in_array($newStatus, $validTransitions[$this->status] ?? []);
+        return in_array($newStatus, $validTransitions[$this->status] ?? [], true);
+    }
+
+    /**
+     * Глобальный скоупинг тенанта.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiRide $ride) {
+            $ride->uuid = $ride->uuid ?? (string) Str::uuid();
+            $ride->tenant_id = $ride->tenant_id ?? (tenant()->id ?? 1);
+            $ride->status = $ride->status ?? self::STATUS_PENDING;
+            $ride->correlation_id = $ride->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

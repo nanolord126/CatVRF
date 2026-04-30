@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * FashionReviewResource — CatVRF 2026 Component.
@@ -7,51 +9,23 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/fashionreviewresource
  */
 
-
 namespace App\Domains\Fashion\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms;
-use Filament\Tables;
 
-final class FashionReviewResource extends Resource
+final class FashionReviewResource extends BaseOptimizedResource
 {
-
-    protected static ?string $model = FashionReview::class;
-
-        protected static ?string $navigationGroup = 'Fashion';
-
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Select::make('product_id')->relationship('product', 'name')->required(),
-                Select::make('reviewer_id')->relationship('reviewer', 'name')->required(),
-                TextInput::make('rating')->required()->numeric()->min(1)->max(5),
-                RichEditor::make('comment')->columnSpanFull(),
-            ]);
-        }
-
-        public static function table(Table $table): Table
-        {
-            return $table->columns([
-                TextColumn::make('product.name'),
-                TextColumn::make('reviewer.name'),
-                TextColumn::make('rating')->numeric()->sortable(),
-                TextColumn::make('status')->badge(),
-                IconColumn::make('verified_purchase')->boolean(),
-            ])->filters([])->actions([])->bulkActions([]);
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -67,4 +41,37 @@ final class FashionReviewResource extends Resource
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static ?string $model = FashionReview::class;
+
+    protected static ?string $navigationGroup = 'Fashion';
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Select::make('product_id')->relationship('product', 'name')->required(),
+            Select::make('reviewer_id')->relationship('reviewer', 'name')->required(),
+            TextInput::make('rating')->required()->numeric()->min(1)->max(5),
+            RichEditor::make('comment')->columnSpanFull(),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table->columns([
+            TextColumn::make('product.name'),
+            TextColumn::make('reviewer.name'),
+            TextColumn::make('rating')->numeric()->sortable(),
+            TextColumn::make('status')->badge(),
+            IconColumn::make('verified_purchase')->boolean(),
+        ])->filters([])->actions([])->bulkActions([]);
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
+    }
 }

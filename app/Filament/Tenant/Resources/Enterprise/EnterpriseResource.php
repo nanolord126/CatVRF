@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Enterprise;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Enterprise;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -25,21 +23,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class EnterpriseResource extends Resource
 {
+    protected static ?string $model = Enterprise::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 26;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Enterprise::class;
-    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 26;
 
     public static function form(Form $form): Form
     {
@@ -48,8 +47,8 @@ final class EnterpriseResource extends Resource
                 TextInput::make('company_code')->label('Код компании')->required()->hidden(),
                 TextInput::make('company_name')->label('Название компании')->required(),
                 Select::make('company_type')->label('Тип компании')->options([
-                    'startup' => 'Стартап','sme' => 'МСП','mid_market' => 'Средний бизнес','enterprise' => 'Предприятие',
-                    'corporation' => 'Корпорация','non_profit' => 'НКО','cooperative' => 'Кооператив',
+                    'startup' => 'Стартап', 'sme' => 'МСП', 'mid_market' => 'Средний бизнес', 'enterprise' => 'Предприятие',
+                    'corporation' => 'Корпорация', 'non_profit' => 'НКО', 'cooperative' => 'Кооператив',
                 ])->required(),
                 TextInput::make('industry')->label('Индустрия')->required(),
                 TextInput::make('phone')->label('Телефон')->tel()->required(),
@@ -102,8 +101,8 @@ final class EnterpriseResource extends Resource
                 TextInput::make('employee_satisfaction')->label('Удовл. сотрудников %')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -122,17 +121,18 @@ final class EnterpriseResource extends Resource
         ])->defaultSort('company_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Enterprise company action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Enterprise company action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

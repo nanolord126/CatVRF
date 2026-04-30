@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * AutoParts3DService — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/autoparts3dservice
  * @see https://catvrf.ru/docs/autoparts3dservice
  * @see https://catvrf.ru/docs/autoparts3dservice
@@ -19,10 +22,11 @@
  * @see https://catvrf.ru/docs/autoparts3dservice
  */
 
-
 namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class AutoParts3DService
@@ -34,9 +38,8 @@ use Illuminate\Support\Str;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Services\ThreeD
+ * @see FraudControlService
+ * @see AuditService
  */
 final class AutoParts3DService
 {
@@ -64,11 +67,11 @@ final class AutoParts3DService
 
     private function getModelPath(array $productData): string
     {
-        return "/3d-models/AutoParts/" . ($productData['sku'] ?? 'default') . ".glb";
+        return '/3d-models/AutoParts/'.($productData['sku'] ?? 'default').'.glb';
     }
 
     private function getPreviewPath(array $productData): string
     {
-        return "/3d-previews/AutoParts/" . ($productData['id'] ?? 'default') . ".png";
+        return '/3d-previews/AutoParts/'.($productData['id'] ?? 'default').'.png';
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Fraud;
 
@@ -12,13 +14,6 @@ final class FraudAtomicLockServiceTest extends TestCase
     use RefreshDatabase;
 
     private FraudAtomicLockService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FraudAtomicLockService::class);
-        Redis::flushdb();
-    }
 
     public function test_fraud_check_with_slot_hold_succeeds_for_low_score(): void
     {
@@ -209,5 +204,12 @@ final class FraudAtomicLockServiceTest extends TestCase
         $paymentKey = 'payment:order:789';
         $result2 = $this->service->fraudCheckWithPayment($userId, $paymentKey, $fraudScore);
         $this->assertTrue($result2['success']); // Different key, should succeed
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FraudAtomicLockService::class);
+        Redis::flushdb();
     }
 }

@@ -14,12 +14,6 @@ final class FashionAnalyticsServiceTest extends TestCase
 
     private FashionAnalyticsService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionAnalyticsService::class);
-    }
-
     public function test_get_store_analytics(): void
     {
         $result = $this->service->getStoreAnalytics(1, 1);
@@ -63,5 +57,11 @@ final class FashionAnalyticsServiceTest extends TestCase
         $result = $this->service->getStoreAnalytics(1, 1);
 
         $this->assertArrayHasKey('conversion_rate', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionAnalyticsService::class);
     }
 }

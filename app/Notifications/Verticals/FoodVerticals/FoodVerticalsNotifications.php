@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\FoodVerticals;
 
@@ -9,38 +11,38 @@ use App\Notifications\BaseSmsNotification;
 // ========== LOGISTICS ==========
 final class ShipmentDispatchedNotification extends BasePushNotification
 {
-    private string $type = 'logistics.shipment.dispatched';
+    private readonly string $type = 'logistics.shipment.dispatched';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
 
         $this->title('Your order is on the way!')
-             ->body('Tracking: ' . ($data['tracking_number'] ?? ''))
-             ->type('info')
-             ->deepLink('/shipment/' . ($data['shipment_id'] ?? '') . '/track');
+            ->body('Tracking: '.($data['tracking_number'] ?? ''))
+            ->type('info')
+            ->deepLink('/shipment/'.($data['shipment_id'] ?? '').'/track');
     }
 }
 
 final class DeliveryConfirmedNotification extends BasePushNotification
 {
-    private string $type = 'logistics.delivery.confirmed';
+    private readonly string $type = 'logistics.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Delivered!')
-             ->body('Your order has been delivered')
-             ->type('success')
-             ->autoClose(8000);
+            ->body('Your order has been delivered')
+            ->type('success')
+            ->autoClose(8000);
     }
 }
 
 // ========== FRESH PRODUCE ==========
 final class FreshProduceOrderConfirmedNotification extends BaseSmsNotification
 {
-    private string $type = 'fresh_produce.order.confirmed';
+    private readonly string $type = 'fresh_produce.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -50,23 +52,23 @@ final class FreshProduceOrderConfirmedNotification extends BaseSmsNotification
 
 final class FreshProduceDeliveryArrivingNotification extends BasePushNotification
 {
-    private string $type = 'fresh_produce.delivery.arriving';
+    private readonly string $type = 'fresh_produce.delivery.arriving';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Your fresh box is arriving!')
-             ->message('Estimated: ' . ($data['estimated_time'] ?? ''))
-             ->type('info')
-             ->priority('high');
+            ->message('Estimated: '.($data['estimated_time'] ?? ''))
+            ->type('info')
+            ->priority('high');
     }
 }
 
 // ========== GROCERY ==========
 final class GroceryOrderConfirmedNotification extends BaseSmsNotification
 {
-    private string $type = 'grocery.order.confirmed';
+    private readonly string $type = 'grocery.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -76,24 +78,24 @@ final class GroceryOrderConfirmedNotification extends BaseSmsNotification
 
 final class GroceryDeliveryArrivingNotification extends BasePushNotification
 {
-    private string $type = 'grocery.delivery.arriving';
+    private readonly string $type = 'grocery.delivery.arriving';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Your groceries are arriving!')
-             ->body('Delivery window: ' . ($data['delivery_window'] ?? ''))
-             ->type('info')
-             ->priority('high')
-             ->autoClose(0);
+            ->body('Delivery window: '.($data['delivery_window'] ?? ''))
+            ->type('info')
+            ->priority('high')
+            ->autoClose(0);
     }
 }
 
 // ========== PHARMACY ==========
 final class PrescriptionReadyNotification extends BaseSmsNotification
 {
-    private string $type = 'pharmacy.prescription.ready';
+    private readonly string $type = 'pharmacy.prescription.ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -103,8 +105,9 @@ final class PrescriptionReadyNotification extends BaseSmsNotification
 
 final class MedicineDeliveredNotification extends BaseMailableNotification
 {
-    private string $type = 'pharmacy.medicine.delivered';
-    private string $template = 'emails.pharmacy.medicine_delivered';
+    private readonly string $type = 'pharmacy.medicine.delivered';
+
+    private readonly string $template = 'emails.pharmacy.medicine_delivered';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -116,8 +119,9 @@ final class MedicineDeliveredNotification extends BaseMailableNotification
 // ========== HEALTHY FOOD ==========
 final class MealPlanCreatedNotification extends BaseMailableNotification
 {
-    private string $type = 'healthy_food.meal_plan.created';
-    private string $template = 'emails.healthy_food.meal_plan_created';
+    private readonly string $type = 'healthy_food.meal_plan.created';
+
+    private readonly string $template = 'emails.healthy_food.meal_plan_created';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -128,68 +132,68 @@ final class MealPlanCreatedNotification extends BaseMailableNotification
 
 final class DeliveryScheduledNotification extends BasePushNotification
 {
-    private string $type = 'healthy_food.delivery.scheduled';
+    private readonly string $type = 'healthy_food.delivery.scheduled';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Healthy meals scheduled!')
-             ->body('First delivery: ' . ($data['delivery_date'] ?? ''))
-             ->type('info');
+            ->body('First delivery: '.($data['delivery_date'] ?? ''))
+            ->type('info');
     }
 }
 
 // ========== CONFECTIONERY ==========
 final class ConfectioneryOrderConfirmedNotification extends BasePushNotification
 {
-    private string $type = 'confectionery.order.confirmed';
+    private readonly string $type = 'confectionery.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Your order is being prepared!')
-             ->body(($data['items_count'] ?? '0') . ' items in your order')
-             ->type('info')
-             ->deepLink('/orders/' . ($data['order_id'] ?? ''));
+            ->body(($data['items_count'] ?? '0').' items in your order')
+            ->type('info')
+            ->deepLink('/orders/'.($data['order_id'] ?? ''));
     }
 }
 
 final class ConfectioneryReadyForPickupNotification extends BasePushNotification
 {
-    private string $type = 'confectionery.ready.pickup';
+    private readonly string $type = 'confectionery.ready.pickup';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
 
         $this->title('Your order is ready!')
-             ->message('Pick up at ' . ($data['pickup_location'] ?? ''))
-             ->type('success')
-             ->priority('high')
-             ->autoClose(0);
+            ->message('Pick up at '.($data['pickup_location'] ?? ''))
+            ->type('success')
+            ->priority('high')
+            ->autoClose(0);
     }
 }
 
 // ========== MEAT SHOPS ==========
 final class MeatOrderConfirmedNotification extends BasePushNotification
 {
-    private string $type = 'meat_shops.order.confirmed';
+    private readonly string $type = 'meat_shops.order.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Meat box confirmed!')
-             ->body('Processing your order...')
-             ->type('info');
+            ->body('Processing your order...')
+            ->type('info');
     }
 }
 
 final class MeatOrderReadyNotification extends BaseSmsNotification
 {
-    private string $type = 'meat_shops.order.ready';
+    private readonly string $type = 'meat_shops.order.ready';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -200,47 +204,49 @@ final class MeatOrderReadyNotification extends BaseSmsNotification
 // ========== OFFICE CATERING ==========
 final class MenuApprovedNotification extends BaseMailableNotification
 {
-    private string $type = 'office_catering.menu.approved';
-    private string $template = 'emails.office_catering.menu_approved';
+    private readonly string $type = 'office_catering.menu.approved';
+
+    private readonly string $template = 'emails.office_catering.menu_approved';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['mail', 'database']);
-        $this->subject = 'Corporate menu for ' . ($data['delivery_date'] ?? '');
+        $this->subject = 'Corporate menu for '.($data['delivery_date'] ?? '');
     }
 }
 
 final class CateringDeliveryConfirmedNotification extends BasePushNotification
 {
-    private string $type = 'office_catering.delivery.confirmed';
+    private readonly string $type = 'office_catering.delivery.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Lunch is arriving!')
-             ->body('Delivery: ' . ($data['delivery_time'] ?? ''))
-             ->type('info')
-             ->priority('high');
+            ->body('Delivery: '.($data['delivery_time'] ?? ''))
+            ->type('info')
+            ->priority('high');
     }
 }
 
 // ========== FARM DIRECT ==========
 final class FarmOrderConfirmedNotification extends BaseMailableNotification
 {
-    private string $type = 'farm_direct.order.confirmed';
-    private string $template = 'emails.farm_direct.order_confirmed';
+    private readonly string $type = 'farm_direct.order.confirmed';
+
+    private readonly string $template = 'emails.farm_direct.order_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-        $this->subject = 'Farm box confirmed - from ' . ($data['farm_name'] ?? '');
+        $this->subject = 'Farm box confirmed - from '.($data['farm_name'] ?? '');
     }
 }
 
 final class FarmPickupTimeNotification extends BaseSmsNotification
 {
-    private string $type = 'farm_direct.pickup.time';
+    private readonly string $type = 'farm_direct.pickup.time';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -251,8 +257,9 @@ final class FarmPickupTimeNotification extends BaseSmsNotification
 // ========== BOOKS ==========
 final class BookOrderShippedNotification extends BaseMailableNotification
 {
-    private string $type = 'books.order.shipped';
-    private string $template = 'emails.books.order_shipped';
+    private readonly string $type = 'books.order.shipped';
+
+    private readonly string $template = 'emails.books.order_shipped';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
@@ -263,15 +270,15 @@ final class BookOrderShippedNotification extends BaseMailableNotification
 
 final class BookDeliveryArrivedNotification extends BasePushNotification
 {
-    private string $type = 'books.delivery.arrived';
+    private readonly string $type = 'books.delivery.arrived';
 
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
         $this->title('Your books have arrived!')
-             ->body(($data['book_count'] ?? '0') . ' books ready for pickup')
-             ->type('success')
-             ->deepLink('/orders/' . ($data['order_id'] ?? ''));
+            ->body(($data['book_count'] ?? '0').' books ready for pickup')
+            ->type('success')
+            ->deepLink('/orders/'.($data['order_id'] ?? ''));
     }
 }

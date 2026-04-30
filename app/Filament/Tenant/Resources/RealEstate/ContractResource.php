@@ -22,11 +22,16 @@ final class ContractResource extends Resource
     protected static ?string $model = ContractModel::class;
 
     protected static ?string $navigationIcon   = 'heroicon-o-document-text';
+
     protected static ?string $navigationGroup  = 'Недвижимость';
+
     protected static ?string $navigationLabel  = 'Договоры';
+
     protected static ?string $modelLabel       = 'Договор';
+
     protected static ?string $pluralModelLabel = 'Договоры';
-    protected static ?int    $navigationSort   = 30;
+
+    protected static ?int $navigationSort   = 30;
 
     // ── Form ──────────────────────────────────────────────────────────────────
 
@@ -75,8 +80,8 @@ final class ContractResource extends Resource
                         ->label('Срок аренды (мес.)')
                         ->numeric()
                         ->minValue(1)
-                        ->visible(static fn (Forms\Get $get): bool =>
-                            $get('type') === ContractTypeEnum::Rental->value
+                        ->visible(
+                            static fn (Forms\Get $get): bool => $get('type') === ContractTypeEnum::Rental->value
                         ),
 
                     Forms\Components\TextInput::make('document_url')
@@ -127,12 +132,12 @@ final class ContractResource extends Resource
 
                 Tables\Columns\TextColumn::make('price_kopecks')
                     ->label('Сумма сделки')
-                    ->formatStateUsing(static fn (int $state): string => number_format($state / 100, 0, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn (int $state): string => number_format($state / 100, 0, '.', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('commission_kopecks')
                     ->label('Комиссия')
-                    ->formatStateUsing(static fn (int $state): string => number_format($state / 100, 0, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn (int $state): string => number_format($state / 100, 0, '.', ' ').' ₽')
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('property.title')

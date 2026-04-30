@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\DemandForecast\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\DemandForecast\Models\DemandForecast;
+
 final class DemandForecastPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class DemandForecastPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, DemandForecast $demandForecast): bool
+    public function $this->viewFactory->make(User $user, DemandForecast $demandForecast): bool
     {
         return $user->tenant_id === $demandForecast->tenant_id;
     }

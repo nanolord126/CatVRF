@@ -1,13 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources;
 
 use App\Domains\Beauty\Models\Salon;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Beauty\Filament\Resources\SalonResource\Pages\CreateSalon;
+use App\Domains\Beauty\Filament\Resources\SalonResource\Pages\EditSalon;
+use App\Domains\Beauty\Filament\Resources\SalonResource\Pages\ListSalons;
 
 /**
  * SalonResource — Filament-ресурс для управления салонами красоты.
@@ -16,7 +21,7 @@ use Filament\Tables\Table;
  * Tenant-scoped: владелец видит только свои салоны.
  * Интеграция с AI-конструктором, Wallet, Inventory.
  */
-final class SalonResource extends Resource
+final class SalonResource extends BaseOptimizedResource
 {
     protected static ?string $model = Salon::class;
 
@@ -160,9 +165,17 @@ final class SalonResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\ListSalons::route('/'),
-            'create' => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\CreateSalon::route('/create'),
-            'edit'   => \App\Domains\Beauty\Filament\Resources\SalonResource\Pages\EditSalon::route('/{record}/edit'),
+            'index'  => ListSalons::route('/'),
+            'create' => CreateSalon::route('/create'),
+            'edit'   => EditSalon::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Beauty
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

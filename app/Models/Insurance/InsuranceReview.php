@@ -1,17 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Insurance;
 
-
-use Illuminate\Contracts\Auth\Guard;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 final class InsuranceReview extends Model
 {
-
     protected $table = 'insurance_reviews';
 
     protected $fillable = [
@@ -30,21 +29,6 @@ final class InsuranceReview extends Model
         'updated_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (self $model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($builder) {
-            if ($this->guard->check()) {
-                $builder->where('tenant_id', $this->guard->user()->tenant_id);
-            }
-        });
-    }
-
     /**
      * The company being reviewed.
      */
@@ -58,6 +42,21 @@ final class InsuranceReview extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            if ($this->guard->check()) {
+                $builder->where('tenant_id', $this->guard->user()->tenant_id);
+            }
+        });
     }
 }

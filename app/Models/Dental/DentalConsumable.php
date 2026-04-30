@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Dental;
-
-
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -14,54 +14,34 @@ use Illuminate\Support\Str;
 
 final class DentalConsumable extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
+
+    protected $table = 'dental_consumables';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'name',
+        'sku',
+        'current_stock',
+        'min_threshold',
+        'correlation_id',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'json',
+        'current_stock' => 'integer',
+        'min_threshold' => 'integer',
+        'tenant_id' => 'integer',
+    ];
+
     public function __construct(
         private readonly Request $request,
         private readonly LoggerInterface $logger,
     ) {}
-
-    use HasFactory, SoftDeletes;
-
-        protected $table = 'dental_consumables';
-
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'clinic_id',
-            'name',
-            'sku',
-            'current_stock',
-            'min_threshold',
-            'correlation_id',
-            'tags',
-        ];
-
-        protected $casts = [
-            'tags' => 'json',
-            'current_stock' => 'integer',
-            'min_threshold' => 'integer',
-            'tenant_id' => 'integer',
-        ];
-
-    /**
-     * Boot logic for automatic UUID and tenant scoping.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (self $model) {
-            $model->uuid = $model->uuid ?? (string) Str::uuid();
-            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
-
-            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                $model->tenant_id = tenant()->id;
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($builder) {
-            if (function_exists('tenant') && tenant()) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Relations: Clinic the consumable belongs to.
@@ -98,7 +78,7 @@ final class DentalConsumable extends Model
         $oldStock = $this->current_stock;
         $this->update(['current_stock' => $this->current_stock + $quantity]);
 
-        $this->logger->info('Stock refilled', [
+        $this->logger->$this->logger->info('Stock refilled', [
             'consumable_id' => $this->id,
             'added' => $quantity,
             'old' => $oldStock,
@@ -106,5 +86,26 @@ final class DentalConsumable extends Model
             'user_id' => $userId,
             'correlation_id' => $this->correlation_id,
         ]);
+    }
+
+    /**
+     * Boot logic for automatic UUID and tenant scoping.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
+
+            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

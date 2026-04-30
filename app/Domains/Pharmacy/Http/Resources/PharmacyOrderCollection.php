@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Support\Str;
 
 /**
  * Class PharmacyOrderCollection
@@ -17,8 +20,6 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Pharmacy\Http\Resources
  */
 final class PharmacyOrderCollection extends ResourceCollection
 {
@@ -35,7 +36,7 @@ final class PharmacyOrderCollection extends ResourceCollection
             'data' => $this->collection,
             'meta' => [
                 'total' => $this->collection->count(),
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
             ],
         ];
     }

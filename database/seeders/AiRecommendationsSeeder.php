@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -7,6 +8,7 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Common\AiUserTelemetry;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * AI-рекомендации тестовые данные (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -39,13 +41,13 @@ final class AiRecommendationsSeeder extends Seeder
                 'payload' => ['mock' => true],
                 'correlation_id' => $corrId,
             ]);
-            
+
             // Also push to Redis if available, though RecommendationService might handle it
             try {
                 if (config('database.redis.client') !== 'mock' && class_exists('Redis')) {
-                    \Illuminate\Support\Facades\Redis::zincrby("user:{$user->id}:affinity", 1, $b['cat']);
+                    Redis::zincrby("user:{$user->id}:affinity", 1, $b['cat']);
                     if ($b['id']) {
-                        \Illuminate\Support\Facades\Redis::lpush("user:{$user->id}:recent_views", "{$b['cat']} service {$b['id']}");
+                        Redis::lpush("user:{$user->id}:recent_views", "{$b['cat']} service {$b['id']}");
                     }
                 }
             } catch (\Exception $e) {

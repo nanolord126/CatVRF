@@ -1,34 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Geo;
+
+use Psr\Log\LoggerInterface;
 
 use App\Services\Geo\Providers\OSMProvider;
 use App\Services\Geo\Providers\YandexMapsProvider;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Facades\Redis;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Unified Geolocation Service Facade
- * 
+ *
  * Provides single entry point for all geolocation operations
  * with automatic fallback between providers (Yandex → OSM → Haversine)
  * and circuit breaker pattern for external APIs.
  */
 final readonly class GeoService
 {
+    use WithAuditLogging;
+
     private const CACHE_TTL_SECONDS = 300;
+
     private const CIRCUIT_BREAKER_KEY = 'geo:circuit_breaker:';
+
     private const CIRCUIT_BREAKER_TTL = 300; // 5 minutes
+
     private const FAILURE_THRESHOLD = 5;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
         private readonly Repository $cache,
-        private readonly LogManager $logger,
-        private YandexMapsProvider $yandexProvider,
-        private OSMProvider $osmProvider,
+        private readonly LogManager $log,
+        private readonly YandexMapsProvider $yandexProvider,
+        private readonly OSMProvider $osmProvider,
+        private readonly RedisFactory $redis,
+        private readonly DatabaseManager $db,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -46,6 +62,7 @@ final readonly class GeoService
                 return $provider->calculateDistance($lat1, $lon1, $lat2, $lon2);
             } catch (\Throwable $e) {
                 $this->recordFailure($provider);
+
                 return $this->haversineDistance($lat1, $lon1, $lat2, $lon2);
             }
         });
@@ -53,6 +70,7 @@ final readonly class GeoService
 
     /**
      * Calculate route between two points
+     *
      * @return array{distance_km: float, duration_min: int, polyline: string}
      */
     public function calculateRoute(float $lat1, float $lon1, float $lat2, float $lon2): array
@@ -66,6 +84,7 @@ final readonly class GeoService
                 return $provider->calculateRoute($lat1, $lon1, $lat2, $lon2);
             } catch (\Throwable $e) {
                 $this->recordFailure($provider);
+
                 return $this->haversineRoute($lat1, $lon1, $lat2, $lon2);
             }
         });
@@ -73,11 +92,12 @@ final readonly class GeoService
 
     /**
      * Geocode address to coordinates
+     *
      * @return array{lat: float, lon: float}|null
      */
     public function geocode(string $address): ?array
     {
-        $cacheKey = "geo:geocode:" . md5($address);
+        $cacheKey = 'geo:geocode:'.md5($address);
 
         return $this->cache->remember($cacheKey, 3600, function () use ($address): ?array {
             $provider = $this->getAvailableProvider();
@@ -90,6 +110,7 @@ final readonly class GeoService
                     'address' => $address,
                     'error' => $e->getMessage(),
                 ]);
+
                 return null;
             }
         });
@@ -109,6 +130,7 @@ final readonly class GeoService
                 return $provider->reverseGeocode($lat, $lon);
             } catch (\Throwable $e) {
                 $this->recordFailure($provider);
+
                 return null;
             }
         });
@@ -119,7 +141,7 @@ final readonly class GeoService
      */
     public function findNearby(float $lat, float $lon, float $radiusKm, string $table, array $conditions = []): array
     {
-        $query = \Illuminate\Support\Facades\DB::table($table)
+        $query = $this->db->table($table)
             ->selectRaw('*, ST_Distance_Sphere(
                 ST_MakePoint(lon, lat),
                 ST_MakePoint(?, ?)
@@ -168,7 +190,7 @@ final readonly class GeoService
                 }
             }
 
-            $evenBit = !$evenBit;
+            $evenBit = ! $evenBit;
 
             if ($bits < 4) {
                 $bits++;
@@ -195,13 +217,36 @@ final readonly class GeoService
     }
 
     /**
+     * Reset circuit breaker (for admin/monitoring)
+     */
+    public function resetCircuitBreaker(string $provider): void
+    {
+        $this->redis->connection()->del(self::CIRCUIT_BREAKER_KEY.$provider);
+        $this->redis->connection()->del('geo:failures:'.$provider);
+        $this->logger->channel('geo')->$this->logger->info('Geo circuit breaker reset', ['provider' => $provider]);
+    }
+
+    /**
+     * Get circuit breaker status
+     */
+    public function getCircuitBreakerStatus(string $provider): array
+    {
+        return [
+            'is_open' => $this->isCircuitOpen($provider),
+            'failures' => (int) $this->redis->connection()->get('geo:failures:'.$provider) ?: 0,
+            'threshold' => self::FAILURE_THRESHOLD,
+            'ttl' => $this->redis->connection()->ttl(self::CIRCUIT_BREAKER_KEY.$provider),
+        ];
+    }
+
+    /**
      * Get available provider with circuit breaker check
      */
     private function getAvailableProvider(): GeoProviderInterface
     {
         $primaryProvider = $this->config->get('geo.primary_provider', 'yandex');
 
-        if ($primaryProvider === 'yandex' && $this->yandexProvider->isAvailable() && !$this->isCircuitOpen('yandex')) {
+        if ($primaryProvider === 'yandex' && $this->yandexProvider->isAvailable() && ! $this->isCircuitOpen('yandex')) {
             return $this->yandexProvider;
         }
 
@@ -213,7 +258,7 @@ final readonly class GeoService
      */
     private function isCircuitOpen(string $provider): bool
     {
-        return (bool) Redis::get(self::CIRCUIT_BREAKER_KEY . $provider);
+        return (bool) $this->redis->connection()->get(self::CIRCUIT_BREAKER_KEY.$provider);
     }
 
     /**
@@ -222,43 +267,20 @@ final readonly class GeoService
     private function recordFailure(GeoProviderInterface $provider): void
     {
         $providerName = $provider->getProviderName();
-        $key = 'geo:failures:' . $providerName;
-        $failures = (int) Redis::incr($key);
+        $key = 'geo:failures:'.$providerName;
+        $failures = (int) $this->redis->connection()->incr($key);
 
         if ($failures === 1) {
-            Redis::expire($key, self::CIRCUIT_BREAKER_TTL);
+            $this->redis->connection()->expire($key, self::CIRCUIT_BREAKER_TTL);
         }
 
         if ($failures >= self::FAILURE_THRESHOLD) {
-            Redis::setex(self::CIRCUIT_BREAKER_KEY . $providerName, self::CIRCUIT_BREAKER_TTL, '1');
+            $this->redis->connection()->setex(self::CIRCUIT_BREAKER_KEY.$providerName, self::CIRCUIT_BREAKER_TTL, '1');
             $this->logger->channel('geo')->warning('Geo circuit breaker opened', [
                 'provider' => $providerName,
                 'failures' => $failures,
             ]);
         }
-    }
-
-    /**
-     * Reset circuit breaker (for admin/monitoring)
-     */
-    public function resetCircuitBreaker(string $provider): void
-    {
-        Redis::del(self::CIRCUIT_BREAKER_KEY . $provider);
-        Redis::del('geo:failures:' . $provider);
-        $this->logger->channel('geo')->info('Geo circuit breaker reset', ['provider' => $provider]);
-    }
-
-    /**
-     * Get circuit breaker status
-     */
-    public function getCircuitBreakerStatus(string $provider): array
-    {
-        return [
-            'is_open' => $this->isCircuitOpen($provider),
-            'failures' => (int) Redis::get('geo:failures:' . $provider) ?: 0,
-            'threshold' => self::FAILURE_THRESHOLD,
-            'ttl' => Redis::ttl(self::CIRCUIT_BREAKER_KEY . $provider),
-        ];
     }
 
     /**
@@ -284,7 +306,7 @@ final readonly class GeoService
     private function haversineRoute(float $lat1, float $lon1, float $lat2, float $lon2): array
     {
         $distance = $this->haversineDistance($lat1, $lon1, $lat2, $lon2);
-        
+
         return [
             'distance_km' => $distance,
             'duration_min' => (int) ceil($distance / 25 * 60), // 25 km/h average

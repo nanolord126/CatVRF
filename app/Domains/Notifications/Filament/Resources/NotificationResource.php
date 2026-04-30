@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Notifications\Filament\Resources;
+
+use Illuminate\Notifications\ChannelManager;
 
 use App\Domains\Notifications\Models\Notification;
 use Filament\Forms\Form;
@@ -10,10 +14,12 @@ use Filament\Tables\Table;
 
 final class NotificationResource extends Resource
 {
-    protected static ?string $model = Notification::class;
+    protected static ?string $model = $this->notificationManager->class;
 
     protected static ?string $navigationIcon = 'heroicon-o-bell';
+
     protected static ?string $navigationGroup = 'Notifications';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

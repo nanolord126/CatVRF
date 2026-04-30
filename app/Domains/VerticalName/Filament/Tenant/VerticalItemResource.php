@@ -10,6 +10,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\VerticalName\Filament\Tenant\Pages\CreateVerticalItem;
+use App\Domains\VerticalName\Filament\Tenant\Pages\EditVerticalItem;
+use App\Domains\VerticalName\Filament\Tenant\Pages\ListVerticalItems;
+use Filament\Resources\Pages\PageRegistration;
 
 /**
  * Filament Resource: управление VerticalItem в Tenant Panel.
@@ -17,8 +21,6 @@ use Filament\Tables\Table;
  * CANON 2026 — Layer 9: Filament (только B2B / Tenant Panel).
  * Доступ: только владельцы бизнеса и менеджеры через /tenant.
  * Все данные tenant-scoped автоматически через модель.
- *
- * @package App\Domains\VerticalName\Filament\Tenant
  */
 final class VerticalItemResource extends Resource
 {
@@ -158,7 +160,7 @@ final class VerticalItemResource extends Resource
 
                 Tables\Columns\TextColumn::make('price_kopecks')
                     ->label('Цена')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, ',', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, ',', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('stock_quantity')
@@ -169,7 +171,7 @@ final class VerticalItemResource extends Resource
                 Tables\Columns\TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->sortable()
-                    ->formatStateUsing(fn (float $state): string => number_format($state, 1) . ' ★'),
+                    ->formatStateUsing(fn (float $state): string => number_format($state, 1).' ★'),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активен')
@@ -229,14 +231,14 @@ final class VerticalItemResource extends Resource
     /**
      * Страницы ресурса.
      *
-     * @return array<string, \Filament\Resources\Pages\PageRegistration>
+     * @return array<string, PageRegistration>
      */
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\VerticalName\Filament\Tenant\Pages\ListVerticalItems::route('/'),
-            'create' => \App\Domains\VerticalName\Filament\Tenant\Pages\CreateVerticalItem::route('/create'),
-            'edit' => \App\Domains\VerticalName\Filament\Tenant\Pages\EditVerticalItem::route('/{record}/edit'),
+            'index' => ListVerticalItems::route('/'),
+            'create' => CreateVerticalItem::route('/create'),
+            'edit' => EditVerticalItem::route('/{record}/edit'),
         ];
     }
 }

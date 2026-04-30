@@ -82,13 +82,17 @@ final readonly class UserAddressService
                 'usage_count' => 1,
             ]);
 
-            $this->logger->channel('audit')->info('User address created', [
-                'user_id' => $userId,
-                'address_id' => $created->id,
-                'vertical' => $vertical,
-                'tenant_id' => $tenantId,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->logCreated(
+                entityType: 'UserAddress',
+                entityId: $created->id,
+                context: [
+                    'user_id' => $userId,
+                    'type' => $type,
+                    'vertical' => $vertical,
+                ],
+                userId: $userId,
+                tenantId: $tenantId
+            );
 
             return $created;
         });

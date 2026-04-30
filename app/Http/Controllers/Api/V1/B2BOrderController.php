@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +29,7 @@ final class B2BOrderController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('B2B orders listed', ['correlation_id' => $correlationId, 'count' => $orders->total()]);
+        $this->logger->$this->logger->info('B2B orders listed', ['correlation_id' => $correlationId, 'count' => $orders->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -57,12 +60,12 @@ final class B2BOrderController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('B2B order created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B order created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'B2B-заказ создан'], 201);
     }

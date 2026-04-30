@@ -1,13 +1,14 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Integration Script: Apply New Payment Services to All Verticals
- * 
+ *
  * This script provides a guide for integrating the new payment infrastructure
  * services into all 64 business verticals.
- * 
+ *
  * Usage: php scripts/integrate-payment-services.php --vertical=medical
  */
-
 $verticals = [
     'critical' => ['Medical', 'Food', 'Beauty', 'Pharmacy'],
     'high' => ['RealEstate', 'Fashion', 'Travel', 'Auto', 'Hotels', 'Electronics', 'Fitness'],
@@ -71,7 +72,7 @@ echo "OLD:\n";
 echo "\$finalPrice = \$basePrice * \$discount;\n\n";
 echo "NEW:\n";
 echo "\$result = \$this->pricingEngine->calculatePrice(\n";
-echo "    vertical: '" . strtolower($argv[1] ?? 'your_vertical') . "',\n";
+echo "    vertical: '".strtolower($argv[1] ?? 'your_vertical')."',\n";
 echo "    basePrice: \$basePrice,\n";
 echo "    context: [\n";
 echo "        'business_group_id' => \$businessGroupId,\n";

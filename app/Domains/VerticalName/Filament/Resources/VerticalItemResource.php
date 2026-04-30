@@ -10,6 +10,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\CreateVerticalItem;
+use App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\EditVerticalItem;
+use App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\ListVerticalItems;
 
 /**
  * Filament Resource: VerticalItem.
@@ -76,9 +79,9 @@ final class VerticalItemResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\ListVerticalItems::route('/'),
-            'create' => \App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\CreateVerticalItem::route('/create'),
-            'edit'   => \App\Domains\VerticalName\Filament\Resources\VerticalItemResource\Pages\EditVerticalItem::route('/{record}/edit'),
+            'index'  => ListVerticalItems::route('/'),
+            'create' => CreateVerticalItem::route('/create'),
+            'edit'   => EditVerticalItem::route('/{record}/edit'),
         ];
     }
 }

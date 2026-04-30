@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class ReturnFraudDetectionDto
 {
     /**
-     * @param array<string, mixed> $deviceMetadata
-     * @param array<string, mixed> $userBehavior
+     * @param  array<string, mixed>  $deviceMetadata
+     * @param  array<string, mixed>  $userBehavior
      */
     public function __construct(
         public int $orderId,
@@ -19,8 +21,7 @@ final readonly class ReturnFraudDetectionDto
         public array $deviceMetadata,
         public array $userBehavior,
         public ?string $idempotencyKey = null,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(array $data, int $userId, string $correlationId): self
     {

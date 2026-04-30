@@ -13,30 +13,21 @@ use Tests\TestCase;
 
 /**
  * PaymentFraudMLIntegrationTest - Integration tests for payment fraud ML
- * 
+ *
  * Tests the integration of PaymentFraudMLService with:
  * - PaymentService
  * - WalletService
  * - Shadow mode
  * - Metrics collection
  * - Idempotency caching
- * 
+ *
  * CANON 2026 - Production Ready
  */
 final class PaymentFraudMLIntegrationTest extends TestCase
 {
     private PaymentFraudMLService $fraudService;
-    private PaymentFraudMLMetricsCollector $metrics;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->fraudService = app(PaymentFraudMLService::class);
-        $this->metrics = app(PaymentFraudMLMetricsCollector::class);
-        
-        Cache::flush();
-    }
+    private PaymentFraudMLMetricsCollector $metrics;
 
     public function test_payment_fraud_check_allows_legitimate_payment(): void
     {
@@ -247,7 +238,7 @@ final class PaymentFraudMLIntegrationTest extends TestCase
     public function test_shadow_mode_integration(): void
     {
         $shadowService = app(PaymentFraudMLShadowService::class);
-        
+
         $dto = new PaymentFraudMLDto(
             tenant_id: 1,
             user_id: 1,
@@ -272,5 +263,15 @@ final class PaymentFraudMLIntegrationTest extends TestCase
         // Shadow service should return null if no shadow models exist
         // or array if shadow models are present
         $this->assertTrue($shadowResults === null || is_array($shadowResults));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraudService = app(PaymentFraudMLService::class);
+        $this->metrics = app(PaymentFraudMLMetricsCollector::class);
+
+        Cache::flush();
     }
 }

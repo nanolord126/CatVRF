@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
@@ -12,22 +14,8 @@ use Mockery;
 final class CRMIntegrationServiceTest extends TestCase
 {
     private CRMIntegrationService $service;
+
     private AuditService $audit;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->audit = Mockery::mock(AuditService::class);
-
-        $this->service = new CRMIntegrationService($this->audit);
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_sync_enrollment_created_success(): void
     {
@@ -172,5 +160,20 @@ final class CRMIntegrationServiceTest extends TestCase
         $result = $this->service->processRetries();
 
         $this->assertEquals(1, $result['processed_count']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->audit = Mockery::mock(AuditService::class);
+
+        $this->service = new CRMIntegrationService($this->audit);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

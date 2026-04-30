@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -19,43 +20,42 @@ final class AIConstructorSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::first() ?? User::factory()->create(["email" => "admin@example.com"]);
-        $tenantId = "demo-tenant"; // Привязка к дефолтному тенанту
+        $admin = User::first() ?? User::factory()->create(['email' => 'admin@example.com']);
+        $tenantId = 'demo-tenant'; // Привязка к дефолтному тенанту
 
         // Interior Designer Demo Sessions
         InteriorDesignSession::create([
-            "user_id" => $admin->id,
-            "tenant_id" => $tenantId,
-            "correlation_id" => (string) Str::uuid(),
-            "style" => "Nordic Minimalism",
-            "budget_range" => "50000 - 150000",
-            "results_json" => [
-                "recommendations" => [
-                    ["sku" => "IKEA-MALM-01", "name" => "Bed Frame", "price" => 25000],
-                    ["sku" => "H&M-LIGHT-05", "name" => "Floor Lamp", "price" => 8000],
+            'user_id' => $admin->id,
+            'tenant_id' => $tenantId,
+            'correlation_id' => (string) Str::uuid(),
+            'style' => 'Nordic Minimalism',
+            'budget_range' => '50000 - 150000',
+            'results_json' => [
+                'recommendations' => [
+                    ['sku' => 'IKEA-MALM-01', 'name' => 'Bed Frame', 'price' => 25000],
+                    ['sku' => 'H&M-LIGHT-05', 'name' => 'Floor Lamp', 'price' => 8000],
                 ],
-                "ai_suggestion" => "The room has high ceiling, we recommend warm ambient lighting.",
+                'ai_suggestion' => 'The room has high ceiling, we recommend warm ambient lighting.',
             ],
-            "commission_status" => "pending",
+            'commission_status' => 'pending',
         ]);
 
         // Beauty AI Demo Sessions
         BeautyTryOnSession::create([
-            "user_id" => $admin->id,
-            "tenant_id" => $tenantId,
-            "correlation_id" => (string) Str::uuid(),
-            "category" => "Hair Color",
-            "params_json" => [
-                "current_shade" => "Blonde",
-                "target_shades" => ["Platinum", "Silver", "Icy Blonde"],
+            'user_id' => $admin->id,
+            'tenant_id' => $tenantId,
+            'correlation_id' => (string) Str::uuid(),
+            'category' => 'Hair Color',
+            'params_json' => [
+                'current_shade' => 'Blonde',
+                'target_shades' => ['Platinum', 'Silver', 'Icy Blonde'],
             ],
-            "ai_analysis" => [
-                "face_shape" => "Oval",
-                "skin_tone" => "Cold",
-                "recommendation" => "Platinum Blonde with roots shadow.",
+            'ai_analysis' => [
+                'face_shape' => 'Oval',
+                'skin_tone' => 'Cold',
+                'recommendation' => 'Platinum Blonde with roots shadow.',
             ],
-            "order_linked" => false,
+            'order_linked' => false,
         ]);
     }
 }
-

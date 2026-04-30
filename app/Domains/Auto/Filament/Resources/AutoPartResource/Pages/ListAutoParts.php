@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListAutoParts — CatVRF 2026 Component.
@@ -7,14 +9,14 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listautoparts
  */
-
 
 namespace App\Domains\Auto\Filament\Resources\AutoPartResource\Pages;
 
@@ -23,37 +25,6 @@ use Filament\Resources\Pages\ListRecords;
 
 final class ListAutoParts extends ListRecords
 {
-
-    protected static string $resource = AutoPartResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make(),
-            ];
-        }
-
-        public function getTabs(): array
-        {
-            return [
-                'all' => Tab::make('Все')
-                    ->badge(static::getResource()::getEloquentQuery()->count()),
-
-                'low_stock' => Tab::make('Низкий остаток')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('current_stock < min_stock_threshold'))
-                    ->badge(static::getResource()::getEloquentQuery()->whereRaw('current_stock < min_stock_threshold')->count())
-                    ->badgeColor('danger'),
-
-                'out_of_stock' => Tab::make('Нет в наличии')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('current_stock', '<=', 0))
-                    ->badge(static::getResource()::getEloquentQuery()->where('current_stock', '<=', 0)->count())
-                    ->badgeColor('warning'),
-
-                'available' => Tab::make('В наличии')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('current_stock', '>', 0)),
-            ];
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -69,4 +40,34 @@ final class ListAutoParts extends ListRecords
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = AutoPartResource::class;
+
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('Все')
+                ->badge(self::getResource()::getEloquentQuery()->count()),
+
+            'low_stock' => Tab::make('Низкий остаток')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('current_stock < min_stock_threshold'))
+                ->badge(self::getResource()::getEloquentQuery()->whereRaw('current_stock < min_stock_threshold')->count())
+                ->badgeColor('danger'),
+
+            'out_of_stock' => Tab::make('Нет в наличии')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('current_stock', '<=', 0))
+                ->badge(self::getResource()::getEloquentQuery()->where('current_stock', '<=', 0)->count())
+                ->badgeColor('warning'),
+
+            'available' => Tab::make('В наличии')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('current_stock', '>', 0)),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
 }

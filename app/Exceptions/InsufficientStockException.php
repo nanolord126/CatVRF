@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Exceptions;
 
 use RuntimeException;
 use Throwable;
+use Illuminate\Support\Str;
 
 /**
  * InsufficientStockException
@@ -19,25 +22,29 @@ use Throwable;
  */
 final class InsufficientStockException extends RuntimeException
 {
-    private readonly int    $productId;
-    private readonly int    $warehouseId;
-    private readonly int    $requested;
-    private readonly int    $available;
+    private readonly int $productId;
+
+    private readonly int $warehouseId;
+
+    private readonly int $requested;
+
+    private readonly int $available;
+
     private readonly string $correlationId;
 
     public function __construct(
-        int       $productId,
-        int       $warehouseId,
-        int       $requested,
-        int       $available,
-        string    $correlationId = '',
+        int $productId,
+        int $warehouseId,
+        int $requested,
+        int $available,
+        string $correlationId = '',
         ?Throwable $previous      = null,
     ) {
         $this->productId     = $productId;
         $this->warehouseId   = $warehouseId;
         $this->requested     = $requested;
         $this->available     = $available;
-        $this->correlationId = $correlationId ?: \Illuminate\Support\Str::uuid()->toString();
+        $this->correlationId = $correlationId ?: Str::uuid()->toString();
 
         parent::__construct(
             sprintf(

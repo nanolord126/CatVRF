@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
+
+use LoggerInterface;
 
 use App\Filament\Tenant\Resources\FlowersResource;
 use Filament\Resources\Pages\CreateRecord;
@@ -13,8 +17,6 @@ use Psr\Log\LoggerInterface;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class CreateFlowers extends CreateRecord
 {
@@ -33,8 +35,8 @@ final class CreateFlowers extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $logger = app(LoggerInterface::class);
-        $logger->info('Flower B2B storefront created', [
+        $logger = $this->loggerInterface /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
+        $logger->$this->logger->info('Flower B2B storefront created', [
             'storefront_id'  => $record->id,
             'company_name'   => $record->company_name,
             'company_inn'    => $record->company_inn,

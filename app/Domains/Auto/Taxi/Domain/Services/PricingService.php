@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Auto\Taxi\Domain\Services;
 
 use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class PricingService
@@ -19,26 +21,22 @@ use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Taxi\Domain\Services
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class PricingService
 {
     private const BASE_FARE = 150; // 150 RUB
+
     private const PER_KILOMETER_RATE = 25; // 25 RUB per km
+
     private const PER_MINUTE_RATE = 5; // 5 RUB per minute
 
-    public function __construct(private readonly GeoLogisticsService $geoLogisticsService)
-    {
-
-    }
+    public function __construct(private readonly GeoLogisticsService $geoLogisticsService) {}
 
     /**
      * Calculate the estimated price for a ride.
      *
-     * @param Coordinate $pickup
-     * @param Coordinate $dropoff
      * @return int Price in cents
      */
     public function calculateEstimatedPrice(Coordinate $pickup, Coordinate $dropoff): int

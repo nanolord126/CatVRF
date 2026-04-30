@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\OfficeRentals\Services;
 
-
 use Illuminate\Contracts\Auth\Guard;
 use App\Domains\RealEstate\OfficeRentals\Models\CoworkingRental;
 use App\Domains\RealEstate\OfficeRentals\Models\CoworkingSpace;
@@ -13,6 +12,8 @@ use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
 
 /**
  * Сервис аренды офисных/коворкинг-пространств.
@@ -26,15 +27,21 @@ use Ramsey\Uuid\Uuid;
 final readonly class OfficeRentalsService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'office:rental';
+
     private const RATE_LIMIT_MAX = 7;
+
     private const RATE_LIMIT_TTL = 3600;
 
-    public function __construct(private readonly FraudControlService  $fraud,
-        private readonly WalletService        $wallet,
-        private readonly RateLimiter          $rateLimiter,
-        private readonly LoggerInterface      $logger,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Создать аренду офисного/коворкинг-пространства.
@@ -42,16 +49,16 @@ final readonly class OfficeRentalsService
      * @throws \RuntimeException если rate limit превышен или fraud-блок
      */
     public function createRental(
-        int    $spaceId,
+        int $spaceId,
         string $leaseStart,
         string $leaseEnd,
-        int    $seatsBooked,
-        int    $monthCount,
+        int $seatsBooked,
+        int $monthCount,
         string $correlationId = '',
     ): CoworkingRental {
         $correlationId = $correlationId ?: Uuid::uuid4()->toString();
 
-        $key = self::RATE_LIMIT_KEY . ':' . tenant()->id;
+        $key = self::RATE_LIMIT_KEY.':'.tenant()->id;
         if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
             throw new \RuntimeException('Too many office rental requests', 429);
         }
@@ -88,7 +95,7 @@ final readonly class OfficeRentalsService
                 'tags'                => ['office' => true],
             ]);
 
-            $this->logger->info('Coworking rental created', [
+            $this->logger->$this->logger->info('Coworking rental created', [
                 'rental_id'      => $rental->id,
                 'space_id'       => $spaceId,
                 'seats_booked'   => $seatsBooked,
@@ -164,7 +171,7 @@ final readonly class OfficeRentalsService
     /**
      * Получить список аренд по ID бизнеса.
      */
-    public function getMyRentals(int $tenantBusinessId): \Illuminate\Support\Collection
+    public function getMyRentals(int $tenantBusinessId): Collection
     {
         return CoworkingRental::where('tenant_business_id', $tenantBusinessId)
             ->orderByDesc('created_at')

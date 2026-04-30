@@ -1,16 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class Property3DViewer extends Component
 {
-    private int $propertyId;
-    private array $propertyData = [];
-    private array $currentRoom = [];
-    private int $currentFloor = 0;
-    private bool $showARView = false;
+    private readonly int $propertyId;
+
+    private readonly array $propertyData = [];
+
+    private readonly array $currentRoom = [];
+
+    private readonly int $currentFloor = 0;
+
+    private readonly bool $showARView = false;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $propertyId): void
     {
@@ -58,11 +70,11 @@ final class Property3DViewer extends Component
 
     public function toggleAR(): void
     {
-        $this->showARView = !$this->showARView;
+        $this->showARView = ! $this->showARView;
     }
 
     public function render()
     {
-        return view('livewire.three-d.property-3d-viewer');
+        return $this->viewFactory->make('livewire.three-d.property-3d-viewer');
     }
 }

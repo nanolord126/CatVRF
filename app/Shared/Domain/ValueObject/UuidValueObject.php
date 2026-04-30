@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Shared\Domain\ValueObject;
 
@@ -9,20 +11,18 @@ use InvalidArgumentException;
  *
  * Канон CatVRF 2026: declare(strict_types=1), readonly class.
  * Используется как родитель для RideId, DriverId и аналогичных VO.
- *
- * @package App\Shared\Domain\ValueObject
  */
-class UuidValueObject
+final class UuidValueObject
 {
     /**
-     * @param string $id UUID-строка
+     * @param  string  $id  UUID-строка
      */
     public function __construct(
-        protected string $id,
+        protected readonly string $id,
     ) {
         if (empty($this->id)) {
             throw new InvalidArgumentException(
-                static::class . ': UUID не может быть пустым.'
+                static::class.': UUID не может быть пустым.'
             );
         }
     }

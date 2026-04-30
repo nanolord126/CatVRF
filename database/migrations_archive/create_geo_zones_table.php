@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('geo_zones', function (Blueprint $table) {
@@ -19,7 +20,8 @@ return new class extends Migration
             $table->timestamps();
             $table->index('tenant_id');
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
     }
 
     public function down(): void
@@ -27,4 +29,3 @@ return new class extends Migration
         Schema::dropIfExists('geo_zones');
     }
 };
-

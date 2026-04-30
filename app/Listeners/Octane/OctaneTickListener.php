@@ -1,24 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Listeners\Octane;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Laravel\Octane\Events\TickReceived;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
 final class OctaneTickListener
 {
-    public function __construct(
-        private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
-
     private int $tickCount = 0;
+
     private int $lastSecond = 0;
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly ConfigRepository $config,
+        private readonly DatabaseManager $db,
+        private readonly RedisFactory $redis,
+    ) {}
 
     public function handle(TickReceived $event): void
     {
@@ -58,9 +63,9 @@ final class OctaneTickListener
     {
         // Cleanup Redis keys with TTL
         try {
-            $redis = \Redis::connection();
+            $redis = $this->redis->connection();
             // Existing TTL keys are auto-expired by Redis
-            $info = $redis->info('memory');
+            $info = $redis->$this->logger->info('memory');
 
             if ($info['used_memory'] > ($this->config->get('cache.default') === 'redis' ? 512 * 1024 * 1024 : 100 * 1024 * 1024)) {
                 $redis->flushdb();

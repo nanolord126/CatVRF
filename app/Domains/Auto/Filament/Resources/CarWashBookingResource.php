@@ -1,61 +1,66 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\CreateCarWashBooking;
+use App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\EditCarWashBooking;
+use App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ListCarWashBookings;
+use App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ViewCarWashBooking;
 
-final class CarWashBookingResource extends Resource
+final class CarWashBookingResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = CarWashBooking::class;
 
-        protected static ?string $navigationLabel = 'Бронь мойки';
+    protected static ?string $navigationLabel = 'Бронь мойки';
 
-        protected static ?string $pluralModelLabel = 'Брони мойки';
+    protected static ?string $pluralModelLabel = 'Брони мойки';
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Section::make('Информация о брони')
-                    ->schema([
-                        Forms\Components\TextInput::make('client_id')
-                            ->label('Клиент')
-                            ->required()
-                            ->numeric(),
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Информация о брони')
+                ->schema([
+                    Forms\Components\TextInput::make('client_id')
+                        ->label('Клиент')
+                        ->required()
+                        ->numeric(),
 
-                        Forms\Components\TextInput::make('wash_type')
-                            ->label('Тип мойки')
-                            ->required(),
+                    Forms\Components\TextInput::make('wash_type')
+                        ->label('Тип мойки')
+                        ->required(),
 
-                        Forms\Components\TextInput::make('box_number')
-                            ->label('Номер бокса')
-                            ->numeric(),
+                    Forms\Components\TextInput::make('box_number')
+                        ->label('Номер бокса')
+                        ->numeric(),
 
-                        Forms\Components\DateTimePicker::make('scheduled_at')
-                            ->label('Запланирована на')
-                            ->required(),
+                    Forms\Components\DateTimePicker::make('scheduled_at')
+                        ->label('Запланирована на')
+                        ->required(),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options([
-                                'pending' => 'В ожидании',
-                                'in_progress' => 'В процессе',
-                                'completed' => 'Завершена',
-                                'cancelled' => 'Отменена',
-                            ])
-                            ->required(),
+                    Forms\Components\Select::make('status')
+                        ->label('Статус')
+                        ->options([
+                            'pending' => 'В ожидании',
+                            'in_progress' => 'В процессе',
+                            'completed' => 'Завершена',
+                            'cancelled' => 'Отменена',
+                        ])
+                        ->required(),
 
-                        Forms\Components\TextInput::make('price')
-                            ->label('Цена (копейки)')
-                            ->numeric()
-                            ->required(),
-                    ]),
-            ]);
-        }
+                    Forms\Components\TextInput::make('price')
+                        ->label('Цена (копейки)')
+                        ->numeric()
+                        ->required(),
+                ]),
+        ]);
+    }
 
     public static function table(Table $table): Table
     {
@@ -82,7 +87,7 @@ final class CarWashBookingResource extends Resource
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Цена')
-                    ->formatStateUsing(fn ($state) => ($state / 100) . ' ₽'),
+                    ->formatStateUsing(fn ($state) => ($state / 100).' ₽'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -110,10 +115,18 @@ final class CarWashBookingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ListCarWashBookings::route('/'),
-            'create' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\CreateCarWashBooking::route('/create'),
-            'edit' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\EditCarWashBooking::route('/{record}/edit'),
-            'view' => \App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages\ViewCarWashBooking::route('/{record}'),
+            'index' => ListCarWashBookings::route('/'),
+            'create' => CreateCarWashBooking::route('/create'),
+            'edit' => EditCarWashBooking::route('/{record}/edit'),
+            'view' => ViewCarWashBooking::route('/{record}'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

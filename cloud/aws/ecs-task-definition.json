@@ -1,0 +1,400 @@
+{
+  "family": "catvrf-redis-cluster",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "containerDefinitions": [
+    {
+      "name": "redis-node-1",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7001,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-1",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7001 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-node-2",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7002,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17002,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-2",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7002 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-node-3",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7003,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17003,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-3",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7003 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-node-4",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7004,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17004,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-4",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7004 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-node-5",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7005,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17005,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-5",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7005 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-node-6",
+      "image": "redis:7.2-alpine",
+      "essential": true,
+      "command": [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ],
+      "portMappings": [
+        {
+          "containerPort": 7006,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 17006,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data-6",
+          "containerPath": "/data"
+        },
+        {
+          "sourceVolume": "redis-config",
+          "containerPath": "/usr/local/etc/redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "redis-cli -p 7006 -a ${REDIS_PASSWORD} ping"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis-exporter",
+      "image": "oliver006/redis_exporter:latest",
+      "essential": false,
+      "environment": [
+        {
+          "name": "REDIS_ADDR",
+          "value": "redis://redis-node-1:7001"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "${REDIS_PASSWORD}"
+        }
+      ],
+      "portMappings": [
+        {
+          "containerPort": 9121,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/catvrf-redis-cluster",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "exporter"
+        }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "redis-data-1",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-1"
+      }
+    },
+    {
+      "name": "redis-data-2",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-2"
+      }
+    },
+    {
+      "name": "redis-data-3",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-3"
+      }
+    },
+    {
+      "name": "redis-data-4",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-4"
+      }
+    },
+    {
+      "name": "redis-data-5",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-5"
+      }
+    },
+    {
+      "name": "redis-data-6",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_FILESYSTEM_ID}",
+        "rootDirectory": "/redis-node-6"
+      }
+    },
+    {
+      "name": "redis-config",
+      "dockerVolumeConfiguration": {
+        "scope": "shared"
+      }
+    }
+  ]
+}

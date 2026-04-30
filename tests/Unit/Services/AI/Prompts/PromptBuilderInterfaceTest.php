@@ -15,12 +15,6 @@ final class PromptBuilderInterfaceTest extends TestCase
 {
     private TaxiRoutePromptBuilder $promptBuilder;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->promptBuilder = new TaxiRoutePromptBuilder();
-    }
-
     public function test_implements_prompt_builder_interface(): void
     {
         $this->assertInstanceOf(PromptBuilderInterface::class, $this->promptBuilder);
@@ -143,5 +137,11 @@ final class PromptBuilderInterfaceTest extends TestCase
         $this->assertStringNotContainsString('<script', $prompt);
         // Should not contain javascript: protocol
         $this->assertStringNotContainsString('javascript:', strtolower($prompt));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->promptBuilder = new TaxiRoutePromptBuilder();
     }
 }

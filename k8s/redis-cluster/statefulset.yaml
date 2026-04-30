@@ -1,0 +1,166 @@
+# Kubernetes StatefulSet for Redis Cluster
+# Production 2026 - CatVRF (28 Verticals High-Throughput WebSocket Scaling)
+# Architecture: 6 nodes (3 master + 3 replica)
+# Author: Sensei (ex-Amazon, Alibaba, Ozon)
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: catvrf-prod
+  labels:
+    app: redis-cluster
+    version: "7.2"
+    environment: production
+spec:
+  serviceName: redis-cluster
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+        version: "7.2"
+    spec:
+      # Security context
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      serviceAccountName: redis-cluster
+      
+      # Init container to set permissions
+      initContainers:
+      - name: fix-permissions
+        image: busybox:1.36
+        command: ["sh", "-c", "chown -R 999:999 /data"]
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Substitute password in config
+          sed -i "s/\${REDIS_PASSWORD}/$(cat /etc/redis-secret/password)/g" /usr/local/etc/redis/redis.conf
+          # Start Redis with cluster config
+          redis-server /usr/local/etc/redis/redis.conf
+        ports:
+        - containerPort: 6379
+          name: redis
+          protocol: TCP
+        - containerPort: 16379
+          name: cluster-bus
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: config
+          mountPath: /usr/local/etc/redis
+        - name: secret
+          mountPath: /etc/redis-secret
+          readOnly: true
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "5Gi"
+          limits:
+            cpu: "1500m"
+            memory: "6Gi"
+        # Health checks
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - $(cat /etc/redis-secret/password)
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - $(cat /etc/redis-secret/password)
+            - ping
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # Startup probe for slow starting pods
+        startupProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - $(cat /etc/redis-secret/password)
+            - ping
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+      
+      # Node affinity for better distribution
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - redis-cluster
+              topologyKey: kubernetes.io/hostname
+      # Topology spread constraints for multi-zone
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: redis-cluster
+      
+      volumes:
+      - name: config
+        configMap:
+          name: redis-cluster-config
+      - name: secret
+        secret:
+          secretName: redis-cluster-secret
+          items:
+          - key: redis-password
+            path: password
+  
+  # Persistent volume claims
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "ssd"  # Change to your StorageClass: gp3, premium-rwo, local-ssd
+      resources:
+        requests:
+          storage: 50Gi
+
+---
+# ServiceAccount for Redis Cluster
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: redis-cluster
+  namespace: catvrf-prod

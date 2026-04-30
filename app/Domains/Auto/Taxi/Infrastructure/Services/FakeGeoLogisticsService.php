@@ -6,6 +6,8 @@ namespace App\Domains\Auto\Taxi\Infrastructure\Services;
 
 use App\Domains\Auto\Taxi\Domain\Services\GeoLogisticsServiceInterface;
 use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class FakeGeoLogisticsService
@@ -20,13 +22,13 @@ use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Taxi\Infrastructure\Services
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class FakeGeoLogisticsService implements GeoLogisticsServiceInterface
 {
     private const BASE_PRICE_PER_KM = 35;
+
     private const EARTH_RADIUS_KM = 6371.0;
 
     public function calculatePrice(Coordinate $from, Coordinate $to): int
@@ -40,6 +42,7 @@ final readonly class FakeGeoLogisticsService implements GeoLogisticsServiceInter
     public function estimateDuration(Coordinate $from, Coordinate $to): int
     {
         $distance = $this->haversine($from, $to);
+
         // Средняя скорость 30 км/ч в городе
         return (int) ceil(($distance / 30) * 60);
     }

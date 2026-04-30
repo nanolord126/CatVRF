@@ -1,13 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use App\Domains\Pharmacy\Events\PharmacyOrderCompleted;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
 /**
  * Class LogPharmacyOrderCompletedListener
  *
@@ -17,13 +20,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Pharmacy\Listeners
  */
 final class LogPharmacyOrderCompletedListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit, private readonly Request $request, private readonly LoggerInterface $logger) {}
+        private readonly AuditService $audit,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle handle operation.
@@ -32,7 +36,7 @@ final class LogPharmacyOrderCompletedListener implements ShouldQueue
      */
     public function handle(PharmacyOrderCompleted $event): void
     {
-        $this->logger->info('LogPharmacyOrderCompletedListener handled', [
+        $this->logger->$this->logger->info('LogPharmacyOrderCompletedListener handled', [
             'event' => 'PharmacyOrderCompleted',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);
@@ -48,7 +52,7 @@ final class LogPharmacyOrderCompletedListener implements ShouldQueue
         $this->logger->error('LogPharmacyOrderCompletedListener failed', [
             'event' => 'PharmacyOrderCompleted',
             'error' => $exception->getMessage(),
-            'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            'correlation_id' => $this->request?->header('X-Correlation-ID', Str::uuid()->toString()),
         ]);
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Webhooks\Filament\Resources;
 
@@ -14,7 +16,9 @@ final class WebhookResource extends Resource
     protected static ?string $model = Webhook::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-link';
+
     protected static ?string $navigationGroup = 'Integrations';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

@@ -1,6 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Notifications\Jobs;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Notifications\Models\Notification;
 use Illuminate\Bus\Queueable;
@@ -8,43 +16,46 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class SendPushNotificationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
+    public function __construct(private readonly ChannelManager $notificationManager,
+        private readonly LoggerInterface $logger,
         public readonly int $notificationId,
-        public readonly string $correlationId,
-    ) {}
+        public readonly string $correlationId,) {}
 
     public function onQueue(): string
     {
         return 'notifications';
     }
 
-    public function handle(): void
+    public function handle(LogManager $log): void
     {
-        $notification = Notification::findOrFail($this->notificationId);
+        $notification = $this->notificationManager->findOrFail($this->notificationId);
 
         try {
             // Firebase Cloud Messaging integration here
             // For now, just mark as delivered
-            
-            $notification->update(['delivered_at' => now()]);
 
-            Log::channel('notifications')->info('Push notification sent', [
+            $notification->update(['delivered_at' => CarbonImmutable::now()]);
+
+            $log->channel('notifications')->$this->logger->info('Push notification sent', [
                 'notification_id' => $notification->id,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Exception $e) {
             $notification->update([
-                'failed_at' => now(),
+                'failed_at' => CarbonImmutable::now(),
                 'error_message' => $e->getMessage(),
             ]);
 
-            Log::channel('notifications')->error('Failed to send push notification', [
+            $log->channel('notifications')->error('Failed to send push notification', [
                 'notification_id' => $notification->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
@@ -19,18 +21,6 @@ final class TaxiFinanceServiceTest extends TestCase
     use RefreshDatabase;
 
     private TaxiFinanceService $financeService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->financeService = new TaxiFinanceService(
-            $this->app->make(FraudControlService::class),
-            $this->app->make(AuditService::class),
-            $this->app->make(PaymentService::class),
-            $this->app->make(DatabaseManager::class),
-        );
-    }
 
     public function test_process_payment_creates_transaction(): void
     {
@@ -125,7 +115,7 @@ final class TaxiFinanceServiceTest extends TestCase
 
         $this->assertInstanceOf(TaxiWithdrawal::class, $withdrawal);
         $this->assertEquals(TaxiWithdrawal::STATUS_PENDING, $withdrawal->status);
-        
+
         $wallet->refresh();
         $this->assertEquals(10000, $wallet->frozen_kopeki);
     }
@@ -161,6 +151,18 @@ final class TaxiFinanceServiceTest extends TestCase
             driverId: $wallet->driver_id,
             amountKopeki: 5000,
             correlationId: 'test-correlation',
+        );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->financeService = new TaxiFinanceService(
+            $this->app->make(FraudControlService::class),
+            $this->app->make(AuditService::class),
+            $this->app->make(PaymentService::class),
+            $this->app->make(DatabaseManager::class),
         );
     }
 }

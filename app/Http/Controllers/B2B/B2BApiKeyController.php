@@ -1,9 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\B2B;
 
 use App\Http\Controllers\Controller;
-use App\Models\BusinessGroup;
 use App\Services\B2B\B2BApiKeyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Models\B2BApiKey;
+use Carbon\Carbon;
 
 /**
  * B2BApiKeyController — управление API-ключами для B2B-клиентов.
@@ -24,7 +27,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 final class B2BApiKeyController extends Controller
 {
     public function __construct(
-        private B2BApiKeyService $keyService,
+        private readonly B2BApiKeyService $keyService,
         private readonly DatabaseManager $db,
         private readonly ResponseFactory $response,
     ) {}
@@ -42,13 +45,13 @@ final class B2BApiKeyController extends Controller
             ->select(['id', 'uuid', 'name', 'permissions', 'expires_at', 'last_used_at', 'is_active', 'created_at'])
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn(object $k): array => [
+            ->map(fn (object $k): array => [
                 'id'          => $k->id,
                 'uuid'        => $k->uuid,
                 'name'        => $k->name,
                 'permissions' => json_decode($k->permissions, true),
                 'expires_at'  => $k->expires_at,
-                'last_used_at'=> $k->last_used_at,
+                'last_used_at' => $k->last_used_at,
                 'is_active'   => (bool) $k->is_active,
                 'created_at'  => $k->created_at,
             ]);
@@ -83,7 +86,7 @@ final class B2BApiKeyController extends Controller
             $data['name'],
             $data['permissions'] ?? [],
             $correlationId,
-            isset($data['expires_at']) ? \Carbon\Carbon::parse($data['expires_at']) : null,
+            isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : null,
         );
 
         return $this->response->json([
@@ -108,7 +111,7 @@ final class B2BApiKeyController extends Controller
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
         $businessGroup = $request->attributes->get('b2b_business_group');
 
-        $apiKey = \App\Models\B2BApiKey::where('id', $id)
+        $apiKey = B2BApiKey::where('id', $id)
             ->where('business_group_id', $businessGroup->id)
             ->firstOrFail();
 
@@ -129,7 +132,7 @@ final class B2BApiKeyController extends Controller
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
         $businessGroup = $request->attributes->get('b2b_business_group');
 
-        $apiKey = \App\Models\B2BApiKey::where('id', $id)
+        $apiKey = B2BApiKey::where('id', $id)
             ->where('business_group_id', $businessGroup->id)
             ->firstOrFail();
 

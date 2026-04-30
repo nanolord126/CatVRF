@@ -17,7 +17,9 @@ use Psr\Log\LoggerInterface;
 final class EloquentViewingRepository implements ViewingRepositoryInterface
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
+
     public function findById(ViewingId $id): ?ViewingAppointment
     {
         $model = ViewingAppointmentModel::withoutGlobalScope('tenant')
@@ -104,7 +106,7 @@ final class EloquentViewingRepository implements ViewingRepositoryInterface
         ViewingAppointmentModel::withoutGlobalScope('tenant')
             ->updateOrCreate(['id' => $data['id']], $data);
 
-        $this->logger->info('ViewingRepository::save', [
+        $this->logger->$this->logger->info('ViewingRepository::save', [
             'viewing_id'     => $data['id'],
             'status'         => $data['status'],
             'correlation_id' => $data['correlation_id'],

@@ -16,34 +16,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class CreateTransactionDtoTest extends TestCase
 {
-    private function makeDto(
-        int $tenantId = 1,
-        ?int $businessGroupId = null,
-        int $userId = 10,
-        string $correlationId = 'corr-tx-test',
-        int $walletId = 50,
-        TransactionType $type = TransactionType::DEPOSIT,
-        int $amount = 100000,
-        string $description = 'Test deposit',
-        array $metadata = [],
-        ?string $idempotencyKey = null,
-        bool $isB2B = false,
-    ): CreateTransactionDto {
-        return new CreateTransactionDto(
-            tenantId: $tenantId,
-            businessGroupId: $businessGroupId,
-            userId: $userId,
-            correlationId: $correlationId,
-            walletId: $walletId,
-            type: $type,
-            amount: $amount,
-            description: $description,
-            metadata: $metadata,
-            idempotencyKey: $idempotencyKey,
-            isB2B: $isB2B,
-        );
-    }
-
     #[Test]
     public function it_stores_all_properties(): void
     {
@@ -94,7 +66,7 @@ final class CreateTransactionDtoTest extends TestCase
     }
 
     #[Test]
-    public function toArray_returns_correct_structure(): void
+    public function to_array_returns_correct_structure(): void
     {
         $dto = $this->makeDto(
             tenantId: 10,
@@ -120,7 +92,7 @@ final class CreateTransactionDtoTest extends TestCase
     }
 
     #[Test]
-    public function toArray_does_not_leak_idempotency_or_isB2B(): void
+    public function to_array_does_not_leak_idempotency_or_is_b2_b(): void
     {
         $dto = $this->makeDto(idempotencyKey: 'secret-key', isB2B: true);
         $array = $dto->toArray();
@@ -130,7 +102,7 @@ final class CreateTransactionDtoTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_contains_required_fields(): void
+    public function to_audit_context_contains_required_fields(): void
     {
         $dto = $this->makeDto(
             tenantId: 7,
@@ -156,7 +128,7 @@ final class CreateTransactionDtoTest extends TestCase
     }
 
     #[Test]
-    public function getAmountInRubles_converts_correctly(): void
+    public function get_amount_in_rubles_converts_correctly(): void
     {
         self::assertSame(1500.0, $this->makeDto(amount: 150000)->getAmountInRubles());
         self::assertSame(0.01, $this->makeDto(amount: 1)->getAmountInRubles());
@@ -171,5 +143,33 @@ final class CreateTransactionDtoTest extends TestCase
         self::assertNull($dto->businessGroupId);
         self::assertFalse($dto->isB2B);
         self::assertNull($dto->toArray()['business_group_id']);
+    }
+
+    private function makeDto(
+        int $tenantId = 1,
+        ?int $businessGroupId = null,
+        int $userId = 10,
+        string $correlationId = 'corr-tx-test',
+        int $walletId = 50,
+        TransactionType $type = TransactionType::DEPOSIT,
+        int $amount = 100000,
+        string $description = 'Test deposit',
+        array $metadata = [],
+        ?string $idempotencyKey = null,
+        bool $isB2B = false,
+    ): CreateTransactionDto {
+        return new CreateTransactionDto(
+            tenantId: $tenantId,
+            businessGroupId: $businessGroupId,
+            userId: $userId,
+            correlationId: $correlationId,
+            walletId: $walletId,
+            type: $type,
+            amount: $amount,
+            description: $description,
+            metadata: $metadata,
+            idempotencyKey: $idempotencyKey,
+            isB2B: $isB2B,
+        );
     }
 }

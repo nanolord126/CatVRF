@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -10,15 +12,12 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 
-
 /**
  * Class ListAutoPartOrder
  *
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListAutoPartOrder extends ListRecords
 {
@@ -32,13 +31,6 @@ final class ListAutoPartOrder extends ListRecords
     public function getTitle(): string
     {
         return 'List AutoPartOrder';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
     }
 
     /**
@@ -60,11 +52,16 @@ final class ListAutoPartOrder extends ListRecords
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {
         return true;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
     }
 }

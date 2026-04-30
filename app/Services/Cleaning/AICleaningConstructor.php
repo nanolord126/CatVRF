@@ -1,140 +1,141 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Cleaning;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Cleaning\CleaningService;
 use Illuminate\Log\LogManager;
+use OpenAI\Client;
 
 final readonly class AICleaningConstructor
 {
-
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private \OpenAI\Client $openai,
-        private RecommendationService $recommendation,
-        private CleaningBookingService $bookingService,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly Client $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly CleaningBookingService $bookingService,
+        private readonly LogManager $logger,) {}
+
+    /**
+     * Builds a comprehensive cleaning plan using AI for photo/text analysis.
+     *
+     * @param  array  $photoUrls  URL to room photos.
+     * @param  string  $type  Type of cleaning (Standard, Deep, After Construction).
+     * @param  int|null  $budgetMax  In kopecks (cents).
+     * @return array AI recommendation payload.
+     */
+    public function buildCleaningPlan(array $photoUrls, string $type, ?int $budgetMax = null): array
+    {
+        $this->logger->channel('audit')->$this->logger->info('AI Cleaning Plan Generation Started', [
+            'type' => $type,
+            'photos_count' => count($photoUrls),
+            'budget' => $budgetMax,
+            'correlation_id' => $this->correlationId(),
+        ]);
+
+        try {
+            // 1. AI Visual Analysis (Vision Model simulation)
+            $visualAnalysis = $this->analyzePhotos($photoUrls);
+
+            // 2. Logic to match cleaning services with analysis results
+            $matchedServices = $this->matchServices($visualAnalysis, $type, $budgetMax);
+
+            // 3. Calculation of total estimated time and cost
+            $estimates = $this->calculatePlanSummary($matchedServices, $visualAnalysis['area_estimation_sqm']);
+
+            $plan = [
+                'correlation_id' => $this->correlationId(),
+                'visual_findings' => $visualAnalysis['detected_objects'], // 'Windows', 'Deep stains', 'Tile grout'
+                'recommended_services' => $matchedServices,
+                'estimated_sqm' => $visualAnalysis['area_estimation_sqm'],
+                'estimated_total_cents' => $estimates['total_cents'],
+                'estimated_duration_min' => $estimates['duration_min'],
+                'prepayment_cents' => $estimates['prepayment_cents'],
+                'ai_confidence' => 0.94,
+            ];
+
+            // 4. Final Logging for audit trace
+            $this->logger->channel('audit')->$this->logger->info('AI Cleaning Plan Generated Successfully', [
+                'total_cents' => $plan['estimated_total_cents'],
+                'services_count' => count($matchedServices),
+                'correlation_id' => $this->correlationId(),
+            ]);
+
+            return $plan;
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('AI Cleaning Plan Generation Failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'correlation_id' => $this->correlationId(),
+            ]);
+            throw $e;
+        }
+    }
 
     private function correlationId(): string
     {
         return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
     }
 
-        /**
-         * Builds a comprehensive cleaning plan using AI for photo/text analysis.
-         *
-         * @param array $photoUrls URL to room photos.
-         * @param string $type Type of cleaning (Standard, Deep, After Construction).
-         * @param int|null $budgetMax In kopecks (cents).
-         * @return array AI recommendation payload.
-         */
-        public function buildCleaningPlan(array $photoUrls, string $type, ?int $budgetMax = null): array
-        {
-            $this->logger->channel('audit')->info('AI Cleaning Plan Generation Started', [
-                'type' => $type,
-                'photos_count' => count($photoUrls),
-                'budget' => $budgetMax,
-                'correlation_id' => $this->correlationId(),
-            ]);
+    /**
+     * Mock of OpenAI Vision API for photo analysis.
+     */
+    private function analyzePhotos(array $urls): array
+    {
+        // Simple mock of AI response
+        return [
+            'detected_objects' => ['Windows (8 units)', 'Stained grout', 'Hardwood floor', 'Pet hair detected'],
+            'area_estimation_sqm' => 64.5,
+            'pollution_level' => 'High',
+        ];
+    }
 
-            try {
-                // 1. AI Visual Analysis (Vision Model simulation)
-                $visualAnalysis = $this->analyzePhotos($photoUrls);
+    /**
+     * Matches detected objects with actual services in DB.
+     */
+    private function matchServices(array $analysis, string $type, ?int $budgetMax): array
+    {
+        $services = CleaningService::where('is_active', true)
+            ->whereIn('category', [$type, 'standard', 'window'])
+            ->limit(5)
+            ->get();
 
-                // 2. Logic to match cleaning services with analysis results
-                $matchedServices = $this->matchServices($visualAnalysis, $type, $budgetMax);
+        $recommendations = [];
+        foreach ($services as $service) {
+            $cost = $service->price_base_cents * ($analysis['area_estimation_sqm'] / 10);
 
-                // 3. Calculation of total estimated time and cost
-                $estimates = $this->calculatePlanSummary($matchedServices, $visualAnalysis['area_estimation_sqm']);
-
-                $plan = [
-                    'correlation_id' => $this->correlationId(),
-                    'visual_findings' => $visualAnalysis['detected_objects'], // 'Windows', 'Deep stains', 'Tile grout'
-                    'recommended_services' => $matchedServices,
-                    'estimated_sqm' => $visualAnalysis['area_estimation_sqm'],
-                    'estimated_total_cents' => $estimates['total_cents'],
-                    'estimated_duration_min' => $estimates['duration_min'],
-                    'prepayment_cents' => $estimates['prepayment_cents'],
-                    'ai_confidence' => 0.94,
-                ];
-
-                // 4. Final Logging for audit trace
-                $this->logger->channel('audit')->info('AI Cleaning Plan Generated Successfully', [
-                    'total_cents' => $plan['estimated_total_cents'],
-                    'services_count' => count($matchedServices),
-                    'correlation_id' => $this->correlationId(),
-                ]);
-
-                return $plan;
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('AI Cleaning Plan Generation Failed', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'correlation_id' => $this->correlationId(),
-                ]);
-                throw $e;
+            if ($budgetMax && $cost > $budgetMax) {
+                continue;
             }
-        }
 
-        /**
-         * Mock of OpenAI Vision API for photo analysis.
-         */
-        private function analyzePhotos(array $urls): array
-        {
-            // Simple mock of AI response
-            return [
-                'detected_objects' => ['Windows (8 units)', 'Stained grout', 'Hardwood floor', 'Pet hair detected'],
-                'area_estimation_sqm' => 64.5,
-                'pollution_level' => 'High',
+            $recommendations[] = [
+                'id' => $service->id,
+                'name' => $service->name,
+                'estimated_cost_cents' => (int) $cost,
+                'ai_reason' => 'Based on pollution level: '.$analysis['pollution_level'],
             ];
         }
 
-        /**
-         * Matches detected objects with actual services in DB.
-         */
-        private function matchServices(array $analysis, string $type, ?int $budgetMax): array
-        {
-            $services = CleaningService::where('is_active', true)
-                ->whereIn('category', [$type, 'standard', 'window'])
-                ->limit(5)
-                ->get();
+        return $recommendations;
+    }
 
-            $recommendations = [];
-            foreach ($services as $service) {
-                $cost = $service->price_base_cents * ($analysis['area_estimation_sqm'] / 10);
+    /**
+     * Summary calculation logic for the AI Plan.
+     */
+    private function calculatePlanSummary(array $services, float $areaSqm): array
+    {
+        $total = array_sum(array_column($services, 'estimated_cost_cents'));
+        $duration = count($services) * 45 + ($areaSqm * 2);
 
-                if ($budgetMax && $cost > $budgetMax) {
-                    continue;
-                }
-
-                $recommendations[] = [
-                    'id' => $service->id,
-                    'name' => $service->name,
-                    'estimated_cost_cents' => (int) $cost,
-                    'ai_reason' => "Based on pollution level: " . $analysis['pollution_level'],
-                ];
-            }
-
-            return $recommendations;
-        }
-
-        /**
-         * Summary calculation logic for the AI Plan.
-         */
-        private function calculatePlanSummary(array $services, float $areaSqm): array
-        {
-            $total = array_sum(array_column($services, 'estimated_cost_cents'));
-            $duration = count($services) * 45 + ($areaSqm * 2);
-
-            return [
-                'total_cents' => $total,
-                'duration_min' => (int) $duration,
-                'prepayment_cents' => (int) ($total * 0.3),
-            ];
-        }
+        return [
+            'total_cents' => $total,
+            'duration_min' => (int) $duration,
+            'prepayment_cents' => (int) ($total * 0.3),
+        ];
+    }
 }

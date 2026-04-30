@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 final class BeautyLoyaltyController
 {
     public function __construct(
-        private BeautyLoyaltyService $loyaltyService,
+        private readonly BeautyLoyaltyService $loyaltyService,
     ) {}
 
     public function processAction(BeautyLoyaltyRequest $request): JsonResponse
@@ -23,7 +23,7 @@ final class BeautyLoyaltyController
 
         $result = $this->loyaltyService->processAction($dto);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new BeautyLoyaltyResource($result),
             'correlation_id' => $result['correlation_id'],
@@ -35,7 +35,7 @@ final class BeautyLoyaltyController
         $userId = (int) $request->input('user_id');
         $status = $this->loyaltyService->getLoyaltyStatus($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $status,
         ]);
@@ -46,11 +46,11 @@ final class BeautyLoyaltyController
         $userId = (int) $request->input('user_id');
         $code = $this->loyaltyService->generateReferralCode($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => [
                 'referral_code' => $code,
-                'share_link' => url('/ref/' . $code),
+                'share_link' => url('/ref/'.$code),
             ],
         ]);
     }

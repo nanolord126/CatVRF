@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Filament\Resources\TourismBookingResource\Pages;
 
@@ -8,7 +10,7 @@ use Filament\Resources\Pages\ListRecords;
 
 /**
  * List Tourism Bookings Page
- * 
+ *
  * Filament list page for tourism bookings in admin panel.
  */
 final class ListTourismBookings extends ListRecords

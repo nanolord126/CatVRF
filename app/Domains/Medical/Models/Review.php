@@ -1,100 +1,100 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletes;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class Review extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'medical_reviews';
+    protected $table = 'medical_reviews';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'clinic_id',
-            'doctor_id',
-            'appointment_id',
-            'client_id',
-            'rating',
-            'comment',
-            'is_verified_visit',
-            'status', // pending, published, hidden, rejected
-            'metadata',
-            'tags',
-            'correlation_id'
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'doctor_id',
+        'appointment_id',
+        'client_id',
+        'rating',
+        'comment',
+        'is_verified_visit',
+        'status', // pending, published, hidden, rejected
+        'metadata',
+        'tags',
+        'correlation_id',
+    ];
 
-        protected $casts = [
-            'rating' => 'integer',
-            'is_verified_visit' => 'boolean',
-            'metadata' => 'array',
-            'tags' => 'array',
-        ];
+    protected $casts = [
+        'rating' => 'integer',
+        'is_verified_visit' => 'boolean',
+        'metadata' => 'array',
+        'tags' => 'array',
+    ];
 
-        /**
-         * КАНОН: Global Scopes и События модели.
-         */
-        protected static function booted_disabled(): void
-        {
-            static::creating(function (Review $review) {
-                $review->uuid = $review->uuid ?? (string)Str::uuid();
-                $review->tenant_id = $review->tenant_id ?? (int)tenant()->id;
-                $review->correlation_id = $review->correlation_id ?? (string)Str::uuid();
-            });
+    /**
+     * Настройка логов для аудита.
+     */
+    /**
+     * Отношение: Клиника.
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class, 'clinic_id');
+    }
 
-            static::addGlobalScope('tenant_id', function (Builder $builder) {
-                if (tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    /**
+     * Отношение: Врач.
+     */
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(Doctor::class, 'doctor_id');
+    }
 
-        /**
-         * Настройка логов для аудита.
-         */
-/**
-         * Отношение: Клиника.
-         */
-        public function clinic(): BelongsTo
-        {
-            return $this->belongsTo(Clinic::class, 'clinic_id');
-        }
+    /**
+     * Отношение: Прием.
+     */
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class, 'appointment_id');
+    }
 
-        /**
-         * Отношение: Врач.
-         */
-        public function doctor(): BelongsTo
-        {
-            return $this->belongsTo(Doctor::class, 'doctor_id');
-        }
+    /**
+     * Отношение: Клиент (User).
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'client_id');
+    }
 
-        /**
-         * Отношение: Прием.
-         */
-        public function appointment(): BelongsTo
-        {
-            return $this->belongsTo(Appointment::class, 'appointment_id');
-        }
+    /**
+     * Публикация отзыва.
+     */
+    public function publish(): void
+    {
+        $this->update(['status' => 'published']);
+    }
 
-        /**
-         * Отношение: Клиент (User).
-         */
-        public function client(): BelongsTo
-        {
-            return $this->belongsTo(User::class, 'client_id');
-        }
+    /**
+     * КАНОН: Global Scopes и События модели.
+     */
+    protected static function booted_disabled(): void
+    {
+        self::creating(function (Review $review) {
+            $review->uuid = $review->uuid ?? (string) Str::uuid();
+            $review->tenant_id = $review->tenant_id ?? (int) tenant()->id;
+            $review->correlation_id = $review->correlation_id ?? (string) Str::uuid();
+        });
 
-        /**
-         * Публикация отзыва.
-         */
-        public function publish(): void
-        {
-            $this->update(['status' => 'published']);
-        }
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            if (tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

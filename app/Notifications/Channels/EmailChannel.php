@@ -1,12 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Channels;
-
 
 use Psr\Log\LoggerInterface;
 use App\Services\EmailService;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Email Notification Channel - отправляет уведомления через Email
@@ -24,14 +25,15 @@ final class EmailChannel
     /**
      * Инстанс EmailService
      */
-    private EmailService $emailService;
+    private readonly EmailService $emailService;
 
     /**
      * Конструктор
      */
     public function __construct(
-        private readonly LoggerInterface $logger,EmailService $emailService)
-    {
+        private readonly LoggerInterface $logger,
+        EmailService $emailService
+    ) {
         $this->emailService = $emailService;
     }
 
@@ -41,18 +43,19 @@ final class EmailChannel
     public function send(object $notifiable, Notification $notification): void
     {
         // Проверить, что объект имеет метод toMail
-        if (!method_exists($notification, 'toMail')) {
+        if (! method_exists($notification, 'toMail')) {
             $this->logger->warning('Notification does not have toMail method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
+
             return;
         }
 
         try {
             // Получить email address
             $email = $this->getEmail($notifiable);
-            if (!$email) {
+            if (! $email) {
                 throw new \RuntimeException("No email address found for notifiable: {$notifiable->id}");
             }
 
@@ -70,7 +73,7 @@ final class EmailChannel
                 tenantId: $notification->getTenantId(),
             );
 
-            $this->logger->info('Email notification sent', [
+            $this->logger->$this->logger->info('Email notification sent', [
                 'type' => $notification->getType(),
                 'email' => $email,
                 'correlation_id' => $notification->getCorrelationId(),
@@ -78,7 +81,7 @@ final class EmailChannel
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->log->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),

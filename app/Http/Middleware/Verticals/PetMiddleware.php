@@ -6,15 +6,18 @@ namespace App\Http\Middleware\Verticals;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class PetMiddleware
 {
+    public function __construct(
+        private readonly LogManager $log,
+    ) {}
     public function handle(Request $request, Closure $next)
     {
         $correlationId = $request->header('X-Correlation-ID') ?? uniqid('pet-', true);
         
-        Log::channel('audit')->info('Pet API Request', [
+        $this->log->channel('audit')->info('Pet API Request', [
             'correlation_id' => $correlationId,
             'path' => $request->path(),
             'method' => $request->method(),

@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Wallet\Events;
 
 use App\Domains\Wallet\Models\Wallet;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Доменное событие: кошелёк обновлён (balance changed).
@@ -16,7 +13,6 @@ use Illuminate\Queue\SerializesModels;
  */
 final class WalletUpdated
 {
-
     public function __construct(
         public readonly Wallet $wallet,
         public readonly string $correlationId,

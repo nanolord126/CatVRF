@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Insurance\Http\Controllers;
@@ -8,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 use Psr\Log\LoggerInterface;
 
 final class InsuranceController extends Controller
@@ -27,7 +29,7 @@ final class InsuranceController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Страховой полис listed', [
+        $this->logger->$this->logger->info('Страховой полис listed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'count' => $items->total(),
@@ -57,14 +59,14 @@ final class InsuranceController extends Controller
                 'tenant_id' => $request->get('tenant_id'),
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             return $this->db->table('insurance_policies')->insertGetId($data);
         });
 
-        $this->logger->info('Страховой полис created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Страховой полис created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Страховой полис создан(а)'], 201);
     }
@@ -94,7 +96,7 @@ final class InsuranceController extends Controller
         ]);
 
         $this->db->transaction(function () use ($validated, $id, $request) {
-            $data = array_merge($validated, ['updated_at' => now()]);
+            $data = array_merge($validated, ['updated_at' => CarbonImmutable::now()]);
 
             $this->db->table('insurance_policies')
                 ->where('id', $id)
@@ -102,7 +104,7 @@ final class InsuranceController extends Controller
                 ->update($data);
         });
 
-        $this->logger->info('Страховой полис updated', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Страховой полис updated', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Страховой полис обновлён(а)']);
     }
@@ -118,7 +120,7 @@ final class InsuranceController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Страховой полис deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Страховой полис deleted', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Страховой полис удалён(а)']);
     }

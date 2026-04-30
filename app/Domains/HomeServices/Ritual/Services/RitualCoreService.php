@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Ritual\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\HomeServices\Ritual\Models\FuneralOrder;
 use App\Domains\HomeServices\Ritual\Models\RitualAgency;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
@@ -21,24 +23,23 @@ use Psr\Log\LoggerInterface;
  * Создание заказов на ритуальные услуги, оформление мемориальных
  * сертификатов, координация с ритуальными агентствами.
  *
- * @package CatVRF
  * @version 2026.1
  */
 final readonly class RitualCoreService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private DatabaseManager     $db,
-        private LoggerInterface     $logger,
-        private Guard               $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Создать заказ на ритуальную услугу.
      */
     public function createOrder(
-        int    $agencyId,
+        int $agencyId,
         string $serviceType,
         string $scheduledDate,
         string $correlationId = '',
@@ -65,7 +66,7 @@ final readonly class RitualCoreService
                 'tags'           => ['ritual' => true],
             ]);
 
-            $this->logger->info('Ritual order created', [
+            $this->logger->$this->logger->info('Ritual order created', [
                 'order_id'       => $order->id,
                 'agency_id'      => $agencyId,
                 'correlation_id' => $correlationId,
@@ -102,7 +103,7 @@ final readonly class RitualCoreService
                 metadata: ['order_id' => $order->id],
             );
 
-            $this->logger->info('Ritual order completed', [
+            $this->logger->$this->logger->info('Ritual order completed', [
                 'order_id'       => $order->id,
                 'total_kopecks'  => $totalKopecks,
                 'correlation_id' => $correlationId,
@@ -131,7 +132,7 @@ final readonly class RitualCoreService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->info('Ritual order cancelled', [
+            $this->logger->$this->logger->info('Ritual order cancelled', [
                 'order_id'       => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -158,15 +159,15 @@ final readonly class RitualCoreService
 
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /** @return array<string, mixed> */
     public function toDebugArray(): array
     {
         return [
-            'class'     => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class'     => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

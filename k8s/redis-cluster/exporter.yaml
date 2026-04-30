@@ -1,0 +1,62 @@
+# Redis Exporter Deployment for Prometheus Monitoring
+# Production 2026 - CatVRF (28 Verticals)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+  namespace: catvrf-prod
+  labels:
+    app: redis-exporter
+    version: "latest"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-exporter
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+        version: "latest"
+    spec:
+      containers:
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        env:
+        - name: REDIS_ADDR
+          value: "redis://redis-cluster-0.redis-cluster.catvrf-prod.svc.cluster.local:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-cluster-secret
+              key: redis-password
+        - name: REDIS_EXPORTER_LOG_FORMAT
+          value: "json"
+        - name: REDIS_EXPORTER_EXPORT_CLIENT_LIST
+          value: "false"
+        - name: REDIS_EXPORTER_EXPORT_CLIENT_PORT
+          value: "false"
+        ports:
+        - containerPort: 9121
+          name: metrics
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "300m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9121
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9121
+          initialDelaySeconds: 5
+          periodSeconds: 5

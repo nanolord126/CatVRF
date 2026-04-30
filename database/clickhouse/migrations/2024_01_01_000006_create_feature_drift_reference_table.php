@@ -2,24 +2,20 @@
 
 declare(strict_types=1);
 
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-use ClickHouseDB\Schema AS ClickHouseSchema;
 
 /**
  * ClickHouse migration: Create feature drift reference distributions table
- * 
+ *
  * Stores reference feature distributions for drift detection.
  * Supports per-vertical and per-model-version tracking.
  */
-return new class
-{
+return new class () {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $db = \ClickHouseDB::getInstance();
+        $db = ClickHouseDB::getInstance();
 
         // Create main table for reference distributions
         $db->write('
@@ -104,7 +100,7 @@ return new class
      */
     public function down(): void
     {
-        $db = \ClickHouseDB::getInstance();
+        $db = ClickHouseDB::getInstance();
 
         $db->write('DROP TABLE IF EXISTS feature_drift_alerts');
         $db->write('DROP TABLE IF EXISTS feature_drift_current_mv');

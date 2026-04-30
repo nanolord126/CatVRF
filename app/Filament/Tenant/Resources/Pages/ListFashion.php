@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -13,20 +15,10 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 final class ListFashion extends ListRecords
 {
     protected static string $resource = FashionResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый B2B-заказ')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -49,7 +41,7 @@ final class ListFashion extends ListRecords
                     ->wrap(),
                 TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 BadgeColumn::make('status')
@@ -74,7 +66,7 @@ final class ListFashion extends ListRecords
                     }),
                 TextColumn::make('items_json')
                     ->label('Позиций')
-                    ->formatStateUsing(fn ($state) => is_array($state) ? count($state) . ' поз.' : '—')
+                    ->formatStateUsing(fn ($state) => is_array($state) ? count($state).' поз.' : '—')
                     ->alignCenter(),
                 TextColumn::make('created_at')
                     ->label('Создан')
@@ -102,5 +94,14 @@ final class ListFashion extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый B2B-заказ')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

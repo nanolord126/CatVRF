@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -6,8 +7,10 @@ namespace Database\Seeders;
 /**
  * Ветеринарные клиники (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-final class VetBrands extends BaseBrandSeeder {
-    public function run(): void {
+final class VetBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('VetClinics', [
             ['name' => 'VCA Animal Hospitals', 'country' => 'USA'], ['name' => 'Banfield Pet Hospital', 'country' => 'USA'],
             ['name' => 'BluePearl Specialty', 'country' => 'USA'], ['name' => 'Petco Love', 'country' => 'USA'],
@@ -38,5 +41,3 @@ final class VetBrands extends BaseBrandSeeder {
         ]);
     }
 }
-
-

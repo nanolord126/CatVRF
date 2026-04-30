@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -19,13 +21,6 @@ use Filament\Tables\Table;
 final class ListDentalAppointment extends ListRecords
 {
     protected static string $resource = DentalAppointmentResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Записать пациента')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -50,7 +45,7 @@ final class ListDentalAppointment extends ListRecords
                         default     => $state,
                     }),
                 TextColumn::make('total_price')->label('Стоимость')
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ') . ' ₽' : '—')->sortable(),
+                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ').' ₽' : '—')->sortable(),
                 IconColumn::make('is_prepaid')->label('Предоплачено')->boolean(),
                 TextColumn::make('correlation_id')->label('Corr. ID')->toggleable(isToggledHiddenByDefault: true)->limit(16),
                 TextColumn::make('created_at')->label('Создано')->dateTime('d.m.Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
@@ -62,5 +57,12 @@ final class ListDentalAppointment extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('scheduled_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Записать пациента')->icon('heroicon-o-plus'),
+        ];
     }
 }

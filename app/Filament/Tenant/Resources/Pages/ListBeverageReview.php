@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -21,19 +23,10 @@ use Filament\Tables\Table;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListBeverageReview extends ListRecords
 {
     protected static string $resource = BeverageReviewResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Добавить отзыв')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -41,7 +34,7 @@ final class ListBeverageReview extends ListRecords
             ->columns([
                 TextColumn::make('id')->label('ID')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('rating')->label('Рейтинг')
-                    ->formatStateUsing(fn ($state) => '★' . $state . '/5')
+                    ->formatStateUsing(fn ($state) => '★'.$state.'/5')
                     ->color(fn ($state) => match(true) {
                         $state >= 4 => 'success',
                         $state >= 3 => 'warning',
@@ -62,5 +55,12 @@ final class ListBeverageReview extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Добавить отзыв')->icon('heroicon-o-plus'),
+        ];
     }
 }

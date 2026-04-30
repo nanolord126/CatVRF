@@ -12,28 +12,32 @@ CatVRF uses Prometheus for monitoring:
 
 ## Prerequisites
 
-- Docker & Docker Compose
+- WSL/Linux environment
 - Redis instance (already configured in CatVRF)
 - CatVRF application deployed
 - Grafana instance (optional, for visualization)
 
-## Quick Start with Docker Compose
+## Quick Start
 
 ### 1. Deploy Prometheus + Grafana Stack
 
 ```bash
-# Clone the repository
-cd /opt/kotvrf/CatVRF
+# Install Prometheus (WSL/Linux)
+wget https://github.com/prometheus/prometheus/releases/download/v2.52.0/prometheus-2.52.0.linux-amd64.tar.gz
+tar xvfz prometheus-*.tar.gz
+cd prometheus-*/
+./prometheus --config.file=monitoring/prometheus/prometheus.yml &
 
-# Start the monitoring stack
-docker-compose -f docker-compose.monitoring.yml up -d
+# Install Grafana
+sudo apt-get install -y grafana
+sudo systemctl start grafana-server
+
+# Or use Grafana Cloud (free tier): https://grafana.com/auth/sign-up/cloud/
 ```
 
 This will start:
 - Prometheus on port 9090
 - Grafana on port 3000
-- Alertmanager on port 9093
-- Node Exporter on port 9100
 
 ### 2. Configure CatVRF Environment
 
@@ -63,7 +67,7 @@ PROMETHEUS_NAMESPACE=catvrf
 2. Update `docs/prometheus-alert-rules.yml` if needed
 3. Restart Alertmanager:
 ```bash
-docker-compose -f docker-compose.monitoring.yml restart alertmanager
+sudo systemctl restart alertmanager
 ```
 
 ## Manual Deployment (Production)

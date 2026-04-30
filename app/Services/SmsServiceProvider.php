@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Twilio\Rest\Client as TwilioClient;
@@ -16,7 +18,7 @@ abstract class SmsService
     /**
      * Twilio клиент
      */
-    private TwilioClient $twilio;
+    private readonly TwilioClient $twilio;
 
     /**
      * Vonage API (для альтернативы)
@@ -27,10 +29,9 @@ abstract class SmsService
      * Конструктор
      */
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    )
-    {
+    ) {
         // Инициализировать Twilio если конфиг есть
         if ($this->config->get('services.twilio.auth_token')) {
             $this->twilio = new TwilioClient(
@@ -53,7 +54,7 @@ abstract class SmsService
         string $priority = 'normal'
     ): bool {
         try {
-            if (!isset($this->twilio)) {
+            if (! isset($this->twilio)) {
                 throw new \RuntimeException('Twilio not configured');
             }
 
@@ -118,8 +119,8 @@ abstract class SmsService
         $phone = preg_replace('/[^\d+]/', '', $phone);
 
         // Добавить + если нет
-        if (!str_starts_with($phone, '+')) {
-            $phone = '+' . $phone;
+        if (! str_starts_with($phone, '+')) {
+            $phone = '+'.$phone;
         }
 
         return $phone;
@@ -130,6 +131,6 @@ abstract class SmsService
      */
     protected function maskPhone(string $phone): string
     {
-        return substr($phone, 0, -4) . '****';
+        return substr($phone, 0, -4).'****';
     }
 }

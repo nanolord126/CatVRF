@@ -7,6 +7,8 @@ namespace App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * @property string $id
@@ -17,16 +19,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array $dropoff_location
  * @property int|null $price
  * @property string $correlation_id
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Ride extends Model
 {
-    use HasFactory, SoftDeletes;
-
-    protected $table = 'taxi_rides';
+    use HasFactory;
+    use SoftDeletes;
 
     public $incrementing = false;
+
+    protected $table = 'taxi_rides';
 
     protected $keyType = 'string';
 
@@ -47,21 +50,21 @@ final class Ride extends Model
         'pickup_location' => 'json',
         'dropoff_location' => 'json',
         'price' => 'integer',
-    ];
+    ];
+
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
+        self::creating(function ($model) {
             if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+                $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
 }

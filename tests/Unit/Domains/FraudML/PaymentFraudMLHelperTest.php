@@ -18,7 +18,7 @@ final class PaymentFraudMLHelperTest extends TestCase
             tenantId: 1,
             userId: 1,
             amountKopecks: 15000, // 150 RUB
-            idempotencyKey: 'test-' . uniqid(),
+            idempotencyKey: 'test-'.uniqid(),
             correlationId: (string) Str::uuid(),
             verticalCode: 'medical',
             urgencyLevel: 'low',
@@ -43,7 +43,7 @@ final class PaymentFraudMLHelperTest extends TestCase
             tenantId: 1,
             userId: 1,
             amountKopecks: 100000000, // 1,000,000 RUB - very high
-            idempotencyKey: 'high-risk-' . uniqid(),
+            idempotencyKey: 'high-risk-'.uniqid(),
             correlationId: (string) Str::uuid(),
             verticalCode: 'medical',
             urgencyLevel: 'low',
@@ -78,7 +78,7 @@ final class PaymentFraudMLHelperTest extends TestCase
             tenantId: 1,
             userId: 1,
             amountKopecks: 50000,
-            idempotencyKey: 'medical-emergency-' . uniqid(),
+            idempotencyKey: 'medical-emergency-'.uniqid(),
             correlationId: (string) Str::uuid(),
             urgencyLevel: 'emergency',
             consultationPriceSpikeRatio: 1.5,
@@ -94,7 +94,7 @@ final class PaymentFraudMLHelperTest extends TestCase
     {
         $helper = app(PaymentFraudMLHelper::class);
 
-        $idempotencyKey = 'cache-invalidate-' . uniqid();
+        $idempotencyKey = 'cache-invalidate-'.uniqid();
 
         // Should not throw exception
         $helper->invalidateCache($idempotencyKey);
@@ -113,7 +113,7 @@ final class PaymentFraudMLHelperTest extends TestCase
                 tenantId: 1,
                 userId: 1,
                 amountKopecks: 15000,
-                idempotencyKey: "vertical-{$vertical}-" . uniqid(),
+                idempotencyKey: "vertical-{$vertical}-".uniqid(),
                 correlationId: (string) Str::uuid(),
                 verticalCode: $vertical,
                 urgencyLevel: 'low',
@@ -136,7 +136,7 @@ final class PaymentFraudMLHelperTest extends TestCase
                 tenantId: 1,
                 userId: 1,
                 amountKopecks: 15000,
-                idempotencyKey: "urgency-{$urgency}-" . uniqid(),
+                idempotencyKey: "urgency-{$urgency}-".uniqid(),
                 correlationId: (string) Str::uuid(),
                 verticalCode: 'medical',
                 urgencyLevel: $urgency,

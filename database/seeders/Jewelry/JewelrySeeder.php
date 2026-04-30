@@ -34,7 +34,7 @@ final class JewelrySeeder extends Seeder
                     'name' => $item['name'],
                 ],
                 [
-                    'sku' => strtoupper('JWL-' . Str::random(8)),
+                    'sku' => strtoupper('JWL-'.Str::random(8)),
                     'category' => $item['category'],
                     'metal' => $item['metal'],
                     'description' => 'Ювелирное изделие высокого качества',

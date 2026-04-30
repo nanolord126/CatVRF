@@ -14,8 +14,6 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 8: Resources (B2B namespace).
  * Оборачивает коллекцию ArtworkResource с пагинацией и meta-данными.
  * Всегда включает correlation_id, tenant_id, пагинацию.
- *
- * @package App\Domains\Art\Resources\B2B
  */
 final class ArtworkCollection extends ResourceCollection
 {
@@ -41,9 +39,8 @@ final class ArtworkCollection extends ResourceCollection
     /**
      * Мета-данные и информация о пагинации.
      *
-     * @param  Request $request
-     * @param  array<string, mixed> $paginated
-     * @param  array<string, mixed> $default
+     * @param  array<string, mixed>  $paginated
+     * @param  array<string, mixed>  $default
      * @return array<string, mixed>
      */
     public function paginationInformation(Request $request, array $paginated, array $default): array

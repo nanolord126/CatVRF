@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Services;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
 use App\Domains\Freelance\Models\FreelanceProject;
 use App\Domains\Freelance\Models\FreelanceProposal;
@@ -11,24 +15,22 @@ use App\Services\WalletService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * FreelanceService — управление фриланс-проектами и предложениями.
  *
  * Создание проектов, подача и принятие предложений,
  * fraud-check и wallet-интеграция.
- *
- * @package App\Domains\Freelance\Services
  */
 final readonly class FreelanceService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Создать фриланс-проект.
@@ -73,7 +75,7 @@ final readonly class FreelanceService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Freelance project created', [
+            $this->logger->$this->logger->info('Freelance project created', [
                 'project_id' => $project->id,
                 'client_id' => $clientId,
                 'budget' => $budget,
@@ -127,7 +129,7 @@ final readonly class FreelanceService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Freelance proposal submitted', [
+            $this->logger->$this->logger->info('Freelance proposal submitted', [
                 'proposal_id' => $proposal->id,
                 'project_id' => $projectId,
                 'freelancer_id' => $freelancerId,
@@ -153,7 +155,7 @@ final readonly class FreelanceService
                 'correlation_id' => $correlationId,
             ]);
 
-            event(new ProposalAccepted(
+            $this->eventDispatcher->dispatch(new ProposalAccepted(
                 proposal: $proposal,
                 correlationId: $correlationId,
             ));
@@ -167,7 +169,7 @@ final readonly class FreelanceService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Freelance proposal accepted', [
+            $this->logger->$this->logger->info('Freelance proposal accepted', [
                 'proposal_id' => $proposal->id,
                 'correlation_id' => $correlationId,
             ]);

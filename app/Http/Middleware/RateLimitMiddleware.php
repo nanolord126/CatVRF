@@ -25,7 +25,7 @@ use Illuminate\Http\Request;
  */
 final class RateLimitMiddleware
 {
-    private RateLimiter $limiter;
+    private readonly RateLimiter $limiter;
 
     public function __construct(RateLimiter $limiter)
     {

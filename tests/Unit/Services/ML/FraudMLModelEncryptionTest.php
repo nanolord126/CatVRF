@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\ML;
 
@@ -12,46 +14,17 @@ final class FraudMLModelEncryptionTest extends TestCase
     use RefreshDatabase;
 
     private FraudMLModelEncryption $encryption;
+
     private string $testModelPath;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        // Set required environment variables
-        putenv('FRAUDML_ENCRYPTION_KEY=' . str_repeat('a', 32));
-        putenv('FRAUDML_SIGNATURE_KEY=' . str_repeat('b', 32));
-        
-        $this->encryption = app(FraudMLModelEncryption::class);
-        $this->testModelPath = storage_path('models/fraud/test-model.joblib');
-    }
-
-    protected function tearDown(): void
-    {
-        // Clean up test files
-        $files = [
-            $this->testModelPath,
-            $this->testModelPath . '.enc',
-            $this->testModelPath . '.sig',
-        ];
-        
-        foreach ($files as $file) {
-            if (file_exists($file)) {
-                unlink($file);
-            }
-        }
-        
-        parent::tearDown();
-    }
 
     public function test_encrypt_model_creates_encrypted_file(): void
     {
         // Create test model file
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         $modelContent = json_encode(['version' => 'test', 'weights' => [1, 2, 3]]);
         file_put_contents($this->testModelPath, $modelContent);
 
@@ -70,10 +43,10 @@ final class FraudMLModelEncryptionTest extends TestCase
     public function test_encrypt_model_generates_signature(): void
     {
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         file_put_contents($this->testModelPath, json_encode(['test' => 'data']));
 
         $result = $this->encryption->encryptModel($this->testModelPath);
@@ -86,10 +59,10 @@ final class FraudMLModelEncryptionTest extends TestCase
     public function test_decrypt_model_with_valid_signature(): void
     {
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         $originalContent = json_encode(['version' => 'test', 'weights' => [1, 2, 3]]);
         file_put_contents($this->testModelPath, $originalContent);
 
@@ -109,10 +82,10 @@ final class FraudMLModelEncryptionTest extends TestCase
         $this->expectExceptionMessage('signature verification failed');
 
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         file_put_contents($this->testModelPath, json_encode(['test' => 'data']));
 
         $encryptionResult = $this->encryption->encryptModel($this->testModelPath);
@@ -132,10 +105,10 @@ final class FraudMLModelEncryptionTest extends TestCase
     public function test_verify_model_integrity_with_valid_hash(): void
     {
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         file_put_contents($this->testModelPath, json_encode(['test' => 'data']));
 
         $result = $this->encryption->encryptModel($this->testModelPath);
@@ -152,10 +125,10 @@ final class FraudMLModelEncryptionTest extends TestCase
     public function test_verify_model_integrity_fails_with_invalid_hash(): void
     {
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         file_put_contents($this->testModelPath, json_encode(['test' => 'data']));
 
         $result = $this->encryption->encryptModel($this->testModelPath);
@@ -208,10 +181,10 @@ final class FraudMLModelEncryptionTest extends TestCase
         $this->expectExceptionMessage('Encryption key not set');
 
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         file_put_contents($this->testModelPath, json_encode(['test' => 'data']));
 
         $this->encryption->encryptModel($this->testModelPath);
@@ -220,18 +193,18 @@ final class FraudMLModelEncryptionTest extends TestCase
     public function test_encryption_is_deterministic_with_same_key(): void
     {
         $modelDir = dirname($this->testModelPath);
-        if (!is_dir($modelDir)) {
+        if (! is_dir($modelDir)) {
             mkdir($modelDir, 0755, true);
         }
-        
+
         $originalContent = json_encode(['test' => 'data']);
         file_put_contents($this->testModelPath, $originalContent);
 
         $result1 = $this->encryption->encryptModel($this->testModelPath);
-        
+
         // Restore original file for second encryption
         file_put_contents($this->testModelPath, $originalContent);
-        
+
         $result2 = $this->encryption->encryptModel($this->testModelPath);
 
         // Signatures should be the same with same key
@@ -239,5 +212,35 @@ final class FraudMLModelEncryptionTest extends TestCase
             file_get_contents($result1['signature_path']),
             file_get_contents($result2['signature_path'])
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Set required environment variables
+        putenv('FRAUDML_ENCRYPTION_KEY='.str_repeat('a', 32));
+        putenv('FRAUDML_SIGNATURE_KEY='.str_repeat('b', 32));
+
+        $this->encryption = app(FraudMLModelEncryption::class);
+        $this->testModelPath = storage_path('models/fraud/test-model.joblib');
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up test files
+        $files = [
+            $this->testModelPath,
+            $this->testModelPath.'.enc',
+            $this->testModelPath.'.sig',
+        ];
+
+        foreach ($files as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+
+        parent::tearDown();
     }
 }

@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Furniture\Events\FurnitureOrderCreated;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+
 /**
  * Class LogFurnitureOrderCreatedListener
  *
@@ -16,13 +18,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Furniture\Listeners
  */
 final class LogFurnitureOrderCreatedListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit,
+        private readonly AuditService $audit,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -33,7 +33,7 @@ final class LogFurnitureOrderCreatedListener implements ShouldQueue
      */
     public function handle(FurnitureOrderCreated $event): void
     {
-        $this->logger->info('LogFurnitureOrderCreatedListener handled', [
+        $this->logger->$this->logger->info('LogFurnitureOrderCreatedListener handled', [
             'event' => 'FurnitureOrderCreated',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);

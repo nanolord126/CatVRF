@@ -1,9 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
-
-use Database\Seeders\VerticalFilterSeederBase;
 
 /**
  * Фильтры для электроники (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -52,5 +51,3 @@ final class ElectronicsFilterSeeder extends VerticalFilterSeederBase
         ]);
     }
 }
-
-

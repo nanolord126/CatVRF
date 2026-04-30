@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Services\Infrastructure\DopplerService;
+
 return [
 
     /*
@@ -13,7 +17,7 @@ return [
     |
     */
 
-    'default' => App\Services\Infrastructure\DopplerService::get('FILESYSTEM_DISK', 'local'),
+    'default' => DopplerService::get('FILESYSTEM_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
@@ -41,7 +45,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(App\Services\Infrastructure\DopplerService::get('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim(DopplerService::get('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -49,13 +53,13 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => App\Services\Infrastructure\DopplerService::get('AWS_ACCESS_KEY_ID'),
-            'secret' => App\Services\Infrastructure\DopplerService::get('AWS_SECRET_ACCESS_KEY'),
-            'region' => App\Services\Infrastructure\DopplerService::get('AWS_DEFAULT_REGION'),
-            'bucket' => App\Services\Infrastructure\DopplerService::get('AWS_BUCKET'),
-            'url' => App\Services\Infrastructure\DopplerService::get('AWS_URL'),
-            'endpoint' => App\Services\Infrastructure\DopplerService::get('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => App\Services\Infrastructure\DopplerService::get('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'key' => DopplerService::get('AWS_ACCESS_KEY_ID'),
+            'secret' => DopplerService::get('AWS_SECRET_ACCESS_KEY'),
+            'region' => DopplerService::get('AWS_DEFAULT_REGION'),
+            'bucket' => DopplerService::get('AWS_BUCKET'),
+            'url' => DopplerService::get('AWS_URL'),
+            'endpoint' => DopplerService::get('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => DopplerService::get('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
         ],

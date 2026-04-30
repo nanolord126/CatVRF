@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\User;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\Auth\AuthManager;
 use App\Models\User;
 use App\Services\Delivery\GeotrackingService;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -25,31 +26,56 @@ use Illuminate\Database\DatabaseManager;
  */
 final class DeliveryTrack extends Component
 {
+    // ── рендер ──────────────────────────────────────────────────────────────
+
+    /**
+     * Listeners для Echo — обновление данных из JavaScript.
+     */
+    protected $listeners = [
+        'courier-location-updated' => 'updateCourierPosition',
+        'delivery-status-updated'  => 'updateStatus',
+    ];
     // ── публичные свойства ───────────────────────────────────────────────────
 
     private int $deliveryOrderId = 0;
+
     private string $status          = '';
+
     private float $courierLat      = 0.0;
+
     private float $courierLon      = 0.0;
+
     private float $pickupLat       = 0.0;
+
     private float $pickupLon       = 0.0;
+
     private float $deliveryLat     = 0.0;
+
     private float $deliveryLon     = 0.0;
+
     private string $estimatedTime   = '';
+
     private array $timeline        = [];
+
     private bool $isDelivered     = false;
+
     private string $correlationId   = '';
+
+    public string $trackingNumber = '';
+
+    public array $trackingData = [];
+
+    public bool $isB2B = false;
 
     /** Список активных доставок пользователя для выбора */
     private array $activeDeliveries = [];
 
     // ── lifecycle ───────────────────────────────────────────────────────────
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly AuthManager $authManager,
-        private GeotrackingService $geotracking,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly GeotrackingService $geotracking,
+        private readonly DatabaseManager $db,) {}
 
     public function mount(?int $deliveryOrderId = null): void
     {
@@ -57,8 +83,9 @@ final class DeliveryTrack extends Component
 
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             $this->redirect(route('login'));
+
             return;
         }
 
@@ -66,7 +93,7 @@ final class DeliveryTrack extends Component
 
         if ($deliveryOrderId) {
             $this->selectDelivery($deliveryOrderId);
-        } elseif (!empty($this->activeDeliveries)) {
+        } elseif (! empty($this->activeDeliveries)) {
             $this->selectDelivery((int) $this->activeDeliveries[0]['id']);
         }
     }
@@ -80,7 +107,7 @@ final class DeliveryTrack extends Component
     {
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -96,7 +123,7 @@ final class DeliveryTrack extends Component
             ])
             ->first();
 
-        if (!$delivery) {
+        if (! $delivery) {
             return;
         }
 
@@ -152,6 +179,12 @@ final class DeliveryTrack extends Component
         $this->buildTimeline($status);
     }
 
+    public function render(): View
+    {
+        return $this->viewFactory->make('livewire.user.delivery-track')
+            ->layout('layouts.user-cabinet');
+    }
+
     // ── приватные методы ─────────────────────────────────────────────────────
 
     private function loadActiveDeliveries(User $user): void
@@ -164,7 +197,7 @@ final class DeliveryTrack extends Component
             ->orderByDesc('d.id')
             ->limit(5)
             ->get()
-            ->map(fn(object $row): array => [
+            ->map(fn (object $row): array => [
                 'id'       => $row->id,
                 'order_id' => $row->order_id,
                 'status'   => $row->status,
@@ -196,21 +229,5 @@ final class DeliveryTrack extends Component
                 'active'    => $key === $status,
             ];
         }
-    }
-
-    // ── рендер ──────────────────────────────────────────────────────────────
-
-    /**
-     * Listeners для Echo — обновление данных из JavaScript.
-     */
-    protected $listeners = [
-        'courier-location-updated' => 'updateCourierPosition',
-        'delivery-status-updated'  => 'updateStatus',
-    ];
-
-    public function render(): View
-    {
-        return view('livewire.user.delivery-track')
-            ->layout('layouts.user-cabinet');
     }
 }

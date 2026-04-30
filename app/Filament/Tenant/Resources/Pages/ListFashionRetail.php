@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -17,15 +19,6 @@ use Filament\Tables\Table;
 final class ListFashionRetail extends ListRecords
 {
     protected static string $resource = FashionRetailResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый B2B-ритейл заказ')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -53,12 +46,12 @@ final class ListFashionRetail extends ListRecords
                     ->wrap(),
                 TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 TextColumn::make('commission_amount')
                     ->label('Комиссия')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->alignRight()
                     ->color('warning'),
                 BadgeColumn::make('status')
@@ -104,5 +97,14 @@ final class ListFashionRetail extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый B2B-ритейл заказ')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

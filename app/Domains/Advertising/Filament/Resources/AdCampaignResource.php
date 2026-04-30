@@ -1,19 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Advertising\Filament\Resources;
-
 
 use App\Domains\Advertising\Models\AdCampaign;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\CreateAdCampaign;
+use App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\EditAdCampaign;
+use App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\ListAdCampaigns;
 
-final class AdCampaignResource extends Resource
+final class AdCampaignResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = AdCampaign::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
@@ -92,9 +95,17 @@ final class AdCampaignResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\ListAdCampaigns::route('/'),
-            'create' => \App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\CreateAdCampaign::route('/create'),
-            'edit' => \App\Domains\Advertising\Filament\Resources\AdCampaignResource\Pages\EditAdCampaign::route('/{record}/edit'),
+            'index' => ListAdCampaigns::route('/'),
+            'create' => CreateAdCampaign::route('/create'),
+            'edit' => EditAdCampaign::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Advertising
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

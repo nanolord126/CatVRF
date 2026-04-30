@@ -19,33 +19,16 @@ final class SportsLiveStreamServiceTest extends TestCase
     use RefreshDatabase;
 
     private SportsLiveStreamService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private DatabaseManager $db;
+
     private Cache $cache;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->audit = $this->createMock(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsLiveStreamService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_create_live_stream_success(): void
     {
@@ -323,6 +306,28 @@ final class SportsLiveStreamServiceTest extends TestCase
         $this->assertIsString($roomName);
         $this->assertStringContainsString('sports_stream_123', $roomName);
         $this->assertGreaterThan(20, strlen($roomName));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->audit = $this->createMock(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsLiveStreamService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 
     private function callPrivateMethod(object $object, string $methodName, array $parameters): mixed

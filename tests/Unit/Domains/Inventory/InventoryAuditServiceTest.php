@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Inventory;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Inventory\Domain\Services\InventoryAuditService;
 
 /**
  * Unit tests for InventoryAuditService.
@@ -14,7 +17,7 @@ final class InventoryAuditServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryAuditService::class
+            InventoryAuditService::class
         );
         $this->assertTrue($reflection->isFinal(), 'InventoryAuditService must be final');
     }
@@ -22,7 +25,7 @@ final class InventoryAuditServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryAuditService::class
+            InventoryAuditService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'InventoryAuditService must be readonly');
     }
@@ -30,27 +33,26 @@ final class InventoryAuditServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryAuditService::class
+            InventoryAuditService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'InventoryAuditService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_startAudit_method_exists(): void
+    public function test_start_audit_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryAuditService::class, 'startAudit'),
+            method_exists(InventoryAuditService::class, 'startAudit'),
             'InventoryAuditService must implement startAudit()'
         );
     }
 
-    public function test_completeAudit_method_exists(): void
+    public function test_complete_audit_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryAuditService::class, 'completeAudit'),
+            method_exists(InventoryAuditService::class, 'completeAudit'),
             'InventoryAuditService must implement completeAudit()'
         );
     }
-
 }

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Controllers;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\DTOs\HoldBookingSlotDto;
 use App\Domains\Beauty\Requests\ConfirmBookingSlotRequest;
@@ -10,20 +14,21 @@ use App\Domains\Beauty\Resources\BookingSlotResource;
 use App\Domains\Beauty\Services\BookingSlotHoldService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use App\Domains\Beauty\Models\BookingSlot;
+use Illuminate\Support\Str;
 
 final class BookingSlotController
 {
-    public function __construct(
-        private BookingSlotHoldService $slotHoldService,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly BookingSlotHoldService $slotHoldService,
+        private readonly LogManager $log,) {}
 
     public function hold(HoldBookingSlotRequest $request): JsonResponse
     {
         $correlationId = $request->getCorrelationId();
 
-        Log::channel('audit')->info('beauty.controller.hold.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.controller.hold.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $request->input('booking_slot_id'),
             'customer_id' => $request->input('customer_id'),
@@ -42,7 +47,7 @@ final class BookingSlotController
 
             $slot = $this->slotHoldService->holdSlot($dto);
 
-            Log::channel('audit')->info('beauty.controller.hold.success', [
+            $this->log->channel('audit')->$this->logger->info('beauty.controller.hold.success', [
                 'correlation_id' => $correlationId,
                 'booking_slot_id' => $slot->id,
             ]);
@@ -53,7 +58,7 @@ final class BookingSlotController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->critical('beauty.controller.hold.error', [
+            $this->log->channel('audit')->critical('beauty.controller.hold.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -71,7 +76,7 @@ final class BookingSlotController
     {
         $correlationId = $request->getCorrelationId();
 
-        Log::channel('audit')->info('beauty.controller.release.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.controller.release.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $request->input('booking_slot_id'),
         ]);
@@ -84,7 +89,7 @@ final class BookingSlotController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('beauty.controller.release.success', [
+            $this->log->channel('audit')->$this->logger->info('beauty.controller.release.success', [
                 'correlation_id' => $correlationId,
                 'booking_slot_id' => $slot->id,
             ]);
@@ -95,7 +100,7 @@ final class BookingSlotController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->critical('beauty.controller.release.error', [
+            $this->log->channel('audit')->critical('beauty.controller.release.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -113,7 +118,7 @@ final class BookingSlotController
     {
         $correlationId = $request->getCorrelationId();
 
-        Log::channel('audit')->info('beauty.controller.confirm.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.controller.confirm.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $request->input('booking_slot_id'),
             'order_id' => $request->input('order_id'),
@@ -127,7 +132,7 @@ final class BookingSlotController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('beauty.controller.confirm.success', [
+            $this->log->channel('audit')->$this->logger->info('beauty.controller.confirm.success', [
                 'correlation_id' => $correlationId,
                 'booking_slot_id' => $slot->id,
             ]);
@@ -138,7 +143,7 @@ final class BookingSlotController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->critical('beauty.controller.confirm.error', [
+            $this->log->channel('audit')->critical('beauty.controller.confirm.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -154,10 +159,10 @@ final class BookingSlotController
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
         try {
-            $slot = \App\Domains\Beauty\Models\BookingSlot::query()
+            $slot = BookingSlot::query()
                 ->where('id', $id)
                 ->where('tenant_id', tenant()->id)
                 ->with(['salon', 'master', 'service', 'customer', 'order'])

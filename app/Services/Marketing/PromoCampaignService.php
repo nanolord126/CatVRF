@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\PromoCampaign;
@@ -10,6 +13,7 @@ use App\Services\FraudControl\FraudControlService;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 /**
  * Сервис управления промо-кампаниями
@@ -23,13 +27,12 @@ use Illuminate\Support\Str;
  */
 final readonly class PromoCampaignService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Создать новую промо-кампанию
@@ -64,12 +67,12 @@ final readonly class PromoCampaignService
                     'status' => 'active',
                     'correlation_id' => $correlationId,
                     'created_by' => $userId,
-                    'start_at' => $data['start_at'] ?? now(),
-                    'end_at' => $data['end_at'] ?? now()->addMonth(),
+                    'start_at' => $data['start_at'] ?? CarbonImmutable::now(),
+                    'end_at' => $data['end_at'] ?? CarbonImmutable::now()->addMonth(),
                 ]);
 
                 // 3. AUDIT LOG внутри транзакции
-                $this->logger->channel('audit')->info('Promo: Campaign created', [
+                $this->logger->channel('audit')->$this->logger->info('Promo: Campaign created', [
                     'correlation_id' => $correlationId,
                     'promo_id' => $campaign->id,
                     'tenant_id' => $tenantId,
@@ -120,7 +123,7 @@ final readonly class PromoCampaignService
                     ->lockForUpdate()
                     ->first();
 
-                if (!$campaign) {
+                if (! $campaign) {
                     $this->logger->channel('audit')->warning('Promo: Invalid code', [
                         'correlation_id' => $correlationId,
                         'code' => $code,
@@ -173,7 +176,7 @@ final readonly class PromoCampaignService
                 }
 
                 // 3. AUDIT LOG внутри транзакции
-                $this->logger->channel('audit')->info('Promo: Code applied', [
+                $this->logger->channel('audit')->$this->logger->info('Promo: Code applied', [
                     'correlation_id' => $correlationId,
                     'promo_id' => $campaign->id,
                     'code' => $campaign->code,
@@ -200,18 +203,6 @@ final readonly class PromoCampaignService
     }
 
     /**
-     * Расчёт размера скидки в зависимости от типа промо
-     */
-    private function calculateDiscount(PromoCampaign $campaign, int $amount): int
-    {
-        return match ($campaign->type) {
-            'fixed_amount' => $campaign->fixed_amount ?? 1000,
-            'buy_x_get_y' => (int)($amount * 0.1),
-            default => 0,
-        };
-    }
-
-    /**
      * Получить активные промо-кампании для тенанта
      */
     public function getActiveCampaigns(int $tenantId, ?string $vertical = null): array
@@ -219,7 +210,7 @@ final readonly class PromoCampaignService
         try {
             $query = PromoCampaign::where('tenant_id', $tenantId)
                 ->where('status', '!=', 'expired')
-                ->where('end_at', '>', now())
+                ->where('end_at', '>', CarbonImmutable::now())
                 ->orderBy('created_at', 'desc');
 
             if ($vertical) {
@@ -228,7 +219,7 @@ final readonly class PromoCampaignService
 
             $campaigns = $query->get();
 
-            $this->logger->channel('audit')->info('Promo: Active campaigns listed', [
+            $this->logger->channel('audit')->$this->logger->info('Promo: Active campaigns listed', [
                 'tenant_id' => $tenantId,
                 'count' => $campaigns->count(),
                 'vertical' => $vertical,
@@ -263,11 +254,11 @@ final readonly class PromoCampaignService
             $campaign = PromoCampaign::where('code', $code)
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
-                ->where('end_at', '>', now())
+                ->where('end_at', '>', CarbonImmutable::now())
                 ->first();
 
-            if (!$campaign) {
-                $this->logger->channel('audit')->info('Promo: Validation failed', [
+            if (! $campaign) {
+                $this->logger->channel('audit')->$this->logger->info('Promo: Validation failed', [
                     'correlation_id' => $correlationId,
                     'code' => $code,
                     'reason' => 'not_found_or_inactive',
@@ -277,7 +268,7 @@ final readonly class PromoCampaignService
             }
 
             if ($campaign->spent_budget >= $campaign->budget) {
-                $this->logger->channel('audit')->info('Promo: Validation failed', [
+                $this->logger->channel('audit')->$this->logger->info('Promo: Validation failed', [
                     'correlation_id' => $correlationId,
                     'code' => $code,
                     'reason' => 'budget_exhausted',
@@ -337,7 +328,7 @@ final readonly class PromoCampaignService
                 $use->delete();
 
                 // 3. AUDIT LOG
-                $this->logger->channel('audit')->info('Promo: Use cancelled', [
+                $this->logger->channel('audit')->$this->logger->info('Promo: Use cancelled', [
                     'correlation_id' => $correlationId,
                     'use_id' => $useId,
                     'promo_id' => $campaign->id,
@@ -376,7 +367,7 @@ final readonly class PromoCampaignService
             $totalDiscount = PromoUse::where('promo_campaign_id', $campaignId)
                 ->sum('discount_amount') ?? 0;
 
-            $this->logger->channel('audit')->info('Promo: Stats retrieved', [
+            $this->logger->channel('audit')->$this->logger->info('Promo: Stats retrieved', [
                 'correlation_id' => $correlationId,
                 'promo_id' => $campaignId,
                 'uses' => $uses,
@@ -400,5 +391,17 @@ final readonly class PromoCampaignService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Расчёт размера скидки в зависимости от типа промо
+     */
+    private function calculateDiscount(PromoCampaign $campaign, int $amount): int
+    {
+        return match ($campaign->type) {
+            'fixed_amount' => $campaign->fixed_amount ?? 1000,
+            'buy_x_get_y' => (int) ($amount * 0.1),
+            default => 0,
+        };
     }
 }

@@ -13,6 +13,14 @@ import DeliveryTracking from '@/Components/Business/DeliveryTracking.vue';
 import MarketingPanel from '@/Components/Business/MarketingPanel.vue';
 import AIConstructors from '@/Components/Business/AIConstructors.vue';
 import B2BPanel from '@/Components/Business/B2BPanel.vue';
+import B2BCatalog from '@/Components/Business/B2BCatalog.vue';
+import B2BCart from '@/Components/Business/B2BCart.vue';
+import B2BCheckout from '@/Components/Business/B2BCheckout.vue';
+import B2BOrders from '@/Components/Business/B2BOrders.vue';
+import B2BOrderDetails from '@/Components/Business/B2BOrderDetails.vue';
+import B2BDocuments from '@/Components/Business/B2BDocuments.vue';
+import B2BCompanyRegistration from '@/Components/Business/B2BCompanyRegistration.vue';
+import B2BCompanyProfile from '@/Components/Business/B2BCompanyProfile.vue';
 import SettingsPage from '@/Components/Business/SettingsPage.vue';
 import BusinessProfile from '@/Components/Business/BusinessProfile.vue';
 import ClientsCRM from '@/Components/Business/ClientsCRM.vue';
@@ -80,6 +88,14 @@ const sectionComponents = {
     marketing: MarketingPanel,
     ai: AIConstructors,
     b2b: B2BPanel,
+    b2b_catalog: B2BCatalog,
+    b2b_cart: B2BCart,
+    b2b_checkout: B2BCheckout,
+    b2b_orders: B2BOrders,
+    b2b_order_details: B2BOrderDetails,
+    b2b_documents: B2BDocuments,
+    b2b_company_registration: B2BCompanyRegistration,
+    b2b_company_profile: B2BCompanyProfile,
     settings: SettingsPage,
     profile: BusinessProfile,
     crm: ClientsCRM,
@@ -158,6 +174,14 @@ const pageTitles = {
     marketing: 'Маркетинг',
     ai: 'AI-конструкторы',
     b2b: 'B2B-панель',
+    b2b_catalog: 'B2B Каталог',
+    b2b_cart: 'B2B Корзина',
+    b2b_checkout: 'Оформление заказа',
+    b2b_orders: 'B2B Заказы',
+    b2b_order_details: 'Детали заказа',
+    b2b_documents: 'Документы',
+    b2b_company_registration: 'Регистрация компании',
+    b2b_company_profile: 'Профиль компании',
     settings: 'Настройки',
     profile: 'Профиль бизнеса',
     crm: 'CRM и клиенты',

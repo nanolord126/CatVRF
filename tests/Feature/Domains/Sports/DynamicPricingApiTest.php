@@ -8,35 +8,15 @@ use App\Domains\Sports\Models\Gym;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class DynamicPricingApiTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Gym $gym;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-
-        $this->gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'tenant_id' => 1,
-            'business_group_id' => null,
-            'name' => 'Test Gym',
-            'address' => 'Test Address',
-            'single_visit_price' => 500,
-            'monthly_membership_price' => 3000,
-            'personal_training_price' => 1500,
-            'group_class_price' => 500,
-            'max_daily_capacity' => 200,
-            'is_active' => true,
-        ]);
-    }
 
     public function test_calculate_dynamic_price(): void
     {
@@ -102,5 +82,27 @@ final class DynamicPricingApiTest extends TestCase
         $response = $this->getJson('/api/v1/sports/pricing/memberships/999');
 
         $response->assertStatus(404);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
+
+        $this->gym = Gym::create([
+            'uuid' => Str::uuid()->toString(),
+            'tenant_id' => 1,
+            'business_group_id' => null,
+            'name' => 'Test Gym',
+            'address' => 'Test Address',
+            'single_visit_price' => 500,
+            'monthly_membership_price' => 3000,
+            'personal_training_price' => 1500,
+            'group_class_price' => 500,
+            'max_daily_capacity' => 200,
+            'is_active' => true,
+        ]);
     }
 }

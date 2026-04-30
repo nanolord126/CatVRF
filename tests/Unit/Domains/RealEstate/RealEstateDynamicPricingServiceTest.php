@@ -10,32 +10,21 @@ use App\Domains\RealEstate\Models\Property;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 final class RealEstateDynamicPricingServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RealEstateDynamicPricingService $service;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(RealEstateDynamicPricingService::class);
-        $this->tenant = Tenant::factory()->create();
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-    }
 
     public function test_calculate_dynamic_price_returns_valid_pricing(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->calculateDynamicPrice(
             $this->property,
             false,
@@ -57,7 +46,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
 
     public function test_calculate_dynamic_price_applies_b2b_discount(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $b2cResult = $this->service->calculateDynamicPrice(
             $this->property,
             false,
@@ -77,8 +66,8 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
 
     public function test_calculate_dynamic_price_caches_result(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
-        $idempotencyKey = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
+        $idempotencyKey = Str::uuid()->toString();
 
         $firstCall = $this->service->calculateDynamicPrice(
             $this->property,
@@ -108,7 +97,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
             'price' => 12000000.00,
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getBulkPricing(
             [$this->property->id, $property2->id],
             false,
@@ -125,7 +114,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
 
     public function test_apply_flash_discount_updates_property(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->applyFlashDiscount(
             $this->property->id,
             10.0,
@@ -144,7 +133,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
 
     public function test_apply_flash_discount_rejects_invalid_percentage(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Discount percentage must be between 0 and');
@@ -159,7 +148,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
 
     public function test_get_price_history_returns_historical_data(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getPriceHistory(
             $this->property->id,
             7,
@@ -186,7 +175,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getMarketComparison(
             $this->property->id,
             1,
@@ -212,7 +201,7 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->getMarketComparison(
             $this->property->id,
             1,
@@ -220,6 +209,20 @@ final class RealEstateDynamicPricingServiceTest extends TestCase
         );
 
         $this->assertTrue($result['is_competitive']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(RealEstateDynamicPricingService::class);
+        $this->tenant = Tenant::factory()->create();
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
     }
 
     protected function tearDown(): void

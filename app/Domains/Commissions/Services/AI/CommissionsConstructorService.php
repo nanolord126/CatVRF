@@ -14,22 +14,22 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final readonly class CommissionsConstructorService
 {
     private const CACHE_TTL = 3600;
 
-    public function __construct(
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private NewUserColdStartService $coldStart,
-        private ReturningUserDeepProfileService $deepProfile,
-        private RecommendationService $recommendation,
-        private InventoryService $inventory,
-        private FraudControlService $fraud,
+    public function __construct(private readonly DatabaseManager $db,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly NewUserColdStartService $coldStart,
+        private readonly ReturningUserDeepProfileService $deepProfile,
+        private readonly RecommendationService $recommendation,
+        private readonly InventoryService $inventory,
+        private readonly FraudControlService $fraud,
         private readonly DatabaseManager $db,
         private readonly Cache $cache,
-        private readonly LoggerInterface $logger
-    ) {}
+        private readonly LoggerInterface $logger) {}
 
     public function analyzeAndRecommend(
         UploadedFile $file,
@@ -42,7 +42,7 @@ final readonly class CommissionsConstructorService
             'correlation_id' => $correlationId,
         ]);
 
-        $cacheKey = "ai_constructor:{$userId}:{$verticalSlug}:" . md5($file->getRealPath());
+        $cacheKey = "ai_constructor:{$userId}:{$verticalSlug}:".md5($file->getRealPath());
 
         if ($this->cache->has($cacheKey)) {
             return $this->cache->get($cacheKey);
@@ -62,7 +62,7 @@ final readonly class CommissionsConstructorService
             $availableRecommendations = $this->inventory->checkAvailability($recommendations);
             $this->saveDesign($userId, $analysis, $availableRecommendations, $correlationId);
 
-            $this->logger->info('Commissions AI constructor used', [
+            $this->logger->$this->logger->info('Commissions AI constructor used', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
                 'is_new_user' => $isNewUser,
@@ -92,7 +92,7 @@ final readonly class CommissionsConstructorService
 
     private function saveDesign(int $userId, array $analysis, array $recommendations, string $correlationId): void
     {
-        DB::table('user_ai_designs')->insert([
+        $this->db->table('user_ai_designs')->insert([
             'user_id' => $userId,
             'vertical' => 'commissions',
             'design_data' => json_encode([
@@ -100,8 +100,8 @@ final readonly class CommissionsConstructorService
                 'recommendations' => $recommendations,
             ], JSON_UNESCAPED_UNICODE),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }

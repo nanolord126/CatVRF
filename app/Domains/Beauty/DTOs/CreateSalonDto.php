@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\DTOs;
+
+use Illuminate\Http\Request;
 
 final readonly class CreateSalonDto
 {
@@ -17,7 +20,7 @@ final readonly class CreateSalonDto
         public array $tags = []
     ) {}
 
-    public static function fromRequest(\Illuminate\Http\Request $request, string $correlationId): self
+    public static function fromRequest(Request $request, string $correlationId): self
     {
         return new self(
             (int) ($request->user()->tenant_id ?? 1),

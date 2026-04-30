@@ -1,13 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Controllers;
 
-use App\Domains\Fashion\DTOs\FashionStyleAnalysisDto;
-use App\Domains\Fashion\DTOs\FashionVirtualTryOnDto;
-use App\Domains\Fashion\DTOs\FashionDynamicPricingDto;
-use App\Domains\Fashion\DTOs\FashionWebRTCSessionDto;
-use App\Domains\Fashion\DTOs\FashionLoyaltyDto;
-use App\Domains\Fashion\DTOs\FashionARPreviewDto;
 use App\Domains\Fashion\Services\AI\FashionStyleConstructorService;
 use App\Domains\Fashion\Http\Requests\AnalyzeStyleRequest;
 use App\Domains\Fashion\Http\Requests\VirtualTryOnRequest;
@@ -24,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class FashionStyleConstructorController
 {
     public function __construct(
-        private FashionStyleConstructorService $styleConstructor,
+        private readonly FashionStyleConstructorService $styleConstructor,
     ) {}
 
     /**
@@ -50,7 +46,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -80,7 +76,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -109,7 +105,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -139,7 +135,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -167,7 +163,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -196,7 +192,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result->toArray(),
             'correlation_id' => $correlationId,
@@ -227,7 +223,7 @@ final readonly class FashionStyleConstructorController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -249,7 +245,7 @@ final readonly class FashionStyleConstructorController
 
         $sessions = $this->styleConstructor->getUserWebRTCSessions($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $sessions,
         ]);
@@ -270,7 +266,7 @@ final readonly class FashionStyleConstructorController
 
         $balance = $this->styleConstructor->getUserLoyaltyBalance($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $balance,
         ]);
@@ -291,7 +287,7 @@ final readonly class FashionStyleConstructorController
 
         $avatars = $this->styleConstructor->getUserNFTAvatars($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $avatars,
         ]);

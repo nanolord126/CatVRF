@@ -4,12 +4,16 @@ namespace App\Http\Middleware\Verticals;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Log\LogManager;
 use Symfony\Component\HttpFoundation\Response;
 
 final class BeautyRateLimitMiddleware
 {
+    public function __construct(
+        private readonly LogManager $log,
+        private readonly CacheRepository $cache,
+    ) {}
     private const B2C_LIMIT = 30;
     private const B2B_LIMIT = 100;
     private const WINDOW_SECONDS = 60;
@@ -26,10 +30,10 @@ final class BeautyRateLimitMiddleware
         $limit = $isB2b ? self::B2B_LIMIT : self::B2C_LIMIT;
         $key = "beauty_rate_limit:{$userId}:{$isB2b}:" . now()->format('Y-m-d-H-i');
 
-        $current = Cache::get($key, 0);
+        $current = $this->cache->get($key, 0);
 
         if ($current >= $limit) {
-            Log::channel('audit')->warning('beauty.rate_limit.exceeded', [
+            $this->log->channel('audit')->warning('beauty.rate_limit.exceeded', [
                 'user_id' => $userId,
                 'is_b2b' => $isB2b,
                 'current' => $current,
@@ -44,9 +48,9 @@ final class BeautyRateLimitMiddleware
             ], 429);
         }
 
-        Cache::put($key, $current + 1, self::WINDOW_SECONDS);
+        $this->cache->put($key, $current + 1, self::WINDOW_SECONDS);
 
-        Log::channel('audit')->debug('beauty.rate_limit.checked', [
+        $this->log->channel('audit')->debug('beauty.rate_limit.checked', [
             'user_id' => $userId,
             'is_b2b' => $isB2b,
             'current' => $current + 1,

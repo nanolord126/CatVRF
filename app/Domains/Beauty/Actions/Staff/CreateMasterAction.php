@@ -11,8 +11,8 @@ use App\Services\AuditService;
 final class CreateMasterAction
 {
     public function __construct(
-        private DatabaseManager $db,
-        private AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly AuditService $audit,
     ) {}
 
     public function execute(int $tenantId, array $data): Master

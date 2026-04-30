@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Auto\Pages;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\View\View;
 use App\Filament\Tenant\Resources\Auto\AutoResource;
@@ -10,12 +12,21 @@ use Filament\Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 final class ListAutos extends ListRecords
 {
     protected static string $resource = AutoResource::class;
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
+    public function render(): View
+    {
+        return parent::render();
+    }
 
     protected function getHeaderActions(): array
     {
@@ -32,7 +43,7 @@ final class ListAutos extends ListRecords
         $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Auto ListRecords accessed', [
+        $this->log->channel('audit')->$this->logger->info('Auto ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -52,10 +63,5 @@ final class ListAutos extends ListRecords
                 ->label('Удалить выбранные')
                 ->icon('heroicon-m-trash'),
         ];
-    }
-
-    public function render(): \Illuminate\Contracts\View\View
-    {
-        return parent::render();
     }
 }
