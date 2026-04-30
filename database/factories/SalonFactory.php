@@ -1,1 +1,20 @@
-<?php declare(strict_types=1); namespace Database\Factories; use App\Models\Domains\Beauty\Salon; use Illuminate\Database\Eloquent\Factories\Factory; use Illuminate\Support\Str; use Illuminate\Support\Facades\DB; final class SalonFactory extends Factory { protected $model = Salon::class; public function definition(): array { return [ "tenant_id" => DB::table("tenants")->value("id") ?? 1, "correlation_id" => (string) Str::uuid(), "name" => fake()->sentence(3), "address" => fake()->address(), "status" => "active", ]; } }
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Models\Domains\Beauty\Salon;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
+final class SalonFactory extends Factory
+{
+    protected $model = Salon::class;
+
+    public function definition(): array
+    {
+        return ['tenant_id' => DB::table('tenants')->value('id') ?? 1, 'correlation_id' => (string) Str::uuid(), 'name' => fake()->sentence(3), 'address' => fake()->address(), 'status' => 'active'];
+    }
+}

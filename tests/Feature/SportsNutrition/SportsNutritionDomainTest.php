@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\SportsNutrition;
 
@@ -24,13 +26,6 @@ class SportsNutritionDomainTest extends TestCase
 
     private int $tenantId = 1;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // Setup mock environment with correlation_id tracking
-        $this->withoutExceptionHandling();
-    }
-
     /**
      * Test L3: Domain Service - Product Creation with Expiry Guard.
      */
@@ -38,7 +33,7 @@ class SportsNutritionDomainTest extends TestCase
     {
         $store = SportsNutritionStore::factory()->create(['tenant_id' => $this->tenantId]);
         $category = SportsNutritionCategory::factory()->create(['tenant_id' => $this->tenantId]);
-        
+
         $dto = new ProductSaveDto(
             storeId: $store->id,
             categoryId: $category->id,
@@ -65,9 +60,9 @@ class SportsNutritionDomainTest extends TestCase
         $this->assertDatabaseHas('sports_nutrition_products', [
             'sku' => 'WHEY-GS-001',
             'name' => 'Gold Standard Whey 2kg',
-            'is_published' => true
+            'is_published' => true,
         ]);
-        
+
         $this->assertEquals(24, $product->nutrition_facts['protein']);
         $this->assertTrue($product->is_gmo_free);
     }
@@ -121,7 +116,7 @@ class SportsNutritionDomainTest extends TestCase
             'category_id' => $cat->id,
             'price_b2c' => 500000,
             'is_vegan' => true,
-            'nutrition_facts' => ['protein' => 25, 'calories' => 150]
+            'nutrition_facts' => ['protein' => 25, 'calories' => 150],
         ]);
 
         $dto = new AIStackRequestDto(
@@ -172,5 +167,12 @@ class SportsNutritionDomainTest extends TestCase
             ->getJson('/api/v1/sports-nutrition/catalog');
 
         $response->assertJsonPath('correlation_id', $cid);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Setup mock environment with correlation_id tracking
+        $this->withoutExceptionHandling();
     }
 }

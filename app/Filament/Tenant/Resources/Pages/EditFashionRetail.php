@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
 use App\Filament\Tenant\Resources\FashionRetailResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -17,16 +19,13 @@ use Illuminate\Support\Str;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class EditFashionRetail extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = FashionRetailResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected function getHeaderActions(): array
     {
@@ -51,7 +50,7 @@ final class EditFashionRetail extends EditRecord
     {
         $record = $this->record;
 
-        \Illuminate\Support\Facades\Log::channel('audit')->info('B2B Fashion retail order updated', [
+        $this->log->channel('audit')->$this->logger->info('B2B Fashion retail order updated', [
             'order_id'       => $record->id,
             'status'         => $record->status,
             'buyer_inn'      => $record->buyer_inn,

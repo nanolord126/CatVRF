@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Performance\Wallet;
 
@@ -12,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * WalletPerformanceTest
- * 
+ *
  * Concurrency, throughput, memory efficiency для Wallet системы
  */
 final class WalletPerformanceTest extends TestCase
@@ -20,20 +22,10 @@ final class WalletPerformanceTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Tenant $tenant;
+
     protected Wallet $wallet;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->wallet = Wallet::factory()
-            ->for($this->user)
-            ->for($this->tenant)
-            ->create(['current_balance' => 1000000]); // 10000 rubles
-    }
 
     /** @test */
     public function it_deposits_money_under_50ms(): void
@@ -402,8 +394,10 @@ final class WalletPerformanceTest extends TestCase
         $queries = DB::getQueryLog();
 
         // Should have minimal queries: 1 for count + 1 for data
-        $this->assertLessThan(5, count($queries), 
-            "Query count: " . count($queries) . " (N+1 detected)"
+        $this->assertLessThan(
+            5,
+            count($queries),
+            'Query count: '.count($queries).' (N+1 detected)'
         );
     }
 
@@ -473,5 +467,17 @@ final class WalletPerformanceTest extends TestCase
         $elapsed = (microtime(true) - $startTime) * 1000;
 
         $this->assertLessThan(200, $elapsed, "Bulk update took {$elapsed}ms");
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->wallet = Wallet::factory()
+            ->for($this->user)
+            ->for($this->tenant)
+            ->create(['current_balance' => 1000000]); // 10000 rubles
     }
 }

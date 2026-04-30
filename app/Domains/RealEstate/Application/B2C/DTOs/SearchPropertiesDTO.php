@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/searchpropertiesdto
  */
-
 
 namespace App\Domains\RealEstate\Application\B2C\DTOs;
 
@@ -35,22 +35,22 @@ use App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\RealEstate\Application\B2C\DTOs
  */
 final readonly class SearchPropertiesDTO
 {
     public function __construct(
-        public ?string           $query,
+        public ?string $query,
         public ?PropertyTypeEnum $type,
-        public ?int              $minPriceKopecks,
-        public ?int              $maxPriceKopecks,
-        public ?float            $minAreaSqm,
-        public ?int              $rooms,
-        public ?float            $lat,
-        public ?float            $lon,
-        public ?int              $radiusMeters,
-        public int               $perPage = 20,
-        private int $page    = 1) {}
+        public ?int $minPriceKopecks,
+        public ?int $maxPriceKopecks,
+        public ?float $minAreaSqm,
+        public ?int $rooms,
+        public ?float $lat,
+        public ?float $lon,
+        public ?int $radiusMeters,
+        public int $perPage = 20,
+        private readonly int $page    = 1
+    ) {}
 
     public static function fromArray(array $data): self
     {

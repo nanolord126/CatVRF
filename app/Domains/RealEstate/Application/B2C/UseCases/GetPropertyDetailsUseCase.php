@@ -22,21 +22,20 @@ use RuntimeException;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\RealEstate\Application\B2C\UseCases
  */
 final class GetPropertyDetailsUseCase
 {
     public function __construct(
         private readonly PropertyRepositoryInterface $propertyRepository,
-        private readonly LoggerInterface             $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * @throws RuntimeException When property is not found or is inactive
      */
     public function handle(string $propertyId, string $correlationId): PropertyDTO
     {
-        $this->logger->info('RealEstate.GetPropertyDetails started', [
+        $this->logger->$this->logger->info('RealEstate.GetPropertyDetails started', [
             'correlation_id' => $correlationId,
             'property_id'    => $propertyId,
         ]);
@@ -62,7 +61,7 @@ final class GetPropertyDetailsUseCase
 
         $dto = PropertyDTO::fromEntity($property);
 
-        $this->logger->info('RealEstate.GetPropertyDetails completed', [
+        $this->logger->$this->logger->info('RealEstate.GetPropertyDetails completed', [
             'correlation_id' => $correlationId,
             'property_id'    => $propertyId,
             'title'          => $property->getTitle(),

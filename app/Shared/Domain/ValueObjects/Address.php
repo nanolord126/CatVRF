@@ -15,14 +15,12 @@ use InvalidArgumentException;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Shared\Domain\ValueObjects
  */
 final readonly class Address
 {
     public function __construct(
         public string $fullAddress,
-        private ?string $city = null,
+        private readonly ?string $city = null,
         private readonly ?string $street = null,
         private readonly ?string $house = null,
         private readonly ?float $lat = null,
@@ -52,8 +50,6 @@ final readonly class Address
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {

@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +15,39 @@ use Illuminate\Support\Str;
 final class TaxiVehicleMaintenance extends Model
 {
     use HasFactory;
+    use TenantScoped;
+
+    /**
+     * Типы технического обслуживания.
+     */
+    public const TYPE_ROUTINE = 'routine';
+
+    public const TYPE_REPAIR = 'repair';
+
+    public const TYPE_INSPECTION = 'inspection';
+
+    public const TYPE_DIAGNOSTIC = 'diagnostic';
+
+    public const TYPE_TIRE_CHANGE = 'tire_change';
+
+    public const TYPE_OIL_CHANGE = 'oil_change';
+
+    public const TYPE_BRAKE_SERVICE = 'brake_service';
+
+    public const TYPE_EMERGENCY = 'emergency';
+
+    /**
+     * Статусы обслуживания.
+     */
+    public const STATUS_SCHEDULED = 'scheduled';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_OVERDUE = 'overdue';
 
     protected $table = 'taxi_vehicle_maintenance';
 
@@ -31,7 +69,7 @@ final class TaxiVehicleMaintenance extends Model
         'documents',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -47,43 +85,6 @@ final class TaxiVehicleMaintenance extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Типы технического обслуживания.
-     */
-    public const TYPE_ROUTINE = 'routine';
-    public const TYPE_REPAIR = 'repair';
-    public const TYPE_INSPECTION = 'inspection';
-    public const TYPE_DIAGNOSTIC = 'diagnostic';
-    public const TYPE_TIRE_CHANGE = 'tire_change';
-    public const TYPE_OIL_CHANGE = 'oil_change';
-    public const TYPE_BRAKE_SERVICE = 'brake_service';
-    public const TYPE_EMERGENCY = 'emergency';
-
-    /**
-     * Статусы обслуживания.
-     */
-    public const STATUS_SCHEDULED = 'scheduled';
-    public const STATUS_IN_PROGRESS = 'in_progress';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_OVERDUE = 'overdue';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiVehicleMaintenance $maintenance) {
-            $maintenance->uuid = $maintenance->uuid ?? (string) Str::uuid();
-            $maintenance->tenant_id = $maintenance->tenant_id ?? (tenant()->id ?? 1);
-            $maintenance->status = $maintenance->status ?? self::STATUS_SCHEDULED;
-            $maintenance->correlation_id = $maintenance->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -127,8 +128,8 @@ final class TaxiVehicleMaintenance extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->status === self::STATUS_OVERDUE || 
-               ($this->scheduled_date && $this->scheduled_date->isPast() && !$this->isCompleted());
+        return $this->status === self::STATUS_OVERDUE ||
+               ($this->scheduled_date && $this->scheduled_date->isPast() && ! $this->isCompleted());
     }
 
     /**
@@ -138,7 +139,7 @@ final class TaxiVehicleMaintenance extends Model
     {
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'completed_date' => now(),
+            'completed_date' => CarbonImmutable::now(),
             'odometer_km' => $odometerKm,
             'cost_kopeki' => $costKopeki ?? $this->cost_kopeki,
         ]);
@@ -161,5 +162,21 @@ final class TaxiVehicleMaintenance extends Model
             'status' => self::STATUS_CANCELLED,
             'metadata' => array_merge($this->metadata ?? [], ['cancellation_reason' => $reason]),
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiVehicleMaintenance $maintenance) {
+            $maintenance->uuid = $maintenance->uuid ?? (string) Str::uuid();
+            $maintenance->tenant_id = $maintenance->tenant_id ?? (tenant()->id ?? 1);
+            $maintenance->status = $maintenance->status ?? self::STATUS_SCHEDULED;
+            $maintenance->correlation_id = $maintenance->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

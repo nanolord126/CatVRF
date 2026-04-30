@@ -15,9 +15,9 @@ final class CRMAutomationSeeder extends Seeder
 {
     public function run(): void
     {
-        \App\Models\Tenant::all()->each(function ($tenant) {
+        Tenant::all()->each(function ($tenant) {
             tenancy()->initialize($tenant);
-            
+
             // Эталоны стадий воронки (Pipelines)
             $pipelines = [
                 ['name' => 'Продажи B2B', 'is_default' => true],

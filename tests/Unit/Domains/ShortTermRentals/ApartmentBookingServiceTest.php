@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\ShortTermRentals;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService;
 
 /**
  * Unit tests for ApartmentBookingService.
@@ -14,7 +17,7 @@ final class ApartmentBookingServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService::class
+            ApartmentBookingService::class
         );
         $this->assertTrue($reflection->isFinal(), 'ApartmentBookingService must be final');
     }
@@ -22,7 +25,7 @@ final class ApartmentBookingServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService::class
+            ApartmentBookingService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'ApartmentBookingService must be readonly');
     }
@@ -30,7 +33,7 @@ final class ApartmentBookingServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService::class
+            ApartmentBookingService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'ApartmentBookingService must have __construct');
@@ -40,7 +43,7 @@ final class ApartmentBookingServiceTest extends TestCase
     public function test_book_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService::class, 'book'),
+            method_exists(ApartmentBookingService::class, 'book'),
             'ApartmentBookingService must implement book()'
         );
     }
@@ -48,9 +51,8 @@ final class ApartmentBookingServiceTest extends TestCase
     public function test_checkout_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\ShortTermRentals\Domain\Services\ApartmentBookingService::class, 'checkout'),
+            method_exists(ApartmentBookingService::class, 'checkout'),
             'ApartmentBookingService must implement checkout()'
         );
     }
-
 }

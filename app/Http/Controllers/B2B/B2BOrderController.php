@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\B2B;
 
@@ -7,7 +9,6 @@ use App\Models\BusinessGroup;
 use App\Services\B2B\B2BOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -107,7 +108,7 @@ final class B2BOrderController extends Controller
             ->where('status', 'pending')
             ->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
 
-        if (!$updated) {
+        if (! $updated) {
             return $this->response->json(['error' => 'Order not found or cannot be cancelled'], 422);
         }
 

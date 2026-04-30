@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Events;
 
@@ -10,7 +12,9 @@ use Illuminate\Queue\SerializesModels;
 
 final readonly class StyleAnalysisCompletedEvent implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public int $designId,
@@ -24,8 +28,8 @@ final readonly class StyleAnalysisCompletedEvent implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('fashion.' . $this->userId),
-            new PrivateChannel('tenant.' . $this->tenantId),
+            new PrivateChannel('fashion.'.$this->userId),
+            new PrivateChannel('tenant.'.$this->tenantId),
         ];
     }
 

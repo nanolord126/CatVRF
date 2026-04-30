@@ -25,7 +25,7 @@ final class StreamPeerConnectionFactory extends Factory
             'stream_id' => Event::factory(),
             'tenant_id' => Tenant::factory(),
             'user_id' => User::factory(),
-            'peer_id' => 'peer_' . Str::random(20),
+            'peer_id' => 'peer_'.Str::random(20),
             'ice_candidates' => [],
             'local_sdp' => $this->generateSdp(),
             'remote_sdp' => null,
@@ -64,20 +64,20 @@ final class StreamPeerConnectionFactory extends Factory
      */
     private function generateSdp(): string
     {
-        return 'v=0' . "\r\n" .
-            'o=- ' . time() . ' 2 IN IP4 127.0.0.1' . "\r\n" .
-            's=-' . "\r\n" .
-            't=0 0' . "\r\n" .
-            'a=group:BUNDLE 0 1' . "\r\n" .
-            'a=msid-semantic: WMS stream' . "\r\n" .
-            'm=audio 1 RTP/SAVPF 111' . "\r\n" .
-            'a=rtcp:9 IN IP4 0.0.0.0' . "\r\n" .
-            'a=ice-ufrag:abcd' . "\r\n" .
-            'a=ice-pwd:abcdefghijklmnopqrstuvwxyz' . "\r\n" .
-            'a=fingerprint:sha-256 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00' . "\r\n" .
-            'a=setup:actpass' . "\r\n" .
-            'a=mid:0' . "\r\n" .
-            'a=sendrecv' . "\r\n" .
-            'a=rtcp-mux' . "\r\n";
+        return 'v=0'."\r\n".
+            'o=- '.time().' 2 IN IP4 127.0.0.1'."\r\n".
+            's=-'."\r\n".
+            't=0 0'."\r\n".
+            'a=group:BUNDLE 0 1'."\r\n".
+            'a=msid-semantic: WMS stream'."\r\n".
+            'm=audio 1 RTP/SAVPF 111'."\r\n".
+            'a=rtcp:9 IN IP4 0.0.0.0'."\r\n".
+            'a=ice-ufrag:abcd'."\r\n".
+            'a=ice-pwd:abcdefghijklmnopqrstuvwxyz'."\r\n".
+            'a=fingerprint:sha-256 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00'."\r\n".
+            'a=setup:actpass'."\r\n".
+            'a=mid:0'."\r\n".
+            'a=sendrecv'."\r\n".
+            'a=rtcp-mux'."\r\n";
     }
 }

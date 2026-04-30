@@ -1,11 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Tenancy;
 
 use App\Services\Tenancy\TenantCacheService;
 use Illuminate\Cache\CacheManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Log\LogManager;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -16,34 +16,14 @@ use Tests\TestCase;
  * Production 2026 CANON - Multi-Tenant Security Tests
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantCacheServiceTest extends TestCase
 {
     private TenantCacheService $service;
+
     private CacheManager $cache;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->cache = app(CacheManager::class);
-        $logger = app(LoggerInterface::class);
-
-        $this->service = new TenantCacheService(
-            $this->cache,
-            $logger
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        // Clean up test data
-        $this->cache->forget('tenant:1:test_key');
-        $this->cache->forget('tenant:2:test_key');
-
-        parent::tearDown();
-    }
 
     public function test_get_prefixed_key(): void
     {
@@ -188,5 +168,27 @@ final class TenantCacheServiceTest extends TestCase
         $results = $this->service->many($tenantId, $keys);
 
         $this->assertEquals($values, array_values($results));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->cache = app(CacheManager::class);
+        $logger = app(LoggerInterface::class);
+
+        $this->service = new TenantCacheService(
+            $this->cache,
+            $logger
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up test data
+        $this->cache->forget('tenant:1:test_key');
+        $this->cache->forget('tenant:2:test_key');
+
+        parent::tearDown();
     }
 }

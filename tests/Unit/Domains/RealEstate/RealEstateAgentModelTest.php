@@ -9,26 +9,21 @@ use App\Models\Domains\RealEstate\RealEstateAgent;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
 
 final class RealEstateAgentModelTest extends TestCase
 {
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-    }
 
     public function test_agent_has_fillable_fields(): void
     {
         $agent = RealEstateAgent::create([
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->user->id,
             'full_name' => 'Test Agent',
@@ -38,7 +33,7 @@ final class RealEstateAgentModelTest extends TestCase
             'rating' => 4.5,
             'deals_count' => 10,
             'is_active' => true,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'correlation_id' => Str::uuid(),
         ]);
 
         $this->assertDatabaseHas('real_estate_agents', [
@@ -216,11 +211,19 @@ final class RealEstateAgentModelTest extends TestCase
             'license_number' => $licenseNumber,
         ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         RealEstateAgent::factory()->create([
             'tenant_id' => $this->tenant->id,
             'license_number' => $licenseNumber,
         ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
     }
 }

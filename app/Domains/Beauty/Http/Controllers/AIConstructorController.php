@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -21,7 +22,7 @@ final class AIConstructorController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AIConstructorController::run', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AIConstructorController::run', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -34,7 +35,7 @@ final class AIConstructorController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AIConstructorController::analyze', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AIConstructorController::analyze', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -47,7 +48,7 @@ final class AIConstructorController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
 
-        $this->logger->info('AIConstructorController::designs', ['correlation_id' => $correlationId, ]);
+        $this->logger->$this->logger->info('AIConstructorController::designs', ['correlation_id' => $correlationId]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -63,6 +64,6 @@ final class AIConstructorController extends Controller
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

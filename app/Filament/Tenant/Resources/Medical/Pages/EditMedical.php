@@ -1,25 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Medical\Pages;
 
-
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Medical\MedicalResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 final class EditMedical extends EditRecord
 {
+    protected static string $resource = MedicalResource::class;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static string $resource = MedicalResource::class;
 
     protected function getHeaderActions(): array
     {
@@ -36,7 +36,7 @@ final class EditMedical extends EditRecord
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            $this->logger->info('Medical updated', [
+            $this->logger->$this->logger->info('Medical updated', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
@@ -49,10 +49,10 @@ final class EditMedical extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->logger->info('Medical edit page saved', [
+        $this->logger->$this->logger->info('Medical edit page saved', [
             'record_id' => $this->record->id,
             'user_id' => auth()->id(),
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 }

@@ -1,19 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Payment Metrics Service
- * 
+ *
  * Exports Prometheus metrics for payment operations.
  * Integrates with the existing Prometheus infrastructure.
  */
 final readonly class PaymentMetricsService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private readonly LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -25,7 +35,7 @@ final readonly class PaymentMetricsService
         string $currency,
         float $durationSeconds
     ): void {
-        $this->logger->channel('prometheus')->info('payment_success', [
+        $this->logger->channel('prometheus')->$this->logger->info('payment_success', [
             'provider' => $provider,
             'amount' => $amount,
             'currency' => $currency,
@@ -41,7 +51,7 @@ final readonly class PaymentMetricsService
         string $reason,
         int $amount
     ): void {
-        $this->logger->channel('prometheus')->info('payment_failure', [
+        $this->logger->channel('prometheus')->$this->logger->info('payment_failure', [
             'provider' => $provider,
             'reason' => $reason,
             'amount' => $amount,
@@ -53,7 +63,7 @@ final readonly class PaymentMetricsService
      */
     public function recordPaymentAttempt(string $provider): void
     {
-        $this->logger->channel('prometheus')->info('payment_attempt', [
+        $this->logger->channel('prometheus')->$this->logger->info('payment_attempt', [
             'provider' => $provider,
         ]);
     }
@@ -65,7 +75,7 @@ final readonly class PaymentMetricsService
         int $amount,
         string $type
     ): void {
-        $this->logger->channel('prometheus')->info('wallet_credit', [
+        $this->logger->channel('prometheus')->$this->logger->info('wallet_credit', [
             'amount' => $amount,
             'type' => $type,
         ]);
@@ -78,7 +88,7 @@ final readonly class PaymentMetricsService
         int $amount,
         string $type
     ): void {
-        $this->logger->channel('prometheus')->info('wallet_debit', [
+        $this->logger->channel('prometheus')->$this->logger->info('wallet_debit', [
             'amount' => $amount,
             'type' => $type,
         ]);
@@ -91,7 +101,7 @@ final readonly class PaymentMetricsService
         string $provider,
         string $state
     ): void {
-        $this->logger->channel('prometheus')->info('circuit_breaker_state', [
+        $this->logger->channel('prometheus')->$this->logger->info('circuit_breaker_state', [
             'provider' => $provider,
             'state' => $state,
         ]);
@@ -105,7 +115,7 @@ final readonly class PaymentMetricsService
         string $operation,
         float $durationSeconds
     ): void {
-        $this->logger->channel('prometheus')->info('payment_latency', [
+        $this->logger->channel('prometheus')->$this->logger->info('payment_latency', [
             'provider' => $provider,
             'operation' => $operation,
             'duration_seconds' => $durationSeconds,

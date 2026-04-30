@@ -1,13 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\ML\UserBehaviorAnalyzerService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -17,14 +23,15 @@ use Illuminate\Support\Str;
 final readonly class FashionProductFilteringService
 {
     private const MAX_FILTER_RESULTS = 100;
+
     private const ML_RECOMMENDATION_WEIGHT = 0.3;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Умная фильтрация товаров с учетом ML-рекомендаций.
@@ -71,7 +78,7 @@ final readonly class FashionProductFilteringService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion products filtered', [
+        $this->log->channel('audit')->$this->logger->info('Fashion products filtered', [
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'filters' => $filters,
@@ -143,7 +150,7 @@ final readonly class FashionProductFilteringService
             ['user_id' => $userId, 'tenant_id' => $tenantId],
             [
                 'preferred_filters' => json_encode($filters, JSON_UNESCAPED_UNICODE),
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
 
@@ -203,7 +210,7 @@ final readonly class FashionProductFilteringService
 
     private function applyFilters($query, array $filters, int $tenantId)
     {
-        if (!empty($filters['categories'])) {
+        if (! empty($filters['categories'])) {
             $query->whereIn('id', function ($q) use ($filters, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -212,17 +219,17 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['price_min']) || !empty($filters['price_max'])) {
+        if (! empty($filters['price_min']) || ! empty($filters['price_max'])) {
             $priceMin = (int) ($filters['price_min'] ?? 0);
             $priceMax = (int) ($filters['price_max'] ?? PHP_INT_MAX);
             $query->whereBetween('price_b2c', [$priceMin, $priceMax]);
         }
 
-        if (!empty($filters['brands'])) {
+        if (! empty($filters['brands'])) {
             $query->whereIn('brand', $filters['brands']);
         }
 
-        if (!empty($filters['colors'])) {
+        if (! empty($filters['colors'])) {
             $query->where(function ($q) use ($filters) {
                 foreach ($filters['colors'] as $color) {
                     $q->orWhere('color', 'like', "%{$color}%");
@@ -230,7 +237,7 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['sizes'])) {
+        if (! empty($filters['sizes'])) {
             $query->whereIn('id', function ($q) use ($filters) {
                 $q->select('fashion_product_id')
                     ->from('fashion_sizes')
@@ -238,7 +245,7 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['materials'])) {
+        if (! empty($filters['materials'])) {
             $query->where(function ($q) use ($filters) {
                 foreach ($filters['materials'] as $material) {
                     $q->orWhere('material', 'like', "%{$material}%");
@@ -246,7 +253,7 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['styles'])) {
+        if (! empty($filters['styles'])) {
             $query->whereIn('id', function ($q) use ($filters, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -255,7 +262,7 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['seasons'])) {
+        if (! empty($filters['seasons'])) {
             $query->whereIn('id', function ($q) use ($filters, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -264,7 +271,7 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['target_audiences'])) {
+        if (! empty($filters['target_audiences'])) {
             $query->whereIn('id', function ($q) use ($filters, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -273,16 +280,16 @@ final readonly class FashionProductFilteringService
             });
         }
 
-        if (!empty($filters['in_stock_only'])) {
+        if (! empty($filters['in_stock_only'])) {
             $query->where('stock_quantity', '>', 0);
         }
 
-        if (!empty($filters['on_sale'])) {
+        if (! empty($filters['on_sale'])) {
             $query->whereColumn('price_b2c', '<', 'old_price');
         }
 
-        if (!empty($filters['new_arrivals'])) {
-            $query->where('created_at', '>=', Carbon::now()->subDays(30));
+        if (! empty($filters['new_arrivals'])) {
+            $query->where('created_at', '>=', CarbonImmutable::now()->subDays(30));
         }
 
         return $query;
@@ -294,9 +301,9 @@ final readonly class FashionProductFilteringService
         $preferredCategories = $userPattern['preferred_categories'] ?? [];
         $preferredPriceRange = $userPattern['price_range'] ?? 'medium';
 
-        if (!empty($preferredCategories)) {
+        if (! empty($preferredCategories)) {
             $query->orderByRaw(
-                "FIELD((SELECT primary_category FROM fashion_product_categories WHERE product_id = fashion_products.id LIMIT 1), ?) DESC",
+                'FIELD((SELECT primary_category FROM fashion_product_categories WHERE product_id = fashion_products.id LIMIT 1), ?) DESC',
                 [implode(',', $preferredCategories)]
             );
         }
@@ -359,11 +366,11 @@ final readonly class FashionProductFilteringService
 
         $score = 0.5;
 
-        if (in_array($productCategories['primary'], $userPattern['preferred_categories'] ?? [])) {
+        if (in_array($productCategories['primary'], $userPattern['preferred_categories'] ?? [], true)) {
             $score += 0.3;
         }
 
-        if (in_array($productCategories['style_profile'], $userPattern['preferred_styles'] ?? [])) {
+        if (in_array($productCategories['style_profile'], $userPattern['preferred_styles'] ?? [], true)) {
             $score += 0.1;
         }
 
@@ -402,10 +409,11 @@ final readonly class FashionProductFilteringService
     {
         $summary = [];
         foreach ($filters as $key => $value) {
-            if (!empty($value)) {
-                $summary[$key] = is_array($value) ? count($value) . ' items' : $value;
+            if (! empty($value)) {
+                $summary[$key] = is_array($value) ? count($value).' items' : $value;
             }
         }
+
         return $summary;
     }
 
@@ -414,7 +422,7 @@ final readonly class FashionProductFilteringService
         $userPattern = $this->behaviorAnalyzer->getPattern($userId, $this->isNewUser($userId));
 
         return [
-            'personalized_ranking' => !empty($userPattern['preferred_categories']),
+            'personalized_ranking' => ! empty($userPattern['preferred_categories']),
             'fit_scores' => true,
             'price_sensitivity' => $userPattern['price_sensitivity'] ?? 0.5,
         ];
@@ -634,8 +642,8 @@ final readonly class FashionProductFilteringService
     private function calculateRecommendationConfidence(array $userBehavior, array $recentViews, array $recentPurchases): float
     {
         $confidence = 0.5;
-        $confidence += !empty($recentViews) ? 0.2 : 0;
-        $confidence += !empty($recentPurchases) ? 0.3 : 0;
+        $confidence += ! empty($recentViews) ? 0.2 : 0;
+        $confidence += ! empty($recentPurchases) ? 0.3 : 0;
 
         return min($confidence, 1.0);
     }
@@ -654,7 +662,7 @@ final readonly class FashionProductFilteringService
             return true;
         }
 
-        $daysSinceCreation = Carbon::parse($user->created_at)->diffInDays(Carbon::now());
+        $daysSinceCreation = Carbon::parse($user->created_at)->diffInDays(CarbonImmutable::now());
         $orderCount = $this->db->table('orders')->where('user_id', $userId)->count();
 
         return $daysSinceCreation <= 7 && $orderCount === 0;

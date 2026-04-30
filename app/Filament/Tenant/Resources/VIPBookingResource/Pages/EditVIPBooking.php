@@ -1,11 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\VIPBookingResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\VIPBookingResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -16,16 +15,14 @@ use Filament\Resources\Pages\EditRecord;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\VIPBookingResource\Pages
  */
 final class EditVIPBooking extends EditRecord
 {
+    protected static string $resource = VIPBookingResource::class;
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static string $resource = VIPBookingResource::class;
 
     protected function getHeaderActions(): array
     {
@@ -41,7 +38,7 @@ final class EditVIPBooking extends EditRecord
     {
         $data['correlation_id'] = (string) Str::uuid();
 
-        $this->logger->info('Editing VIP Booking via Filament', [
+        $this->logger->$this->logger->info('Editing VIP Booking via Filament', [
             'booking_id' => $this->record->id,
             'user_id' => auth()->id(),
             'correlation_id' => $data['correlation_id'],

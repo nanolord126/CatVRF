@@ -1,15 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use App\Services\Fraud\FraudControlService;
 
 use Illuminate\Http\Request;
 use App\Jobs\MLRecalculateJob;
 use App\Models\User;
-
-use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * UserBehaviorAnalyzerService — главный ML-оркестратор.
@@ -23,18 +31,26 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class UserBehaviorAnalyzerService
 {
+    use WithAuditLogging;
+
     /** Пороги определения "нового" пользователя */
     private const NEW_USER_MAX_DAYS = 7;
+
     private const NEW_USER_MAX_SESSIONS = 3;
+
     private const NEW_USER_MIN_SPEND = 0;
 
     public function __construct(
+        private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudControlService,
         private readonly Request $request,
-        private AnonymizationService    $anonymizer,
-        private BigDataAggregatorService $bigData,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private readonly LogManager $logger,
+        private readonly AnonymizationService $anonymizer,
+        private readonly BigDataAggregatorService $bigData,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     // ─── Классификация ───────────────────────────────────────────────────────
@@ -53,7 +69,7 @@ final readonly class UserBehaviorAnalyzerService
         /** @var User $user */
         $user = User::findOrFail($userId);
 
-        $daysOld  = (int) now()->diffInDays($user->created_at);
+        $daysOld  = (int) CarbonImmutable::now()->diffInDays($user->created_at);
         $hasOrder = $user->orders()->whereIn('status', ['completed', 'delivered'])->exists();
 
         if ($daysOld <= self::NEW_USER_MAX_DAYS && ! $hasOrder) {
@@ -91,8 +107,9 @@ final readonly class UserBehaviorAnalyzerService
      */
     public function processEvent(int $userId, array $rawEvent): void
     {
+        $this->fraudControlService->check('process', ['context' => __CLASS__]);
         $rawEvent['user_id']    = $userId;
-        $rawEvent['timestamp']  = $rawEvent['timestamp'] ?? now()->toIso8601String();
+        $rawEvent['timestamp']  = $rawEvent['timestamp'] ?? CarbonImmutable::now()->toIso8601String();
 
         $isNew = $this->classifyUser($userId) === 'new';
 
@@ -113,10 +130,10 @@ final readonly class UserBehaviorAnalyzerService
 
         // 4. Онлайн-обучение: 5% событий отправляем в MLRecalculateJob
         if (random_int(1, 100) <= 5) {
-            MLRecalculateJob::dispatch($userId, $isNew)->onQueue('ml');
+            MLRecalculateJob::$this->bus->dispatch($userId, $isNew)->onQueue('ml');
         }
 
-        $this->logger->channel('audit')->info('Behavior event processed', [
+        $this->logger->channel('audit')->$this->logger->info('Behavior event processed', [
             'user_type'      => $isNew ? 'new' : 'returning',
             'vertical'       => $rawEvent['vertical'],
             'action'         => $rawEvent['action'],
@@ -132,7 +149,7 @@ final readonly class UserBehaviorAnalyzerService
         $days = (int) rtrim($period, 'd');
 
         return (int) User::where('tenant_id', $tenantId)
-            ->where('created_at', '>=', now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->count();
     }
 
@@ -141,8 +158,8 @@ final readonly class UserBehaviorAnalyzerService
         $days = (int) rtrim($period, 'd');
 
         return (int) User::where('tenant_id', $tenantId)
-            ->where('created_at', '<', now()->subDays(self::NEW_USER_MAX_DAYS))
-            ->whereHas('orders', fn ($q) => $q->where('created_at', '>=', now()->subDays($days)))
+            ->where('created_at', '<', CarbonImmutable::now()->subDays(self::NEW_USER_MAX_DAYS))
+            ->whereHas('orders', fn ($q) => $q->where('created_at', '>=', CarbonImmutable::now()->subDays($days)))
             ->count();
     }
 
@@ -167,7 +184,7 @@ final readonly class UserBehaviorAnalyzerService
 
         return [
             'type'            => 'new',
-            'days_since_reg'  => (int) now()->diffInDays($user->created_at),
+            'days_since_reg'  => (int) CarbonImmutable::now()->diffInDays($user->created_at),
             'device_type'     => $this->request->header('X-Device-Type', 'unknown'),
             'first_vertical'  => null,   // заполнится после первого события
             'ar_used'         => false,
@@ -184,7 +201,7 @@ final readonly class UserBehaviorAnalyzerService
         return [
             'type'                        => 'returning',
             'days_since_last_activity'    => $lastOrder
-                ? (int) now()->diffInDays($lastOrder->created_at)
+                ? (int) CarbonImmutable::now()->diffInDays($lastOrder->created_at)
                 : 999,
             'total_orders'                => $user->orders()->count(),
             'total_spent'                 => (float) $user->orders()
@@ -204,7 +221,7 @@ final readonly class UserBehaviorAnalyzerService
             return false;
         }
 
-        return now()->diffInDays($lastOrder->created_at) > 14;
+        return CarbonImmutable::now()->diffInDays($lastOrder->created_at) > 14;
     }
 
     private function getFavoriteVerticals(int $userId): array

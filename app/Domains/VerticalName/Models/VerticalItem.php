@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
+use Carbon\Carbon;
 
 /**
  * VerticalItem — основная Eloquent-модель вертикали VerticalName.
@@ -21,32 +21,31 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 1: Models.
  * Обязательные поля: uuid, correlation_id, tags (json), tenant_id, business_group_id.
  *
- * @property int         $id
- * @property string      $uuid
- * @property int         $tenant_id
- * @property int|null    $business_group_id
- * @property string      $name
+ * @property int $id
+ * @property string $uuid
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property string $name
  * @property string|null $description
- * @property string      $status
- * @property int         $price_kopecks
+ * @property string $status
+ * @property int $price_kopecks
  * @property string|null $sku
  * @property string|null $category
- * @property float       $rating
- * @property int         $review_count
- * @property bool        $is_active
- * @property bool        $is_b2b_available
- * @property int         $stock_quantity
- * @property array|null  $tags
- * @property array|null  $metadata
+ * @property float $rating
+ * @property int $review_count
+ * @property bool $is_active
+ * @property bool $is_b2b_available
+ * @property int $stock_quantity
+ * @property array|null $tags
+ * @property array|null $metadata
  * @property string|null $correlation_id
  * @property string|null $image_url
- * @property \Carbon\Carbon|null $deleted_at
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon|null $deleted_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class VerticalItem extends Model
 {
-
     protected $table = 'vertical_name_items';
 
     protected $fillable = [
@@ -83,41 +82,12 @@ final class VerticalItem extends Model
     ];
 
     /**
-     * Инициализация модели — глобальные скоупы для tenant isolation.
-     *
-     * CANON 2026: tenant_id scoping обязателен.
-     * uuid и correlation_id генерируются автоматически при creating.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_scoping', static function ($builder): void {
-            if (function_exists('tenant') && tenant() !== null) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-
-            if ($model->status === null) {
-                $model->status = 'draft';
-            }
-        });
-    }
-
-    /**
      * Tenant, которому принадлежит этот item.
      */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\Tenant::class,
+            Tenant::class,
             'tenant_id',
         );
     }
@@ -128,7 +98,7 @@ final class VerticalItem extends Model
     public function businessGroup(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\BusinessGroup::class,
+            BusinessGroup::class,
             'business_group_id',
         );
     }
@@ -190,5 +160,34 @@ final class VerticalItem extends Model
     {
         $query->where('status', 'published')
             ->where('is_active', true);
+    }
+
+    /**
+     * Инициализация модели — глобальные скоупы для tenant isolation.
+     *
+     * CANON 2026: tenant_id scoping обязателен.
+     * uuid и correlation_id генерируются автоматически при creating.
+     */
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_scoping', static function ($builder): void {
+            if (function_exists('tenant') && tenant() !== null) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+
+            if ($model->status === null) {
+                $model->status = 'draft';
+            }
+        });
     }
 }

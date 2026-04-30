@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -7,8 +8,6 @@ use Illuminate\Database\Seeder;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\BeautyProduct;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Салон красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -23,7 +22,7 @@ final class BeautyShopSeeder extends Seeder
         // Инициализируем тенант для бьюти-сферы
         $tenant = Tenant::find('spa-beauty');
 
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'id' => 'spa-beauty',
                 'name' => 'Elite Spa & Beauty',

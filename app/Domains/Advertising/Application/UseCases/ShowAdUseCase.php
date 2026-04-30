@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Application\UseCases;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -19,18 +19,20 @@ use App\Services\FraudControlService;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class ShowAdUseCase
 {
-    public function __construct(private AdCampaignRepositoryInterface $campaignRepository,
-        private AdImpressionRepositoryInterface $impressionRepository,
-        private AdTargetingService $targetingService,
-        private AdPlacementStrategyInterface $placementStrategy,
-        private FraudControlService $fraud,
-        private EventDispatcher $events,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+    public function __construct(
+        private readonly AdCampaignRepositoryInterface $campaignRepository,
+        private readonly AdImpressionRepositoryInterface $impressionRepository,
+        private readonly AdTargetingService $targetingService,
+        private readonly AdPlacementStrategyInterface $placementStrategy,
+        private readonly FraudControlService $fraud,
+        private readonly EventDispatcher $events,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     public function execute(User $user, string $placementZone, string $ipAddress, string $deviceFingerprint, ?string $correlationId = null): ?array
@@ -42,25 +44,25 @@ final readonly class ShowAdUseCase
         $targetedCampaigns = $this->targetingService->filterCampaignsForUser($activeCampaigns, $user);
 
         if ($targetedCampaigns->isEmpty()) {
-            throw new \DomainException('Unexpected null return in ' . __METHOD__);
+            throw new \DomainException('Unexpected null return in '.__METHOD__);
         }
 
         $selectedCampaignId = $this->placementStrategy->selectBestPlacement($targetedCampaigns, $user, $placementZone);
 
-        if (!$selectedCampaignId) {
-            throw new \DomainException('Unexpected null return in ' . __METHOD__);
+        if (! $selectedCampaignId) {
+            throw new \DomainException('Unexpected null return in '.__METHOD__);
         }
 
         $campaign = $this->campaignRepository->findById($selectedCampaignId);
-        if (!$campaign) {
-            throw new \DomainException('Unexpected null return in ' . __METHOD__);
+        if (! $campaign) {
+            throw new \DomainException('Unexpected null return in '.__METHOD__);
         }
-        
+
         // For now, cost is fixed. In the future, it can be dynamic.
         $cost = $campaign->pricing_model === 'cpc' ? 50 : 5; // 50 cents for CPC, 5 for CPM
 
         return $this->db->transaction(function () use ($campaign, $user, $ipAddress, $deviceFingerprint, $cost, $correlationId) {
-            
+
             $this->campaignRepository->updateSpent($campaign->id, $cost);
 
             $impression = new AdImpression(
@@ -71,7 +73,7 @@ final readonly class ShowAdUseCase
                 ip_address: $ipAddress,
                 device_fingerprint: $deviceFingerprint,
                 cost: $cost,
-                created_at: Carbon::now(),
+                created_at: CarbonImmutable::now(),
                 correlation_id: $correlationId
             );
 
@@ -79,7 +81,7 @@ final readonly class ShowAdUseCase
 
             $this->events->dispatch(new AdImpressionRegistered($campaign->id, $cost, $correlationId));
 
-            $this->logger->info('Ad impression registered', [
+            $this->logger->$this->logger->info('Ad impression registered', [
                 'campaign_id' => $campaign->id,
                 'user_id' => $user->id,
                 'cost' => $cost,

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateAutoRepairOrder — CatVRF 2026 Component.
@@ -7,47 +9,34 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createautorepairorder
  * @see https://catvrf.ru/docs/createautorepairorder
  * @see https://catvrf.ru/docs/createautorepairorder
  * @see https://catvrf.ru/docs/createautorepairorder
  */
 
-
 namespace App\Filament\Tenant\Resources\Auto\AutoRepairOrderResource\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
 
 final class CreateAutoRepairOrder extends CreateRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = AutoRepairOrderResource::class;
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
-
-            $data['total_cost_kopecks'] = ($data['labor_cost_kopecks'] ?? 0) + ($data['parts_cost_kopecks'] ?? 0);
-
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Repair Order Creation Initiated', [
-                'tenant_id' => $data['tenant_id'],
-                'correlation_id' => $data['correlation_id'],
-            ]);
-
-            return $data;
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +45,7 @@ final class CreateAutoRepairOrder extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +56,23 @@ final class CreateAutoRepairOrder extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id'] = filament()->getTenant()->id;
+        $data['correlation_id'] = (string) Str::uuid();
+
+        $data['total_cost_kopecks'] = ($data['labor_cost_kopecks'] ?? 0) + ($data['parts_cost_kopecks'] ?? 0);
+
+        $this->log->channel('audit')->$this->logger->info('Repair Order Creation Initiated', [
+            'tenant_id' => $data['tenant_id'],
+            'correlation_id' => $data['correlation_id'],
+        ]);
+
+        return $data;
     }
 }

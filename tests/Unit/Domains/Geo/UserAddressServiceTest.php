@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Geo;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Geo\Domain\Services\UserAddressService;
 
 /**
  * Unit tests for UserAddressService.
@@ -14,7 +17,7 @@ final class UserAddressServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\UserAddressService::class
+            UserAddressService::class
         );
         $this->assertTrue($reflection->isFinal(), 'UserAddressService must be final');
     }
@@ -22,7 +25,7 @@ final class UserAddressServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\UserAddressService::class
+            UserAddressService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'UserAddressService must be readonly');
     }
@@ -30,27 +33,26 @@ final class UserAddressServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Geo\Domain\Services\UserAddressService::class
+            UserAddressService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'UserAddressService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_addOrGetAddress_method_exists(): void
+    public function test_add_or_get_address_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\UserAddressService::class, 'addOrGetAddress'),
+            method_exists(UserAddressService::class, 'addOrGetAddress'),
             'UserAddressService must implement addOrGetAddress()'
         );
     }
 
-    public function test_getAddressHistory_method_exists(): void
+    public function test_get_address_history_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Geo\Domain\Services\UserAddressService::class, 'getAddressHistory'),
+            method_exists(UserAddressService::class, 'getAddressHistory'),
             'UserAddressService must implement getAddressHistory()'
         );
     }
-
 }

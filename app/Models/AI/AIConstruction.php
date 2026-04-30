@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\AI;
 
@@ -7,6 +9,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
+use Carbon\Carbon;
 
 /**
  * Class AIConstruction
@@ -23,37 +27,38 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\AI
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class AIConstruction extends Model
 {
-    use HasFactory, HasUuids, TenantScoped;
+    use HasFactory;
+    use HasUuids;
+    use TenantScoped;
 
     protected $table = 'ai_constructions';
 
-        protected $fillable = [
-            'uuid',
-            'user_id',
-            'tenant_id',
-            'correlation_id',
-            'constructor_type',
-            'input_parameters',
-            'used_taste_profile',
-            'result',
-            'confidence_score',
-        ];
+    protected $fillable = [
+        'uuid',
+        'user_id',
+        'tenant_id',
+        'correlation_id',
+        'constructor_type',
+        'input_parameters',
+        'used_taste_profile',
+        'result',
+        'confidence_score',
+    ];
 
-        protected $casts = [
-            'input_parameters' => 'json',
-            'used_taste_profile' => 'json',
-            'result' => 'json',
-            'confidence_score' => 'float',
-        ];
+    protected $casts = [
+        'input_parameters' => 'json',
+        'used_taste_profile' => 'json',
+        'result' => 'json',
+        'confidence_score' => 'float',
+    ];
 
-        public function user(): BelongsTo
-        {
-            return $this->belongsTo(\App\Models\User::class);
-        }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

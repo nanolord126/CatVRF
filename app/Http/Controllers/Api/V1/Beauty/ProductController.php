@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,15 +21,14 @@ use App\Services\FraudControlService;
 /**
  * Beauty Product API Controller — косметика и товары салонов.
  */
-class ProductController extends Controller
+final class ProductController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * GET /products — список товаров (публичный, через apiResource).
@@ -133,11 +138,11 @@ class ProductController extends Controller
                     'price' => $request->integer('price'),
                     'quantity' => $request->integer('quantity', 0),
                     'description' => $request->input('description', ''),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Beauty product created', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty product created', [
                     'correlation_id' => $correlationId,
                     'product_id' => $productId,
                     'user_id' => auth()->id(),
@@ -181,7 +186,7 @@ class ProductController extends Controller
                         'quantity' => $request->input('quantity'),
                         'description' => $request->input('description'),
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]));
 
                 if ($updated === 0) {
@@ -192,7 +197,7 @@ class ProductController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Beauty product updated', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty product updated', [
                     'correlation_id' => $correlationId,
                     'product_id' => $product,
                 ]);
@@ -236,7 +241,7 @@ class ProductController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Beauty product deleted', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty product deleted', [
                     'correlation_id' => $correlationId,
                     'product_id' => $product,
                 ]);

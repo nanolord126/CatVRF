@@ -4,31 +4,38 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\Models\PropertyTransaction;
 use App\Domains\RealEstate\Models\ViewingAppointment;
-use App\Domains\RealEstate\Domain\Enums\PropertyStatusEnum;
 use App\Domains\RealEstate\Domain\Enums\TransactionStatusEnum;
-use App\Domains\RealEstate\Domain\Enums\ViewingStatusEnum;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Exception;
 
 final readonly class RealEstateCRMIntegrationService
 {
     private const CRM_API_TIMEOUT_SECONDS = 30;
+
     private const CRM_RETRY_ATTEMPTS = 3;
+
     private const CRM_RETRY_DELAY_MS = 1000;
+
     private const CRM_CACHE_TTL_SECONDS = 3600;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly HttpFactory $http,
+        private readonly LogManager $log,
+        private readonly CacheManager $cache,) {}
 
     public function syncPropertyToCRM(Property $property, string $event, string $correlationId): array
     {
@@ -42,7 +49,7 @@ final readonly class RealEstateCRMIntegrationService
         );
 
         $cacheKey = "crm:property:{$property->uuid}:{$event}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -52,9 +59,9 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM('properties', 'POST', $payload, $correlationId);
 
-        Cache::put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
 
-        Log::channel('audit')->info('Property synced to CRM', [
+        $this->log->channel('audit')->$this->logger->info('Property synced to CRM', [
             'property_id' => $property->id,
             'property_uuid' => $property->uuid,
             'event' => $event,
@@ -77,7 +84,7 @@ final readonly class RealEstateCRMIntegrationService
         );
 
         $cacheKey = "crm:transaction:{$transaction->uuid}:{$event}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -87,9 +94,9 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM('transactions', 'POST', $payload, $correlationId);
 
-        Cache::put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
 
-        Log::channel('audit')->info('Transaction synced to CRM', [
+        $this->log->channel('audit')->$this->logger->info('Transaction synced to CRM', [
             'transaction_id' => $transaction->id,
             'transaction_uuid' => $transaction->uuid,
             'event' => $event,
@@ -112,7 +119,7 @@ final readonly class RealEstateCRMIntegrationService
         );
 
         $cacheKey = "crm:viewing:{$viewing->uuid}:{$event}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -122,9 +129,9 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM('viewings', 'POST', $payload, $correlationId);
 
-        Cache::put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
 
-        Log::channel('audit')->info('Viewing synced to CRM', [
+        $this->log->channel('audit')->$this->logger->info('Viewing synced to CRM', [
             'viewing_id' => $viewing->id,
             'viewing_uuid' => $viewing->uuid,
             'event' => $event,
@@ -156,7 +163,7 @@ final readonly class RealEstateCRMIntegrationService
             'buyer_id' => $buyerId,
             'lead_source' => $leadSource,
             'lead_status' => 'new',
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
             'metadata' => [
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -166,7 +173,7 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM('leads', 'POST', $payload, $correlationId);
 
-        Log::channel('audit')->info('Lead synced to CRM', [
+        $this->log->channel('audit')->$this->logger->info('Lead synced to CRM', [
             'property_id' => $propertyId,
             'buyer_id' => $buyerId,
             'lead_source' => $leadSource,
@@ -182,12 +189,12 @@ final readonly class RealEstateCRMIntegrationService
         $payload = [
             'deal_id' => $crmDealId,
             'status' => $status,
-            'updated_at' => now()->toIso8601String(),
+            'updated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $response = $this->sendToCRM("deals/{$crmDealId}", 'PATCH', $payload, $correlationId);
 
-        Log::channel('audit')->info('CRM deal status updated', [
+        $this->log->channel('audit')->$this->logger->info('CRM deal status updated', [
             'deal_id' => $crmDealId,
             'status' => $status,
             'crm_response' => $response,
@@ -200,7 +207,7 @@ final readonly class RealEstateCRMIntegrationService
     public function getCRMDealHistory(string $crmDealId, string $correlationId): array
     {
         $cacheKey = "crm:deal:{$crmDealId}:history";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -208,7 +215,7 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM("deals/{$crmDealId}/history", 'GET', [], $correlationId);
 
-        Cache::put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
 
         return $response;
     }
@@ -258,7 +265,7 @@ final readonly class RealEstateCRMIntegrationService
 
         $response = $this->sendToCRM('deals', 'POST', $payload, $correlationId);
 
-        Log::channel('audit')->info('CRM deal created from transaction', [
+        $this->log->channel('audit')->$this->logger->info('CRM deal created from transaction', [
             'transaction_id' => $transaction->id,
             'transaction_uuid' => $transaction->uuid,
             'deal_id' => $response['deal_id'] ?? null,
@@ -276,12 +283,12 @@ final readonly class RealEstateCRMIntegrationService
             'agent_id' => $agentId,
             'activity_type' => $activityType,
             'activity_data' => $activityData,
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $response = $this->sendToCRM('agent-activities', 'POST', $payload, $correlationId);
 
-        Log::channel('audit')->info('Agent activity synced to CRM', [
+        $this->log->channel('audit')->$this->logger->info('Agent activity synced to CRM', [
             'agent_id' => $agentId,
             'activity_type' => $activityType,
             'crm_response' => $response,
@@ -294,7 +301,7 @@ final readonly class RealEstateCRMIntegrationService
     public function getCRMAnalytics(int $tenantId, string $startDate, string $endDate, string $correlationId): array
     {
         $cacheKey = "crm:analytics:{$tenantId}:{$startDate}:{$endDate}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -306,7 +313,7 @@ final readonly class RealEstateCRMIntegrationService
             'end_date' => $endDate,
         ], $correlationId);
 
-        Cache::put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::CRM_CACHE_TTL_SECONDS);
 
         return $response;
     }
@@ -344,7 +351,7 @@ final readonly class RealEstateCRMIntegrationService
             'archived_at' => $property->archived_at?->toIso8601String(),
             'metadata' => $property->metadata,
             'tags' => $property->tags,
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -371,7 +378,7 @@ final readonly class RealEstateCRMIntegrationService
             'refund_reason' => $transaction->refund_reason,
             'metadata' => $transaction->metadata,
             'tags' => $transaction->tags,
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -401,7 +408,7 @@ final readonly class RealEstateCRMIntegrationService
             'cancellation_reason' => $viewing->cancellation_reason,
             'metadata' => $viewing->metadata,
             'tags' => $viewing->tags,
-            'event_timestamp' => now()->toIso8601String(),
+            'event_timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -426,20 +433,21 @@ final readonly class RealEstateCRMIntegrationService
         $crmApiKey = config('services.crm.api_key');
 
         if (empty($crmApiKey)) {
-            Log::warning('CRM API key not configured', ['correlation_id' => $correlationId]);
+            $this->log->warning('CRM API key not configured', ['correlation_id' => $correlationId]);
+
             return ['success' => false, 'error' => 'CRM not configured'];
         }
 
-        $url = rtrim($crmUrl, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim($crmUrl, '/').'/'.ltrim($endpoint, '/');
 
         $attempt = 0;
         $lastException = null;
 
         while ($attempt < self::CRM_RETRY_ATTEMPTS) {
             try {
-                $response = Http::timeout(self::CRM_API_TIMEOUT_SECONDS)
+                $response = $this->http->timeout(self::CRM_API_TIMEOUT_SECONDS)
                     ->withHeaders([
-                        'Authorization' => 'Bearer ' . $crmApiKey,
+                        'Authorization' => 'Bearer '.$crmApiKey,
                         'Content-Type' => 'application/json',
                         'X-Correlation-ID' => $correlationId,
                         'X-Tenant-ID' => tenant()->id,
@@ -452,7 +460,7 @@ final readonly class RealEstateCRMIntegrationService
                 }
 
                 $errorData = $response->json();
-                Log::error('CRM API error', [
+                $this->log->error('CRM API error', [
                     'endpoint' => $endpoint,
                     'method' => $method,
                     'status' => $response->status(),
@@ -468,10 +476,10 @@ final readonly class RealEstateCRMIntegrationService
                     ];
                 }
 
-                $lastException = new Exception('CRM API error: ' . $response->body());
+                $lastException = new Exception('CRM API error: '.$response->body());
             } catch (Exception $e) {
                 $lastException = $e;
-                Log::warning('CRM API request failed', [
+                $this->log->warning('CRM API request failed', [
                     'endpoint' => $endpoint,
                     'attempt' => $attempt + 1,
                     'error' => $e->getMessage(),
@@ -485,7 +493,7 @@ final readonly class RealEstateCRMIntegrationService
             }
         }
 
-        Log::error('CRM API request failed after retries', [
+        $this->log->error('CRM API request failed after retries', [
             'endpoint' => $endpoint,
             'method' => $method,
             'attempts' => $attempt,

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
@@ -12,7 +13,8 @@ use App\Traits\TenantScoped;
 
 final class Master extends Model
 {
-    use SoftDeletes, TenantScoped;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'beauty_masters';
 
@@ -36,15 +38,6 @@ final class Master extends Model
         'is_active' => 'boolean',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
     public function salon(): BelongsTo
     {
         return $this->belongsTo(Salon::class, 'salon_id');
@@ -53,5 +46,14 @@ final class Master extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class, 'master_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

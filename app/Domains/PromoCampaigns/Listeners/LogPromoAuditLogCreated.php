@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * LogPromoAuditLogCreated — CatVRF 2026 Component.
@@ -7,20 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/logpromoauditlogcreated
  */
 
-
 namespace App\Domains\PromoCampaigns\Listeners;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\PromoCampaigns\Events\PromoAuditLogCreated;
+
 /**
  * Class LogPromoAuditLogCreated
  *
@@ -30,20 +32,19 @@ use App\Domains\PromoCampaigns\Events\PromoAuditLogCreated;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\PromoCampaigns\Listeners
  */
 final class LogPromoAuditLogCreated
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle the event.
      */
     public function handle(PromoAuditLogCreated $event): void
     {
-        $this->logger->info('PromoAuditLog created', [
+        $this->logger->$this->logger->info('PromoAuditLog created', [
             'model_id' => $event->promoAuditLog->id,
             'correlation_id' => $event->correlationId,
             'tenant_id' => $event->promoAuditLog->tenant_id ?? null,

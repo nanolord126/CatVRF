@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Collectibles\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Collectibles\DTOs\CreateAuctionDto;
 
 /**
  * Unit tests for CreateAuctionDto.
@@ -14,7 +17,7 @@ final class CreateAuctionDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Collectibles\DTOs\CreateAuctionDto::class
+            CreateAuctionDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateAuctionDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateAuctionDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateAuctionDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Collectibles\DTOs\CreateAuctionDto::class
+            CreateAuctionDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('businessGroupId', $params, 'Constructor must have businessGroupId');
         $this->assertContains('userId', $params, 'Constructor must have userId');
@@ -37,7 +40,7 @@ final class CreateAuctionDtoTest extends TestCase
         $this->assertContains('isB2B', $params, 'Constructor must have isB2B');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -47,6 +50,6 @@ final class CreateAuctionDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Collectibles\DTOs\CreateAuctionDto::class;
+        return CreateAuctionDto::class;
     }
 }

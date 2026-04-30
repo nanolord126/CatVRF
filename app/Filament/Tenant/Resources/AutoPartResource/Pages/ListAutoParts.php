@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListAutoParts — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listautoparts
  * @see https://catvrf.ru/docs/listautoparts
  * @see https://catvrf.ru/docs/listautoparts
@@ -24,31 +27,17 @@
  * @see https://catvrf.ru/docs/listautoparts
  */
 
-
 namespace App\Filament\Tenant\Resources\AutoPartResource\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\CreateAction;
 
 final class ListAutoParts extends ListRecords
 {
-
     protected static string $resource = AutoPartResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\CreateAction::make()
-                    ->label('Добавить запчасть')
-                    ->icon('heroicon-o-plus'),
-            ];
-        }
-
-        protected function getTableQuery(): Builder
-        {
-            return parent::getTableQuery()
-                ->where('tenant_id', tenant()->id);
-        }
 
     /**
      * Get the string representation of this instance.
@@ -57,7 +46,7 @@ final class ListAutoParts extends ListRecords
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -68,8 +57,23 @@ final class ListAutoParts extends ListRecords
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить запчасть')
+                ->icon('heroicon-o-plus'),
+        ];
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return parent::getTableQuery()
+            ->where('tenant_id', tenant()->id);
     }
 }

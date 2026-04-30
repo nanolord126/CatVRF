@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Delivery;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for DeliveryService.
- *
- * @covers \App\Domains\Delivery\Domain\Services\DeliveryService
- */
-final class DeliveryServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Delivery\Domain\Services\DeliveryService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'DeliveryService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Delivery\Domain\Services\DeliveryService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'DeliveryService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Delivery');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Delivery\Domain\Services\DeliveryService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'DeliveryService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('DeliveryService exists and is instantiable', function () {
+    $this->assertServiceExists('DeliveryService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Delivery\Domain\Services\DeliveryService::class, 'create'),
-            'DeliveryService must implement create()'
-        );
-    }
+test('DeliveryService follows clean architecture', function () {
+    $this->assertCleanArchitecture('DeliveryService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Delivery\Domain\Services\DeliveryService::class, 'update'),
-            'DeliveryService must implement update()'
-        );
-    }
+test('DeliveryService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('DeliveryService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Delivery\Domain\Services\DeliveryService::class, 'delete'),
-            'DeliveryService must implement delete()'
-        );
-    }
+test('DeliveryService enforces quota limits', function () {
+    $this->testServiceWithQuota('DeliveryService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Delivery\Domain\Services\DeliveryService::class, 'list'),
-            'DeliveryService must implement list()'
-        );
-    }
+test('DeliveryService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('DeliveryService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Delivery\Domain\Services\DeliveryService::class, 'getById'),
-            'DeliveryService must implement getById()'
-        );
-    }
+test('DeliveryService has proper caching', function () {
+    $cacheKey = 'delivery:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('DeliveryService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('DeliveryService dispatches proper events', function () {
+    $eventClass = "App\Domains\Delivery\Events\DeliveryProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('DeliveryService'));
+        $service->process([]);
+    });
+});
+
+test('DeliveryService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Delivery\Jobs\ProcessDeliveryJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('DeliveryService'));
+        $service->processAsync([]);
+    });
+});
+
+test('DeliveryService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('DeliveryService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('DeliveryService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('DeliveryService'));
+        $service->process([]);
+    }, 'DeliveryService processed');
+});
+
+test('DeliveryService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

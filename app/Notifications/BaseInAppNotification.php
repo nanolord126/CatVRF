@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
+
+use Carbon\CarbonImmutable;
 
 /**
  * Base class for in-app notifications (Database channel + WebSocket delivery)
@@ -12,57 +16,57 @@ abstract class BaseInAppNotification extends BaseNotification
     /**
      * Заголовок уведомления
      */
-    private string $title = 'Notification';
+    private readonly string $title = 'Notification';
 
     /**
      * Содержимое уведомления
      */
-    private string $message = '';
+    private readonly string $message = '';
 
     /**
      * Тип уведомления (info, success, warning, error, action)
      */
-    private string $notificationType = 'info';
+    private readonly string $notificationType = 'info';
 
     /**
      * Иконка для отображения
      */
-    private ?string $icon = null;
+    private readonly ?string $icon = null;
 
     /**
      * URL для изображения
      */
-    private ?string $imageUrl = null;
+    private readonly ?string $imageUrl = null;
 
     /**
      * Action button (текст и ссылка)
      */
-    private array $actionButton = [];
+    private readonly array $actionButton = [];
 
     /**
      * Второй action button
      */
-    private array $secondaryButton = [];
+    private readonly array $secondaryButton = [];
 
     /**
      * Данные для frontend (JSON)
      */
-    private array $frontendData = [];
+    private readonly array $frontendData = [];
 
     /**
      * Вы должны подтвердить это уведомление
      */
-    private bool $requiresConfirmation = false;
+    private readonly bool $requiresConfirmation = false;
 
     /**
      * Таймер автозакрытия (мс, 0 = не закрывать)
      */
-    private int $autoCloseTimeout = 5000;
+    private readonly int $autoCloseTimeout = 5000;
 
     /**
      * Показывать ли в истории
      */
-    private bool $showInHistory = true;
+    private readonly bool $showInHistory = true;
 
     /**
      * Конструктор
@@ -83,6 +87,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function title(string $title): self
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -92,6 +97,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function message(string $message): self
     {
         $this->message = $message;
+
         return $this;
     }
 
@@ -101,6 +107,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function type(string $type): self
     {
         $this->notificationType = $type;
+
         return $this;
     }
 
@@ -110,6 +117,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function icon(string $icon): self
     {
         $this->icon = $icon;
+
         return $this;
     }
 
@@ -119,6 +127,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function image(string $url): self
     {
         $this->imageUrl = $url;
+
         return $this;
     }
 
@@ -132,6 +141,7 @@ abstract class BaseInAppNotification extends BaseNotification
             'url' => $url,
             'style' => $style,
         ];
+
         return $this;
     }
 
@@ -145,6 +155,7 @@ abstract class BaseInAppNotification extends BaseNotification
             'url' => $url,
             'style' => $style,
         ];
+
         return $this;
     }
 
@@ -154,6 +165,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function requireConfirmation(): self
     {
         $this->requiresConfirmation = true;
+
         return $this;
     }
 
@@ -163,6 +175,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function autoClose(int $milliseconds): self
     {
         $this->autoCloseTimeout = $milliseconds;
+
         return $this;
     }
 
@@ -172,6 +185,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function hideFromHistory(): self
     {
         $this->showInHistory = false;
+
         return $this;
     }
 
@@ -181,6 +195,7 @@ abstract class BaseInAppNotification extends BaseNotification
     public function addFrontendData(string $key, mixed $value): self
     {
         $this->frontendData[$key] = $value;
+
         return $this;
     }
 
@@ -211,10 +226,10 @@ abstract class BaseInAppNotification extends BaseNotification
     public function toWebSocket(): array
     {
         return [
-            'event' => 'notification:' . $this->type,
+            'event' => 'notification:'.$this->type,
             'notification' => $this->toDatabase(),
             'correlation_id' => $this->correlationId,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 

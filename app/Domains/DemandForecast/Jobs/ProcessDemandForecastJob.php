@@ -1,17 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\DemandForecast\Jobs;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\DemandForecast\Models\DemandForecast;
 use App\Services\AuditService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+
 /**
  * Class ProcessDemandForecastJob
  *
@@ -22,26 +19,25 @@ use Illuminate\Queue\SerializesModels;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Domains\DemandForecast\Jobs
+ * @see ShouldQueue
  */
 final class ProcessDemandForecastJob implements ShouldQueue
 {
-
-    public int $tries = 3;
-    public int $backoff = 60;
+    public int $3;
 
     public function __construct(
         private readonly int $modelId,
-        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        private readonly string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {
         $this->onQueue('demand_forecast');
     }
 
     public function handle(AuditService $audit): void
     {
-        $model = DemandForecast::findOrFail($this->modelId);
+        $DemandForecast::findOrFail($this->modelId);
 
-        $this->logger->info('ProcessDemandForecastJob processed', [
+        $this->logger->$this->logger->info('ProcessDemandForecastJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id ?? null,
@@ -55,7 +51,7 @@ final class ProcessDemandForecastJob implements ShouldQueue
         );
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Exception $e): void
     {
         $this->logger->error('ProcessDemandForecastJob failed', [
             'model_id' => $this->modelId,

@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories\Beauty;
 
 use App\Domains\Beauty\Models\Salon;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class SalonFactory extends Factory
 {
@@ -32,9 +35,9 @@ final class SalonFactory extends Factory
         return [
             'tenant_id' => 1,
             'business_group_id' => null,
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
-            'name' => $this->faker->randomElement($salonNames) . ' ' . $this->faker->randomElement(['I', 'II', 'III', '']),
+            'uuid' => Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
+            'name' => $this->faker->randomElement($salonNames).' '.$this->faker->randomElement(['I', 'II', 'III', '']),
             'address' => "{$city['name']}, {$street}, {$building}",
             'lat' => $city['lat'] + $this->faker->randomFloat(-4, 4, 6),
             'lon' => $city['lon'] + $this->faker->randomFloat(-4, 4, 6),

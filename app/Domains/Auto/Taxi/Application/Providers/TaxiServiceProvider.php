@@ -15,6 +15,8 @@ use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Repositories\EloquentTaxiFleet
 use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Repositories\EloquentVehicleRepository;
 use App\Domains\Auto\Taxi\Infrastructure\Services\FakeGeoLogisticsService;
 use Illuminate\Support\ServiceProvider;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class TaxiServiceProvider
@@ -29,9 +31,8 @@ use Illuminate\Support\ServiceProvider;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Taxi\Application\Providers
+ * @see FraudControlService
+ * @see AuditService
  */
 final class TaxiServiceProvider extends ServiceProvider
 {

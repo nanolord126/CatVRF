@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class FraudDetectionResultDto
 {
     /**
-     * @param array<string, mixed> $riskFactors
-     * @param array<string, mixed> $mlFeatures
+     * @param  array<string, mixed>  $riskFactors
+     * @param  array<string, mixed>  $mlFeatures
      */
     public function __construct(
         public bool $isFraudulent,
@@ -17,8 +19,7 @@ final readonly class FraudDetectionResultDto
         public string $correlationId,
         public ?string $recommendedAction = null,
         public ?int $holdDurationMinutes = null,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

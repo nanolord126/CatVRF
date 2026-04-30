@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\ParkingBooking;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,18 +11,23 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Broadcasting\Channel;
+
 final class ParkingBookingCreated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     /**
      * Create a new event instance.
      */
     public function __construct(
         public readonly ParkingBooking $booking,
-        public readonly string $correlationId, public readonly LoggerInterface $logger
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
     ) {
-        $this->logger->info('Parking booking created.', [
+        $this->logger->$this->logger->info('Parking booking created.', [
             'correlation_id' => $this->correlationId,
             'booking_id' => $this->booking->id,
             'tenant_id' => $this->booking->tenant_id,
@@ -34,13 +38,13 @@ final class ParkingBookingCreated implements ShouldBroadcast
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->booking->tenant_id),
-            new PrivateChannel('user.' . $this->booking->client_id),
+            new PrivateChannel('tenant.'.$this->booking->tenant_id),
+            new PrivateChannel('user.'.$this->booking->client_id),
         ];
     }
 

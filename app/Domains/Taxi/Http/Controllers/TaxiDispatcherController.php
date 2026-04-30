@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -20,7 +22,7 @@ final class TaxiDispatcherController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'result' => $result,
         ]);
@@ -34,7 +36,7 @@ final class TaxiDispatcherController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'queue_entry' => $queueEntry,
         ]);
@@ -53,7 +55,7 @@ final class TaxiDispatcherController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'queue_entry' => $queueEntry,
         ]);
@@ -65,7 +67,7 @@ final class TaxiDispatcherController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'processed' => $processed,
         ]);
@@ -77,7 +79,7 @@ final class TaxiDispatcherController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'dashboard' => $dashboard,
         ]);

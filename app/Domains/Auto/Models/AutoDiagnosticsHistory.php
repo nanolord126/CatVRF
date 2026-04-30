@@ -1,15 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class AutoDiagnosticsHistory extends Model
 {
     use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'auto_diagnostics_history';
 
@@ -29,22 +35,6 @@ final class AutoDiagnosticsHistory extends Model
         'tags' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function (Builder $query) {
-            $query->where('tenant_id', tenant()->id ?? 0);
-        });
-
-        static::creating(function (Model $model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-            if (!$model->tenant_id) {
-                $model->tenant_id = tenant()->id ?? 0;
-            }
-        });
-    }
-
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(AutoVehicle::class, 'vehicle_id');
@@ -52,11 +42,27 @@ final class AutoDiagnosticsHistory extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function getVehicleAttribute(): ?array
     {
         return $this->diagnostics_data['vehicle'] ?? null;
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $query) {
+            $query->where('tenant_id', tenant()->id ?? 0);
+        });
+
+        self::creating(function (Model $model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+            if (! $model->tenant_id) {
+                $model->tenant_id = tenant()->id ?? 0;
+            }
+        });
     }
 }

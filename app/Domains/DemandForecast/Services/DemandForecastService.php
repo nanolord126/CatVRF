@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\DemandForecast\Services;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\DemandForecast\DTOs\ForecastResult;
 use Carbon\Carbon;
+
 /**
  * ИСКЛЮЧИТЕЛЬНАЯ ТОЧКА расчета прогноза спроса на объекты системы с использованием машинного обучения.
  * Строго кэшируется, обязательно интегрирована с ML моделями.
@@ -15,12 +15,13 @@ use Carbon\Carbon;
 final readonly class DemandForecastService
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Формирует агрегированный прогноз для конкретного आइटमa на период.
      */
-    public function forecastForItem(int $itemId, Carbon $dateFrom, Carbon $dateTo, array $context = [], string $correlationId): ForecastResult
+    public function forecastForItem(int $itemId, Carbon $dateFrom, Carbon $dateTo, array $context, string $correlationId): ForecastResult
     {
         $tenantId = tenant()->id ?? 0;
         $hash = md5(json_encode($context));
@@ -32,10 +33,10 @@ final readonly class DemandForecastService
             $predictedDemand = rand(5, 50); // mock calculation payload
             $confidence = 0.85;
 
-            $this->logger->info('Generated new ML Demand Forecast', [
+            $this->logger->$this->logger->info('Generated new ML Demand Forecast', [
                 'item_id' => $itemId,
                 'prediction' => $predictedDemand,
-                'correlation_id' => $correlationId
+                'correlation_id' => $correlationId,
             ]);
 
             return [
@@ -43,7 +44,7 @@ final readonly class DemandForecastService
                 'lower' => max(0, $predictedDemand - 5),
                 'upper' => $predictedDemand + 15,
                 'score' => $confidence,
-                'features' => ['lag7' => true, 'seasonality' => 1.2]
+                'features' => ['lag7' => true, 'seasonality' => 1.2],
             ];
         });
 
@@ -65,7 +66,7 @@ final readonly class DemandForecastService
         // Необходим паттерн через тэгирование redis, здесь иллюстрируем концепт
         $this->logger->notice('Forecast cache strictly invalidated', [
             'tenant_id' => $tenantId,
-            'item_id' => $itemId
+            'item_id' => $itemId,
         ]);
     }
 }

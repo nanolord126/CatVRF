@@ -140,7 +140,7 @@ function requestGeo(): void {
  * Рассчитать расстояние от пользователя до точки
  */
 function distanceToUser(lat: number | null, lng: number | null): number | null {
-    if (userLat.value == null || userLng.value == null || lat == null || lng == null) return null;
+    if (userLat.value === null || userLng.value === null || lat === null || lng === null) return null;
     return calcDistance(userLat.value, userLng.value, lat, lng);
 }
 

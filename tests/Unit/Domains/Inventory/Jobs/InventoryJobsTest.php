@@ -12,6 +12,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
+use App\Services\AuditService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Тесты Layer 8 — Jobs.
@@ -36,7 +38,7 @@ final class InventoryJobsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Structural                                                         */
+    /*  Structural */
     /* ================================================================== */
 
     #[Test]
@@ -52,7 +54,7 @@ final class InventoryJobsTest extends TestCase
     {
         $ref = new ReflectionClass($class);
         self::assertTrue(
-            $ref->implementsInterface(\Illuminate\Contracts\Queue\ShouldQueue::class),
+            $ref->implementsInterface(ShouldQueue::class),
             "{$class} must implement ShouldQueue",
         );
     }
@@ -76,7 +78,7 @@ final class InventoryJobsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  CRITICAL: constructor must NOT contain LoggerInterface              */
+    /*  CRITICAL: constructor must NOT contain LoggerInterface */
     /* ================================================================== */
 
     #[Test]
@@ -88,6 +90,7 @@ final class InventoryJobsTest extends TestCase
 
         if ($ctor === null) {
             self::assertTrue(true); // no constructor is fine
+
             return;
         }
 
@@ -112,6 +115,7 @@ final class InventoryJobsTest extends TestCase
 
         if ($ctor === null) {
             self::assertTrue(true);
+
             return;
         }
 
@@ -121,14 +125,14 @@ final class InventoryJobsTest extends TestCase
         );
 
         self::assertNotContains(
-            \App\Services\AuditService::class,
+            AuditService::class,
             $types,
             "{$class} constructor MUST NOT contain AuditService (breaks serialization for queue)",
         );
     }
 
     /* ================================================================== */
-    /*  handle() must accept services as DI parameters                     */
+    /*  handle() must accept services as DI parameters */
     /* ================================================================== */
 
     #[Test]
@@ -151,7 +155,7 @@ final class InventoryJobsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  ReservationCleanupJob specifics                                    */
+    /*  ReservationCleanupJob specifics */
     /* ================================================================== */
 
     #[Test]
@@ -166,7 +170,7 @@ final class InventoryJobsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  ProcessInventoryCheckJob specifics                                 */
+    /*  ProcessInventoryCheckJob specifics */
     /* ================================================================== */
 
     #[Test]

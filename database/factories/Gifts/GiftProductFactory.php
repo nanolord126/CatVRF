@@ -6,6 +6,7 @@ namespace Database\Factories\Gifts;
 
 use App\Domains\PartySupplies\Gifts\Models\GiftProduct;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class GiftProductFactory extends Factory
 {
@@ -25,7 +26,7 @@ final class GiftProductFactory extends Factory
             'rating' => $this->faker->randomFloat(1, 3.5, 5),
             'review_count' => $this->faker->numberBetween(10, 200),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['gift', $this->faker->word()],
             'meta' => [],
         ];

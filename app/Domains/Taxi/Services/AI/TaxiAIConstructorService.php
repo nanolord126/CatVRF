@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\AI\OpenAIClientService;
-use App\Services\AI\Prompts\TaxiRoutePromptBuilder;
 use Illuminate\Support\Str;
-use App\Services\AI\Prompts\TaxiPromptBuilder;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Оптимизация маршрута + динамическое ценообразование + подбор водителя
@@ -29,11 +28,11 @@ use App\Services\AI\Prompts\TaxiPromptBuilder;
 final readonly class TaxiAIConstructorService
 {
     public function __construct(
-        private OpenAIClientService $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly OpenAIClientService $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
         private readonly Request $request,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard
@@ -43,7 +42,7 @@ final readonly class TaxiAIConstructorService
      * Главный метод — анализ и генерация рекомендаций.
      * Оптимизация маршрута + динамическое ценообразование + подбор водителя
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(array $rideData, int $userId): array
     {
@@ -53,7 +52,7 @@ final readonly class TaxiAIConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_taxi', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_taxi:route_optimization:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_taxi:route_optimization:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -70,9 +69,9 @@ final readonly class TaxiAIConstructorService
         try {
             $response = $this->openai->chat([
                 ['role' => 'system', 'content' => $this->promptBuilder->getSystemPrompt([
-                'vertical' => 'Taxi',
-                'type' => 'ai_constructor',
-            ])],
+                    'vertical' => 'Taxi',
+                    'type' => 'ai_constructor',
+                ])],
                 ['role' => 'user', 'content' => $anonymizedInput],
             ], 0.3, 'text');
         } catch (\Throwable $e) {
@@ -109,14 +108,14 @@ final readonly class TaxiAIConstructorService
             'success'        => true,
             'ride_profile' => $ride_profile,
             'recommendations' => $recommendations,
-            'ar_link'        => url('taxi/route-preview/' . $userId),
+            'ar_link'        => url('taxi/route-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
         // Кэш на 1 час
         cache()->put($cacheKey, $result, 3600);
 
-        $this->logger->info('TaxiAIConstructorService used', [
+        $this->logger->$this->logger->info('TaxiAIConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'taxi',
             'type'           => 'route_optimization',
@@ -140,7 +139,7 @@ final readonly class TaxiAIConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -148,7 +147,6 @@ final readonly class TaxiAIConstructorService
     /**
      * Сохранение результата в профиль пользователя (user_ai_designs).
      */
-
     private function anonymizeData(string $data): string
     {
         $patterns = [
@@ -169,6 +167,7 @@ final readonly class TaxiAIConstructorService
             'passengers' => $rideData['passengers'] ?? 1,
         ];
     }
+
     private function saveToUserProfile(int $userId, string $vertical, array $data, string $correlationId): void
     {
         $this->db->table('user_ai_designs')->updateOrInsert(
@@ -179,8 +178,8 @@ final readonly class TaxiAIConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => now(),
-                'created_at'     => now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

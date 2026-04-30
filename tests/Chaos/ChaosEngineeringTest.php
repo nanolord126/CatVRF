@@ -1,10 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
 use App\Services\Fraud\FraudMLService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use App\Jobs\ProcessPaymentJob;
+use App\Jobs\ProcessPaymentWebhook;
+use App\Models\PaymentTransaction;
+use App\Models\Wallet;
+use App\Services\Wallet\WalletService;
+use Illuminate\Database\QueryException;
 
 /**
  * Chaos Engineering Tests
@@ -17,19 +25,18 @@ use Illuminate\Support\Facades\Redis;
  * - Memory exhaustion
  * - Connection pool exhaustion
  */
-
 it('test system works when redis is down', function () {
     // Mock Redis as unavailable
     Redis::shouldReceive('get')->andThrow(new \Exception('Redis connection failed'));
     Redis::shouldReceive('set')->andThrow(new \Exception('Redis connection failed'));
 
     // Wallet operations should still work (fallback to DB cache)
-    $wallet = \App\Models\Wallet::factory()->create([
+    $wallet = Wallet::factory()->create([
         'tenant_id' => $this->tenant->id,
         'current_balance' => 10000,
     ]);
 
-    $service = new \App\Services\Wallet\WalletService();
+    $service = new WalletService();
 
     // Should not throw, should use DB fallback
     $balance = $service->getCurrentBalance($wallet->id);
@@ -64,7 +71,7 @@ it('test fraud ml service fallback when unavailable', function () {
 
 it('test database slow query timeout and retry', function () {
     // Create wallet with slow DB
-    $wallet = \App\Models\Wallet::factory()->create([
+    $wallet = Wallet::factory()->create([
         'tenant_id' => $this->tenant->id,
         'current_balance' => 10000,
     ]);
@@ -72,12 +79,13 @@ it('test database slow query timeout and retry', function () {
     // Mock slow query (simulate 5 second delay)
     DB::shouldReceive('transaction')->andReturnUsing(function ($callback) {
         sleep(1); // Simulate delay (real would be 5+ secs)
+
         return $callback();
     });
 
     $startTime = microtime(true);
 
-    $service = new \App\Services\Wallet\WalletService();
+    $service = new WalletService();
     $result = $service->debit($wallet->id, 1000, 'test', $this->correlationId);
 
     $duration = microtime(true) - $startTime;
@@ -174,7 +182,7 @@ it('test system continues when worker process dies', function () {
     $jobsProcessed = 0;
 
     // Dispatch job
-    $job = new \App\Jobs\ProcessPaymentJob([
+    $job = new ProcessPaymentJob([
         'payment_id' => 1,
         'correlation_id' => $this->correlationId,
     ]);
@@ -200,7 +208,7 @@ it('test query timeout recovery', function () {
 
     try {
         $result = DB::statement('SELECT SLEEP(35)'); // Longer than timeout
-    } catch (\Illuminate\Database\QueryException $e) {
+    } catch (QueryException $e) {
         // Expected timeout
         $duration = microtime(true) - $startTime;
         expect($duration)->toBeLessThan($queryTimeout + 5); // Should timeout
@@ -226,7 +234,7 @@ it('test bulk operation cancellation on error', function () {
     $response->assertJsonValidationErrors('payments.1.amount');
 
     // Should not have created any payments
-    $count = \App\Models\PaymentTransaction::where('correlation_id', $this->correlationId)->count();
+    $count = PaymentTransaction::where('correlation_id', $this->correlationId)->count();
     expect($count)->toBe(0);
 });
 
@@ -239,7 +247,7 @@ it('test memory pressure triggers cache eviction', function () {
     }
 
     // System should still work
-    $wallet = \App\Models\Wallet::factory()->create([
+    $wallet = Wallet::factory()->create([
         'tenant_id' => $this->tenant->id,
         'current_balance' => 10000,
     ]);
@@ -272,21 +280,21 @@ it('test webhook retry on temporary failure', function () {
     // Job should retry automatically
 
     $jobQueued = \Queue::fake();
-    dispatch(new \App\Jobs\ProcessPaymentWebhook($payload));
+    dispatch(new ProcessPaymentWebhook($payload));
 
     // Should be queued for retry
-    $jobQueued->assertPushed(\App\Jobs\ProcessPaymentWebhook::class);
+    $jobQueued->assertPushed(ProcessPaymentWebhook::class);
 });
 
 it('test transaction timeout recovery', function () {
-    $wallet = \App\Models\Wallet::factory()->create([
+    $wallet = Wallet::factory()->create([
         'tenant_id' => $this->tenant->id,
         'current_balance' => 10000,
     ]);
 
     // Simulate transaction timeout
     try {
-        \DB::transaction(function () use ($wallet) {
+        \DB::transaction(function () {
             DB::statement('SET SESSION innodb_lock_wait_timeout = 1');
             DB::statement('SELECT SLEEP(5)'); // Will timeout
         });
@@ -302,8 +310,8 @@ it('test transaction timeout recovery', function () {
 
 it('test deadlock recovery', function () {
     // Simulate deadlock scenario
-    $wallet1 = \App\Models\Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 10000]);
-    $wallet2 = \App\Models\Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 10000]);
+    $wallet1 = Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 10000]);
+    $wallet2 = Wallet::factory()->create(['tenant_id' => $this->tenant->id, 'current_balance' => 10000]);
 
     $success = 0;
     $retries = 0;

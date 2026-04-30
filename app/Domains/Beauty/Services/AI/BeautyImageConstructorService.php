@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services\AI;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\UploadedFile;
 use App\Services\RecommendationService;
@@ -15,20 +18,20 @@ use Illuminate\Contracts\Filesystem\Factory as StorageFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final readonly class BeautyImageConstructorService
 {
-    public function __construct(
-        private RecommendationService $recommendation,
-        private InventoryService $inventory,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private LogManager $logger,
-        private DatabaseManager $db,
-        private StorageFactory $storage,
-        private CacheRepository $cache
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly RecommendationService $recommendation,
+        private readonly InventoryService $inventory,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly StorageFactory $storage,
+        private readonly CacheRepository $cache) {}
 
     public function analyzePhotoAndRecommend(UploadedFile $photo, int $userId, string $correlationId): array
     {
@@ -39,11 +42,11 @@ final readonly class BeautyImageConstructorService
             'operation_type' => 'beauty_ai_constructor',
             'correlation_id' => $correlationId,
         ]);
-        
-        $this->scanForViruses($photo);
-        $cacheKey = "user_ai_designs:beauty:{$userId}:" . md5($photo->getClientOriginalName() . $photo->getSize());
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($photo, $userId, $correlationId) {
+        $this->scanForViruses($photo);
+        $cacheKey = "user_ai_designs:beauty:{$userId}:".md5($photo->getClientOriginalName().$photo->getSize());
+
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($photo, $userId, $correlationId) {
 
             return $this->db->transaction(function () use ($photo, $userId, $correlationId) {
                 $path = $this->storage->disk('s3')->putFile('beauty/scans', $photo);
@@ -52,7 +55,7 @@ final readonly class BeautyImageConstructorService
                     'face_shape' => 'oval',
                     'skin_tone' => 'warm',
                     'hair_color' => 'brunette',
-                    'recommended_styles' => ['pixie_cut', 'balayage']
+                    'recommended_styles' => ['pixie_cut', 'balayage'],
                 ];
 
                 $taste = $this->tasteAnalyzer->getProfile($userId);
@@ -61,7 +64,7 @@ final readonly class BeautyImageConstructorService
                 $recommendations = $this->recommendation->getForBeauty($styleProfile, $userId);
 
                 foreach ($recommendations as &$item) {
-                    $item['in_stock'] = $this->inventory->getAvailableStock((int)$item['product_id']) > 0;
+                    $item['in_stock'] = $this->inventory->getAvailableStock((int) $item['product_id']) > 0;
                 }
                 unset($item);
 
@@ -70,8 +73,8 @@ final readonly class BeautyImageConstructorService
                     'vertical' => 'beauty',
                     'design_data' => json_encode($styleProfile, JSON_THROW_ON_ERROR),
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
                 $this->audit->record(
@@ -83,7 +86,7 @@ final readonly class BeautyImageConstructorService
                     correlationId: $correlationId
                 );
 
-                $this->logger->channel('audit')->info('Beauty AI constructor used', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty AI constructor used', [
                     'user_id' => $userId,
                     'style_profile' => $styleProfile,
                     'correlation_id' => $correlationId,
@@ -105,7 +108,7 @@ final readonly class BeautyImageConstructorService
     private function scanForViruses(UploadedFile $file): void
     {
         $mime = $file->getMimeType();
-        if (!in_array($mime, ['image/jpeg', 'image/png'], true)) {
+        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
             throw new \InvalidArgumentException('Invalid file type for Beauty Scan.');
         }
         // integration with ClamAV or AWS Macie

@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Exceptions\CartLimitExceededException;
@@ -11,12 +16,12 @@ use App\Domains\Inventory\Services\InventoryService;
 use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Support\Collection;
-
-
-
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use App\Domains\Inventory\DTOs\CreateReservationDto;
+use App\Domains\Inventory\Models\Reservation;
 
 /**
  * CartService — сервис управления корзинами.
@@ -32,15 +37,18 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class CartService
 {
+    use WithAuditLogging;
+
     private const MAX_CARTS_PER_USER  = 20;
+
     private const RESERVE_MINUTES     = 20;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService $fraud,
-        private AuditService        $audit,
-        private InventoryService    $inventory,
-        private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $auditService,
+        private readonly InventoryService $inventory,
         private readonly DatabaseManager $db,
     ) {}
 
@@ -57,11 +65,11 @@ final readonly class CartService
      * @throws InsufficientStockException
      */
     public function addItem(
-        int    $userId,
-        int    $sellerId,
-        int    $productId,
-        int    $quantity,
-        int    $currentPrice,
+        int $userId,
+        int $sellerId,
+        int $productId,
+        int $quantity,
+        int $currentPrice,
         string $correlationId = '',
     ): CartItem {
         $correlationId = $correlationId ?: Str::uuid()->toString();
@@ -108,10 +116,10 @@ final readonly class CartService
             }
 
             // 4. Обновить резерв
-            $cart->update(['reserved_until' => now()->addMinutes(self::RESERVE_MINUTES)]);
+            $cart->update(['reserved_until' => CarbonImmutable::now()->addMinutes(self::RESERVE_MINUTES)]);
 
             // 5. Резерв в инвентаре
-            $this->inventory->reserve(new \App\Domains\Inventory\DTOs\CreateReservationDto(
+            $this->inventory->reserve(new CreateReservationDto(
                 tenantId: $sellerId,
                 productId: $productId,
                 warehouseId: 1, // fallback to a default warehouse or logic to find nearest warehouse
@@ -127,7 +135,7 @@ final readonly class CartService
                 'quantity'   => $quantity,
             ], $correlationId);
 
-            $this->logger->channel('audit')->info('CartService: item added', [
+            $this->logger->channel('audit')->$this->logger->info('CartService: item added', [
                 'cart_id'        => $cart->id,
                 'product_id'     => $productId,
                 'quantity'       => $quantity,
@@ -167,7 +175,7 @@ final readonly class CartService
 
         if ($activeCount >= self::MAX_CARTS_PER_USER) {
             throw new CartLimitExceededException(
-                "User #{$userId} has reached the maximum of " . self::MAX_CARTS_PER_USER . " active carts."
+                "User #{$userId} has reached the maximum of ".self::MAX_CARTS_PER_USER.' active carts.'
             );
         }
 
@@ -176,7 +184,7 @@ final readonly class CartService
             'user_id'        => $userId,
             'seller_id'      => $sellerId,
             'status'         => 'active',
-            'reserved_until' => now()->addMinutes(self::RESERVE_MINUTES),
+            'reserved_until' => CarbonImmutable::now()->addMinutes(self::RESERVE_MINUTES),
             'correlation_id' => $correlationId,
         ]);
     }
@@ -204,7 +212,7 @@ final readonly class CartService
                 $item->save();
             }
 
-            $this->logger->channel('audit')->info('CartService: prices refreshed', [
+            $this->logger->channel('audit')->$this->logger->info('CartService: prices refreshed', [
                 'cart_id'        => $cartId,
                 'correlation_id' => $correlationId,
             ]);
@@ -224,7 +232,7 @@ final readonly class CartService
                 ->where('product_id', $productId)
                 ->firstOrFail();
 
-            $reservation = \App\Domains\Inventory\Models\Reservation::where('cart_id', $cartId)
+            $reservation = Reservation::where('cart_id', $cartId)
                 ->whereHas('inventoryItem', function ($query) use ($productId) {
                     $query->where('product_id', $productId);
                 })->first();
@@ -235,7 +243,7 @@ final readonly class CartService
 
             $item->delete();
 
-            $this->logger->channel('audit')->info('CartService: item removed', [
+            $this->logger->channel('audit')->$this->logger->info('CartService: item removed', [
                 'cart_id'        => $cartId,
                 'product_id'     => $productId,
                 'correlation_id' => $correlationId,
@@ -255,7 +263,7 @@ final readonly class CartService
             $cart = Cart::findOrFail($cartId);
 
             foreach ($cart->items as $item) {
-                $reservation = \App\Domains\Inventory\Models\Reservation::where('cart_id', $cartId)
+                $reservation = Reservation::where('cart_id', $cartId)
                     ->whereHas('inventoryItem', function ($query) use ($item) {
                         $query->where('product_id', $item->product_id);
                     })->first();
@@ -268,7 +276,7 @@ final readonly class CartService
             $cart->items()->delete();
             $cart->update(['status' => $reason, 'reserved_until' => null]);
 
-            $this->logger->channel('audit')->info('CartService: cart cleared', [
+            $this->logger->channel('audit')->$this->logger->info('CartService: cart cleared', [
                 'cart_id'        => $cartId,
                 'reason'         => $reason,
                 'correlation_id' => $correlationId,

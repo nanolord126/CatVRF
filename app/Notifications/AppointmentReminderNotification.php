@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * AppointmentReminderNotification — CatVRF 2026 Component.
@@ -7,18 +9,17 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/appointmentremindernotification
  */
 
-
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
@@ -31,15 +32,12 @@ use Illuminate\Notifications\Notification;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Notifications
  */
 final class AppointmentReminderNotification extends Notification implements ShouldQueue
 {
     public function __construct(
         private readonly object $appointment,
-    )
-    {
+    ) {
         // Implementation required by canon
     }
 

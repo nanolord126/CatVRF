@@ -4,6 +4,12 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\Request;
+use App\Services\ML\TasteMLService;
+use App\Services\ML\UserTasteProfileService;
+use App\Services\AI\AIBeautyConstructorService;
+use OpenAI\Client;
 
 final class MLServiceProvider extends ServiceProvider
 {
@@ -21,9 +27,10 @@ final class MLServiceProvider extends ServiceProvider
             // Singleton: TasteMLService
             $this->app->singleton(TasteMLService::class, function () {
                 return new TasteMLService(
-                    client: app(\OpenAI\Client::class),
-                    redisConnection: \Illuminate\Support\Facades\Redis::connection(),
+                    request: app(Request::class),
+                    openai: app(Client::class),
                     logger: $this->logger->channel('audit'),
+                    db: app(DatabaseManager::class),
                 );
             });
 
@@ -32,14 +39,15 @@ final class MLServiceProvider extends ServiceProvider
                 return new UserTasteProfileService(
                     mlService: app(TasteMLService::class),
                     logger: $this->logger->channel('audit'),
+                    db: app(DatabaseManager::class),
                 );
             });
 
             // Singleton: AIBeautyConstructorService
             $this->app->singleton(AIBeautyConstructorService::class, function () {
                 return new AIBeautyConstructorService(
-                    client: app(\OpenAI\Client::class),
-                    tasteProfileService: app(UserTasteProfileService::class),
+                    tasteService: app(UserTasteProfileService::class),
+                    openai: app(Client::class),
                     logger: $this->logger->channel('audit'),
                 );
             });

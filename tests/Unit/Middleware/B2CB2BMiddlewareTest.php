@@ -1,10 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\B2CB2BMiddleware;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

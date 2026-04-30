@@ -1,77 +1,81 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use Illuminate\Database\Eloquent\Model;
-
-
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+
 final class PostPolicy extends Model
 {
-    public function __construct(
-        private readonly ConfigRepository $config,
-    ) {}
-        /** Видеть пост (публичный или владелец) */
-        public function view(?User $user, Post $post): bool
-        {
-            if ($post->isPublished()) {
-                return true;
-            }
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly ConfigRepository $config,) {}
 
-            return $user !== null && (int) $post->tenant_id === (int) $user->current_tenant_id;
+    /** Видеть пост (публичный или владелец) */
+    public function $this->viewFactory->make(?User $user, Post $post): bool
+    {
+        if ($post->isPublished()) {
+            return true;
         }
 
-        /** Создать пост — только владелец канала */
-        public function create(User $user): bool
-        {
-            return $user->current_tenant_id !== null;
-        }
+        return $user !== null && (int) $post->tenant_id === (int) $user->current_tenant_id;
+    }
 
-        /** Редактировать пост — только владелец, только если не published */
-        public function update(User $user, Post $post): bool
-        {
-            if ((int) $post->tenant_id !== (int) $user->current_tenant_id) {
-                return false;
-            }
+    /** Создать пост — только владелец канала */
+    public function create(User $user): bool
+    {
+        return $user->current_tenant_id !== null;
+    }
 
-            return in_array($post->status, ['draft', 'pending_moderation', 'rejected'], true);
-        }
-
-        /** Удалить пост */
-        public function delete(User $user, Post $post): bool
-        {
-            if ((int) $post->tenant_id === (int) $user->current_tenant_id) {
-                return true;
-            }
-
-            // Администратор платформы
-            return $user->hasRole('admin');
-        }
-
-        /** Опубликовать пост — владелец (если без модерации) или модератор */
-        public function publish(User $user, Post $post): bool
-        {
-            if ($user->hasRole('admin') || $user->hasRole('moderator')) {
-                return true;
-            }
-
-            // Если модерация отключена — владелец публикует сам
-            if (! $this->config->get('channels.moderation.enabled', true)) {
-                return (int) $post->tenant_id === (int) $user->current_tenant_id;
-            }
-
+    /** Редактировать пост — только владелец, только если не published */
+    public function update(User $user, Post $post): bool
+    {
+        if ((int) $post->tenant_id !== (int) $user->current_tenant_id) {
             return false;
         }
 
-        /** Отклонить пост — только admin/moderator */
-        public function reject(User $user, Post $post): bool
-        {
-            return $user->hasRole('admin') || $user->hasRole('moderator');
+        return in_array($post->status, ['draft', 'pending_moderation', 'rejected'], true);
+    }
+
+    /** Удалить пост */
+    public function delete(User $user, Post $post): bool
+    {
+        if ((int) $post->tenant_id === (int) $user->current_tenant_id) {
+            return true;
         }
 
-        /** Архивировать пост — владелец или admin */
-        public function archive(User $user, Post $post): bool
-        {
-            return (int) $post->tenant_id === (int) $user->current_tenant_id
-                || $user->hasRole('admin');
+        // Администратор платформы
+        return $user->hasRole('admin');
+    }
+
+    /** Опубликовать пост — владелец (если без модерации) или модератор */
+    public function publish(User $user, Post $post): bool
+    {
+        if ($user->hasRole('admin') || $user->hasRole('moderator')) {
+            return true;
         }
+
+        // Если модерация отключена — владелец публикует сам
+        if (! $this->config->get('channels.moderation.enabled', true)) {
+            return (int) $post->tenant_id === (int) $user->current_tenant_id;
+        }
+
+        return false;
+    }
+
+    /** Отклонить пост — только admin/moderator */
+    public function reject(User $user, Post $post): bool
+    {
+        return $user->hasRole('admin') || $user->hasRole('moderator');
+    }
+
+    /** Архивировать пост — владелец или admin */
+    public function archive(User $user, Post $post): bool
+    {
+        return (int) $post->tenant_id === (int) $user->current_tenant_id
+            || $user->hasRole('admin');
+    }
 }

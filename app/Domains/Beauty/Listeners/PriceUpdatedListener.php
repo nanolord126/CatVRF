@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\Events\PriceUpdatedEvent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final class PriceUpdatedListener
 {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
     public function handle(PriceUpdatedEvent $event): void
     {
-        Log::channel('audit')->info('Price updated event handled', [
+        $this->log->channel('audit')->$this->logger->info('Price updated event handled', [
             'correlation_id' => $event->correlationId,
             'master_id' => $event->masterId,
             'service_id' => $event->serviceId,
@@ -27,13 +33,13 @@ final class PriceUpdatedListener
     private function trackPriceHistory(PriceUpdatedEvent $event): void
     {
         $key = "beauty:price_history:{$event->serviceId}";
-        Redis::lpush($key, json_encode([
-            'timestamp' => now()->toIso8601String(),
+        $this->redis->lpush($key, json_encode([
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'master_id' => $event->masterId,
             'old_price' => $event->oldPrice,
             'new_price' => $event->newPrice,
         ]));
-        Redis::expire($key, 86400 * 30);
+        $this->redis->expire($key, 86400 * 30);
     }
 
     private function notifyPricingChange(PriceUpdatedEvent $event): void
@@ -43,14 +49,14 @@ final class PriceUpdatedListener
             : 0;
 
         if (abs($priceChangePercent) >= 20) {
-            $key = "beauty:significant_price_changes";
-            Redis::lpush($key, json_encode([
-                'timestamp' => now()->toIso8601String(),
+            $key = 'beauty:significant_price_changes';
+            $this->redis->lpush($key, json_encode([
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
                 'master_id' => $event->masterId,
                 'service_id' => $event->serviceId,
                 'change_percent' => $priceChangePercent,
             ]));
-            Redis::expire($key, 86400 * 7);
+            $this->redis->expire($key, 86400 * 7);
         }
     }
 }

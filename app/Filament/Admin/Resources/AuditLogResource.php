@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources;
-
 
 use Psr\Log\LoggerInterface;
 use App\Models\AuditLog;
@@ -14,32 +15,41 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use App\Filament\Admin\Resources\AuditLogResource\Pages\ListAuditLogs;
+use App\Filament\Admin\Resources\AuditLogResource\Pages\ViewAuditLog;
+use Illuminate\Database\Eloquent\Model;
 
 final class AuditLogResource extends Resource
 {
+    protected static ?string $model = AuditLog::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+
+    protected static ?string $navigationGroup = 'Безопасность';
+
+    protected static ?string $navigationLabel = 'Журнал аудита';
+
+    protected static ?string $modelLabel = 'Запись аудита';
+
+    protected static ?string $pluralModelLabel = 'Журнал аудита';
+
+    protected static ?int $navigationSort = 20;
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = AuditLog::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected static ?string $navigationGroup = 'Безопасность';
-    protected static ?string $navigationLabel = 'Журнал аудита';
-    protected static ?string $modelLabel = 'Запись аудита';
-    protected static ?string $pluralModelLabel = 'Журнал аудита';
-    protected static ?int $navigationSort = 20;
 
     public static function canCreate(): bool
     {
         return false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -163,8 +173,8 @@ final class AuditLogResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Admin\Resources\AuditLogResource\Pages\ListAuditLogs::route('/'),
-            'view'  => \App\Filament\Admin\Resources\AuditLogResource\Pages\ViewAuditLog::route('/{record}'),
+            'index' => ListAuditLogs::route('/'),
+            'view'  => ViewAuditLog::route('/{record}'),
         ];
     }
 }

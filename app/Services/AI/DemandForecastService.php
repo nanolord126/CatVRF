@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -10,6 +12,7 @@ use App\Models\DemandForecast;
 use App\Models\DemandModelVersion;
 use App\Services\FraudControl\FraudControlService;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
@@ -28,15 +31,15 @@ use Illuminate\Support\Str;
  */
 final readonly class DemandForecastService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly Repository $cache,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
+
     /**
      * Прогнозировать спрос для товара на период
      */
@@ -65,7 +68,7 @@ final readonly class DemandForecastService
 
             $cached = $this->cache->get($cacheKey);
             if ($cached) {
-                $this->logger->channel('audit')->info('Forecast: Cache hit', [
+                $this->logger->channel('audit')->$this->logger->info('Forecast: Cache hit', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
@@ -77,7 +80,7 @@ final readonly class DemandForecastService
             // 3. BUILD FORECAST (исторический спрос, сезонность, погода, маркетинг)
             $historicalDemand = $this->db->table('demand_actuals')
                 ->where('item_id', $itemId)
-                ->where('date', '>=', now()->subDays(30))
+                ->where('date', '>=', CarbonImmutable::now()->subDays(30))
                 ->selectRaw('AVG(actual_demand) as avg_demand, STDDEV(actual_demand) as stddev')
                 ->first();
 
@@ -99,8 +102,8 @@ final readonly class DemandForecastService
                 // Комбинирование факторов
                 $multiplier = $seasonality * $weatherFactor * $promoFactor;
 
-                $predicted = (int)($avgDemand * $multiplier);
-                $confidenceInterval = (int)($stddev * 1.96); // 95% confidence
+                $predicted = (int) ($avgDemand * $multiplier);
+                $confidenceInterval = (int) ($stddev * 1.96); // 95% confidence
 
                 $forecastDays[] = [
                     'date' => $currentDate->format('Y-m-d'),
@@ -150,13 +153,13 @@ final readonly class DemandForecastService
             $this->cache->put($cacheKey, $result, $ttl);
 
             // 5. AUDIT LOG
-            $this->logger->channel('audit')->info('Forecast: Generated', [
+            $this->logger->channel('audit')->$this->logger->info('Forecast: Generated', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
                 'days_count' => count($forecastDays),
                 'model_version' => $modelVersion,
-                'avg_prediction' => (int)(array_sum(array_column($forecastDays, 'predicted_demand')) / count($forecastDays)),
+                'avg_prediction' => (int) (array_sum(array_column($forecastDays, 'predicted_demand')) / count($forecastDays)),
             ]);
 
             return $result;
@@ -197,7 +200,7 @@ final readonly class DemandForecastService
                 );
             }
 
-            $this->logger->channel('audit')->info('Forecast: Bulk generated', [
+            $this->logger->channel('audit')->$this->logger->info('Forecast: Bulk generated', [
                 'correlation_id' => $correlationId,
                 'items_count' => count($itemIds),
             ]);
@@ -223,7 +226,7 @@ final readonly class DemandForecastService
 
         try {
             $accuracy = DemandModelVersion::where('vertical', $vertical)
-                ->where('trained_at', '>=', now()->subDays($days))
+                ->where('trained_at', '>=', CarbonImmutable::now()->subDays($days))
                 ->latest('trained_at')
                 ->first();
 
@@ -236,7 +239,7 @@ final readonly class DemandForecastService
                 'trained_at' => $accuracy?->trained_at?->toIso8601String(),
             ];
 
-            $this->logger->channel('audit')->info('Forecast: Accuracy retrieved', [
+            $this->logger->channel('audit')->$this->logger->info('Forecast: Accuracy retrieved', [
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'mape' => $result['mape'],
@@ -268,7 +271,7 @@ final readonly class DemandForecastService
 
         // Проверить праздники из конфига
         $holidays = $this->config->get('business.holidays', []);
-        if (in_array($date->format('Y-m-d'), $holidays)) {
+        if (in_array($date->format('Y-m-d'), $holidays, true)) {
             return 1.3;
         }
 

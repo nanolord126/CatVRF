@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/advertisingserviceprovider
  */
-
 
 namespace App\Domains\Advertising\Infrastructure\Providers;
 
@@ -27,6 +27,8 @@ use App\Domains\Advertising\Infrastructure\Persistence\EloquentAdCampaignReposit
 use App\Domains\Advertising\Infrastructure\Persistence\EloquentAdImpressionRepository;
 use App\Domains\Advertising\Infrastructure\Services\MlPlacementStrategy;
 use Illuminate\Support\ServiceProvider;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class AdvertisingServiceProvider
@@ -41,9 +43,8 @@ use Illuminate\Support\ServiceProvider;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Advertising\Infrastructure\Providers
+ * @see FraudControlService
+ * @see AuditService
  */
 final class AdvertisingServiceProvider extends ServiceProvider
 {

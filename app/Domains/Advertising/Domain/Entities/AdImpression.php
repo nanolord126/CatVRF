@@ -11,8 +11,6 @@ use Carbon\Carbon;
  *
  * Represents a single ad impression event.
  * Immutable value object with public readonly properties.
- *
- * @package App\Domains\Advertising\Domain\Entities
  */
 final class AdImpression
 {
@@ -57,8 +55,8 @@ final class AdImpression
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new')
-            . ':campaign=' . $this->campaign_id;
+        return self::class.'::'.($this->id ?? 'new')
+            .':campaign='.$this->campaign_id;
     }
 
     /**

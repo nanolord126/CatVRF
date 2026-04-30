@@ -18,30 +18,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class FinancialTransactionTest extends TestCase
 {
-    private function makeTransaction(
-        int $id = 1,
-        int $tenantId = 100,
-        ?int $businessGroupId = null,
-        int $walletId = 50,
-        TransactionType $type = TransactionType::DEPOSIT,
-        int $amount = 150000,
-        array $metadata = [],
-        ?CarbonImmutable $createdAt = null,
-        string $correlationId = 'test-corr-123',
-    ): FinancialTransaction {
-        return new FinancialTransaction(
-            id: $id,
-            tenantId: $tenantId,
-            businessGroupId: $businessGroupId,
-            walletId: $walletId,
-            type: $type,
-            amount: $amount,
-            metadata: $metadata,
-            createdAt: $createdAt ?? CarbonImmutable::parse('2026-04-05 12:00:00'),
-            correlationId: $correlationId,
-        );
-    }
-
     #[Test]
     public function it_exposes_all_getters_correctly(): void
     {
@@ -80,7 +56,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function getAmountInRubles_converts_kopecks_correctly(): void
+    public function get_amount_in_rubles_converts_kopecks_correctly(): void
     {
         $tx = $this->makeTransaction(amount: 150050);
         self::assertSame(1500.5, $tx->getAmountInRubles());
@@ -96,7 +72,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function isCredit_delegates_to_transaction_type(): void
+    public function is_credit_delegates_to_transaction_type(): void
     {
         $deposit = $this->makeTransaction(type: TransactionType::DEPOSIT);
         self::assertTrue($deposit->isCredit());
@@ -107,7 +83,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function isDebit_delegates_to_transaction_type(): void
+    public function is_debit_delegates_to_transaction_type(): void
     {
         $payout = $this->makeTransaction(type: TransactionType::PAYOUT);
         self::assertTrue($payout->isDebit());
@@ -118,7 +94,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function toArray_returns_complete_structure(): void
+    public function to_array_returns_complete_structure(): void
     {
         $createdAt = CarbonImmutable::parse('2026-03-15 08:00:00');
         $tx = $this->makeTransaction(
@@ -148,7 +124,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function toArray_handles_null_business_group(): void
+    public function to_array_handles_null_business_group(): void
     {
         $tx = $this->makeTransaction(businessGroupId: null);
         $array = $tx->toArray();
@@ -157,7 +133,7 @@ final class FinancialTransactionTest extends TestCase
     }
 
     #[Test]
-    public function toArray_contains_all_required_keys(): void
+    public function to_array_contains_all_required_keys(): void
     {
         $tx = $this->makeTransaction();
         $array = $tx->toArray();
@@ -171,5 +147,29 @@ final class FinancialTransactionTest extends TestCase
         foreach ($requiredKeys as $key) {
             self::assertArrayHasKey($key, $array, "Missing key: {$key}");
         }
+    }
+
+    private function makeTransaction(
+        int $id = 1,
+        int $tenantId = 100,
+        ?int $businessGroupId = null,
+        int $walletId = 50,
+        TransactionType $type = TransactionType::DEPOSIT,
+        int $amount = 150000,
+        array $metadata = [],
+        ?CarbonImmutable $createdAt = null,
+        string $correlationId = 'test-corr-123',
+    ): FinancialTransaction {
+        return new FinancialTransaction(
+            id: $id,
+            tenantId: $tenantId,
+            businessGroupId: $businessGroupId,
+            walletId: $walletId,
+            type: $type,
+            amount: $amount,
+            metadata: $metadata,
+            createdAt: $createdAt ?? CarbonImmutable::parse('2026-04-05 12:00:00'),
+            correlationId: $correlationId,
+        );
     }
 }

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Communication\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Communication\DTOs\CreateChannelDto;
 
 /**
  * Unit tests for CreateChannelDto.
@@ -14,7 +17,7 @@ final class CreateChannelDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Communication\DTOs\CreateChannelDto::class
+            CreateChannelDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateChannelDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateChannelDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateChannelDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Communication\DTOs\CreateChannelDto::class
+            CreateChannelDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('name', $params, 'Constructor must have name');
         $this->assertContains('type', $params, 'Constructor must have type');
@@ -37,7 +40,7 @@ final class CreateChannelDtoTest extends TestCase
         $this->assertContains('tags', $params, 'Constructor must have tags');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -47,6 +50,6 @@ final class CreateChannelDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Communication\DTOs\CreateChannelDto::class;
+        return CreateChannelDto::class;
     }
 }

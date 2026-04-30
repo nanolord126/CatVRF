@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Presentation\Filament;
 
-use App\Domains\Advertising\Application\UseCases\CreateAdCampaignUseCase;
 use App\Models\Advertising\AdCampaign;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -12,7 +11,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 
 final class AdCampaignResource extends Resource
 {

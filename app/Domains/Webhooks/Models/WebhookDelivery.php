@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Webhooks\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Tenant;
+use Illuminate\Support\Str;
 
 final class WebhookDelivery extends Model
 {
@@ -31,19 +34,6 @@ final class WebhookDelivery extends Model
         'next_retry_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant()->id);
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
-
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
@@ -66,8 +56,21 @@ final class WebhookDelivery extends Model
 
     public function shouldRetry(): bool
     {
-        return $this->isFailed() 
+        return $this->isFailed()
             && $this->retry_count < ($this->webhook->retry_count ?? 3)
-            && (!$this->next_retry_at || $this->next_retry_at->isPast());
+            && (! $this->next_retry_at || $this->next_retry_at->isPast());
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            $query->where('tenant_id', tenant()->id);
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

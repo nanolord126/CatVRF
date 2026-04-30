@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -8,19 +10,12 @@ use Modules\Taxi\Services\TaxiRideCreateDto;
 use Modules\Taxi\Models\TaxiRide;
 use Modules\Taxi\Models\TaxiDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 final class TaxiLoadTest extends TestCase
 {
     use RefreshDatabase;
 
     private TaxiRideService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiRideService::class);
-    }
 
     public function test_concurrent_ride_creation(): void
     {
@@ -115,12 +110,18 @@ final class TaxiLoadTest extends TestCase
         $startTime = microtime(true);
 
         for ($i = 0; $i < 100; $i++) {
-            Cache::remember("test-cache-{$i}", 60, fn() => ['data' => $i]);
+            Cache::remember("test-cache-{$i}", 60, fn () => ['data' => $i]);
             Cache::get("test-cache-{$i}");
         }
 
         $duration = microtime(true) - $startTime;
 
         $this->assertLessThan(1.0, $duration);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiRideService::class);
     }
 }

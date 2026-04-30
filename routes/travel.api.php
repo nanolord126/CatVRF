@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\Travel\Http\Controllers\TravelAgencyController;
 use App\Domains\Travel\Http\Controllers\TravelTourController;
@@ -26,7 +28,7 @@ Route::prefix('api/travel')->group(function () {
         Route::get('/search', [TravelAgencyController::class, 'search']);
         Route::get('/guides', [TravelAgencyController::class, 'indexGuides']);
         Route::get('/guides/{id}', [TravelAgencyController::class, 'showGuide']);
-        
+
         // External flight search endpoints
         Route::prefix('flights/search')->group(function () {
             Route::get('/', [FlightSearchController::class, 'search']);

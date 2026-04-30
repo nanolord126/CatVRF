@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Beauty;
 
@@ -11,12 +13,6 @@ final class AppointmentControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-    }
 
     public function test_cancel_requires_auth(): void
     {
@@ -32,5 +28,11 @@ final class AppointmentControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
     }
 }

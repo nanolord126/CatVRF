@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Fraud;
 
@@ -15,15 +17,6 @@ final class MLInferenceServiceTest extends TestCase
     use RefreshDatabase;
 
     private MLInferenceService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(MLInferenceService::class);
-        
-        // Reset circuit breaker before each test
-        Redis::flushdb();
-    }
 
     public function test_predict_returns_fallback_score_when_ml_unavailable(): void
     {
@@ -97,7 +90,7 @@ final class MLInferenceServiceTest extends TestCase
     public function test_circuit_breaker_can_be_reset(): void
     {
         Config::set('fraud.ml.http_endpoint', 'http://invalid-endpoint');
-        
+
         $features = ['transactions_5min' => 0];
 
         // Trigger failures
@@ -169,5 +162,14 @@ final class MLInferenceServiceTest extends TestCase
         $version2 = $this->service->getCurrentModelVersion();
 
         $this->assertEquals($version1, $version2);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(MLInferenceService::class);
+
+        // Reset circuit breaker before each test
+        Redis::flushdb();
     }
 }

@@ -1,63 +1,66 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Courses;
-use Illuminate\Database\Eloquent\Model;
 
-use Illuminate\Notifications\Notification;
+use App\Notifications\BaseMailableNotification;
+use App\Notifications\BasePushNotification;
 
-final class EnrollmentConfirmedNotification extends Model
+final class EnrollmentConfirmedNotification extends BaseMailableNotification
 {
+    private readonly string $type = 'courses.enrollment.confirmed';
 
-    private string $type = 'courses.enrollment.confirmed';
-        private string $template = 'emails.courses.enrollment_confirmed';
+    private readonly string $template = 'emails.courses.enrollment_confirmed';
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-            $this->subject = 'Welcome to ' . ($data['course_name'] ?? 'Course');
-        }
-    }
-
-    final class CourseStartedNotification extends BasePushNotification
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'courses.course.started';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-
-            $this->title('Course is now available!')
-                 ->body('Start learning ' . ($data['course_name'] ?? ''))
-                 ->type('action')
-                 ->autoClose(0)
-                 ->deepLink('/courses/' . ($data['course_id'] ?? '') . '/start');
-        }
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
+        $this->subject = 'Welcome to '.($data['course_name'] ?? 'Course');
     }
+}
 
-    final class AssignmentGradedNotification extends BasePushNotification
+final class CourseStartedNotification extends BasePushNotification
+{
+    private readonly string $type = 'courses.course.started';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'courses.assignment.graded';
+        parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-
-            $this->title('Assignment graded')
-                 ->body('Your score: ' . ($data['score'] ?? '0') . '%')
-                 ->type('info')
-                 ->autoClose(8000)
-                 ->deepLink('/courses/' . ($data['course_id'] ?? '') . '/grades');
-        }
+        $this->title('Course is now available!')
+            ->body('Start learning '.($data['course_name'] ?? ''))
+            ->type('action')
+            ->autoClose(0)
+            ->deepLink('/courses/'.($data['course_id'] ?? '').'/start');
     }
+}
 
-    final class CertificateIssuedNotification extends BaseMailableNotification
+final class AssignmentGradedNotification extends BasePushNotification
+{
+    private readonly string $type = 'courses.assignment.graded';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'courses.certificate.issued';
-        private string $template = 'emails.courses.certificate_issued';
+        parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-            $this->subject = 'Congratulations! Your certificate is ready';
-        }
+        $this->title('Assignment graded')
+            ->body('Your score: '.($data['score'] ?? '0').'%')
+            ->type('info')
+            ->autoClose(8000)
+            ->deepLink('/courses/'.($data['course_id'] ?? '').'/grades');
+    }
+}
+
+final class CertificateIssuedNotification extends BaseMailableNotification
+{
+    private readonly string $type = 'courses.certificate.issued';
+
+    private readonly string $template = 'emails.courses.certificate_issued';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
+    {
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
+        $this->subject = 'Congratulations! Your certificate is ready';
+    }
 }

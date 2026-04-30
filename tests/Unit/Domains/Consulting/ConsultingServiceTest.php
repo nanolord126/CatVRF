@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Consulting;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ConsultingService.
- *
- * @covers \App\Domains\Consulting\Domain\Services\ConsultingService
- */
-final class ConsultingServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Consulting\Domain\Services\ConsultingService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ConsultingService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Consulting\Domain\Services\ConsultingService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ConsultingService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Consulting');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Consulting\Domain\Services\ConsultingService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ConsultingService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ConsultingService exists and is instantiable', function () {
+    $this->assertServiceExists('ConsultingService');
+});
 
-    public function test_createProject_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Consulting\Domain\Services\ConsultingService::class, 'createProject'),
-            'ConsultingService must implement createProject()'
-        );
-    }
+test('ConsultingService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ConsultingService');
+});
 
-    public function test_completeProject_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Consulting\Domain\Services\ConsultingService::class, 'completeProject'),
-            'ConsultingService must implement completeProject()'
-        );
-    }
+test('ConsultingService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ConsultingService', 'process', []);
+});
 
-    public function test_cancelProject_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Consulting\Domain\Services\ConsultingService::class, 'cancelProject'),
-            'ConsultingService must implement cancelProject()'
-        );
-    }
+test('ConsultingService enforces quota limits', function () {
+    $this->testServiceWithQuota('ConsultingService', 'process', 1, 10, []);
+});
 
-    public function test_getProject_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Consulting\Domain\Services\ConsultingService::class, 'getProject'),
-            'ConsultingService must implement getProject()'
-        );
-    }
+test('ConsultingService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ConsultingService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getUserProjects_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Consulting\Domain\Services\ConsultingService::class, 'getUserProjects'),
-            'ConsultingService must implement getUserProjects()'
-        );
-    }
+test('ConsultingService has proper caching', function () {
+    $cacheKey = 'consulting:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ConsultingService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ConsultingService dispatches proper events', function () {
+    $eventClass = "App\Domains\Consulting\Events\ConsultingProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ConsultingService'));
+        $service->process([]);
+    });
+});
+
+test('ConsultingService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Consulting\Jobs\ProcessConsultingJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ConsultingService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ConsultingService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ConsultingService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ConsultingService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ConsultingService'));
+        $service->process([]);
+    }, 'ConsultingService processed');
+});
+
+test('ConsultingService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

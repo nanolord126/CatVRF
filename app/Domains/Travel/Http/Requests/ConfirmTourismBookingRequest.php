@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Requests;
 
@@ -6,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Confirm Tourism Booking Request
- * 
+ *
  * Validation request for confirming tourism bookings.
  */
 final class ConfirmTourismBookingRequest extends FormRequest

@@ -19,7 +19,6 @@ use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Auto\Taxi\Application\Shared\DTOs
  */
 final readonly class RequestRideDTO
 {
@@ -27,9 +26,8 @@ final readonly class RequestRideDTO
         public int $clientId,
         public Coordinate $pickupLocation,
         public Coordinate $dropoffLocation,
-        public string $correlationId) {
-
-    }
+        public string $correlationId
+    ) {}
 
     public static function fromArray(array $data): self
     {

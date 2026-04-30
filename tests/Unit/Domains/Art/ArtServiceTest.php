@@ -1,64 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Art;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ArtService.
- *
- * @covers \App\Domains\Art\Domain\Services\ArtService
- */
-final class ArtServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Art\Domain\Services\ArtService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ArtService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Art\Domain\Services\ArtService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ArtService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Art');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Art\Domain\Services\ArtService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ArtService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ArtService exists and is instantiable', function () {
+    $this->assertServiceExists('ArtService');
+});
 
-    public function test_createProject_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Art\Domain\Services\ArtService::class, 'createProject'),
-            'ArtService must implement createProject()'
-        );
-    }
+test('ArtService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ArtService');
+});
 
-    public function test_addArtwork_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Art\Domain\Services\ArtService::class, 'addArtwork'),
-            'ArtService must implement addArtwork()'
-        );
-    }
+test('ArtService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ArtService', 'process', []);
+});
 
-    public function test_recordReview_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Art\Domain\Services\ArtService::class, 'recordReview'),
-            'ArtService must implement recordReview()'
-        );
-    }
+test('ArtService enforces quota limits', function () {
+    $this->testServiceWithQuota('ArtService', 'process', 1, 10, []);
+});
 
-}
+test('ArtService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ArtService'));
+        $service->process([]);
+    }, 10);
+});
+
+test('ArtService has proper caching', function () {
+    $cacheKey = 'art:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ArtService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ArtService dispatches proper events', function () {
+    $eventClass = "App\Domains\Art\Events\ArtProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ArtService'));
+        $service->process([]);
+    });
+});
+
+test('ArtService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Art\Jobs\ProcessArtJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ArtService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ArtService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ArtService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ArtService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ArtService'));
+        $service->process([]);
+    }, 'ArtService processed');
+});
+
+test('ArtService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

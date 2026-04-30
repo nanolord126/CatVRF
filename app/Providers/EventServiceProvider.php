@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Event;
 use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
 use App\Domains\Beauty\Events\LoyaltyPointsEarnedEvent;
 use App\Domains\Beauty\Events\MasterMatchedEvent;
@@ -50,6 +49,25 @@ use App\Domains\Sports\Listeners\SendBookingConfirmationNotificationListener;
 use App\Domains\Sports\Listeners\NotifyLiveStreamStartedListener;
 use App\Domains\Sports\Listeners\HandleFraudDetectedListener;
 use App\Listeners\DebitAdCampaignBudget;
+use Modules\GeoLogistics\Events\OrderCreated as LogisticsOrderCreated;
+use Modules\GeoLogistics\Events\OrderStatusChanged as LogisticsOrderStatusChanged;
+use Modules\GeoLogistics\Events\CourierLocationUpdated;
+use Modules\GeoLogistics\Listeners\WriteToClickHouseListener;
+use App\Domains\Supermarket\Events\InventoryUpdated;
+use App\Domains\Supermarket\Events\ReturnApproved;
+use App\Domains\Supermarket\Events\ReturnCreated;
+use App\Domains\Supermarket\Events\ReturnRejected;
+use App\Domains\Supermarket\Listeners\InvalidateProductCache;
+use App\Domains\Supermarket\Listeners\SendReturnApprovedNotification;
+use App\Domains\Supermarket\Listeners\SendReturnNotification;
+use App\Domains\Supermarket\Listeners\SendReturnRejectedNotification;
+use App\Domains\Supermarket\Listeners\UpdateSearchIndex;
+use Modules\CatCRM\Infrastructure\Listeners\Supermarket\OrderCreatedListener;
+use Modules\CatCRM\Infrastructure\Listeners\Supermarket\OrderStatusUpdatedListener;
+use Modules\CatCRM\Infrastructure\Listeners\Supermarket\SubscriptionCreatedListener;
+use Modules\CatCRM\Infrastructure\Listeners\Supermarket\ReturnCreatedListener;
+use App\Domain\Audit\Events\AuditEvent;
+use App\Infrastructure\Listeners\AuditEventListener;
 
 final class EventServiceProvider extends ServiceProvider
 {
@@ -80,156 +98,209 @@ final class EventServiceProvider extends ServiceProvider
             // AppointmentCompleted::class  => [DeductAppointmentConsumablesListener::class],
             VideoCallInitiatedEvent::class => [],
             VideoCallEndedEvent::class    => [VideoCallEndedListener::class],
-            AppointmentCancelled::class  => [],
+            // TODO: AppointmentCancelled event not implemented yet
+            // AppointmentCancelled::class  => [],
             MasterMatchedEvent::class    => [MasterMatchedListener::class],
             PriceUpdatedEvent::class     => [PriceUpdatedListener::class],
             LoyaltyPointsEarnedEvent::class => [LoyaltyPointsEarnedListener::class],
             FraudDetectedEvent::class    => [FraudDetectedListener::class],
-            ConsumableDeducted::class    => [UpdateConsumableInventory::class],
-            LowStockReached::class       => [LowStockNotificationListener::class],
+            // TODO: ConsumableDeducted, UpdateConsumableInventory not implemented yet
+            // ConsumableDeducted::class    => [UpdateConsumableInventory::class],
+            // TODO: LowStockReached, LowStockNotificationListener not implemented yet
+            // LowStockReached::class       => [LowStockNotificationListener::class],
 
             // ── Channels ────────────────────────────────────────────────
-            PostPublished::class    => [SendPostNotification::class],
-            ChannelArchived::class  => [SendChannelArchivedNotification::class],
-            ChannelSubscribed::class => [],
+            // TODO: PostPublished, SendPostNotification not implemented yet
+            // PostPublished::class    => [SendPostNotification::class],
+            // TODO: ChannelArchived, SendChannelArchivedNotification not implemented yet
+            // ChannelArchived::class  => [SendChannelArchivedNotification::class],
+            // TODO: ChannelSubscribed not implemented yet
+            // ChannelSubscribed::class => [],
 
             // ── Confectionery ───────────────────────────────────────────
-            BakeryOrderCreated::class => [],
-            BakeryOrderReady::class   => [],
+            // TODO: BakeryOrderCreated not implemented yet
+            // BakeryOrderCreated::class => [],
+            // TODO: BakeryOrderReady not implemented yet
+            // BakeryOrderReady::class   => [],
 
             // ── Courses ─────────────────────────────────────────────────
-            EnrollmentCreated::class => [DeductEnrollmentCommissionListener::class],
-            LessonCompleted::class   => [],
-            CertificateIssued::class => [SendCertificateNotificationListener::class],
+            // TODO: EnrollmentCreated, DeductEnrollmentCommissionListener not implemented yet
+            // EnrollmentCreated::class => [DeductEnrollmentCommissionListener::class],
+            // TODO: LessonCompleted not implemented yet
+            // LessonCompleted::class   => [],
+            // TODO: CertificateIssued, SendCertificateNotificationListener not implemented yet
+            // CertificateIssued::class => [SendCertificateNotificationListener::class],
 
             // ── Electronics ─────────────────────────────────────────────
-            WarrantyClaimSubmitted::class => [],
+            // TODO: WarrantyClaimSubmitted not implemented yet
+            // WarrantyClaimSubmitted::class => [],
 
             // ── Entertainment ───────────────────────────────────────────
-            EntertainmentBookingCreated::class => [EntertainmentDeductBookingCommission::class],
-            EventCancelled::class              => [EntertainmentRefundBookingCommission::class],
-            TicketSold::class                  => [],
+            // TODO: EntertainmentBookingCreated, EntertainmentDeductBookingCommission not implemented yet
+            // EntertainmentBookingCreated::class => [EntertainmentDeductBookingCommission::class],
+            // TODO: EventCancelled, EntertainmentRefundBookingCommission not implemented yet
+            // EventCancelled::class              => [EntertainmentRefundBookingCommission::class],
+            // TODO: TicketSold not implemented yet
+            // TicketSold::class                  => [],
 
             // ── FarmDirect ──────────────────────────────────────────────
-            FarmOrderCreated::class => [],
-            FarmOrderShipped::class => [],
+            // TODO: FarmOrderCreated not implemented yet
+            // FarmOrderCreated::class => [],
+            // TODO: FarmOrderShipped not implemented yet
+            // FarmOrderShipped::class => [],
 
             // ── Fashion ─────────────────────────────────────────────────
-            OrderPlaced::class     => [FashionDeductCommission::class],
-            OrderShipped::class    => [],
-            ReturnRequested::class => [FashionRefundCommission::class],
+            // TODO: OrderPlaced, FashionDeductCommission not implemented yet
+            // OrderPlaced::class     => [FashionDeductCommission::class],
+            // TODO: OrderShipped not implemented yet
+            // OrderShipped::class    => [],
+            // TODO: ReturnRequested, FashionRefundCommission not implemented yet
+            // ReturnRequested::class => [FashionRefundCommission::class],
 
             // ── Fitness ─────────────────────────────────────────────────
-            AttendanceRecorded::class => [],
-            MembershipCreated::class  => [DeductMembershipCommissionListener::class],
-            MembershipExpired::class  => [RefundMembershipCommissionListener::class],
+            // TODO: AttendanceRecorded not implemented yet
+            // AttendanceRecorded::class => [],
+            // TODO: MembershipCreated, DeductMembershipCommissionListener not implemented yet
+            // MembershipCreated::class  => [DeductMembershipCommissionListener::class],
+            // TODO: MembershipExpired, RefundMembershipCommissionListener not implemented yet
+            // MembershipExpired::class  => [RefundMembershipCommissionListener::class],
 
             // ── Flowers ─────────────────────────────────────────────────
-            FlowerOrderPlaced::class       => [
-                DeductFlowerOrderCommission::class,
-                DeductFlowerConsumables::class,
-            ],
-            FlowerOrderCreated::class      => [DeductFlowerConsumables::class],
-            FlowerDeliveryCompleted::class => [UpdateFlowerShopRating::class],
-            B2BFlowerOrderPlaced::class    => [DeductFlowerConsumables::class],
+            // TODO: FlowerOrderPlaced, DeductFlowerOrderCommission, DeductFlowerConsumables not implemented yet
+            // FlowerOrderPlaced::class       => [
+            //     DeductFlowerOrderCommission::class,
+            //     DeductFlowerConsumables::class,
+            // ],
+            // TODO: FlowerOrderCreated, DeductFlowerConsumables not implemented yet
+            // FlowerOrderCreated::class      => [DeductFlowerConsumables::class],
+            // TODO: FlowerDeliveryCompleted, UpdateFlowerShopRating not implemented yet
+            // FlowerDeliveryCompleted::class => [UpdateFlowerShopRating::class],
+            // TODO: B2BFlowerOrderPlaced not implemented yet
+            // B2BFlowerOrderPlaced::class    => [DeductFlowerConsumables::class],
 
             // ── Food ────────────────────────────────────────────────────
-            OrderCreated::class       => [NotifyRestaurantNewOrder::class],
-            OrderDelivered::class     => [ProcessOrderDeliveredCommission::class],
-            OrderCompleted::class     => [DeductOrderConsumablesListener::class],
-            DeliveryStarted::class    => [],
-            LowConsumableStock::class => [LowConsumableStockAlertListener::class],
+            // TODO: OrderCreated, NotifyRestaurantNewOrder not implemented yet
+            // OrderCreated::class       => [NotifyRestaurantNewOrder::class],
+            // TODO: OrderDelivered, ProcessOrderDeliveredCommission not implemented yet
+            // OrderDelivered::class     => [ProcessOrderDeliveredCommission::class],
+            // TODO: OrderCompleted, DeductOrderConsumablesListener not implemented yet
+            // OrderCompleted::class     => [DeductOrderConsumablesListener::class],
+            // TODO: DeliveryStarted not implemented yet
+            // DeliveryStarted::class    => [],
+            // TODO: LowConsumableStock, LowConsumableStockAlertListener not implemented yet
+            // LowConsumableStock::class => [LowConsumableStockAlertListener::class],
 
             // ── Freelance ───────────────────────────────────────────────
-            ProposalAccepted::class         => [DeductProposalCommissionListener::class],
-            PaymentMilestoneReleased::class => [ReleaseFreelancerPaymentListener::class],
-            DeliverableSubmitted::class     => [],
+            // TODO: ProposalAccepted, DeductProposalCommissionListener not implemented yet
+            // ProposalAccepted::class         => [DeductProposalCommissionListener::class],
+            // TODO: PaymentMilestoneReleased, ReleaseFreelancerPaymentListener not implemented yet
+            // PaymentMilestoneReleased::class => [ReleaseFreelancerPaymentListener::class],
+            // TODO: DeliverableSubmitted not implemented yet
+            // DeliverableSubmitted::class     => [],
 
             // ── FreshProduce ────────────────────────────────────────────
-            ProduceOrderCreated::class  => [],
-            BoxDelivered::class         => [],
-            QualityIssueDetected::class => [],
+            // TODO: FreshProduce events not implemented yet
+            // ProduceOrderCreated::class  => [],
+            // BoxDelivered::class         => [],
+            // QualityIssueDetected::class => [],
 
             // ── Furniture ───────────────────────────────────────────────
-            FurnitureOrderCreated::class => [],
-            FurnitureDelivered::class    => [],
+            // TODO: Furniture events not implemented yet
+            // FurnitureOrderCreated::class => [],
+            // FurnitureDelivered::class    => [],
 
             // ── HealthyFood ─────────────────────────────────────────────
-            MealOrderCreated::class => [],
-            MealDelivered::class    => [],
+            // TODO: HealthyFood events not implemented yet
+            // MealOrderCreated::class => [],
+            // MealDelivered::class    => [],
 
             // ── HomeServices ────────────────────────────────────────────
-            ServiceJobCreated::class          => [DeductJobCommissionListener::class],
-            ServiceJobCompleted::class        => [],
-            HomeServicesReviewSubmitted::class => [],
+            // TODO: HomeServices events not implemented yet
+            // ServiceJobCreated::class          => [DeductJobCommissionListener::class],
+            // ServiceJobCompleted::class        => [],
+            // HomeServicesReviewSubmitted::class => [],
 
             // ── Hotels ──────────────────────────────────────────────────
-            HotelsBookingCreated::class  => [HotelsDeductBookingCommission::class],
-            BookingCancelled::class      => [HotelsRefundBookingCommission::class],
-            CheckoutCompleted::class     => [ScheduleHotelPayout::class],
-            HotelsReviewSubmitted::class => [],
+            // TODO: Hotels events not implemented yet
+            // HotelsBookingCreated::class  => [HotelsDeductBookingCommission::class],
+            // BookingCancelled::class      => [HotelsRefundBookingCommission::class],
+            // CheckoutCompleted::class     => [ScheduleHotelPayout::class],
+            // HotelsReviewSubmitted::class => [],
 
             // ── Logistics ───────────────────────────────────────────────
-            ShipmentCreated::class   => [DeductShipmentCommissionListener::class],
-            ShipmentDelivered::class => [RefundShipmentCommissionListener::class],
-            CourierAssigned::class   => [],
+            // TODO: Logistics commission events not implemented yet
+            // ShipmentCreated::class   => [DeductShipmentCommissionListener::class],
+            // ShipmentDelivered::class => [RefundShipmentCommissionListener::class],
+            // CourierAssigned::class   => [],
+            
+            // ── Logistics AI (ClickHouse Pipeline) ─────────────────────
+            LogisticsOrderCreated::class => [WriteToClickHouseListener::class],
+            LogisticsOrderStatusChanged::class => [WriteToClickHouseListener::class],
+            CourierLocationUpdated::class => [WriteToClickHouseListener::class],
 
             // ── MeatShops ───────────────────────────────────────────────
-            MeatOrderCreated::class => [],
+            // TODO: MeatShops events not implemented yet
+            // MeatOrderCreated::class => [],
 
             // ── Medical ─────────────────────────────────────────────────
-            AppointmentBooked::class           => [MedicalDeductAppointmentCommission::class],
-            MedicalAppointmentCompleted::class => [],
-            TestOrderCreated::class            => [DeductTestOrderCommissionListener::class],
+            // TODO: Medical commission events not implemented yet
+            // AppointmentBooked::class           => [MedicalDeductAppointmentCommission::class],
+            // MedicalAppointmentCompleted::class => [],
+            // TestOrderCreated::class            => [DeductTestOrderCommissionListener::class],
 
             // ── OfficeCatering ──────────────────────────────────────────
-            CorporateOrderCreated::class => [],
+            // TODO: OfficeCatering events not implemented yet
+            // CorporateOrderCreated::class => [],
 
             // ── Pet ─────────────────────────────────────────────────────
-            PetAppointmentBooked::class       => [PetDeductAppointmentCommission::class],
-            BoardingReservationCreated::class => [DeductBoardingCommissionListener::class],
-            PetReviewCreated::class           => [],
+            // TODO: Pet commission events not implemented yet
+            // PetAppointmentBooked::class       => [PetDeductAppointmentCommission::class],
+            // BoardingReservationCreated::class => [DeductBoardingCommissionListener::class],
+            // PetReviewCreated::class           => [],
 
             // ── Pharmacy ────────────────────────────────────────────────
-            PharmacyOrderCreated::class => [],
-            PrescriptionVerified::class => [],
+            // TODO: Pharmacy events not implemented yet
+            // PharmacyOrderCreated::class => [],
+            // PrescriptionVerified::class => [],
 
             // ── Photography ─────────────────────────────────────────────
-            SessionCreated::class   => [DeductSessionCommissionListener::class],
-            SessionCompleted::class => [UpdateRatingsListener::class],
-            PhotoReviewSubmitted::class => [UpdateRatingsListener::class],
+            // TODO: Photography events not implemented yet
+            // SessionCreated::class   => [DeductSessionCommissionListener::class],
+            // SessionCompleted::class => [UpdateRatingsListener::class],
+            // PhotoReviewSubmitted::class => [UpdateRatingsListener::class],
 
             // ── RealEstate (Clean Architecture 2026) ────────────────────
-            \App\Domains\RealEstate\Domain\Events\ViewingConfirmed::class => [
-                \App\Domains\RealEstate\Application\Listeners\NotifyClientOnViewingConfirmed::class,
-            ],
             \App\Domains\RealEstate\Domain\Events\ContractSigned::class => [
                 \App\Domains\RealEstate\Application\Listeners\UpdatePropertyStatusOnContractSigned::class,
-            // Sports AI & Live Stream Events
-            AdaptiveWorkoutGeneratedEvent::class => [SyncAdaptiveWorkoutToCRMListener::class],
-            BookingConfirmedEvent::class => [SendBookingConfirmationNotificationListener::class],
-            LiveStreamStartedEvent::class => [NotifyLiveStreamStartedListener::class],
-            SportsFraudDetectedEvent::class => [HandleFraudDetectedListener::class],
             ],
             \App\Domains\RealEstate\Domain\Events\PropertyListed::class  => [],
             \App\Domains\RealEstate\Domain\Events\ViewingCancelled::class => [],
 
             // ── Sports ──────────────────────────────────────────────────
-            PurchaseCreated::class   => [DeductPurchaseCommissionListener::class],
-            PurchaseRefunded::class  => [RefundPurchaseCommissionListener::class],
-            SportsReviewSubmitted::class => [],
+            // Sports AI & Live Stream Events
+            AdaptiveWorkoutGeneratedEvent::class => [SyncAdaptiveWorkoutToCRMListener::class],
+            BookingConfirmedEvent::class => [SendBookingConfirmationNotificationListener::class],
+            LiveStreamStartedEvent::class => [NotifyLiveStreamStartedListener::class],
+            SportsFraudDetectedEvent::class => [HandleFraudDetectedListener::class],
+            // TODO: Sports commission events not implemented yet
+            // PurchaseCreated::class   => [DeductPurchaseCommissionListener::class],
+            // PurchaseRefunded::class  => [RefundPurchaseCommissionListener::class],
+            // SportsReviewSubmitted::class => [],
 
             // ── Tickets ─────────────────────────────────────────────────
-            EventReviewSubmitted::class => [],
-            TicketSaleRefunded::class   => [RefundTicketSaleCommissionListener::class],
+            // TODO: Tickets events not implemented yet
+            // EventReviewSubmitted::class => [],
+            // TicketSaleRefunded::class   => [RefundTicketSaleCommissionListener::class],
 
             // ── ToysKids ────────────────────────────────────────────────
-            ToyOrderCreated::class => [],
+            // TODO: ToysKids events not implemented yet
+            // ToyOrderCreated::class => [],
 
             // ── Travel ──────────────────────────────────────────────────
-            TourBooked::class           => [DeductTourBookingCommissionListener::class],
-            FlightBooked::class         => [],
-            TransportationBooked::class => [DeductTransportationCommissionListener::class],
+            // TODO: Travel commission events not implemented yet
+            // TourBooked::class           => [DeductTourBookingCommissionListener::class],
+            // FlightBooked::class         => [],
+            // TransportationBooked::class => [DeductTransportationCommissionListener::class],
 
             // ── Ad Campaigns ─────────────────────────────────────────────
             AdImpressionRegistered::class => [
@@ -257,9 +328,128 @@ final class EventServiceProvider extends ServiceProvider
             \App\Domains\FraudML\Events\SignificantFeatureDriftDetected::class => [
                 \App\Domains\FraudML\Listeners\HandleSignificantFeatureDrift::class,
             ],
+
+            // ── Security & Account Protection ─────────────────────────────
+            \App\Events\Security\AccountLocked::class => [
+                \App\Listeners\Security\SendAccountLockedNotification::class,
+            ],
+            \App\Events\Security\RecoveryInitiated::class => [
+                \App\Listeners\Security\LogRecoveryInitiated::class,
+            ],
+            \App\Events\Security\PasskeyRevoked::class => [
+                \App\Listeners\Security\HandlePasskeyRevoked::class,
+            ],
+
+            // ── Zero-Trust Security Events ────────────────────────────────
+            \App\Events\Security\BruteForceDetected::class => [
+                \App\Listeners\Security\SendBruteForceAlert::class,
+            ],
+            \App\Events\Security\EmployeeRevoked::class => [
+                \App\Listeners\Security\NotifyEmployeeRevoked::class,
+            ],
+            \App\Events\Security\InsiderAnomalyDetected::class => [
+                \App\Listeners\Security\NotifyInsiderAnomaly::class,
+            ],
+
+            // ── Cooldown System Events ────────────────────────────────────
+            \App\Events\Security\CooldownStarted::class => [
+                \App\Listeners\CooldownNotificationListener::class,
+                \App\Listeners\Security\NotifyStakeholdersOnVpnBlockListener::class,
+            ],
+            \App\Events\Security\PasswordChanged::class => [
+                \App\Listeners\Security\PasswordChangedCooldownListener::class,
+            ],
+            \App\Events\Security\TwoFactorChanged::class => [
+                \App\Listeners\Security\TwoFactorChangedCooldownListener::class,
+            ],
+            \App\Events\Security\NewDeviceLogin::class => [
+                \App\Listeners\Security\NewDeviceLoginCooldownListener::class,
+            ],
+            \App\Events\Security\BankDetailsChanged::class => [
+                \App\Listeners\Security\BankDetailsChangedCooldownListener::class,
+            ],
+            \App\Events\Security\StaffInvited::class => [
+                \App\Listeners\Security\StaffInvitedCooldownListener::class,
+            ],
+
+            // ── Split Key Security Events ───────────────────────────────────
+            \App\Events\Security\SplitKeyGenerated::class => [
+                \App\Listeners\Security\LogSplitKeyGenerated::class,
+            ],
+            \App\Events\Security\SplitKeyInvalidated::class => [
+                \App\Listeners\Security\InvalidateSplitKeyOnHighRisk::class,
+                \App\Listeners\Security\SendSplitKeyInvalidatedNotification::class,
+            ],
+            \App\Events\Security\SplitKeyRotated::class => [
+                \App\Listeners\Security\LogSplitKeyRotated::class,
+            ],
+
+            // ── Payment Integration Events ───────────────────────────────────
+            \App\Domains\Payment\Events\PaymentSucceeded::class => [
+                \App\Domains\Payment\Listeners\UpdateBookingOnPaymentSuccess::class,
+                \App\Domains\Payment\Listeners\ProcessLoyaltyOnPaymentSuccess::class,
+            ],
+            \App\Domains\Payment\Events\PaymentFailed::class => [
+                \App\Domains\Payment\Listeners\UpdateBookingOnPaymentFailure::class,
+            ],
+
+            // ── Supermarket Inventory Events ─────────────────────────────
+            InventoryUpdated::class => [
+                InvalidateProductCache::class,
+                ReturnCreatedListener::class,
+                UpdateSearchIndex::class,
+            ],
+            ReturnCreated::class => [
+                SendReturnNotification::class,
+            ],
+            ReturnApproved::class => [
+                SendReturnApprovedNotification::class,
+            ],
+            ReturnRejected::class => [
+                SendReturnRejectedNotification::class,
+            ],
+
+            // ── Supermarket CRM Integration Events ─────────────────────
+            \App\Domains\Supermarket\Events\OrderCreated::class => [
+                OrderCreatedListener::class,
+            ],
+            \App\Domains\Supermarket\Events\OrderStatusUpdated::class => [
+                OrderStatusUpdatedListener::class,
+            ],
+            \App\Domains\Supermarket\Events\SubscriptionCreated::class => [
+                SubscriptionCreatedListener::class,
+            ],
+
+            // ── Manager Bonus Events ─────────────────────────────
+            \App\Events\B2BSaleBonusCreated::class => [
+                \App\Listeners\B2BSaleBonusListener::class,
+            ],
+
+            // ── CRM Task & KPI Events ─────────────────────────────
+            \Modules\CatCRM\Domain\Events\TaskCompleted::class => [
+                \Modules\CatCRM\Infrastructure\Listeners\UpdateKPIOnTaskCompletionListener::class,
+            ],
+            \Modules\CatCRM\Domain\Events\TaskAssigned::class => [
+                \Modules\CatCRM\Infrastructure\Listeners\UpdateKPIOnTaskAssignmentListener::class,
+            ],
+            \Modules\CatCRM\Domain\Events\KPICalculated::class => [
+                \Modules\CatCRM\Infrastructure\Listeners\LogKPICalculatedListener::class,
+            ],
+
+            // ── Audit Events (Domain-Driven Architecture 2026) ─────
+            AuditEvent::class => [
+                AuditEventListener::class,
+            ],
         ];
 
-        public function boot(): void {}
+        public function boot(): void
+        {
+            // Register Cache Observers for automatic invalidation
+            \App\Domains\Shared\Medical\Models\MedicalRecord::observe(\App\Observers\MedicalRecordObserver::class);
+            \App\Domains\Shared\Medical\Models\Doctor::observe(\App\Observers\DoctorObserver::class);
+            \App\Domains\Shared\Medical\Models\Clinic::observe(\App\Observers\ClinicObserver::class);
+            \App\Domains\Shared\Medical\Models\Appointment::observe(\App\Observers\AppointmentObserver::class);
+        }
 
         public function shouldDiscoverEvents(): bool
         {

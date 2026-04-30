@@ -1,17 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * 2026 AI Anonymized Feedback & Interest Aggregation
- * 
+ *
  * Обратная отдача для ML: агрегированные интересы без user_id
  * для обучения персонализированных моделей.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         // 1. Анонимные когорты пользователей (RFM + Persona)
@@ -31,7 +32,7 @@ return new class extends Migration
             $table->json('demographic_profile')->nullable(); // {age_bracket, income_level, family_status}
             $table->string('correlation_id')->index();
             $table->timestamps();
-            
+
             $table->unique(['vertical', 'persona', 'rfm_segment']);
             $table->index(['created_at', 'vertical']);
         });
@@ -55,7 +56,7 @@ return new class extends Migration
             $table->string('correlation_id')->index();
             $table->timestamp('last_updated_at')->useCurrent()->useCurrentOnUpdate();
             $table->timestamps();
-            
+
             $table->unique(['vertical', 'category', 'interest_type', 'geo_zone']);
             $table->index(['engagement_score', 'vertical']);
             $table->index(['created_at']);
@@ -67,7 +68,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('cohort_id')->index();
             $table->foreign('cohort_id')->references('cohort_id')->on('ai_user_cohorts')->onDelete('cascade');
-            
+
             $table->string('vertical');
             $table->string('category');
             $table->float('interest_strength')->comment('0-100: как сильно когорта интересуется'); // 0-100
@@ -77,7 +78,7 @@ return new class extends Migration
             $table->json('confidence_interval')->nullable(); // {lower: 0.3, upper: 0.4}
             $table->string('correlation_id')->index();
             $table->timestamps();
-            
+
             $table->unique(['cohort_id', 'vertical', 'category']);
             $table->index(['interest_strength', 'vertical']);
         });
@@ -90,7 +91,7 @@ return new class extends Migration
             $table->string('model_name'); // recommendation_v1, pricing_v2, etc.
             $table->string('vertical');
             $table->string('cohort_id')->nullable()->index(); // На какой когорте работало
-            
+
             // Метрики качества
             $table->float('precision')->nullable(); // Точность предсказаний
             $table->float('recall')->nullable(); // Полнота
@@ -98,7 +99,7 @@ return new class extends Migration
             $table->float('auc_roc')->nullable(); // Area Under ROC Curve
             $table->unsignedBigInteger('predictions_count')->default(0); // На скольких предсказаниях
             $table->unsignedBigInteger('conversions_from_predictions')->default(0); // Из них сконвертилось
-            
+
             // Для отладки
             $table->json('error_analysis')->nullable(); // Где модель ошибалась
             $table->json('feature_importance')->nullable(); // Какие фичи важны
@@ -106,7 +107,7 @@ return new class extends Migration
             $table->timestamp('last_validation_at')->nullable();
             $table->string('validation_status'); // pending, approved, rejected, needs_retraining
             $table->timestamps();
-            
+
             $table->index(['model_name', 'vertical', 'validation_status']);
             $table->index(['created_at']);
         });
@@ -119,26 +120,26 @@ return new class extends Migration
             $table->string('vertical');
             $table->string('purpose'); // recommendation, pricing, churn_prediction, fraud_detection
             $table->string('cohort_type')->nullable(); // all, premium, budget, at_risk
-            
+
             // Статистика датасета
             $table->unsignedBigInteger('sample_count')->default(0); // Сколько sample'ов
             $table->unsignedInteger('feature_count')->default(0); // Сколько фич
             $table->float('train_split')->default(0.7);
             $table->float('validation_split')->default(0.15);
             $table->float('test_split')->default(0.15);
-            
+
             // Балансировка и качество
             $table->boolean('is_balanced')->default(false);
             $table->json('class_distribution')->nullable(); // {positive: 0.2, negative: 0.8}
             $table->boolean('is_production_ready')->default(false);
-            
+
             // Версионирование
             $table->string('version')->default('1.0');
             $table->text('description')->nullable();
             $table->string('correlation_id')->index();
             $table->timestamp('expires_at')->nullable(); // Когда датасет устаревает
             $table->timestamps();
-            
+
             $table->unique(['vertical', 'purpose', 'version']);
             $table->index(['created_at', 'is_production_ready']);
         });
@@ -151,19 +152,19 @@ return new class extends Migration
             $table->string('vertical');
             $table->string('category');
             $table->date('date')->index(); // День снимка
-            
+
             // Снимок интереса на дату
             $table->float('interest_strength')->default(0); // 0-100
             $table->float('engagement_delta')->nullable(); // Изменение за день
             $table->unsignedBigInteger('event_count_daily')->default(0);
-            
+
             // Тренд
             $table->string('trend')->default('stable'); // rising, falling, stable
             $table->float('trend_velocity')->nullable(); // Скорость изменения
-            
+
             $table->string('correlation_id')->index();
             $table->timestamps();
-            
+
             $table->unique(['cohort_id', 'vertical', 'category', 'date']);
             $table->index(['date', 'vertical']);
             $table->index(['trend', 'trend_velocity']);
@@ -177,21 +178,21 @@ return new class extends Migration
             $table->uuid('cohort_id')->index();
             $table->string('model_name');
             $table->string('vertical');
-            
+
             // Рекомендация
             $table->string('recommended_category')->index();
             $table->string('recommendation_reason'); // interest_match, trending, price_range, geo_proximity
             $table->float('recommendation_confidence')->comment('0-1: уверенность модели');
-            
+
             // Результат
             $table->string('outcome')->default('pending'); // pending, clicked, purchased, ignored, negative_feedback
             $table->timestamp('feedback_received_at')->nullable();
             $table->json('feedback_metadata')->nullable(); // {dwell_time: 5, scroll_depth: 0.8}
-            
+
             // Для обучения
             $table->boolean('is_training_sample')->default(true);
             $table->string('correlation_id_parent')->nullable(); // Цепочка событий
-            
+
             $table->timestamps();
             $table->index(['model_name', 'outcome', 'created_at']);
             $table->index(['cohort_id', 'vertical']);

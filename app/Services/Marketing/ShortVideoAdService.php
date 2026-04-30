@@ -1,17 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use App\Services\AuditService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Models\User;
-
-
 use Illuminate\Support\Str;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * ShortVideoAdService — генерация коротких рекламных видео через AI.
@@ -26,13 +29,13 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class ShortVideoAdService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AuditService             $audit,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly AuditService $audit,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+        private readonly HttpFactory $http,) {}
 
     /**
      * Получить или сгенерировать шортс для рекламы.
@@ -76,8 +79,8 @@ final readonly class ShortVideoAdService
             'duration_sec'   => 15,        // 15-30 секунд
             'ab_variant'     => 'A',
             'correlation_id' => $correlationId,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'created_at'     => CarbonImmutable::now(),
+            'updated_at'     => CarbonImmutable::now(),
         ]);
 
         $this->audit->record('short_video_generated', 'short_video_ads', $shortId, [], ['ad_id' => $adId], $correlationId);
@@ -102,7 +105,7 @@ final readonly class ShortVideoAdService
             'user_id'        => $userId,
             'watch_time_sec' => $watchTimeSec,
             'correlation_id' => $correlationId,
-            'viewed_at'      => now(),
+            'viewed_at'      => CarbonImmutable::now(),
         ]);
     }
 
@@ -116,28 +119,63 @@ final readonly class ShortVideoAdService
         $categories = implode(', ', array_keys($tasteArray['categories'] ?? []));
 
         return "Создай рекламный шортс 15-30 секунд для вертикали '{$vertical}'. "
-            . "Предпочтения пользователя: {$categories}. "
-            . "Продукт: {$ad['title']}. "
-            . 'Стиль: современный, динамичный. Язык: русский.';
+            ."Предпочтения пользователя: {$categories}. "
+            ."Продукт: {$ad['title']}. "
+            .'Стиль: современный, динамичный. Язык: русский.';
     }
 
     private function callAiVideoGenerator(string $prompt, array $ad): string
     {
-        $driver = $this->config->get('services.ai_video.driver', 'stub');
-
-        if ($driver === 'stub' || app()->environment('testing')) {
-            // В dev/test — возвращаем placeholder URL
-            return 'https://cdn.example.com/shorts/stub_' . Str::random(8) . '.mp4';
+        $driver = $this->config->get('services.ai_video.driver');
+        if (! $driver) {
+            throw new \RuntimeException('AI video generator driver not configured');
         }
 
-        // В production — вызов реального AI-видео API (Runway, Pika, GPT-4o Video)
-        $response = \Illuminate\Support\Facades\Http::withToken($this->config->get('services.ai_video.api_key'))
-            ->post($this->config->get('services.ai_video.endpoint'), [
-                'prompt'    => $prompt,
-                'duration'  => 15,
-                'thumbnail' => $ad['image_url'] ?? null,
+        try {
+            // В production — вызов реального AI-видео API (Runway, Pika, GPT-4o Video)
+            $response = $this->http->withToken($this->config->get('services.ai_video.api_key'))
+                ->timeout(30)
+                ->post($this->config->get('services.ai_video.endpoint'), [
+                    'prompt'    => $prompt,
+                    'duration'  => 15,
+                    'thumbnail' => $ad['image_url'] ?? null,
+                ]);
+
+            if (! $response->successful()) {
+                $this->logger->channel('audit')->error('AI video API request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                throw new \RuntimeException("AI video API failed: {$response->status()}");
+            }
+
+            $videoUrl = $response->json('video_url', '');
+
+            if (empty($videoUrl)) {
+                throw new \RuntimeException('AI video API returned empty video_url');
+            }
+
+            return $videoUrl;
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            $this->logger->channel('audit')->error('AI video API connection error', [
+                'error' => $e->getMessage(),
             ]);
 
-        return $response->json('video_url', '');
+            throw new \RuntimeException('AI video service unavailable', 0, $e);
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $this->logger->channel('audit')->error('AI video API request error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new \RuntimeException('AI video request failed', 0, $e);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('AI video generation error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw new \RuntimeException('AI video generation failed', 0, $e);
+        }
     }
 }

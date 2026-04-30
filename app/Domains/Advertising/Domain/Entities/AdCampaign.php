@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Entities;
 
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -12,8 +14,6 @@ use Illuminate\Support\Str;
  *
  * Immutable value object representing an advertising campaign.
  * Properties are public readonly for cross-layer access.
- *
- * @package App\Domains\Advertising\Domain\Entities
  */
 final class AdCampaign
 {
@@ -67,7 +67,7 @@ final class AdCampaign
     public function isActive(): bool
     {
         return $this->status === 'active'
-            && Carbon::now()->between($this->start_at, $this->end_at);
+            && CarbonImmutable::now()->between($this->start_at, $this->end_at);
     }
 
     /**
@@ -91,6 +91,6 @@ final class AdCampaign
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new') . ':' . $this->name;
+        return self::class.'::'.($this->id ?? 'new').':'.$this->name;
     }
 }

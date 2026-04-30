@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\B2B;
+
+use Illuminate\Support\Collection;
 
 use App\Http\Controllers\Controller;
 use App\Services\InventoryService;
@@ -8,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Str;
 
 /**
  * B2BProductController — просмотр каталога товаров по оптовым ценам.
@@ -16,7 +21,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 final class B2BProductController extends Controller
 {
     public function __construct(
-        private InventoryService $inventory,
+        private readonly InventoryService $inventory,
         private readonly DatabaseManager $db,
         private readonly ResponseFactory $response,
     ) {}
@@ -27,7 +32,7 @@ final class B2BProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
         $tenantId = $request->input('b2b_tenant_id');
 
@@ -42,8 +47,9 @@ final class B2BProductController extends Controller
             ->paginate(50);
 
         // Добавляем актуальные остатки
-        $items = collect($products->items())->map(function (object $product) use ($tenantId): array {
+        $items = new Collection($products->items())->map(function (object $product): array {
             $stock = $this->inventory->getAvailableStock((int) $product->id);
+
             return [
                 'id'                      => $product->id,
                 'uuid'                    => $product->uuid,
@@ -77,7 +83,7 @@ final class B2BProductController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
         $tenantId      = $request->input('b2b_tenant_id');
 
         $product = $this->db->table('products')
@@ -86,7 +92,7 @@ final class B2BProductController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$product) {
+        if (! $product) {
             return $this->response->json(['success' => false, 'message' => 'Товар не найден.'], 404);
         }
 

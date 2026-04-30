@@ -8,21 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property string              $id
- * @property int                 $tenant_id
- * @property string              $property_id
- * @property string              $agent_id
- * @property int                 $client_id
- * @property string              $type
- * @property int                 $price_kopecks
- * @property int                 $commission_kopecks
- * @property string              $status
- * @property int|null            $lease_duration_months
- * @property string|null         $document_url
+ * @property string $id
+ * @property int $tenant_id
+ * @property string $property_id
+ * @property string $agent_id
+ * @property int $client_id
+ * @property string $type
+ * @property int $price_kopecks
+ * @property int $commission_kopecks
+ * @property string $status
+ * @property int|null $lease_duration_months
+ * @property string|null $document_url
  * @property \DateTimeInterface|null $signed_at
  * @property \DateTimeInterface|null $terminated_at
- * @property string|null         $correlation_id
- * @property array|null          $tags
+ * @property string|null $correlation_id
+ * @property array|null $tags
  */
 final class ContractModel extends Model
 {
@@ -57,7 +57,7 @@ final class ContractModel extends Model
     protected $casts = [
         'price_kopecks'        => 'integer',
         'commission_kopecks'   => 'integer',
-        'lease_duration_months'=> 'integer',
+        'lease_duration_months' => 'integer',
         'signed_at'            => 'datetime',
         'terminated_at'        => 'datetime',
         'tags'                 => 'array',
@@ -75,7 +75,7 @@ final class ContractModel extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', static function ($builder): void {
+        self::addGlobalScope('tenant', static function ($builder): void {
             if (function_exists('tenant') && tenant() !== null) {
                 $builder->where('tenant_id', tenant()->id);
             }

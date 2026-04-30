@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\HR;
+
+use Carbon\CarbonImmutable;
 
 use App\Models\Employee;
 use Filament\Forms\Components\DatePicker;
@@ -13,7 +17,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -22,15 +25,25 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\CreateEmployee;
+use App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\EditEmployee;
+use App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\ListEmployees;
+use App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\ViewEmployee;
 
 final class EmployeeResource extends Resource
 {
     protected static ?string $model = Employee::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static ?string $navigationGroup = 'HR';
+
     protected static ?string $navigationLabel = 'Сотрудники';
+
     protected static ?string $modelLabel = 'Сотрудник';
+
     protected static ?string $pluralModelLabel = 'Сотрудники';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
@@ -87,7 +100,7 @@ final class EmployeeResource extends Resource
                     DatePicker::make('hire_date')
                         ->label('Дата найма')
                         ->required()
-                        ->default(now()->toDateString())
+                        ->default(CarbonImmutable::now()->toDateString())
                         ->columnSpan(1),
                     DatePicker::make('termination_date')
                         ->label('Дата увольнения')
@@ -133,7 +146,7 @@ final class EmployeeResource extends Resource
                 TextColumn::make('base_salary_kopecks')
                     ->label('Оклад')
                     ->sortable()
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2) . ' ₽'),
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2).' ₽'),
                 TextColumn::make('hire_date')
                     ->label('Принят')
                     ->date('d.m.Y')
@@ -182,7 +195,7 @@ final class EmployeeResource extends Resource
                     ->requiresConfirmation()
                     ->action(fn (Employee $record) => $record->update([
                         'is_active'        => false,
-                        'termination_date' => now()->toDateString(),
+                        'termination_date' => CarbonImmutable::now()->toDateString(),
                     ])),
             ])
             ->headerActions([
@@ -200,10 +213,10 @@ final class EmployeeResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\ListEmployees::route('/'),
-            'create' => \App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\CreateEmployee::route('/create'),
-            'view'   => \App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\ViewEmployee::route('/{record}'),
-            'edit'   => \App\Filament\Tenant\Resources\HR\EmployeeResource\Pages\EditEmployee::route('/{record}/edit'),
+            'index'  => ListEmployees::route('/'),
+            'create' => CreateEmployee::route('/create'),
+            'view'   => ViewEmployee::route('/{record}'),
+            'edit'   => EditEmployee::route('/{record}/edit'),
         ];
     }
 }

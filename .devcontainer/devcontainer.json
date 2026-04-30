@@ -1,19 +1,47 @@
 {
-  "name": "HotelBeautyCRM Dev Container",
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/var/www",
+  "name": "CatVRF Development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/php:1": {
+      "version": "8.3",
+      "installComposer": true,
+      "installXdebug": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    }
+  },
+  
   "customizations": {
     "vscode": {
       "extensions": [
         "GitHub.copilot",
+        "GitHub.copilot-chat",
         "ms-azuretools.vscode-docker",
         "amiralizadeh94.laravel-extra-intellisense",
         "onecentlin.laravel-blade",
         "bmewburn.vscode-intelephense-client",
-        "TomKent.windsurf-tools"
+        "TomKent.windsurf-tools",
+        "mikestead.dotenv",
+        "eamodio.gitlens",
+        "redhat.vscode-yaml",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
       ],
       "settings": {
+        "php.validate.executablePath": "/usr/local/bin/php",
+        "php.suggest.basic": false,
+        "files.associations": {
+          "*.blade.php": "blade"
+        },
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "http.systemCertificatesNode": true,
         "mcp.servers": {
           "github": {
@@ -24,5 +52,31 @@
       }
     }
   },
-  "remoteUser": "catvrf"
+  
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  
+  "forwardPorts": [80, 5432, 6379, 3306, 8080, 9000, 3000],
+  "portsAttributes": {
+    "80": {
+      "label": "HTTP",
+      "onAutoForward": "openBrowser"
+    },
+    "5432": {
+      "label": "PostgreSQL"
+    },
+    "6379": {
+      "label": "Redis"
+    },
+    "3306": {
+      "label": "MySQL"
+    }
+  },
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+  
+  "shutdownAction": "stopCompose"
 }

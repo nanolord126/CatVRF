@@ -9,18 +9,17 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createdriverdto
  */
 
-
 namespace App\Domains\Auto\Taxi\Application\B2B\DTO;
 
-use App\Shared\Traits\StaticCreate;
 use Illuminate\Http\Request;
 
 /**
@@ -35,8 +34,6 @@ use Illuminate\Http\Request;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Application\B2B\DTO
  */
 final readonly class CreateDriverDTO
 {
@@ -44,9 +41,8 @@ final readonly class CreateDriverDTO
         public string $name,
         public string $licenseNumber,
         public int $tenantId,
-        private ?string $correlationId = null) {
-
-    }
+        private readonly ?string $correlationId = null
+    ) {}
 
     public static function fromRequest(Request $request): self
     {

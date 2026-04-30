@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class ToysKidsFactory extends Factory
                 'Велосипед детский 20"',
                 'Настольная игра Монополия',
             ]),
-            'sku' => 'TOY-' . strtoupper($this->faker->lexify('???')),
+            'sku' => 'TOY-'.strtoupper($this->faker->lexify('???')),
             'category' => $this->faker->randomElement(['puzzle', 'plush', 'building', 'vehicle', 'board_game', 'outdoor']),
             'age_min' => $this->faker->numberBetween(1, 10),
             'age_max' => $this->faker->numberBetween(12, 18),

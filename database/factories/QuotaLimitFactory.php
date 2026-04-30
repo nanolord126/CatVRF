@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * Quota Limit Factory
- * 
+ *
  * Production 2026 CANON - Test Data Generation
  */
 class QuotaLimitFactory extends Factory

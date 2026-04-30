@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class OfficeCateringFactory extends Factory
                 'Ужин Вечерний для офиса',
                 'Снеки Рабочий день',
             ]),
-            'sku' => 'OC-' . strtoupper($this->faker->lexify('???')),
+            'sku' => 'OC-'.strtoupper($this->faker->lexify('???')),
             'meal_type' => $this->faker->randomElement(['breakfast', 'lunch', 'dinner', 'snacks', 'combo']),
             'servings' => $this->faker->numberBetween(1, 100),
             'price_per_serving' => $this->faker->numberBetween(200, 500),

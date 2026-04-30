@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * HomeServiceJob — CatVRF 2026 Component.
@@ -7,50 +9,42 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/homeservicejob
  */
 
-
 namespace App\Domains\HomeServices\Models;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class HomeServiceJob extends Model
 {
-
-    use SoftDeletes, TenantScoped;
+    use SoftDeletes;
+    use TenantScoped;
 
-        protected $table = 'home_service_jobs';
-        protected $fillable = [
-            'tenant_id', 'uuid', 'correlation_id',
-            'contractor_id', 'client_id', 'service_type', 'datetime',
-            'address', 'status', 'price', 'tags', 'meta'
-        ];
-        protected $casts = [
-            'price' => 'int',
-            'tags' => 'json',
-            'meta' => 'json',
-        ];
+    protected $table = 'home_service_jobs';
 
-        protected static function booted_disabled(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant()->id) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    protected $fillable = [
+        'tenant_id', 'uuid', 'correlation_id',
+        'contractor_id', 'client_id', 'service_type', 'datetime',
+        'address', 'status', 'price', 'tags', 'meta',
+    ];
+
+    protected $casts = [
+        'price' => 'int',
+        'tags' => 'json',
+        'meta' => 'json',
+    ];
 
     /**
      * Get the string representation of this instance.
@@ -59,7 +53,7 @@ final class HomeServiceJob extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -70,8 +64,18 @@ final class HomeServiceJob extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

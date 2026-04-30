@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Legal\Services\AI;
 
-use Carbon\Carbon;
-
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Генерация договоров + правовой анализ + выявление рисков + рекомендации
@@ -29,11 +27,11 @@ use Illuminate\Support\Str;
 final readonly class LegalDocumentConstructorService
 {
     public function __construct(
-        private OpenAIClientService $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly OpenAIClientService $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
         private readonly Request $request,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard
@@ -43,7 +41,7 @@ final readonly class LegalDocumentConstructorService
      * Главный метод — анализ и генерация рекомендаций.
      * Генерация договоров + правовой анализ + выявление рисков + рекомендации
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(array $legalData, int $userId): array
     {
@@ -53,7 +51,7 @@ final readonly class LegalDocumentConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_legal', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_legal:document_generation:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_legal:document_generation:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -106,14 +104,14 @@ final readonly class LegalDocumentConstructorService
             'success'        => true,
             'legal_profile' => $legal_profile,
             'recommendations' => $recommendations,
-            'ar_link'        => url('legal/document-preview/' . $userId),
+            'ar_link'        => url('legal/document-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
         // Кэш на 1 час
         cache()->put($cacheKey, $result, 3600);
 
-        $this->logger->info('LegalDocumentConstructorService used', [
+        $this->logger->$this->logger->info('LegalDocumentConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'legal',
             'type'           => 'document_generation',
@@ -137,7 +135,7 @@ final readonly class LegalDocumentConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => Carbon::now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -155,8 +153,8 @@ final readonly class LegalDocumentConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Hotels\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Hotels\DTOs\BookRoomDto;
 
 /**
  * Unit tests for BookRoomDto.
@@ -14,7 +17,7 @@ final class BookRoomDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Hotels\DTOs\BookRoomDto::class
+            BookRoomDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'BookRoomDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'BookRoomDto must be readonly');
@@ -23,11 +26,11 @@ final class BookRoomDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Hotels\DTOs\BookRoomDto::class
+            BookRoomDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('hotelId', $params, 'Constructor must have hotelId');
         $this->assertContains('roomId', $params, 'Constructor must have roomId');
         $this->assertContains('customerId', $params, 'Constructor must have customerId');
@@ -38,7 +41,7 @@ final class BookRoomDtoTest extends TestCase
         $this->assertContains('correlationId', $params, 'Constructor must have correlationId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -48,6 +51,6 @@ final class BookRoomDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Hotels\DTOs\BookRoomDto::class;
+        return BookRoomDto::class;
     }
 }

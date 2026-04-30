@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Taxi\Application\B2B\DTO;
 
-use App\Shared\Traits\StaticCreate;
 use Illuminate\Http\Request;
 
 /**
@@ -19,17 +18,14 @@ use Illuminate\Http\Request;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Application\B2B\DTO
  */
 final readonly class CreateTaxiFleetDTO
 {
     public function __construct(
         public string $name,
         public int $tenantId,
-        private ?string $correlationId = null) {
-
-    }
+        private readonly ?string $correlationId = null
+    ) {}
 
     public static function fromRequest(Request $request): self
     {

@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Domains\Clinic;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\MedicalCardFactory;
 
 /**
  * Class MedicalCard
@@ -23,44 +26,42 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Clinic
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class MedicalCard extends Model
 {
+    protected $table = 'medical_cards';
 
-        protected $table = 'medical_cards';
-
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'tenant_id',
-            'patient_id',
-            'blood_type',
-            'allergies',
-            'medical_history',
-            'notes',
-            'last_check_up',
-        ];
+        'tenant_id',
+        'patient_id',
+        'blood_type',
+        'allergies',
+        'medical_history',
+        'notes',
+        'last_check_up',
+    ];
 
-        protected $casts = [
-            'allergies' => 'array',
-            'medical_history' => 'array',
-        ];
+    protected $casts = [
+        'allergies' => 'array',
+        'medical_history' => 'array',
+    ];
 
-        protected static function newFactory()
-        {
-            return \Database\Factories\MedicalCardFactory::new();
-        }
+    protected static function newFactory()
+    {
+        return MedicalCardFactory::new();
+    }
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

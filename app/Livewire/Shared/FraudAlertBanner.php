@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Auth\AuthManager;
 use App\Models\FraudNotification;
+use Illuminate\Support\Str;
 
 /**
  * FraudAlertBanner — баннер с предупреждением о фрод-активности.
@@ -17,18 +22,20 @@ use App\Models\FraudNotification;
  */
 final class FraudAlertBanner extends Component
 {
-    public bool   $visible       = false;
+    public bool $visible       = false;
+
     public string $severity      = 'warning'; // warning|high|critical
+
     public string $message       = '';
+
     public string $correlationId = '';
 
-    public function __construct(
-        private readonly AuthManager $auth,
-    ) {}
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly AuthManager $auth,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
         $this->refresh();
     }
 
@@ -36,8 +43,9 @@ final class FraudAlertBanner extends Component
     public function refresh(): void
     {
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             $this->visible = false;
+
             return;
         }
 
@@ -48,8 +56,9 @@ final class FraudAlertBanner extends Component
             ->orderByRaw("FIELD(severity, 'critical', 'high', 'warning')")
             ->first();
 
-        if (!$alert) {
+        if (! $alert) {
             $this->visible = false;
+
             return;
         }
 
@@ -71,6 +80,6 @@ final class FraudAlertBanner extends Component
 
     public function render(): View
     {
-        return view('livewire.shared.fraud-alert-banner');
+        return $this->viewFactory->make('livewire.shared.fraud-alert-banner');
     }
 }

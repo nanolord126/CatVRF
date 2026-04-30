@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature;
 
@@ -7,19 +9,11 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Laravel\Sanctum\Sanctum;
 
 final class UniversalOrderControllerTest extends TestCase
 {
     use RefreshDatabase;
-
-    private function createUser(): User
-    {
-        return User::factory()->create([
-            'tenant_id' => 1,
-        ]);
-    }
 
     public function test_create_b2c_order(): void
     {
@@ -171,5 +165,12 @@ final class UniversalOrderControllerTest extends TestCase
             $response1->json('data.order_id'),
             $response2->json('data.order_id')
         );
+    }
+
+    private function createUser(): User
+    {
+        return User::factory()->create([
+            'tenant_id' => 1,
+        ]);
     }
 }

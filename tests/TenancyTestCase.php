@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -8,6 +10,12 @@ use Illuminate\Foundation\Testing\TestCase as LaravelTestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Str;
+use Stancl\Tenancy\Contracts\TenantResolver;
+use Stancl\Tenancy\Facades\Tenancy;
 
 /**
  * Base TestCase for Tenancy-aware tests.
@@ -18,7 +26,9 @@ abstract class TenancyTestCase extends LaravelTestCase
     use WithFaker;
 
     protected ?Tenant $tenant = null;
+
     protected ?User $user = null;
+
     protected string $correlationId;
 
     protected function setUp(): void
@@ -28,29 +38,29 @@ abstract class TenancyTestCase extends LaravelTestCase
         // Initialize tenancy database
         $this->initializeTenancyDatabase();
 
-        $this->correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $this->correlationId = Str::uuid()->toString();
 
         // Create tenant
         $this->tenant = Tenant::factory()->create([
-            'name' => 'Test Tenant ' . $this->correlationId,
-            'slug' => 'test-' . $this->correlationId,
+            'name' => 'Test Tenant '.$this->correlationId,
+            'slug' => 'test-'.$this->correlationId,
         ]);
 
         // Set tenant context
-        \Illuminate\Support\Facades\App::make(\Stancl\Tenancy\Contracts\TenantResolver::class)
+        App::make(TenantResolver::class)
             ->setTenant($this->tenant);
 
         // Run tenant migrations
-        \Stancl\Tenancy\Facades\Tenancy::boot();
+        Tenancy::boot();
 
         // Create user in tenant context
         $this->user = User::factory()->create([
             'tenant_id' => $this->tenant->id,
-            'email' => 'test-' . $this->correlationId . '@example.com',
+            'email' => 'test-'.$this->correlationId.'@example.com',
         ]);
 
         if (class_exists('\Filament\Facades\Filament')) {
-            \Filament\Facades\Filament::setTenant($this->tenant);
+            Filament::setTenant($this->tenant);
         }
     }
 
@@ -58,10 +68,10 @@ abstract class TenancyTestCase extends LaravelTestCase
     {
         // Create necessary tables if using fresh database
         $connection = config('tenancy.database.connection', 'central');
-        
-        if (!Schema::connection($connection)->hasTable('tenants')) {
+
+        if (! Schema::connection($connection)->hasTable('tenants')) {
             // Run central migrations
-            \Illuminate\Support\Facades\Artisan::call('migrate', [
+            Artisan::call('migrate', [
                 '--database' => $connection,
                 '--path' => 'database/migrations',
             ]);

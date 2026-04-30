@@ -16,13 +16,13 @@ return [
      * Cache TTL Settings (in seconds)
      */
     'ttl' => [
-        'b2b_mode' => (int)env('CACHE_B2B_MODE_TTL', 3600), // 1 hour
-        'response' => (int)env('CACHE_RESPONSE_TTL', 600), // 10 minutes
-        'user_taste' => (int)env('CACHE_USER_TASTE_TTL', 1800), // 30 minutes
-        'popular_products' => (int)env('CACHE_POPULAR_PRODUCTS_TTL', 14400), // 4 hours
-        'master_availability' => (int)env('CACHE_MASTER_AVAILABILITY_TTL', 7200), // 2 hours
-        'vertical_stats' => (int)env('CACHE_VERTICAL_STATS_TTL', 28800), // 8 hours
-        'ai_constructor' => (int)env('CACHE_AI_CONSTRUCTOR_TTL', 43200), // 12 hours
+        'b2b_mode' => (int) env('CACHE_B2B_MODE_TTL', 3600), // 1 hour
+        'response' => (int) env('CACHE_RESPONSE_TTL', 600), // 10 minutes
+        'user_taste' => (int) env('CACHE_USER_TASTE_TTL', 1800), // 30 minutes
+        'popular_products' => (int) env('CACHE_POPULAR_PRODUCTS_TTL', 14400), // 4 hours
+        'master_availability' => (int) env('CACHE_MASTER_AVAILABILITY_TTL', 7200), // 2 hours
+        'vertical_stats' => (int) env('CACHE_VERTICAL_STATS_TTL', 28800), // 8 hours
+        'ai_constructor' => (int) env('CACHE_AI_CONSTRUCTOR_TTL', 43200), // 12 hours
     ],
 
     /*

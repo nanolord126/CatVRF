@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domains\Freelance\Services\AI;
 
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
-
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Матчинг проекта с исполнителями + оценка стоимости + сроки
@@ -29,11 +29,11 @@ use Illuminate\Support\Str;
 final readonly class FreelanceProjectConstructorService
 {
     public function __construct(
-        private OpenAIClientService $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly OpenAIClientService $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
         private readonly Request $request,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard
@@ -43,7 +43,7 @@ final readonly class FreelanceProjectConstructorService
      * Главный метод — анализ и генерация рекомендаций.
      * Матчинг проекта с исполнителями + оценка стоимости + сроки
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(array $projectData, int $userId): array
     {
@@ -53,7 +53,7 @@ final readonly class FreelanceProjectConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_freelance', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_freelance:project_matching:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_freelance:project_matching:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -106,14 +106,14 @@ final readonly class FreelanceProjectConstructorService
             'success'        => true,
             'project_profile' => $project_profile,
             'recommendations' => $recommendations,
-            'ar_link'        => url('freelance/project-preview/' . $userId),
+            'ar_link'        => url('freelance/project-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
         // Кэш на 1 час
         cache()->put($cacheKey, $result, 3600);
 
-        $this->logger->info('FreelanceProjectConstructorService used', [
+        $this->logger->$this->logger->info('FreelanceProjectConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'freelance',
             'type'           => 'project_matching',
@@ -137,7 +137,7 @@ final readonly class FreelanceProjectConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => Carbon::now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -155,8 +155,8 @@ final readonly class FreelanceProjectConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Jobs;
 
-
 use App\Domains\Wallet\Models\Wallet;
 use App\Services\AuditService;
 use Illuminate\Bus\Queueable;
@@ -22,9 +21,16 @@ use Psr\Log\LoggerInterface;
  */
 final class ProcessWalletJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public array $backoff = [60, 300, 900];
+
+    public int $timeout = 120;
 
     public int $tries = 3;
-    public int $backoff = 60;
 
     public function __construct(
         private readonly int $modelId,
@@ -38,7 +44,7 @@ final class ProcessWalletJob implements ShouldQueue
     {
         $model = Wallet::findOrFail($this->modelId);
 
-        $logger->info('ProcessWalletJob processed', [
+        $logger->$this->logger->info('ProcessWalletJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id,
@@ -52,7 +58,7 @@ final class ProcessWalletJob implements ShouldQueue
         );
     }
 
-    public function failed(\Throwable $exception): void
+    public function failed(Exception $exception): void
     {
         report($exception);
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class FurnitureFactory extends Factory
                 'Полка настенная',
                 'Тумба прикроватная',
             ]),
-            'sku' => 'FRN-' . strtoupper($this->faker->lexify('???')),
+            'sku' => 'FRN-'.strtoupper($this->faker->lexify('???')),
             'category' => $this->faker->randomElement(['sofa', 'chair', 'table', 'bed', 'cabinet', 'shelf']),
             'material' => $this->faker->randomElement(['wood', 'metal', 'leather', 'fabric', 'ceramic']),
             'price' => $this->faker->numberBetween(50000, 500000),

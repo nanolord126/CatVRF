@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Factory as ValidationFactory;
+use App\Http\Controllers\BaseApiController;
 
 /**
  * Class AnalyticsController
@@ -22,8 +23,7 @@ use Illuminate\Validation\Factory as ValidationFactory;
  * - Response via ResponseFactory DI
  * - correlation_id in all responses
  *
- * @see \App\Http\Controllers\BaseApiController
- * @package App\Domains\Analytics\Presentation\Http\Controllers
+ * @see BaseApiController
  */
 final class AnalyticsController extends Controller
 {
@@ -41,7 +41,7 @@ final class AnalyticsController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return new \Illuminate\Http\JsonResponse(['errors' => $validator->errors()], 422);
+            return new JsonResponse(['errors' => $validator->errors()], 422);
         }
 
         $validated = $validator->validated();
@@ -61,10 +61,10 @@ final class AnalyticsController extends Controller
                 $correlationId
             );
 
-            return new \Illuminate\Http\JsonResponse(['message' => 'Event tracked'], 202);
+            return new JsonResponse(['message' => 'Event tracked'], 202);
 
         } catch (\Throwable $e) {
-            return new \Illuminate\Http\JsonResponse(['message' => $e->getMessage()], 500);
+            return new JsonResponse(['message' => $e->getMessage()], 500);
         }
     }
 }

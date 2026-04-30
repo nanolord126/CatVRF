@@ -1,15 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Taxi;
 
 use App\Domains\Taxi\Models\TaxiRide;
-use App\Domains\Taxi\Services\TaxiOrderService;
-use App\Domains\Taxi\DTOs\CreateTaxiOrderDto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
+use App\Domains\Taxi\Jobs\UpdateDriverLocationJob;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 final class TaxiCrashTest extends TestCase
 {
@@ -138,7 +141,7 @@ final class TaxiCrashTest extends TestCase
 
     public function test_system_handles_queue_failures(): void
     {
-        $job = new \App\Domains\Taxi\Jobs\UpdateDriverLocationJob(
+        $job = new UpdateDriverLocationJob(
             driverId: 999,
             lat: 55.75396,
             lon: 37.62039,
@@ -154,10 +157,10 @@ final class TaxiCrashTest extends TestCase
 
     public function test_system_handles_service_unavailability(): void
     {
-        $fraudMock = \Mockery::mock(\App\Services\FraudControlService::class);
+        $fraudMock = \Mockery::mock(FraudControlService::class);
         $fraudMock->shouldReceive('check')->andThrow(new \Exception('Fraud service unavailable'));
 
-        $this->app->instance(\App\Services\FraudControlService::class, $fraudMock);
+        $this->app->instance(FraudControlService::class, $fraudMock);
 
         $response = $this->postJson('/api/v1/taxi/orders', [
             'pickup_address' => 'Moscow, Red Square',
@@ -222,7 +225,7 @@ final class TaxiCrashTest extends TestCase
         try {
             DB::transaction(function () {
                 TaxiRide::create([
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'passenger_id' => 1,
                     'pickup_address' => 'Test',

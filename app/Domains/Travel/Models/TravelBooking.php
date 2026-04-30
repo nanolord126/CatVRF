@@ -1,17 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 final class TravelBooking extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'travel_bookings';
 
@@ -51,24 +57,6 @@ final class TravelBooking extends Model
 
     protected $hidden = ['correlation_id', 'transaction_id'];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = (string) Str::uuid();
-            }
-        });
-    }
-
     public function agency(): BelongsTo
     {
         return $this->belongsTo(TravelAgency::class);
@@ -81,11 +69,29 @@ final class TravelBooking extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function reviews(): HasMany
     {
         return $this->hasMany(TravelReview::class, 'booking_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+        });
     }
 }

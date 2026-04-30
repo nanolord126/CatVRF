@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Pages;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use App\Filament\Admin\Widgets\FraudAttemptsWidget;
@@ -20,24 +23,32 @@ use Filament\Actions\Action;
  */
 final class SecurityDashboard extends Page
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-    ) {}
-
-    protected static ?string $navigationIcon  = 'heroicon-o-shield-check';
-    protected static ?string $navigationLabel = 'Безопасность';
-    protected static ?string $navigationGroup = 'Platform Management';
-    protected static ?int    $navigationSort  = 5;
-    protected static string  $view            = 'filament.admin.pages.security-dashboard';
-
     /**
      * Лайв-счётчики — обновляются через Livewire polling каждые 10 сек.
      */
-    public int   $criticalCount   = 0;
-    public int   $highCount       = 0;
-    public int   $warningCount    = 0;
-    public int   $blockedToday    = 0;
+    public int $criticalCount   = 0;
+
+    public int $highCount       = 0;
+
+    public int $warningCount    = 0;
+
+    public int $blockedToday    = 0;
+
     public array $latestEvents    = [];
+
+    protected static ?string $navigationIcon  = 'heroicon-o-shield-check';
+
+    protected static ?string $navigationLabel = 'Безопасность';
+
+    protected static ?string $navigationGroup = 'Platform Management';
+
+    protected static ?int $navigationSort  = 5;
+
+    protected static string $view            = 'filament.admin.pages.security-dashboard';
+
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
 
     public function mount(): void
     {
@@ -46,7 +57,7 @@ final class SecurityDashboard extends Page
 
     public function refresh(): void
     {
-        $since = now()->startOfDay();
+        $since = CarbonImmutable::now()->startOfDay();
 
         $this->blockedToday = $this->db->table('fraud_attempts')
             ->where('decision', 'block')
@@ -55,7 +66,7 @@ final class SecurityDashboard extends Page
 
         $bySeverity = $this->db->table('fraud_attempts')
             ->where('created_at', '>=', $since)
-            ->selectRaw("decision, COUNT(*) as cnt")
+            ->selectRaw('decision, COUNT(*) as cnt')
             ->groupBy('decision')
             ->pluck('cnt', 'decision');
 
@@ -80,16 +91,6 @@ final class SecurityDashboard extends Page
             ->toArray();
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('refresh')
-                ->label('Обновить')
-                ->icon('heroicon-o-arrow-path')
-                ->action('refresh'),
-        ];
-    }
-
     public function getWidgets(): array
     {
         return [
@@ -99,8 +100,18 @@ final class SecurityDashboard extends Page
         ];
     }
 
-    public function getColumns(): int | string | array
+    public function getColumns(): int|string|array
     {
         return 3;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('refresh')
+                ->label('Обновить')
+                ->icon('heroicon-o-arrow-path')
+                ->action('refresh'),
+        ];
     }
 }

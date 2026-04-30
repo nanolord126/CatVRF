@@ -1,16 +1,65 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 final class TaxiTransaction extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
+
+    /**
+     * Типы транзакций.
+     */
+    public const TYPE_PAYMENT = 'payment';
+
+    public const TYPE_PAYOUT = 'payout';
+
+    public const TYPE_REFUND = 'refund';
+
+    public const TYPE_COMMISSION = 'commission';
+
+    public const TYPE_BONUS = 'bonus';
+
+    public const TYPE_PENALTY = 'penalty';
+
+    /**
+     * Статусы транзакций.
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_PROCESSING = 'processing';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_REFUNDED = 'refunded';
+
+    /**
+     * Методы оплаты.
+     */
+    public const METHOD_CARD = 'card';
+
+    public const METHOD_CASH = 'cash';
+
+    public const METHOD_WALLET = 'wallet';
+
+    public const METHOD_CORPORATE = 'corporate';
+
+    public const METHOD_SPLIT = 'split';
 
     protected $table = 'taxi_transactions';
 
@@ -39,7 +88,7 @@ final class TaxiTransaction extends Model
         'failure_reason',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -58,50 +107,6 @@ final class TaxiTransaction extends Model
     protected $hidden = ['metadata'];
 
     /**
-     * Типы транзакций.
-     */
-    public const TYPE_PAYMENT = 'payment';
-    public const TYPE_PAYOUT = 'payout';
-    public const TYPE_REFUND = 'refund';
-    public const TYPE_COMMISSION = 'commission';
-    public const TYPE_BONUS = 'bonus';
-    public const TYPE_PENALTY = 'penalty';
-
-    /**
-     * Статусы транзакций.
-     */
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_PROCESSING = 'processing';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_FAILED = 'failed';
-    public const STATUS_REFUNDED = 'refunded';
-
-    /**
-     * Методы оплаты.
-     */
-    public const METHOD_CARD = 'card';
-    public const METHOD_CASH = 'cash';
-    public const METHOD_WALLET = 'wallet';
-    public const METHOD_CORPORATE = 'corporate';
-    public const METHOD_SPLIT = 'split';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiTransaction $transaction) {
-            $transaction->uuid = $transaction->uuid ?? (string) Str::uuid();
-            $transaction->tenant_id = $transaction->tenant_id ?? (tenant()->id ?? 1);
-            $transaction->status = $transaction->status ?? self::STATUS_PENDING;
-            $transaction->correlation_id = $transaction->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
-
-    /**
      * Отношения.
      */
     public function ride(): BelongsTo
@@ -116,7 +121,7 @@ final class TaxiTransaction extends Model
 
     public function passenger(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'passenger_id');
+        return $this->belongsTo(User::class, 'passenger_id');
     }
 
     public function fleet(): BelongsTo
@@ -179,7 +184,7 @@ final class TaxiTransaction extends Model
     {
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'processed_at' => now(),
+            'processed_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -190,7 +195,7 @@ final class TaxiTransaction extends Model
     {
         $this->update([
             'status' => self::STATUS_FAILED,
-            'failed_at' => now(),
+            'failed_at' => CarbonImmutable::now(),
             'failure_reason' => $reason,
         ]);
     }
@@ -205,5 +210,21 @@ final class TaxiTransaction extends Model
             'refunded_amount_kopeki' => $refundAmountKopeki,
             'refund_reason' => $reason,
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiTransaction $transaction) {
+            $transaction->uuid = $transaction->uuid ?? (string) Str::uuid();
+            $transaction->tenant_id = $transaction->tenant_id ?? (tenant()->id ?? 1);
+            $transaction->status = $transaction->status ?? self::STATUS_PENDING;
+            $transaction->correlation_id = $transaction->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

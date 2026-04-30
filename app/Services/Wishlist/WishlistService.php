@@ -1,22 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Wishlist;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
 use Illuminate\Support\Collection;
-
-
 use Illuminate\Support\Str;
-use App\Services\FraudControlService;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Cache\CacheManager;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\CarbonImmutable;
+use Illuminate\Routing\UrlGenerator;
 
-final class WishlistService
+final readonly class WishlistService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private readonly LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
         private readonly CacheManager $cache,
+        private readonly UrlGenerator $url,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -28,6 +38,7 @@ final class WishlistService
 
         try {
             $this->fraud->check(new \stdClass());
+
             return $this->db->transaction(function () use ($userId, $itemType, $itemId, $metadata, $correlationId) {
                 // Check if item already in wishlist
                 $existing = $this->db->table('wishlist_items')
@@ -51,8 +62,8 @@ final class WishlistService
                     'item_id' => $itemId,
                     'metadata' => json_encode($metadata),
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
                 // Clear user cache
@@ -202,8 +213,8 @@ final class WishlistService
             'item_type' => $itemType,
             'share_token' => $shareToken,
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->logger->channel('audit')->info('Wishlist: shared', [
@@ -213,7 +224,7 @@ final class WishlistService
             'correlation_id' => $correlationId,
         ]);
 
-        return route('wishlist.shared', ['token' => $shareToken]);
+        return $this->url->route('wishlist.shared', ['token' => $shareToken]);
     }
 
     /**
@@ -225,9 +236,9 @@ final class WishlistService
             ->where('share_token', $shareToken)
             ->first();
 
-        if (!$share) {
-            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
-                'Shared wishlist not found for token: ' . $shareToken
+        if (! $share) {
+            throw new ModelNotFoundException(
+                'Shared wishlist not found for token: '.$shareToken
             );
         }
 

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * EditDentalAppointment — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/editdentalappointment
  * @see https://catvrf.ru/docs/editdentalappointment
  * @see https://catvrf.ru/docs/editdentalappointment
@@ -27,27 +30,15 @@
  * @see https://catvrf.ru/docs/editdentalappointment
  */
 
-
 namespace App\Filament\Tenant\Resources\DentalAppointmentResource\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\EditRecord;
 
 final class EditDentalAppointment extends EditRecord
 {
-
     protected static string $resource = DentalAppointmentResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\DeleteAction::make(),
-            ];
-        }
-
-        protected function getRedirectUrl(): string
-        {
-            return $this->getResource()::getUrl('index');
-        }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +47,7 @@ final class EditDentalAppointment extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +58,20 @@ final class EditDentalAppointment extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

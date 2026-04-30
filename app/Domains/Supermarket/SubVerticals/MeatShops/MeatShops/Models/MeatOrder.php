@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\MeatShops\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class MeatOrder extends Model
+{
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
+
+    protected $table = 'meat_orders';
+
+    protected $fillable = [
+        'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
+        'product_id', 'client_id', 'weight_kg', 'unit_price',
+        'total_price', 'delivery_date', 'status', 'idempotency_key', 'tags',
+    ];
+
+    protected $casts = [
+        'weight_kg'    => 'float',
+        'unit_price'   => 'int',
+        'total_price'  => 'int',
+        'delivery_date' => 'datetime',
+        'tags'         => 'json',
+    ];
+
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(MeatProduct::class, 'product_id');
+    }
+
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Выполнить операцию
+     *
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function isDelivered(): bool
+    {
+        return $this->status === 'delivered';
+    }
+
+    protected static function booted_disabled(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant()?->id) {
+                $query->where('tenant_id', tenant()?->id);
+            }
+        });
+    }
+}

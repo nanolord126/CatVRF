@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -6,8 +7,10 @@ namespace Database\Seeders;
 /**
  * Спортивные бренды (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-final class SportBrands extends BaseBrandSeeder {
-    public function run(): void {
+final class SportBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('Sports', [
             ['name' => 'Nike', 'country' => 'USA'], ['name' => 'Adidas', 'country' => 'Germany'],
             ['name' => 'Puma', 'country' => 'Germany'], ['name' => 'Under Armour', 'country' => 'USA'],
@@ -38,5 +41,3 @@ final class SportBrands extends BaseBrandSeeder {
         ]);
     }
 }
-
-

@@ -1,0 +1,94 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\\Domains\\Shared\EventPlanning\Entertainment\Jobs;
+
+use Carbon\CarbonImmutable;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+use Carbon\Carbon;
+use Psr\Log\LoggerInterface;
+
+final class SendEventReminderJob
+{
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public function __construct(
+        private readonly ?int $scheduleId,
+        private readonly ?string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {
+        $this->onQueue('notifications');
+
+    }
+
+    public function handle(): void
+    {
+        try {
+            $schedule = EventSchedule::find($this->scheduleId);
+
+            if (! $schedule) {
+                return;
+            }
+
+            $hoursUntilEvent = CarbonImmutable::now()->diffInHours($schedule->start_time);
+
+            if ($hoursUntilEvent <= 2 && $hoursUntilEvent >= 0) {
+                $bookings = $schedule->bookings()
+                    ->where('status', '!=', 'cancelled')
+                    ->get();
+
+                foreach ($bookings as $booking) {
+                    $this->logger->$this->logger->info('Event reminder sent', [
+                        'schedule_id' => $this->scheduleId,
+                        'booking_id' => $booking->id,
+                        'customer_id' => $booking->customer_id,
+                        'correlation_id' => $this->correlationId,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send event reminders', [
+                'schedule_id' => $this->scheduleId,
+                'error' => $e->getMessage(),
+                'correlation_id' => $this->correlationId,
+            ]);
+            $this->fail($e);
+        }
+    }
+
+    public function retryUntil(): \DateTime
+    {
+        return CarbonImmutable::now()->addHours(4);
+    }
+
+    /**
+     * Get the string representation of this instance.
+     *
+     * @return string The string representation
+     */
+    public function __toString(): string
+    {
+        return self::class;
+    }
+
+    /**
+     * Get debug information for this instance.
+     *
+     * @return array<string, mixed> Debug data including class name and state
+     */
+    public function toDebugArray(): array
+    {
+        return [
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+}

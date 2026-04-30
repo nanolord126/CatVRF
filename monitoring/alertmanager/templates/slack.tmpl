@@ -1,0 +1,71 @@
+{{ define "slack.default.text" }}
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity | toUpper }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+*Cluster:* {{ .Labels.cluster }}
+*Service:* {{ .Labels.service }}
+{{ if .Labels.vertical }}*Vertical:* {{ .Labels.vertical }}{{ end }}
+{{ if .Labels.queue }}*Queue:* {{ .Labels.queue }}{{ end }}
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ if .Annotations.runbook }}*Runbook:* {{ .Annotations.runbook }}{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "slack.critical.text" }}
+🚨 *CRITICAL ALERT* 🚨
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* CRITICAL
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+
+*Details:*
+- Cluster: {{ .Labels.cluster }}
+- Service: {{ .Labels.service }}
+{{ if .Labels.vertical }}- Vertical: {{ .Labels.vertical }}{{ end }}
+{{ if .Labels.queue }}- Queue: {{ .Labels.queue }}{{ end }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+*Actions:*
+{{ if .Annotations.runbook }}- <{{ .Annotations.runbook }}|Runbook>{{ end }}
+- <{{ .Annotations.grafana }}|Grafana Dashboard>
+
+{{ end }}
+{{ end }}
+
+{{ define "slack.supermarket.text" }}
+🛒 *Supermarket Alert*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity | toUpper }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+
+*Context:*
+- Queue: {{ .Labels.queue }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.runbook }}<{{ .Annotations.runbook }}|View Runbook>{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "slack.crm.text" }}
+🔄 *CRM Alert*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity | toUpper }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+
+*Context:*
+- Service: {{ .Labels.service }}
+- Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+
+{{ if .Annotations.runbook }}<{{ .Annotations.runbook }}|View Runbook>{{ end }}
+{{ end }}
+{{ end }}

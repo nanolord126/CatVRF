@@ -7,6 +7,7 @@ namespace App\Domains\Wallet\Listeners;
 use App\Domains\Wallet\Events\WalletUpdated;
 use App\Services\AuditService;
 use Psr\Log\LoggerInterface;
+use App\Domains\Wallet\Models\Wallet;
 
 /**
  * Слушатель: логирование обновления кошелька.
@@ -22,7 +23,7 @@ final class LogWalletUpdated
 
     public function handle(WalletUpdated $event): void
     {
-        $this->logger->info('Wallet updated', [
+        $this->logger->$this->logger->info('Wallet updated', [
             'wallet_id' => $event->wallet->id,
             'correlation_id' => $event->correlationId,
             'tenant_id' => $event->wallet->tenant_id,
@@ -31,7 +32,7 @@ final class LogWalletUpdated
 
         $this->audit->record(
             action: 'wallet_updated',
-            subjectType: \App\Domains\Wallet\Models\Wallet::class,
+            subjectType: Wallet::class,
             subjectId: $event->wallet->id,
             correlationId: $event->correlationId,
             oldValues: $event->oldValues,

@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Travel\SubVerticals\ShortTermRentals\Listeners;
+
+use Psr\Log\LoggerInterface;
+use Illuminate\Http\Request;
+use App\Domains\ShortTermRentals\Events\BookingCancelled;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
+/**
+ * Class RefundStrBookingCommissionListener
+ *
+ * Part of the ShortTermRentals vertical domain.
+ * Follows CatVRF 9-layer architecture.
+ *
+ * Event listener handling domain event side effects.
+ * Runs asynchronously via queue when ShouldQueue is implemented.
+ * All listeners maintain correlation_id chain.
+ */
+final class RefundStrBookingCommissionListener implements ShouldQueue
+{
+    public function __construct(
+        private readonly AuditService $audit,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger
+    ) {}
+
+    /**
+     * Handle handle operation.
+     *
+     * @throws \DomainException
+     */
+    public function handle(BookingCancelled $event): void
+    {
+        $this->logger->$this->logger->info('RefundStrBookingCommissionListener handled', [
+            'event' => 'BookingCancelled',
+            'correlation_id' => $event->correlationId ?? 'N/A',
+        ]);
+    }
+
+    /**
+     * Handle failed operation.
+     *
+     * @throws \DomainException
+     */
+    public function failed(BookingCancelled $event, \Throwable $exception): void
+    {
+        $this->logger->error('RefundStrBookingCommissionListener failed', [
+            'event' => 'BookingCancelled',
+            'error' => $exception->getMessage(),
+            'correlation_id' => $this->request?->header('X-Correlation-ID', Str::uuid()->toString()),
+        ]);
+    }
+}
