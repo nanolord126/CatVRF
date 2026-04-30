@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Widgets;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Виджет — fraud-попытки: статистика решений за сегодня.
@@ -14,20 +16,20 @@ use Illuminate\Support\Facades\DB;
  */
 final class FraudAttemptsWidget extends StatsOverviewWidget
 {
+    protected static ?int $sort = 2;
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
 
-    protected static ?int $sort = 2;
-
     protected function getStats(): array
     {
-        $today   = now()->startOfDay();
-        $last7d  = now()->subDays(7);
+        $today   = CarbonImmutable::now()->startOfDay();
+        $last7d  = CarbonImmutable::now()->subDays(7);
 
         $byDecision = $this->db->table('fraud_attempts')
             ->where('created_at', '>=', $today)
-            ->selectRaw("decision, COUNT(*) as cnt")
+            ->selectRaw('decision, COUNT(*) as cnt')
             ->groupBy('decision')
             ->pluck('cnt', 'decision');
 
@@ -45,7 +47,7 @@ final class FraudAttemptsWidget extends StatsOverviewWidget
         $trend = $this->db->table('fraud_attempts')
             ->where('decision', 'block')
             ->where('created_at', '>=', $last7d)
-            ->selectRaw("DATE(created_at) as day, COUNT(*) as cnt")
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as cnt')
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('cnt')
@@ -55,14 +57,14 @@ final class FraudAttemptsWidget extends StatsOverviewWidget
         $topOp = $this->db->table('fraud_attempts')
             ->where('decision', 'block')
             ->where('created_at', '>=', $today)
-            ->selectRaw("operation_type, COUNT(*) as cnt")
+            ->selectRaw('operation_type, COUNT(*) as cnt')
             ->groupBy('operation_type')
             ->orderByDesc('cnt')
             ->value('operation_type');
 
         return [
             Stat::make('Заблокировано (сегодня)', $blocked)
-                ->description("Топ операция: " . ($topOp ?? 'нет'))
+                ->description('Топ операция: '.($topOp ?? 'нет'))
                 ->descriptionIcon('heroicon-m-x-circle')
                 ->color($blocked > 100 ? 'danger' : ($blocked > 20 ? 'warning' : 'success'))
                 ->chart($trend),

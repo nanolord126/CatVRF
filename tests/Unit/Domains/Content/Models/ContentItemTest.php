@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Content\Models;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Content\Models\ContentItem;
 
 /**
  * Unit tests for ContentItem model.
@@ -14,27 +17,27 @@ final class ContentItemTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Content\Models\ContentItem::class
+            ContentItem::class
         );
         $this->assertTrue($reflection->isFinal(), 'ContentItem must be final');
     }
 
     public function test_has_fillable_properties(): void
     {
-        $model = new \App\Domains\Content\Models\ContentItem();
+        $model = new ContentItem();
         $this->assertNotEmpty($model->getFillable(), 'ContentItem must have fillable');
         $this->assertContains('correlation_id', $model->getFillable(), 'Must have correlation_id');
     }
 
     public function test_has_casts(): void
     {
-        $model = new \App\Domains\Content\Models\ContentItem();
+        $model = new ContentItem();
         $this->assertNotEmpty($model->getCasts(), 'ContentItem must have casts');
     }
 
     public function test_has_tenant_id_in_fillable(): void
     {
-        $model = new \App\Domains\Content\Models\ContentItem();
+        $model = new ContentItem();
         $this->assertContains('tenant_id', $model->getFillable(), 'Must have tenant_id');
     }
 }

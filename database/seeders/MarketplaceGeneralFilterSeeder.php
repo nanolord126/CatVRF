@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use Database\Seeders\VerticalFilterSeederBase;
-
 /**
  * Общие фильтры маркетплейса (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
@@ -54,7 +52,7 @@ final class MarketplaceGeneralFilterSeeder extends VerticalFilterSeederBase
                 ['value' => 'summer', 'label' => 'Лето'], ['value' => 'autumn', 'label' => 'Осень'],
             ]],
         ]);
-        
+
         $this->createFilters('Shoes', [
             'Материал подошвы' => ['type' => 'select', 'values' => [
                 ['value' => 'vibram-advanced', 'label' => 'Vibram Advanced'],
@@ -66,5 +64,3 @@ final class MarketplaceGeneralFilterSeeder extends VerticalFilterSeederBase
         ]);
     }
 }
-
-

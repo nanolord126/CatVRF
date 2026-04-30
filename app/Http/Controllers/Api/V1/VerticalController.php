@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
@@ -11,6 +12,20 @@ use Psr\Log\LoggerInterface;
 
 final class VerticalController extends Controller
 {
+    /**
+     * Component: VerticalController
+     *
+     * Part of the CatVRF 2026 multi-vertical marketplace platform.
+     * Implements tenant-aware, fraud-checked business logic
+     * with full correlation_id tracing and audit logging.
+     *
+     * @version 2026.1
+     */
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
@@ -21,7 +36,7 @@ final class VerticalController extends Controller
 
         $verticals = config('verticals', []);
 
-        $this->logger->info('Verticals listed', ['correlation_id' => $correlationId, 'count' => count($verticals)]);
+        $this->logger->$this->logger->info('Verticals listed', ['correlation_id' => $correlationId, 'count' => count($verticals)]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -30,29 +45,14 @@ final class VerticalController extends Controller
     }
 
     /**
-     * Component: VerticalController
-     *
-     * Part of the CatVRF 2026 multi-vertical marketplace platform.
-     * Implements tenant-aware, fraud-checked business logic
-     * with full correlation_id tracing and audit logging.
-     *
-     * @package CatVRF
-     * @version 2026.1
-     */
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
-
-    /**
      * VerticalController — CatVRF 2026 Component.
      *
      * Part of the CatVRF multi-vertical marketplace platform.
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
      */

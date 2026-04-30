@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Models\TaxiDriver;
-use App\Domains\Taxi\Models\TaxiVehicle;
 use App\Domains\Taxi\DTOs\CreateTaxiOrderDto;
 use App\Domains\Taxi\DTOs\TaxiRouteOptimizationDto;
 use App\Domains\Taxi\DTOs\TaxiPricingDto;
@@ -20,12 +23,11 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Carbon;
 use Psr\Log\LoggerInterface;
 
 /**
  * TaxiOrderService - Production-ready taxi order orchestration service
- * 
+ *
  * Killer features:
  * - AI-optimized routes with Torch + Octane for real-time processing
  * - Predictive pricing with dynamic surge pricing
@@ -37,7 +39,7 @@ use Psr\Log\LoggerInterface;
  * - Wallet integration with instant split payment + cashless
  * - Video-call with driver before trip (WebRTC)
  * - CRM integration on all status changes
- * 
+ *
  * Beats Yandex.Taxi by:
  * - 40% faster AI route optimization (Torch vs traditional algorithms)
  * - 60% more accurate predictive pricing (ML models vs fixed rates)
@@ -45,7 +47,7 @@ use Psr\Log\LoggerInterface;
  * - Instant voice ordering with biometric authentication
  * - Dynamic gamification increasing driver retention by 35%
  * - Integrated fleet management for B2B bulk orders
- * 
+ *
  * Risk mitigation:
  * - Complete tenant isolation with global scopes
  * - Fraud detection on every operation
@@ -81,7 +83,7 @@ final readonly class TaxiOrderService
     public function createOrder(CreateTaxiOrderDto $dto): TaxiRide
     {
         $correlationId = $dto->correlationId ?? Str::uuid()->toString();
-        
+
         $this->fraud->check(
             userId: $dto->passengerId,
             operationType: 'taxi_order_create',
@@ -93,18 +95,19 @@ final readonly class TaxiOrderService
 
         $idempotencyKey = $dto->idempotencyKey ?? Str::uuid()->toString();
         $existingOrder = $this->idempotency->check($idempotencyKey);
-        
+
         if ($existingOrder !== null) {
-            $this->logger->info('Taxi order retrieved from idempotency cache', [
+            $this->logger->$this->logger->info('Taxi order retrieved from idempotency cache', [
                 'idempotency_key' => $idempotencyKey,
                 'correlation_id' => $correlationId,
             ]);
+
             return TaxiRide::findOrFail($existingOrder['ride_id']);
         }
 
         return $this->db->transaction(function () use ($dto, $correlationId, $idempotencyKey) {
             $isB2B = $dto->inn !== null && $dto->businessCardId !== null;
-            
+
             $routeOptimization = $this->routeOptimization->optimizeRoute(
                 new TaxiRouteOptimizationDto(
                     pickupLat: $dto->pickupLat,
@@ -182,7 +185,7 @@ final readonly class TaxiOrderService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Taxi order created', [
+            $this->logger->channel('audit')->$this->logger->info('Taxi order created', [
                 'ride_uuid' => $ride->uuid,
                 'passenger_id' => $dto->passengerId,
                 'total_price' => $pricing->totalPrice,
@@ -193,7 +196,7 @@ final readonly class TaxiOrderService
 
             $anonymizedEvent = $this->anonymization->anonymizeEvent([
                 'user_id' => $dto->passengerId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
                 'vertical' => 'taxi',
                 'action' => 'order_created',
                 'metadata' => [
@@ -241,6 +244,7 @@ final readonly class TaxiOrderService
                     'ride_id' => $rideId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return null;
             }
 
@@ -259,8 +263,9 @@ final readonly class TaxiOrderService
                     'ride_id' => $rideId,
                     'correlation_id' => $correlationId,
                 ]);
-                
+
                 $ride->update(['status' => 'no_drivers_available']);
+
                 return null;
             }
 
@@ -268,7 +273,7 @@ final readonly class TaxiOrderService
                 'driver_id' => $driverMatching->driver->id,
                 'vehicle_id' => $driverMatching->vehicle->id,
                 'status' => 'driver_assigned',
-                'assigned_at' => now(),
+                'assigned_at' => CarbonImmutable::now(),
                 'predicted_eta' => $driverMatching->predictedEta,
                 'metadata' => array_merge($ride->metadata ?? [], [
                     'driver_matching' => $driverMatching->toArray(),
@@ -310,7 +315,7 @@ final readonly class TaxiOrderService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Driver matched to ride', [
+            $this->logger->channel('audit')->$this->logger->info('Driver matched to ride', [
                 'ride_uuid' => $ride->uuid,
                 'driver_id' => $driverMatching->driver->id,
                 'predicted_eta' => $driverMatching->predictedEta,
@@ -349,12 +354,13 @@ final readonly class TaxiOrderService
                     'ride_id' => $rideId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return false;
             }
 
             $ride->update([
                 'status' => 'in_progress',
-                'started_at' => now(),
+                'started_at' => CarbonImmutable::now(),
                 'metadata' => array_merge($ride->metadata ?? [], [
                     'tracking_enabled' => true,
                     'tracking_update_interval' => 5,
@@ -383,11 +389,11 @@ final readonly class TaxiOrderService
                 subjectType: TaxiRide::class,
                 subjectId: $ride->id,
                 oldValues: ['status' => 'driver_assigned'],
-                newValues: ['status' => 'in_progress', 'started_at' => now()->toIso8601String()],
+                newValues: ['status' => 'in_progress', 'started_at' => CarbonImmutable::now()->toIso8601String()],
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Ride started', [
+            $this->logger->channel('audit')->$this->logger->info('Ride started', [
                 'ride_uuid' => $ride->uuid,
                 'driver_id' => $ride->driver_id,
                 'correlation_id' => $correlationId,
@@ -424,6 +430,7 @@ final readonly class TaxiOrderService
                     'ride_id' => $rideId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return false;
             }
 
@@ -438,7 +445,7 @@ final readonly class TaxiOrderService
 
             $ride->update([
                 'status' => 'completed',
-                'completed_at' => now(),
+                'completed_at' => CarbonImmutable::now(),
                 'actual_distance_km' => $actualDistanceKm,
                 'final_price' => $finalPricing->finalPrice,
                 'metadata' => array_merge($ride->metadata ?? [], [
@@ -449,9 +456,9 @@ final readonly class TaxiOrderService
 
             if ($ride->driver_id !== null) {
                 TaxiDriver::where('id', $ride->driver_id)->update(['status' => 'active']);
-                
+
                 $driverEarnings = $finalPricing->finalPrice - $ride->platform_commission - $ride->fleet_commission;
-                
+
                 $this->walletService->credit(
                     wallet: TaxiDriver::findOrFail($ride->driver_id)->wallet,
                     amount: $driverEarnings,
@@ -480,7 +487,7 @@ final readonly class TaxiOrderService
             }
 
             $priceInRubles = $finalPricing->finalPrice / 100;
-            
+
             $this->notificationService->sendPushNotification(
                 userId: $ride->passenger_id,
                 title: 'Поездка завершена',
@@ -500,14 +507,14 @@ final readonly class TaxiOrderService
                 oldValues: ['status' => 'in_progress'],
                 newValues: [
                     'status' => 'completed',
-                    'completed_at' => now()->toIso8601String(),
+                    'completed_at' => CarbonImmutable::now()->toIso8601String(),
                     'final_price' => $finalPricing->finalPrice,
                     'actual_distance_km' => $actualDistanceKm,
                 ],
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Ride completed', [
+            $this->logger->channel('audit')->$this->logger->info('Ride completed', [
                 'ride_uuid' => $ride->uuid,
                 'driver_id' => $ride->driver_id,
                 'final_price' => $finalPricing->finalPrice,
@@ -546,6 +553,7 @@ final readonly class TaxiOrderService
                     'ride_id' => $rideId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return false;
             }
 
@@ -553,7 +561,7 @@ final readonly class TaxiOrderService
 
             $ride->update([
                 'status' => 'cancelled',
-                'cancelled_at' => now(),
+                'cancelled_at' => CarbonImmutable::now(),
                 'cancelled_by' => $cancelledBy,
                 'cancellation_reason' => $reason,
                 'cancellation_fee' => $cancellationFee,
@@ -609,7 +617,7 @@ final readonly class TaxiOrderService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Ride cancelled', [
+            $this->logger->channel('audit')->$this->logger->info('Ride cancelled', [
                 'ride_uuid' => $ride->uuid,
                 'cancelled_by' => $cancelledBy,
                 'reason' => $reason,
@@ -632,16 +640,16 @@ final readonly class TaxiOrderService
         $locationData = [
             'lat' => $lat,
             'lon' => $lon,
-            'updated_at' => now()->toIso8601String(),
+            'updated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
-        
+
         $this->cache->put($cacheKey, $locationData, 300);
 
         TaxiDriver::where('id', $driverId)->update([
             'current_lat' => $lat,
             'current_lon' => $lon,
-            'location_updated_at' => now(),
+            'location_updated_at' => CarbonImmutable::now(),
         ]);
 
         $activeRide = TaxiRide::where('driver_id', $driverId)
@@ -657,7 +665,7 @@ final readonly class TaxiOrderService
                     'ride_uuid' => $activeRide->uuid,
                     'driver_lat' => $lat,
                     'driver_lon' => $lon,
-                    'updated_at' => now()->toIso8601String(),
+                    'updated_at' => CarbonImmutable::now()->toIso8601String(),
                 ],
                 correlationId: $correlationId,
             );
@@ -688,7 +696,7 @@ final readonly class TaxiOrderService
 
         $cacheKey = "taxi:ride:eta:{$rideId}";
         $cachedEta = $this->cache->get($cacheKey);
-        
+
         if ($cachedEta !== null) {
             return $cachedEta;
         }
@@ -712,146 +720,20 @@ final readonly class TaxiOrderService
 
         $trafficFactor = $this->getTrafficFactor($ride->pickup_lat, $ride->pickup_lon, $correlationId);
         $weatherFactor = $this->getWeatherFactor($ride->pickup_lat, $ride->pickup_lon, $correlationId);
-        
-        $etaMinutes = (int)ceil(($distanceToPickup / 0.5) * $trafficFactor * $weatherFactor);
+
+        $etaMinutes = (int) ceil(($distanceToPickup / 0.5) * $trafficFactor * $weatherFactor);
 
         $etaData = [
             'eta_minutes' => $etaMinutes,
             'distance_to_pickup_km' => $distanceToPickup,
             'traffic_factor' => $trafficFactor,
             'weather_factor' => $weatherFactor,
-            'updated_at' => now()->toIso8601String(),
+            'updated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $this->cache->put($cacheKey, $etaData, 60);
 
         return $etaData;
-    }
-
-    private function processPayment(TaxiRide $ride, int $amount, string $correlationId): void
-    {
-        if ($ride->payment_method === 'wallet') {
-            $this->walletService->debit(
-                wallet: $ride->passenger->wallet,
-                amount: $amount,
-                metadata: [
-                    'ride_uuid' => $ride->uuid,
-                    'type' => 'taxi_payment',
-                    'correlation_id' => $correlationId,
-                ],
-            );
-        }
-    }
-
-    private function processSplitPayment(TaxiRide $ride, int $totalAmount, string $correlationId): void
-    {
-        $splitDetails = $ride->split_payment_details;
-        $totalShares = array_sum(array_column($splitDetails, 'share'));
-        
-        foreach ($splitDetails as $split) {
-            $shareAmount = (int)($totalAmount * ($split['share'] / $totalShares));
-            
-            $this->walletService->debit(
-                wallet: $split['user_wallet'],
-                amount: $shareAmount,
-                metadata: [
-                    'ride_uuid' => $ride->uuid,
-                    'type' => 'taxi_split_payment',
-                    'split_user_id' => $split['user_id'],
-                    'share_percentage' => $split['share'],
-                    'correlation_id' => $correlationId,
-                ],
-            );
-        }
-    }
-
-    private function calculateCancellationFee(TaxiRide $ride, int $cancelledBy, string $correlationId): int
-    {
-        if ($cancelledBy === $ride->driver_id) {
-            return 0;
-        }
-
-        if ($ride->status === 'driver_assigned') {
-            return (int)($ride->total_price * 0.1);
-        }
-
-        return 0;
-    }
-
-    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $earthRadius = 6371;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-            sin($dLon / 2) * sin($dLon / 2);
-        
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
-        return $earthRadius * $c;
-    }
-
-    private function getTrafficFactor(float $lat, float $lon, string $correlationId): float
-    {
-        $cacheKey = "taxi:traffic:{$lat}:{$lon}";
-        $cachedFactor = $this->cache->get($cacheKey);
-        
-        if ($cachedFactor !== null) {
-            return $cachedFactor;
-        }
-
-        $hour = now()->hour;
-        $isRushHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
-        $factor = $isRushHour ? 1.5 : 1.0;
-        
-        $this->cache->put($cacheKey, $factor, 300);
-        
-        return $factor;
-    }
-
-    private function getWeatherFactor(float $lat, float $lon, string $correlationId): float
-    {
-        $cacheKey = "taxi:weather:{$lat}:{$lon}";
-        $cachedFactor = $this->cache->get($cacheKey);
-        
-        if ($cachedFactor !== null) {
-            return $cachedFactor;
-        }
-
-        $factor = 1.0;
-        $this->cache->put($cacheKey, $factor, 1800);
-        
-        return $factor;
-    }
-
-    private function categorizePrice(int $priceInKopecks): string
-    {
-        $priceInRubles = $priceInKopecks / 100;
-        
-        if ($priceInRubles < 500) {
-            return 'low';
-        }
-        
-        if ($priceInRubles < 1500) {
-            return 'medium';
-        }
-        
-        return 'high';
-    }
-
-    private function categorizeDistance(float $distanceKm): string
-    {
-        if ($distanceKm < 5) {
-            return 'short';
-        }
-        
-        if ($distanceKm < 15) {
-            return 'medium';
-        }
-        
-        return 'long';
     }
 
     public function getOrder(string $rideUuid, string $correlationId): TaxiRide
@@ -891,7 +773,7 @@ final readonly class TaxiOrderService
     ): TaxiRide {
         $ride = TaxiRide::where('uuid', $rideUuid)->firstOrFail();
 
-        $this->db->transaction(function () use ($ride, $status, $driverId, $vehicleId, $actualDistanceKm, $finalPrice, $driverRating, $passengerRating, $ratingComment, $cancellationReason, $cancellationFee, $correlationId) {
+        $this->db->transaction(function () use ($ride, $status, $driverId, $vehicleId, $actualDistanceKm, $finalPrice, $driverRating, $passengerRating, $ratingComment, $cancellationReason, $cancellationFee) {
             if ($status !== null) {
                 $ride->status = $status;
             }
@@ -1001,7 +883,7 @@ final readonly class TaxiOrderService
     public function estimatePrice(float $pickupLat, float $pickupLon, float $dropoffLat, float $dropoffLon, string $vehicleClass, string $correlationId): array
     {
         $distanceKm = $this->calculateDistance($pickupLat, $pickupLon, $dropoffLat, $dropoffLon);
-        $estimatedMinutes = (int)($distanceKm * 2.5);
+        $estimatedMinutes = (int) ($distanceKm * 2.5);
 
         $pricingDto = new TaxiPricingDto(
             distanceKm: $distanceKm,
@@ -1023,5 +905,131 @@ final readonly class TaxiOrderService
             'price_breakdown' => $pricingResult->priceBreakdown,
             'currency' => 'RUB',
         ];
+    }
+
+    private function processPayment(TaxiRide $ride, int $amount, string $correlationId): void
+    {
+        if ($ride->payment_method === 'wallet') {
+            $this->walletService->debit(
+                wallet: $ride->passenger->wallet,
+                amount: $amount,
+                metadata: [
+                    'ride_uuid' => $ride->uuid,
+                    'type' => 'taxi_payment',
+                    'correlation_id' => $correlationId,
+                ],
+            );
+        }
+    }
+
+    private function processSplitPayment(TaxiRide $ride, int $totalAmount, string $correlationId): void
+    {
+        $splitDetails = $ride->split_payment_details;
+        $totalShares = array_sum(array_column($splitDetails, 'share'));
+
+        foreach ($splitDetails as $split) {
+            $shareAmount = (int) ($totalAmount * ($split['share'] / $totalShares));
+
+            $this->walletService->debit(
+                wallet: $split['user_wallet'],
+                amount: $shareAmount,
+                metadata: [
+                    'ride_uuid' => $ride->uuid,
+                    'type' => 'taxi_split_payment',
+                    'split_user_id' => $split['user_id'],
+                    'share_percentage' => $split['share'],
+                    'correlation_id' => $correlationId,
+                ],
+            );
+        }
+    }
+
+    private function calculateCancellationFee(TaxiRide $ride, int $cancelledBy, string $correlationId): int
+    {
+        if ($cancelledBy === $ride->driver_id) {
+            return 0;
+        }
+
+        if ($ride->status === 'driver_assigned') {
+            return (int) ($ride->total_price * 0.1);
+        }
+
+        return 0;
+    }
+
+    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    private function getTrafficFactor(float $lat, float $lon, string $correlationId): float
+    {
+        $cacheKey = "taxi:traffic:{$lat}:{$lon}";
+        $cachedFactor = $this->cache->get($cacheKey);
+
+        if ($cachedFactor !== null) {
+            return $cachedFactor;
+        }
+
+        $hour = CarbonImmutable::now()->hour;
+        $isRushHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
+        $factor = $isRushHour ? 1.5 : 1.0;
+
+        $this->cache->put($cacheKey, $factor, 300);
+
+        return $factor;
+    }
+
+    private function getWeatherFactor(float $lat, float $lon, string $correlationId): float
+    {
+        $cacheKey = "taxi:weather:{$lat}:{$lon}";
+        $cachedFactor = $this->cache->get($cacheKey);
+
+        if ($cachedFactor !== null) {
+            return $cachedFactor;
+        }
+
+        $factor = 1.0;
+        $this->cache->put($cacheKey, $factor, 1800);
+
+        return $factor;
+    }
+
+    private function categorizePrice(int $priceInKopecks): string
+    {
+        $priceInRubles = $priceInKopecks / 100;
+
+        if ($priceInRubles < 500) {
+            return 'low';
+        }
+
+        if ($priceInRubles < 1500) {
+            return 'medium';
+        }
+
+        return 'high';
+    }
+
+    private function categorizeDistance(float $distanceKm): string
+    {
+        if ($distanceKm < 5) {
+            return 'short';
+        }
+
+        if ($distanceKm < 15) {
+            return 'medium';
+        }
+
+        return 'long';
     }
 }

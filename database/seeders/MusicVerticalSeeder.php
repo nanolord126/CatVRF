@@ -34,7 +34,7 @@ class MusicVerticalSeeder extends Seeder
             'geo_point' => '{"lat": 55.7558, "lon": 37.6173}',
             'schedule_json' => [
                 'mon_fri' => '10:00-21:00',
-                'sat_sun' => '11:00-19:00'
+                'sat_sun' => '11:00-19:00',
             ],
             'rating' => 4.9,
             'review_count' => 120,
@@ -67,7 +67,7 @@ class MusicVerticalSeeder extends Seeder
                 'price' => 250000000,
                 'current_stock' => 1,
                 'min_stock_threshold' => 1,
-            ]
+            ],
         ];
 
         foreach ($instruments as $data) {

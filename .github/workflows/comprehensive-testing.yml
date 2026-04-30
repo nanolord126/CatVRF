@@ -1,0 +1,224 @@
+name: Comprehensive Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+          coverage: xdebug
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run unit tests
+        run: vendor/bin/pest --testsuite=Unit --coverage --coverage-html=coverage/unit
+      
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage
+          path: coverage/unit
+
+  feature-tests:
+    name: Feature Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammath/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+          coverage: xdebug
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run feature tests
+        run: vendor/bin/pest --testsuite=Feature --coverage --coverage-html=coverage/feature
+      
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: feature-coverage
+          path: coverage/feature
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run integration tests
+        run: vendor/bin/pest --testsuite=Integration
+
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run security tests
+        run: vendor/bin/pest --testsuite=Security
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run smoke tests
+        run: vendor/bin/pest --testsuite=Smoke
+
+  sanity-tests:
+    name: Sanity Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, mbstring, pcntl
+      
+      - name: Copy .env
+        run: cp .env.example .env
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run sanity tests
+        run: vendor/bin/pest --testsuite=Sanity
+
+  load-tests:
+    name: Load Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup k6
+        uses: grafana/k6-action@v0.3.1
+      
+      - name: Run load tests
+        run: k6 run k6/crash-test-medical.js
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, feature-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-coverage
+          path: coverage/unit
+      
+      - name: Download feature coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: feature-coverage
+          path: coverage/feature
+      
+      - name: Generate coverage badge
+        run: |
+          echo "Coverage badge generation placeholder"
+          # Use coverage-badge package or custom script here
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage

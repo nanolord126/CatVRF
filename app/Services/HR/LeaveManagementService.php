@@ -1,18 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\HR;
+
+use Psr\Log\LoggerInterface;
 
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
 
 final readonly class LeaveManagementService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
         private readonly AuditService $audit,
         private readonly FraudControlService $fraud,
         private readonly Cache $cache,
@@ -67,8 +76,8 @@ final readonly class LeaveManagementService
                 'status' => 'pending',
                 'correlation_id' => $correlationId,
                 'metadata' => json_encode($metadata),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             $this->audit->record(
@@ -85,7 +94,7 @@ final readonly class LeaveManagementService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Leave requested', [
+            $this->logger->channel('audit')->$this->logger->info('Leave requested', [
                 'leave_id' => $leaveId,
                 'employee_id' => $employeeId,
                 'leave_type' => $leaveType,
@@ -116,7 +125,7 @@ final readonly class LeaveManagementService
         return $this->db->transaction(function () use ($leaveId, $approvedBy, $correlationId, $notes) {
             $leave = $this->db->table('leaves')->where('id', $leaveId)->first();
 
-            if (!$leave) {
+            if (! $leave) {
                 throw new \RuntimeException('Leave not found');
             }
 
@@ -132,9 +141,9 @@ final readonly class LeaveManagementService
                 ->update([
                     'status' => 'approved',
                     'approved_by' => $approvedBy,
-                    'approved_at' => now(),
+                    'approved_at' => CarbonImmutable::now(),
                     'notes' => $notes,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             if ($updated) {
@@ -144,7 +153,7 @@ final readonly class LeaveManagementService
                     subjectId: $leaveId,
                     newValues: [
                         'approved_by' => $approvedBy,
-                        'approved_at' => now()->format('Y-m-d H:i:s'),
+                        'approved_at' => CarbonImmutable::now()->format('Y-m-d H:i:s'),
                     ],
                     correlationId: $correlationId,
                 );
@@ -177,7 +186,7 @@ final readonly class LeaveManagementService
                     'status' => 'rejected',
                     'rejected_by' => $rejectedBy,
                     'rejection_reason' => $rejectionReason,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             if ($updated) {
@@ -218,30 +227,11 @@ final readonly class LeaveManagementService
     }
 
     /**
-     * Update leave balance
-     */
-    private function updateLeaveBalance(
-        int $employeeId,
-        string $leaveType,
-        int $days,
-        string $correlationId
-    ): void {
-        $this->db->table('leave_balances')
-            ->updateOrInsert(
-                ['employee_id' => $employeeId, 'leave_type' => $leaveType],
-                [
-                    'balance' => $this->db->raw("GREATEST(0, COALESCE(balance, 0) + {$days})"),
-                    'updated_at' => now(),
-                ]
-            );
-    }
-
-    /**
      * Get employee leave history
      */
     public function getLeaveHistory(
         int $employeeId,
-        ?string $status = null,
+        ?string $status,
         string $correlationId
     ): array {
         $query = $this->db->table('leaves')
@@ -282,12 +272,31 @@ final readonly class LeaveManagementService
             $accrued++;
         }
 
-        $this->logger->channel('audit')->info('Annual leave accrued', [
+        $this->logger->channel('audit')->$this->logger->info('Annual leave accrued', [
             'tenant_id' => $tenantId,
             'employees_count' => $accrued,
             'correlation_id' => $correlationId,
         ]);
 
         return $accrued;
+    }
+
+    /**
+     * Update leave balance
+     */
+    private function updateLeaveBalance(
+        int $employeeId,
+        string $leaveType,
+        int $days,
+        string $correlationId
+    ): void {
+        $this->db->table('leave_balances')
+            ->updateOrInsert(
+                ['employee_id' => $employeeId, 'leave_type' => $leaveType],
+                [
+                    'balance' => $this->db->raw("GREATEST(0, COALESCE(balance, 0) + {$days})"),
+                    'updated_at' => CarbonImmutable::now(),
+                ]
+            );
     }
 }

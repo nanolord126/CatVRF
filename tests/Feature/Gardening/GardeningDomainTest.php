@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Gardening;
 
@@ -25,14 +27,8 @@ class GardeningDomainTest extends TestCase
     use RefreshDatabase;
 
     private GardeningDomainService $service;
-    private AIPlantGardenConstructor $aiConstructor;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(GardeningDomainService::class);
-        $this->aiConstructor = app(AIPlantGardenConstructor::class);
-    }
+    private AIPlantGardenConstructor $aiConstructor;
 
     /**
      * Test Case 1: Core Creation via GardeningDomainService
@@ -132,13 +128,20 @@ class GardeningDomainTest extends TestCase
     public function test_landscaper_b2b_discount_logic(): void
     {
         $product = GardenProduct::factory()->create(['price_b2b' => 100000]); // 1000.00 RUB base wholesale
-        
+
         // At 5 units -> 5% discount (950 each)
-        $costAt5 = $this->service->calculateB2BTotal($product->id, 5); 
+        $costAt5 = $this->service->calculateB2BTotal($product->id, 5);
         $this->assertEquals(475000, $costAt5); // (100000 * 0.95) * 5
 
         // At 100 units -> 15% discount (850 each)
         $costAt100 = $this->service->calculateB2BTotal($product->id, 100);
         $this->assertEquals(8500000, $costAt100); // (100000 * 0.85) * 100
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(GardeningDomainService::class);
+        $this->aiConstructor = app(AIPlantGardenConstructor::class);
     }
 }

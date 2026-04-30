@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Supermarket\SubVerticals\Food\Models;
+
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Support\Str;
+
+final class FoodOrder extends Model
+{
+    use TenantScoped;
+
+    protected $table = 'food_orders';
+
+    protected $fillable = [
+        'tenant_id', 'restaurant_id', 'customer_id', 'uuid', 'correlation_id',
+        'items', 'total_price', 'status', 'delivery_address',
+        'delivery_lat', 'delivery_lon', 'courier_id', 'estimated_delivery_time',
+        'payment_status', 'special_instructions',
+    ];
+
+    protected $casts = [
+        'items' => 'json',
+        'total_price' => 'decimal:2',
+        'delivery_lat' => 'decimal:8',
+        'delivery_lon' => 'decimal:8',
+        'estimated_delivery_time' => 'datetime',
+    ];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+
+    public function restaurant(): BelongsTo
+    {
+        return $this->belongsTo(Restaurant::class, 'restaurant_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'customer_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $query): void {
+            if (app()->bound('tenant') && app('tenant') instanceof Tenant) {
+                $query->where('tenant_id', app('tenant')->id);
+            }
+        });
+
+        self::creating(function (Model $model): void {
+            if (! $model->uuid) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (! $model->correlation_id) {
+                $model->correlation_id = request()->header('X-Correlation-ID', (string) Str::uuid());
+            }
+        });
+    }
+}

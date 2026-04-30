@@ -1,15 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         // Update users table with role field
-        if (!Schema::hasColumn('users', 'role')) {
+        if (! Schema::hasColumn('users', 'role')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->string('role')->default('customer')->comment('User role: super_admin, support_agent, customer');
                 $table->index('role');
@@ -17,7 +18,7 @@ return new class extends Migration
         }
 
         // Update users table with additional RBAC fields
-        if (!Schema::hasColumn('users', 'is_active')) {
+        if (! Schema::hasColumn('users', 'is_active')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->boolean('is_active')->default(true)->comment('User account active status');
                 $table->string('uuid')->nullable()->unique()->comment('UUID for public references');
@@ -27,7 +28,7 @@ return new class extends Migration
         }
 
         // Create tenants table
-        if (!Schema::hasTable('tenants')) {
+        if (! Schema::hasTable('tenants')) {
             Schema::create('tenants', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('uuid')->unique()->comment('UUID for public references');
@@ -58,7 +59,7 @@ return new class extends Migration
         }
 
         // Create tenant_user pivot table
-        if (!Schema::hasTable('tenant_user')) {
+        if (! Schema::hasTable('tenant_user')) {
             Schema::create('tenant_user', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -78,7 +79,7 @@ return new class extends Migration
         }
 
         // Create business_groups table (филиалы)
-        if (!Schema::hasTable('business_groups')) {
+        if (! Schema::hasTable('business_groups')) {
             Schema::create('business_groups', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('uuid')->unique()->comment('UUID for public references');

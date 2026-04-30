@@ -1,0 +1,8 @@
+{
+  "name": "catvrf-passkey",
+  "description": "Passkey authentication dependencies for CatVRF",
+  "dependencies": {
+    "@simplewebauthn/browser": "^9.0.3"
+  },
+  "devDependencies": {}
+}

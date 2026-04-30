@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Recommendation;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Recommendation\Domain\Services\RecommendationService;
 
 /**
  * Unit tests for RecommendationService.
@@ -14,7 +17,7 @@ final class RecommendationServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Recommendation\Domain\Services\RecommendationService::class
+            RecommendationService::class
         );
         $this->assertTrue($reflection->isFinal(), 'RecommendationService must be final');
     }
@@ -22,7 +25,7 @@ final class RecommendationServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Recommendation\Domain\Services\RecommendationService::class
+            RecommendationService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'RecommendationService must be readonly');
     }
@@ -30,35 +33,34 @@ final class RecommendationServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Recommendation\Domain\Services\RecommendationService::class
+            RecommendationService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'RecommendationService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_getForUser_method_exists(): void
+    public function test_get_for_user_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Recommendation\Domain\Services\RecommendationService::class, 'getForUser'),
+            method_exists(RecommendationService::class, 'getForUser'),
             'RecommendationService must implement getForUser()'
         );
     }
 
-    public function test_getCrossVertical_method_exists(): void
+    public function test_get_cross_vertical_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Recommendation\Domain\Services\RecommendationService::class, 'getCrossVertical'),
+            method_exists(RecommendationService::class, 'getCrossVertical'),
             'RecommendationService must implement getCrossVertical()'
         );
     }
 
-    public function test_invalidateUserCache_method_exists(): void
+    public function test_invalidate_user_cache_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Recommendation\Domain\Services\RecommendationService::class, 'invalidateUserCache'),
+            method_exists(RecommendationService::class, 'invalidateUserCache'),
             'RecommendationService must implement invalidateUserCache()'
         );
     }
-
 }

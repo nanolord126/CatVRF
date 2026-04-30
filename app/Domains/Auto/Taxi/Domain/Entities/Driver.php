@@ -12,14 +12,13 @@ final class Driver extends Entity
 {
     public function __construct(
         private readonly DriverId $id,
-        private string $name,
-        private string $licenseNumber,
-        private bool $isAvailable,
-        private ?VehicleId $vehicleId,
+        private readonly string $name,
+        private readonly string $licenseNumber,
+        private readonly bool $isAvailable,
+        private readonly ?VehicleId $vehicleId,
         private readonly \DateTimeImmutable $createdAt,
-        private \DateTimeImmutable $updatedAt) {
-
-    }
+        private readonly \DateTimeImmutable $updatedAt
+    ) {}
 
     public static function create(
         DriverId $id,
@@ -27,6 +26,7 @@ final class Driver extends Entity
         string $licenseNumber,
     ): self {
         $now = new \DateTimeImmutable();
+
         return new self(
             $id,
             $name,

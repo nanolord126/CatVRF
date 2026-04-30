@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Событие Mesh/WebRTC (используется в MeshService для broadcast-комнат)
- *
- * @package App\Models
  */
 final class Event extends Model
 {
-
     protected $table = 'events';
 
     protected $fillable = [

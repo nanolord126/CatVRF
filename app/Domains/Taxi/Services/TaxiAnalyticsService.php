@@ -1,19 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Taxi\Models\TaxiAnalyticsDaily;
 use App\Domains\Taxi\Models\TaxiDriverAnalytics;
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Models\Driver;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 /**
  * TaxiAnalyticsService - Production-ready analytics for taxi operations
- * 
+ *
  * Features:
  * - Daily analytics aggregation
  * - Driver performance tracking
@@ -35,61 +40,61 @@ final readonly class TaxiAnalyticsService
     /**
      * Aggregate daily analytics
      */
-    public function aggregateDailyAnalytics(Carbon $date, string $correlationId = null): TaxiAnalyticsDaily
+    public function aggregateDailyAnalytics(Carbon $date, ?string $correlationId = null): TaxiAnalyticsDaily
     {
-        $correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
-        
+        $correlationId = $correlationId ?? Str::uuid()->toString();
+
         return $this->db->transaction(function () use ($date, $correlationId) {
             $tenantId = tenant()->id ?? 1;
-            
+
             // Get all rides for the date
             $rides = TaxiRide::whereDate('created_at', $date)
                 ->where('tenant_id', $tenantId)
                 ->get();
-            
+
             $totalRides = $rides->count();
             $completedRides = $rides->where('status', TaxiRide::STATUS_COMPLETED)->count();
             $cancelledRides = $rides->where('status', TaxiRide::STATUS_CANCELLED)->count();
-            
+
             $totalRevenueKopeki = $rides->sum('total_price');
             $totalDistanceKm = $rides->sum('distance_km');
             $totalDurationMinutes = (int) $rides->sum(function ($ride) {
                 return isset($ride->estimated_minutes) ? $ride->estimated_minutes : 0;
             });
-            
+
             $averageRideDistanceKm = $totalRides > 0 ? $totalDistanceKm / $totalRides : 0;
             $averageRideDurationMinutes = $totalRides > 0 ? $totalDurationMinutes / $totalRides : 0;
             $averageRidePriceRubles = $totalRides > 0 ? ($totalRevenueKopeki / 100) / $totalRides : 0;
-            
+
             $surgeMultiplierAvg = $rides->avg('surge_multiplier') ?? 1.0;
-            
+
             // Count active drivers
             $activeDriversCount = Driver::where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->whereDate('created_at', '<=', $date)
                 ->count();
-            
+
             // Count new drivers
             $newDriversCount = Driver::where('tenant_id', $tenantId)
                 ->whereDate('created_at', $date)
                 ->count();
-            
+
             // Count active passengers
             $activePassengersCount = $rides->where('passenger_id')->unique('passenger_id')->count();
-            
+
             // Count new passengers
-            $newPassengersCount = \App\Models\User::where('tenant_id', $tenantId)
+            $newPassengersCount = User::where('tenant_id', $tenantId)
                 ->whereDate('created_at', $date)
                 ->count();
-            
+
             // Peak hour analysis
             $peakHourData = $this->calculatePeakHour($rides);
-            
+
             // B2B vs B2C segmentation
             $b2bRidesCount = $rides->where('metadata.is_b2b', true)->count();
             $b2cRidesCount = $rides->where('metadata.is_b2b', false)->count();
             $fleetRidesCount = $rides->whereNotNull('fleet_id')->count();
-            
+
             // Update or create analytics record
             $analytics = TaxiAnalyticsDaily::updateOrCreate(
                 [
@@ -97,7 +102,7 @@ final readonly class TaxiAnalyticsService
                     'date' => $date,
                 ],
                 [
-                    'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+                    'uuid' => Str::uuid()->toString(),
                     'total_rides' => $totalRides,
                     'completed_rides' => $completedRides,
                     'cancelled_rides' => $cancelledRides,
@@ -119,18 +124,18 @@ final readonly class TaxiAnalyticsService
                     'fleet_rides_count' => $fleetRidesCount,
                     'correlation_id' => $correlationId,
                     'metadata' => [
-                        'aggregated_at' => now()->toIso8601String(),
+                        'aggregated_at' => CarbonImmutable::now()->toIso8601String(),
                     ],
                 ]
             );
-            
-            $this->logger->info('Taxi daily analytics aggregated', [
+
+            $this->logger->$this->logger->info('Taxi daily analytics aggregated', [
                 'correlation_id' => $correlationId,
                 'date' => $date->toDateString(),
                 'total_rides' => $totalRides,
                 'total_revenue_rubles' => $analytics->getTotalRevenueInRubles(),
             ]);
-            
+
             return $analytics;
         });
     }
@@ -138,64 +143,66 @@ final readonly class TaxiAnalyticsService
     /**
      * Aggregate driver analytics
      */
-    public function aggregateDriverAnalytics(int $driverId, Carbon $date, string $correlationId = null): TaxiDriverAnalytics
+    public function aggregateDriverAnalytics(int $driverId, Carbon $date, ?string $correlationId = null): TaxiDriverAnalytics
     {
-        $correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
-        
+        $correlationId = $correlationId ?? Str::uuid()->toString();
+
         return $this->db->transaction(function () use ($driverId, $date, $correlationId) {
             $tenantId = tenant()->id ?? 1;
-            
+
             // Get driver's rides for the date
             $rides = TaxiRide::where('driver_id', $driverId)
                 ->where('tenant_id', $tenantId)
                 ->whereDate('created_at', $date)
                 ->get();
-            
+
             $totalRides = $rides->count();
             $completedRides = $rides->where('status', TaxiRide::STATUS_COMPLETED)->count();
             $cancelledRides = $rides->where('status', TaxiRide::STATUS_CANCELLED)->count();
-            
+
             $totalRevenueKopeki = $rides->where('status', TaxiRide::STATUS_COMPLETED)->sum('total_price');
             $totalDistanceKm = $rides->sum('distance_km');
             $totalDurationMinutes = (int) $rides->sum(function ($ride) {
                 return isset($ride->estimated_minutes) ? $ride->estimated_minutes : 0;
             });
-            
+
             // Calculate online time (placeholder - would need driver session tracking)
             $onlineMinutes = 480; // Default 8 hours
-            
+
             $acceptanceRate = 95.0; // Placeholder - would need acceptance tracking
             $cancellationRate = $totalRides > 0 ? ($cancelledRides / $totalRides) * 100 : 0;
-            
+
             $averageRating = Driver::where('id', $driverId)->value('rating') ?? 5.0;
-            
+
             $totalTipsKopeki = $rides->sum('metadata.tips_kopeki') ?? 0;
             $bonusKopeki = $rides->sum('metadata.bonus_kopeki') ?? 0;
             $penaltyKopeki = $rides->sum('metadata.penalty_kopeki') ?? 0;
-            
+
             $surgeMultiplierAvg = $rides->avg('surge_multiplier') ?? 1.0;
-            
+
             // Peak hours analysis
             $peakHoursRides = $rides->filter(function ($ride) {
                 $hour = $ride->created_at->hour;
+
                 return ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
             })->count();
-            
+
             $peakHoursRevenueKopeki = $rides->filter(function ($ride) {
                 $hour = $ride->created_at->hour;
+
                 return ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
             })->sum('total_price');
-            
+
             // B2B rides
             $b2bRidesCount = $rides->where('metadata.is_b2b', true)->count();
             $b2bRevenueKopeki = $rides->where('metadata.is_b2b', true)->sum('total_price');
-            
+
             // Average response time (placeholder)
             $averageResponseTimeSeconds = 60;
-            
+
             // Average pickup time (placeholder)
             $averagePickupTimeMinutes = 5.0;
-            
+
             // Update or create analytics record
             $analytics = TaxiDriverAnalytics::updateOrCreate(
                 [
@@ -204,7 +211,7 @@ final readonly class TaxiAnalyticsService
                     'date' => $date,
                 ],
                 [
-                    'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+                    'uuid' => Str::uuid()->toString(),
                     'total_rides' => $totalRides,
                     'completed_rides' => $completedRides,
                     'cancelled_rides' => $cancelledRides,
@@ -227,19 +234,19 @@ final readonly class TaxiAnalyticsService
                     'average_pickup_time_minutes' => $averagePickupTimeMinutes,
                     'correlation_id' => $correlationId,
                     'metadata' => [
-                        'aggregated_at' => now()->toIso8601String(),
+                        'aggregated_at' => CarbonImmutable::now()->toIso8601String(),
                     ],
                 ]
             );
-            
-            $this->logger->info('Taxi driver analytics aggregated', [
+
+            $this->logger->$this->logger->info('Taxi driver analytics aggregated', [
                 'correlation_id' => $correlationId,
                 'driver_id' => $driverId,
                 'date' => $date->toDateString(),
                 'total_rides' => $totalRides,
                 'total_revenue_rubles' => $analytics->getTotalRevenueInRubles(),
             ]);
-            
+
             return $analytics;
         });
     }
@@ -247,16 +254,16 @@ final readonly class TaxiAnalyticsService
     /**
      * Get revenue analytics for date range
      */
-    public function getRevenueAnalytics(Carbon $startDate, Carbon $endDate, string $correlationId = null): array
+    public function getRevenueAnalytics(Carbon $startDate, Carbon $endDate, ?string $correlationId = null): array
     {
-        $correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = $correlationId ?? Str::uuid()->toString();
         $tenantId = tenant()->id ?? 1;
-        
+
         $analytics = TaxiAnalyticsDaily::where('tenant_id', $tenantId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date')
             ->get();
-        
+
         return [
             'period' => [
                 'start_date' => $startDate->toDateString(),
@@ -282,8 +289,8 @@ final readonly class TaxiAnalyticsService
             'b2b_vs_b2c' => [
                 'b2b_rides' => $analytics->sum('b2b_rides_count'),
                 'b2c_rides' => $analytics->sum('b2c_rides_count'),
-                'b2b_percentage' => $analytics->sum('total_rides') > 0 
-                    ? ($analytics->sum('b2b_rides_count') / $analytics->sum('total_rides')) * 100 
+                'b2b_percentage' => $analytics->sum('total_rides') > 0
+                    ? ($analytics->sum('b2b_rides_count') / $analytics->sum('total_rides')) * 100
                     : 0,
             ],
             'daily_breakdown' => $analytics->map(function ($item) {
@@ -301,23 +308,23 @@ final readonly class TaxiAnalyticsService
     /**
      * Get driver performance report
      */
-    public function getDriverPerformanceReport(int $driverId, Carbon $startDate, Carbon $endDate, string $correlationId = null): array
+    public function getDriverPerformanceReport(int $driverId, Carbon $startDate, Carbon $endDate, ?string $correlationId = null): array
     {
-        $correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = $correlationId ?? Str::uuid()->toString();
         $tenantId = tenant()->id ?? 1;
-        
+
         $analytics = TaxiDriverAnalytics::where('tenant_id', $tenantId)
             ->where('driver_id', $driverId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date')
             ->get();
-        
+
         $driver = Driver::find($driverId);
-        
+
         return [
             'driver' => [
                 'id' => $driverId,
-                'name' => $driver->first_name . ' ' . $driver->last_name ?? 'N/A',
+                'name' => $driver->first_name.' '.$driver->last_name ?? 'N/A',
                 'rating' => $driver->rating ?? 5.0,
             ],
             'period' => [
@@ -380,11 +387,11 @@ final readonly class TaxiAnalyticsService
     /**
      * Predict demand for future date
      */
-    public function predictDemand(Carbon $date, string $correlationId = null): array
+    public function predictDemand(Carbon $date, ?string $correlationId = null): array
     {
-        $correlationId = $correlationId ?? \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = $correlationId ?? Str::uuid()->toString();
         $tenantId = tenant()->id ?? 1;
-        
+
         // Get historical data for the same day of week for the last 4 weeks
         $dayOfWeek = $date->dayOfWeek;
         $historicalData = TaxiAnalyticsDaily::where('tenant_id', $tenantId)
@@ -392,7 +399,7 @@ final readonly class TaxiAnalyticsService
             ->orderBy('date', 'desc')
             ->limit(4)
             ->get();
-        
+
         if ($historicalData->isEmpty()) {
             return [
                 'date' => $date->toDateString(),
@@ -402,25 +409,25 @@ final readonly class TaxiAnalyticsService
                 'method' => 'no_historical_data',
             ];
         }
-        
+
         $avgRides = $historicalData->avg('total_rides');
         $avgRevenue = $historicalData->avg(function ($item) {
             return $item->getTotalRevenueInRubles();
         });
-        
+
         // Apply seasonal adjustment (placeholder)
         $seasonalFactor = 1.0;
-        
+
         // Apply trend adjustment (placeholder)
         $trendFactor = 1.0;
-        
+
         $predictedRides = (int) round($avgRides * $seasonalFactor * $trendFactor);
         $predictedRevenue = $avgRevenue * $seasonalFactor * $trendFactor;
-        
+
         // Confidence based on data variance
         $variance = $historicalData->stdDev('total_rides');
         $confidence = max(0, min(100, 100 - ($variance / $avgRides) * 100));
-        
+
         return [
             'date' => $date->toDateString(),
             'predicted_rides' => $predictedRides,
@@ -443,15 +450,15 @@ final readonly class TaxiAnalyticsService
         if ($rides->isEmpty()) {
             return ['hour' => null, 'rides_count' => 0];
         }
-        
+
         $hourlyRides = $rides->groupBy(function ($ride) {
             return $ride->created_at->hour;
         })->map(function ($group) {
             return $group->count();
         });
-        
+
         $peakHour = $hourlyRides->search($hourlyRides->max());
-        
+
         return [
             'hour' => $peakHour,
             'rides_count' => $hourlyRides->max(),

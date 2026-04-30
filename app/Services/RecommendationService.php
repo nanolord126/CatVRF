@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
-
-
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -13,6 +13,7 @@ use App\Services\FraudControl\FraudControlService;
 use App\Services\RateLimit\RateLimiterService;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\ConnectionInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -78,13 +79,13 @@ final readonly class RecommendationService
 
             $cached = $this->cache->get($cacheKey);
             if ($cached) {
-                $this->logger->channel('audit')->info('Recommendation: Cache hit', [
+                $this->logger->channel('audit')->$this->logger->info('Recommendation: Cache hit', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'vertical' => $vertical,
                 ]);
 
-                return collect($cached);
+                return new Collection($cached);
             }
 
             // 4. BUILD RECOMMENDATIONS
@@ -111,7 +112,7 @@ final readonly class RecommendationService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Recommendation: Generated', [
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Generated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'vertical' => $vertical,
@@ -135,8 +136,340 @@ final readonly class RecommendationService
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return collect([]);
+            return new Collection([]);
         }
+    }
+
+    /**
+     * Инвалидировать кэш рекомендаций пользователя
+     */
+    public function invalidateUserCache(int $userId, ?string $correlationId = null): void
+    {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            $this->cache->tags(['recommend', "user:{$userId}"])->flush();
+
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Cache invalidated', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Recommendation: Invalidation failed', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Кросс-вертикальные рекомендации
+     * Пример: после бронирования гостиницы → ресторан рядом, такси и т.д.
+     */
+    public function getCrossVertical(
+        int $userId,
+        string $currentVertical,
+        ?string $correlationId = null,
+    ): Collection {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            // Получить последний заказ в текущей вертикали
+            $lastOrder = $this->db->table('orders')
+                ->where('user_id', $userId)
+                ->where('vertical', $currentVertical)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (! $lastOrder) {
+                return new Collection([]);
+            }
+
+            // Получить рекомендации по связанным вертикалям
+            $crossVerticals = match ($currentVertical) {
+                'beauty' => ['wellness', 'products'],
+                'auto' => ['insurance', 'service'],
+                'food' => ['delivery', 'catering'],
+                default => [],
+            };
+
+            $recommendations = new Collection([]);
+
+            foreach ($crossVerticals as $vertical) {
+                $recs = $this->getForUser(
+                    userId: $userId,
+                    vertical: $vertical,
+                    context: [
+                        'lat' => $lastOrder->lat ?? null,
+                        'lon' => $lastOrder->lon ?? null,
+                        'radius' => 10, // 10 км рядом
+                        'source' => 'cross_vertical',
+                    ],
+                    correlationId: $correlationId,
+                );
+
+                $recommendations = $recommendations->merge($recs);
+            }
+
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Cross-vertical generated', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'from_vertical' => $currentVertical,
+                'count' => $recommendations->count(),
+            ]);
+
+            return $recommendations->take(10);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Recommendation: Cross-vertical failed', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'current_vertical' => $currentVertical,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new Collection([]);
+        }
+    }
+
+    /**
+     * B2B рекомендации (поставщики, партнёры для бизнеса)
+     */
+    public function getB2BForTenant(
+        int|string $tenantId,
+        string $vertical,
+        ?string $correlationId = null,
+    ): Collection {
+        $correlationId ??= Str::uuid()->toString();
+        $tenantId = (int) $tenantId;
+
+        try {
+            // Получить поставщиков той же вертикали
+            $suppliers = $this->db->table('suppliers')
+                ->where('vertical', $vertical)
+                ->whereNotIn('tenant_id', [$tenantId]) // исключить себя
+                ->orderBy('rating', 'desc')
+                ->limit(20)
+                ->get()
+                ->map(fn ($s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'rating' => $s->rating,
+                    'score' => $s->rating / 5.0,
+                    'source' => 'b2b',
+                ])->values();
+
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: B2B generated', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => $tenantId,
+                'vertical' => $vertical,
+                'count' => $suppliers->count(),
+            ]);
+
+            return $suppliers;
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Recommendation: B2B failed', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => $tenantId,
+                'vertical' => $vertical,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new Collection([]);
+        }
+    }
+
+    /**
+     * Рассчитать персональный скор для товара (0-1)
+     */
+    public function scoreItem(
+        int $userId,
+        int $itemId,
+        array $context = [],
+        ?string $correlationId = null,
+    ): float {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            $score = 0.5; // базовый скор
+
+            // Было ли куплено раньше?
+            $wasBought = $this->db->table('order_items')
+                ->where('user_id', $userId)
+                ->where('product_id', $itemId)
+                ->exists();
+
+            if ($wasBought) {
+                $score += 0.2; // повторный интерес
+            }
+
+            // Было ли просмотрено последний день?
+            $wasViewedToday = $this->db->table('product_views')
+                ->where('user_id', $userId)
+                ->where('product_id', $itemId)
+                ->where('created_at', '>', CarbonImmutable::now()->subDay())
+                ->exists();
+
+            if ($wasViewedToday) {
+                $score += 0.15; // свежий интерес
+            }
+
+            // Рейтинг товара
+            $rating = $this->db->table('products')
+                ->where('id', $itemId)
+                ->value('rating') ?? 3;
+
+            $score += ($rating / 5.0) * 0.15;
+
+            // Цена в бюджете?
+            $price = $this->db->table('products')
+                ->where('id', $itemId)
+                ->value('price') ?? 0;
+
+            $userAvgPrice = $this->db->table('order_items')
+                ->where('user_id', $userId)
+                ->avg('price') ?? 5000;
+
+            if ($price <= $userAvgPrice * 1.5) {
+                $score += 0.1; // в приемлемом ценовом диапазоне
+            }
+
+            $finalScore = min($score, 1.0);
+
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Item scored', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'item_id' => $itemId,
+                'score' => $finalScore,
+            ]);
+
+            return $finalScore;
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Recommendation: Scoring failed', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return 0.0;
+        }
+    }
+
+    /**
+     * Ежедневный job: пересчитать embeddings для всех товаров
+     */
+    public function recalculateEmbeddings(?string $correlationId = null): array
+    {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Embeddings recalc started', [
+                'correlation_id' => $correlationId,
+            ]);
+
+            // Получить все товары
+            $products = $this->db->table('products')
+                ->where('updated_at', '>', CarbonImmutable::now()->subDay())
+                ->get();
+
+            $processed = 0;
+
+            foreach ($products as $product) {
+                try {
+                    // Вызвать OpenAI text-embedding-3-large или SentenceTransformers
+                    $embedding = $this->generateEmbedding(
+                        text: "{$product->name} {$product->description}",
+                        correlationId: $correlationId,
+                    );
+
+                    ProductEmbedding::updateOrCreate(
+                        ['product_id' => $product->id],
+                        [
+                            'embedding' => $embedding, // вектор
+                            'updated_at' => CarbonImmutable::now(),
+                        ],
+                    );
+
+                    $processed++;
+                } catch (\Throwable $e) {
+                    $this->logger->channel('audit')->warning('Recommendation: Embedding generation failed', [
+                        'correlation_id' => $correlationId,
+                        'product_id' => $product->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $this->logger->channel('audit')->$this->logger->info('Recommendation: Embeddings recalc completed', [
+                'correlation_id' => $correlationId,
+                'processed' => $processed,
+                'total' => $products->count(),
+            ]);
+
+            return [
+                'processed' => $processed,
+                'total' => $products->count(),
+                'status' => 'completed',
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Recommendation: Embeddings recalc failed', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Получить образовательные ресурсы для учебного пути
+     */
+    public function getEducationResources(
+        int $userId,
+        int $courseId,
+        ?string $learningGoal = null,
+        ?string $currentLevel = null,
+        bool $isCorporate = false,
+    ): array {
+        $correlationId = Str::uuid()->toString();
+
+        $this->fraud->check([
+            'operation_type' => 'education_resources_request',
+            'user_id' => $userId,
+            'course_id' => $courseId,
+            'is_corporate' => $isCorporate,
+            'ip_address' => $this->request->ip(),
+            'correlation_id' => $correlationId,
+        ]);
+
+        $cacheKey = "education:resources:user:{$userId}:course:{$courseId}:goal:".md5($learningGoal ?? '').':v1';
+        $cached = $this->cache->get($cacheKey);
+
+        if ($cached) {
+            return $cached;
+        }
+
+        $resources = [
+            'courses' => $this->getRecommendedCourses($userId, $courseId, $currentLevel, $isCorporate),
+            'books' => $this->getRecommendedBooks($courseId, $learningGoal),
+            'videos' => $this->getRecommendedVideos($courseId, $currentLevel),
+            'practice_exercises' => $this->getPracticeExercises($courseId),
+            'community_forums' => $this->getCommunityForums($courseId),
+        ];
+
+        $this->cache->put($cacheKey, $resources, 1800);
+
+        $this->log->channel('audit')->$this->logger->info('Education resources retrieved', [
+            'correlation_id' => $correlationId,
+            'user_id' => $userId,
+            'course_id' => $courseId,
+        ]);
+
+        return $resources;
     }
 
     /**
@@ -169,7 +502,7 @@ final readonly class RecommendationService
             $rules = $this->getBusinessRules($tenantId, $vertical, $correlationId);
 
             // Объединить и отранжировать
-            $merged = collect([])
+            $merged = new Collection([])
                 ->merge($behaviorItems->map(fn ($item) => [...$item, 'source_weight' => 0.45]))
                 ->merge($geoItems->map(fn ($item) => [...$item, 'source_weight' => 0.25]))
                 ->merge($embeddingItems->map(fn ($item) => [...$item, 'source_weight' => 0.20]))
@@ -204,7 +537,7 @@ final readonly class RecommendationService
                 'error' => $e->getMessage(),
             ]);
 
-            return collect([]);
+            return new Collection([]);
         }
     }
 
@@ -214,7 +547,7 @@ final readonly class RecommendationService
             // Получить просмотренные товары (за последние 30 дней)
             return $this->db->table('product_views')
                 ->where('user_id', $userId)
-                ->where('created_at', '>', now()->subDays(30))
+                ->where('created_at', '>', CarbonImmutable::now()->subDays(30))
                 ->groupBy('product_id')
                 ->selectRaw('product_id as id, COUNT(*) as count, MAX(created_at) as last_view')
                 ->orderByRaw('count DESC')
@@ -232,7 +565,7 @@ final readonly class RecommendationService
                 'error' => $e->getMessage(),
             ]);
 
-            return collect([]);
+            return new Collection([]);
         }
     }
 
@@ -241,8 +574,8 @@ final readonly class RecommendationService
         try {
             $radius = $context['radius'] ?? 5; // км
 
-            if (!isset($context['lat'], $context['lon'])) {
-                return collect([]);
+            if (! isset($context['lat'], $context['lon'])) {
+                return new Collection([]);
             }
 
             // Простой радиусный поиск (ST_Distance_Sphere в MySQL)
@@ -272,7 +605,7 @@ final readonly class RecommendationService
                 'error' => $e->getMessage(),
             ]);
 
-            return collect([]);
+            return new Collection([]);
         }
     }
 
@@ -282,8 +615,8 @@ final readonly class RecommendationService
             // Получить embeddings пользователя
             $userEmbedding = UserEmbedding::where('user_id', $userId)->first();
 
-            if (!$userEmbedding || !$userEmbedding->embedding) {
-                return collect([]);
+            if (! $userEmbedding || ! $userEmbedding->embedding) {
+                return new Collection([]);
             }
 
             // Найти похожие товары по cosine similarity (требует pgvector или подобного)
@@ -307,7 +640,7 @@ final readonly class RecommendationService
                 'error' => $e->getMessage(),
             ]);
 
-            return collect([]);
+            return new Collection([]);
         }
     }
 
@@ -326,292 +659,7 @@ final readonly class RecommendationService
                 'error' => $e->getMessage(),
             ]);
 
-            return collect([]);
-        }
-    }
-
-    /**
-     * Инвалидировать кэш рекомендаций пользователя
-     */
-    public function invalidateUserCache(int $userId, ?string $correlationId = null): void
-    {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            $this->cache->tags(['recommend', "user:{$userId}"])->flush();
-
-            $this->logger->channel('audit')->info('Recommendation: Cache invalidated', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-            ]);
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Recommendation: Invalidation failed', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Кросс-вертикальные рекомендации
-     * Пример: после бронирования гостиницы → ресторан рядом, такси и т.д.
-     */
-    public function getCrossVertical(
-        int $userId,
-        string $currentVertical,
-        ?string $correlationId = null,
-    ): Collection {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            // Получить последний заказ в текущей вертикали
-            $lastOrder = $this->db->table('orders')
-                ->where('user_id', $userId)
-                ->where('vertical', $currentVertical)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            if (!$lastOrder) {
-                return collect([]);
-            }
-
-            // Получить рекомендации по связанным вертикалям
-            $crossVerticals = match ($currentVertical) {
-                'beauty' => ['wellness', 'products'],
-                'auto' => ['insurance', 'service'],
-                'food' => ['delivery', 'catering'],
-                default => [],
-            };
-
-            $recommendations = collect([]);
-
-            foreach ($crossVerticals as $vertical) {
-                $recs = $this->getForUser(
-                    userId: $userId,
-                    vertical: $vertical,
-                    context: [
-                        'lat' => $lastOrder->lat ?? null,
-                        'lon' => $lastOrder->lon ?? null,
-                        'radius' => 10, // 10 км рядом
-                        'source' => 'cross_vertical',
-                    ],
-                    correlationId: $correlationId,
-                );
-
-                $recommendations = $recommendations->merge($recs);
-            }
-
-            $this->logger->channel('audit')->info('Recommendation: Cross-vertical generated', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'from_vertical' => $currentVertical,
-                'count' => $recommendations->count(),
-            ]);
-
-            return $recommendations->take(10);
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Recommendation: Cross-vertical failed', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'current_vertical' => $currentVertical,
-                'error' => $e->getMessage(),
-            ]);
-
-            return collect([]);
-        }
-    }
-
-    /**
-     * B2B рекомендации (поставщики, партнёры для бизнеса)
-     */
-    public function getB2BForTenant(
-        int|string $tenantId,
-        string $vertical,
-        ?string $correlationId = null,
-    ): Collection {
-        $correlationId ??= Str::uuid()->toString();
-        $tenantId = (int) $tenantId;
-
-        try {
-            // Получить поставщиков той же вертикали
-            $suppliers = $this->db->table('suppliers')
-                ->where('vertical', $vertical)
-                ->whereNotIn('tenant_id', [$tenantId]) // исключить себя
-                ->orderBy('rating', 'desc')
-                ->limit(20)
-                ->get()
-                ->map(fn ($s) => [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'rating' => $s->rating,
-                    'score' => $s->rating / 5.0,
-                    'source' => 'b2b',
-                ])->values();
-
-            $this->logger->channel('audit')->info('Recommendation: B2B generated', [
-                'correlation_id' => $correlationId,
-                'tenant_id' => $tenantId,
-                'vertical' => $vertical,
-                'count' => $suppliers->count(),
-            ]);
-
-            return $suppliers;
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Recommendation: B2B failed', [
-                'correlation_id' => $correlationId,
-                'tenant_id' => $tenantId,
-                'vertical' => $vertical,
-                'error' => $e->getMessage(),
-            ]);
-
-            return collect([]);
-        }
-    }
-
-    /**
-     * Рассчитать персональный скор для товара (0-1)
-     */
-    public function scoreItem(
-        int $userId,
-        int $itemId,
-        array $context = [],
-        ?string $correlationId = null,
-    ): float {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            $score = 0.5; // базовый скор
-
-            // Было ли куплено раньше?
-            $wasBought = $this->db->table('order_items')
-                ->where('user_id', $userId)
-                ->where('product_id', $itemId)
-                ->exists();
-
-            if ($wasBought) {
-                $score += 0.2; // повторный интерес
-            }
-
-            // Было ли просмотрено последний день?
-            $wasViewedToday = $this->db->table('product_views')
-                ->where('user_id', $userId)
-                ->where('product_id', $itemId)
-                ->where('created_at', '>', now()->subDay())
-                ->exists();
-
-            if ($wasViewedToday) {
-                $score += 0.15; // свежий интерес
-            }
-
-            // Рейтинг товара
-            $rating = $this->db->table('products')
-                ->where('id', $itemId)
-                ->value('rating') ?? 3;
-
-            $score += ($rating / 5.0) * 0.15;
-
-            // Цена в бюджете?
-            $price = $this->db->table('products')
-                ->where('id', $itemId)
-                ->value('price') ?? 0;
-
-            $userAvgPrice = $this->db->table('order_items')
-                ->where('user_id', $userId)
-                ->avg('price') ?? 5000;
-
-            if ($price <= $userAvgPrice * 1.5) {
-                $score += 0.1; // в приемлемом ценовом диапазоне
-            }
-
-            $finalScore = min($score, 1.0);
-
-            $this->logger->channel('audit')->info('Recommendation: Item scored', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'item_id' => $itemId,
-                'score' => $finalScore,
-            ]);
-
-            return $finalScore;
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Recommendation: Scoring failed', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'item_id' => $itemId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return 0.0;
-        }
-    }
-
-    /**
-     * Ежедневный job: пересчитать embeddings для всех товаров
-     */
-    public function recalculateEmbeddings(?string $correlationId = null): array
-    {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            $this->logger->channel('audit')->info('Recommendation: Embeddings recalc started', [
-                'correlation_id' => $correlationId,
-            ]);
-
-            // Получить все товары
-            $products = $this->db->table('products')
-                ->where('updated_at', '>', now()->subDay())
-                ->get();
-
-            $processed = 0;
-
-            foreach ($products as $product) {
-                try {
-                    // Вызвать OpenAI text-embedding-3-large или SentenceTransformers
-                    $embedding = $this->generateEmbedding(
-                        text: "{$product->name} {$product->description}",
-                        correlationId: $correlationId,
-                    );
-
-                    ProductEmbedding::updateOrCreate(
-                        ['product_id' => $product->id],
-                        [
-                            'embedding' => $embedding, // вектор
-                            'updated_at' => now(),
-                        ],
-                    );
-
-                    $processed++;
-                } catch (\Throwable $e) {
-                    $this->logger->channel('audit')->warning('Recommendation: Embedding generation failed', [
-                        'correlation_id' => $correlationId,
-                        'product_id' => $product->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            $this->logger->channel('audit')->info('Recommendation: Embeddings recalc completed', [
-                'correlation_id' => $correlationId,
-                'processed' => $processed,
-                'total' => $products->count(),
-            ]);
-
-            return [
-                'processed' => $processed,
-                'total' => $products->count(),
-                'status' => 'completed',
-            ];
-        } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Recommendation: Embeddings recalc failed', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            throw $e;
+            return new Collection([]);
         }
     }
 
@@ -623,53 +671,6 @@ final readonly class RecommendationService
         // Плейсхолдер - в реальном коде вызвать OpenAI или SentenceTransformers
         // Возвращает вектор [768] элементов для text-embedding-3-large
         return array_fill(0, 768, 0.0);
-    }
-
-    /**
-     * Получить образовательные ресурсы для учебного пути
-     */
-    public function getEducationResources(
-        int $userId,
-        int $courseId,
-        ?string $learningGoal = null,
-        ?string $currentLevel = null,
-        bool $isCorporate = false,
-    ): array {
-        $correlationId = Str::uuid()->toString();
-
-        $this->fraud->check([
-            'operation_type' => 'education_resources_request',
-            'user_id' => $userId,
-            'course_id' => $courseId,
-            'is_corporate' => $isCorporate,
-            'ip_address' => $this->request->ip(),
-            'correlation_id' => $correlationId,
-        ]);
-
-        $cacheKey = "education:resources:user:{$userId}:course:{$courseId}:goal:" . md5($learningGoal ?? '') . ":v1";
-        $cached = $this->cache->get($cacheKey);
-
-        if ($cached) {
-            return $cached;
-        }
-
-        $resources = [
-            'courses' => $this->getRecommendedCourses($userId, $courseId, $currentLevel, $isCorporate),
-            'books' => $this->getRecommendedBooks($courseId, $learningGoal),
-            'videos' => $this->getRecommendedVideos($courseId, $currentLevel),
-            'practice_exercises' => $this->getPracticeExercises($courseId),
-            'community_forums' => $this->getCommunityForums($courseId),
-        ];
-
-        $this->cache->put($cacheKey, $resources, 1800);
-
-        $this->log->channel('audit')->info('Education resources retrieved', [
-            'correlation_id' => $correlationId,
-            'user_id' => $userId,
-            'course_id' => $courseId,
-        ]);
-
-        return $resources;
     }
 
     private function getRecommendedCourses(int $userId, int $courseId, ?string $currentLevel, bool $isCorporate): array

@@ -1,82 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Content;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ContentService.
- *
- * @covers \App\Domains\Content\Services\ContentService
- */
-final class ContentServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Content\Services\ContentService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ContentService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Content\Services\ContentService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ContentService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Content');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Content\Services\ContentService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ContentService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ContentService exists and is instantiable', function () {
+    $this->assertServiceExists('ContentService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Content\Services\ContentService::class, 'create'),
-            'ContentService must implement create()'
-        );
-    }
+test('ContentService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ContentService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Content\Services\ContentService::class, 'update'),
-            'ContentService must implement update()'
-        );
-    }
+test('ContentService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ContentService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Content\Services\ContentService::class, 'delete'),
-            'ContentService must implement delete()'
-        );
-    }
+test('ContentService enforces quota limits', function () {
+    $this->testServiceWithQuota('ContentService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Content\Services\ContentService::class, 'list'),
-            'ContentService must implement list()'
-        );
-    }
+test('ContentService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ContentService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Content\Services\ContentService::class, 'getById'),
-            'ContentService must implement getById()'
-        );
-    }
+test('ContentService has proper caching', function () {
+    $cacheKey = 'content:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ContentService'));
 
+        return $service->getData(1);
+    });
+});
 
+test('ContentService dispatches proper events', function () {
+    $eventClass = "App\Domains\Content\Events\ContentProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ContentService'));
+        $service->process([]);
+    });
+});
+
+test('ContentService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Content\Jobs\ProcessContentJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ContentService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ContentService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ContentService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ContentService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ContentService'));
+        $service->process([]);
+    }, 'ContentService processed');
+});
+
+test('ContentService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

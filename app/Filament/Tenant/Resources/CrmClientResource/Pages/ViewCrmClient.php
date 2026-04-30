@@ -20,23 +20,6 @@ final class ViewCrmClient extends ViewRecord
 {
     protected static string $resource = CrmClientResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\EditAction::make(),
-            Actions\DeleteAction::make()
-                ->color('danger'),
-        ];
-    }
-
-    protected function getFooterWidgets(): array
-    {
-        return [
-            CrmVerticalProfileWidget::class,
-            CrmActivityTimelineWidget::class,
-        ];
-    }
-
     public function getFooterWidgetsColumns(): int|array
     {
         return 1;
@@ -176,5 +159,22 @@ final class ViewCrmClient extends ViewRecord
     public function __toString(): string
     {
         return 'ViewCrmClient';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\EditAction::make(),
+            Actions\DeleteAction::make()
+                ->color('danger'),
+        ];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [
+            CrmVerticalProfileWidget::class,
+            CrmActivityTimelineWidget::class,
+        ];
     }
 }

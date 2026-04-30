@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Taxi\DTOs\TaxiDriverMatchingDto;
 use App\Domains\Taxi\DTOs\TaxiDriverMatchingResultDto;
@@ -10,12 +14,12 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Support\Collection;
 
 /**
  * TaxiDriverMatchingService - Real-time driver matching with predictive ETA
- * 
+ *
  * Uses ML-based scoring to match optimal drivers
  * Updates driver location every 5 seconds for real-time tracking
  * Predicts ETA with traffic and weather factors
@@ -23,8 +27,9 @@ use Psr\Log\LoggerInterface;
 final readonly class TaxiDriverMatchingService
 {
     private const CACHE_TTL = 60;
+
     private const SEARCH_RADIUS_KM = 5.0;
-    
+
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
@@ -36,7 +41,7 @@ final readonly class TaxiDriverMatchingService
     public function findBestDriver(TaxiDriverMatchingDto $dto): TaxiDriverMatchingResultDto
     {
         $correlationId = $dto->correlationId;
-        
+
         $this->fraud->check(
             userId: 0,
             operationType: 'taxi_driver_matching',
@@ -103,7 +108,7 @@ final readonly class TaxiDriverMatchingService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Best driver matched', [
+        $this->logger->$this->logger->info('Best driver matched', [
             'driver_id' => $bestMatch['driver']->id,
             'predicted_eta' => $predictedEta,
             'driver_score' => $bestMatch['score'],
@@ -114,10 +119,10 @@ final readonly class TaxiDriverMatchingService
         return $result;
     }
 
-    private function findAvailableDrivers(float $lat, float $lon, int $tenantId, string $correlationId): \Illuminate\Support\Collection
+    private function findAvailableDrivers(float $lat, float $lon, int $tenantId, string $correlationId): Collection
     {
         $radius = self::SEARCH_RADIUS_KM;
-        
+
         return TaxiDriver::where('tenant_id', $tenantId)
             ->where('status', 'active')
             ->where('is_online', true)
@@ -137,13 +142,13 @@ final readonly class TaxiDriverMatchingService
             });
     }
 
-    private function scoreAndSelectBestDriver(\Illuminate\Support\Collection $drivers, float $pickupLat, float $pickupLon, string $correlationId): array
+    private function scoreAndSelectBestDriver(Collection $drivers, float $pickupLat, float $pickupLon, string $correlationId): array
     {
         $scoredDrivers = [];
 
         foreach ($drivers as $driver) {
             $vehicle = $driver->vehicles->first();
-            
+
             if ($vehicle === null) {
                 continue;
             }
@@ -186,13 +191,13 @@ final readonly class TaxiDriverMatchingService
         $completionRateScore = ($driver->completion_rate ?? 0.95) * 0.2;
         $acceptanceRateScore = ($driver->acceptance_rate ?? 0.9) * 0.15;
         $experienceScore = min($driver->total_rides / 1000, 1.0) * 0.1;
-        
+
         $vehicleScore = ($vehicle->rating / 5.0) * 0.05;
         $recentActivityScore = $this->getRecentActivityScore($driver->id, $correlationId) * 0.05;
         $streakBonus = $this->getStreakBonus($driver->id, $correlationId) * 0.1;
 
-        $totalScore = $ratingScore + $distanceScore + $completionRateScore + 
-                     $acceptanceRateScore + $experienceScore + $vehicleScore + 
+        $totalScore = $ratingScore + $distanceScore + $completionRateScore +
+                     $acceptanceRateScore + $experienceScore + $vehicleScore +
                      $recentActivityScore + $streakBonus;
 
         return min($totalScore, 1.0);
@@ -202,7 +207,7 @@ final readonly class TaxiDriverMatchingService
     {
         $recentRides = $this->db->table('taxi_rides')
             ->where('driver_id', $driverId)
-            ->where('completed_at', '>=', now()->subHours(2))
+            ->where('completed_at', '>=', CarbonImmutable::now()->subHours(2))
             ->count();
 
         return min($recentRides / 5, 1.0);
@@ -212,7 +217,7 @@ final readonly class TaxiDriverMatchingService
     {
         $cacheKey = "taxi:driver:streak:{$driverId}";
         $streak = $this->cache->get($cacheKey, 0);
-        
+
         return min($streak / 10, 0.3);
     }
 
@@ -220,17 +225,17 @@ final readonly class TaxiDriverMatchingService
     {
         $driverLat = $driver->current_lat ?? $pickupLat;
         $driverLon = $driver->current_lon ?? $pickupLon;
-        
+
         $distance = $this->calculateDistance($driverLat, $driverLon, $pickupLat, $pickupLon);
-        
+
         $trafficFactor = $this->getTrafficFactor($pickupLat, $pickupLon, $correlationId);
         $weatherFactor = $this->getWeatherFactor($pickupLat, $pickupLon, $correlationId);
-        
+
         $baseSpeed = 0.5;
         $adjustedSpeed = $baseSpeed / ($trafficFactor * $weatherFactor);
-        
-        $etaMinutes = (int)ceil(($distance / $adjustedSpeed) + 2);
-        
+
+        $etaMinutes = (int) ceil(($distance / $adjustedSpeed) + 2);
+
         return max($etaMinutes, 3);
     }
 
@@ -238,17 +243,17 @@ final readonly class TaxiDriverMatchingService
     {
         $cacheKey = "taxi:traffic:{$lat}:{$lon}";
         $cachedFactor = $this->cache->get($cacheKey);
-        
+
         if ($cachedFactor !== null) {
             return $cachedFactor;
         }
 
-        $hour = now()->hour;
+        $hour = CarbonImmutable::now()->hour;
         $isRushHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19);
         $factor = $isRushHour ? 1.5 : 1.0;
-        
+
         $this->cache->put($cacheKey, $factor, 300);
-        
+
         return $factor;
     }
 
@@ -256,14 +261,14 @@ final readonly class TaxiDriverMatchingService
     {
         $cacheKey = "taxi:weather:{$lat}:{$lon}";
         $cachedFactor = $this->cache->get($cacheKey);
-        
+
         if ($cachedFactor !== null) {
             return $cachedFactor;
         }
 
         $factor = 1.0;
         $this->cache->put($cacheKey, $factor, 1800);
-        
+
         return $factor;
     }
 
@@ -272,13 +277,13 @@ final readonly class TaxiDriverMatchingService
         $earthRadius = 6371;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
-        
+
         $a = sin($dLat / 2) * sin($dLat / 2) +
             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
             sin($dLon / 2) * sin($dLon / 2);
-        
+
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
+
         return $earthRadius * $c;
     }
 

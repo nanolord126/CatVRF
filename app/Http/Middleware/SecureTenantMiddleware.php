@@ -5,8 +5,10 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Redis\Factory;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Str;
 
 /**
@@ -28,6 +30,9 @@ final readonly class SecureTenantMiddleware
 
     public function __construct(
         private readonly ConfigRepository $config,
+        private readonly DatabaseManager $db,
+        private readonly Repository $cache,
+        private readonly Factory $redis,
     ) {}
 
     /**
@@ -112,7 +117,7 @@ final readonly class SecureTenantMiddleware
      */
     private function getTenantBySubdomain(string $subdomain): ?string
     {
-        return \Illuminate\Support\Facades\DB::table('tenants')
+        return $this->db->table('tenants')
             ->where('slug', $subdomain)
             ->where('is_active', true)
             ->value('id');
@@ -123,7 +128,7 @@ final readonly class SecureTenantMiddleware
      */
     private function isTenantActive(string $tenantId): bool
     {
-        return (bool) \Illuminate\Support\Facades\DB::table('tenants')
+        return (bool) $this->db->table('tenants')
             ->where('id', $tenantId)
             ->where('is_active', true)
             ->exists();
@@ -175,10 +180,10 @@ final readonly class SecureTenantMiddleware
     private function getTenantSecret(string $tenantId): string
     {
         // Get from database or cache
-        $secret = \Illuminate\Support\Facades\Cache::remember(
+        $secret = $this->cache->remember(
             "tenant:secret:{$tenantId}",
             3600,
-            fn() => \Illuminate\Support\Facades\DB::table('tenants')
+            fn() => $this->db->table('tenants')
                 ->where('id', $tenantId)
                 ->value('api_secret') ?? $this->getDefaultSecret($tenantId)
         );
@@ -200,7 +205,7 @@ final readonly class SecureTenantMiddleware
     private function isIPWhitelisted(string $ip, string $tenantId): bool
     {
         $whitelistKey = self::IP_WHITELIST_KEY . $tenantId;
-        $whitelist = Redis::smembers($whitelistKey);
+        $whitelist = $this->redis->connection()->smembers($whitelistKey);
 
         if (empty($whitelist)) {
             // If no whitelist, allow all (default behavior)
@@ -216,8 +221,8 @@ final readonly class SecureTenantMiddleware
     public function addIPToWhitelist(string $tenantId, string $ip): bool
     {
         $key = self::IP_WHITELIST_KEY . $tenantId;
-        Redis::sadd($key, $ip);
-        Redis::expire($key, 86400); // 24 hours TTL
+        $this->redis->connection()->sadd($key, $ip);
+        $this->redis->connection()->expire($key, 86400); // 24 hours TTL
 
         return true;
     }
@@ -228,6 +233,6 @@ final readonly class SecureTenantMiddleware
     public function removeIPFromWhitelist(string $tenantId, string $ip): bool
     {
         $key = self::IP_WHITELIST_KEY . $tenantId;
-        return Redis::srem($key, $ip) > 0;
+        return $this->redis->connection()->srem($key, $ip) > 0;
     }
 }

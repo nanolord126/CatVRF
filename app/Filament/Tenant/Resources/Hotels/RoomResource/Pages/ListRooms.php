@@ -1,10 +1,15 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Hotels\RoomResource\Pages;
+
 use App\Filament\Tenant\Resources\Hotels\RoomResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-final class ListRooms extends ListRecords { protected static string $resource = RoomResource::class; protected function getHeaderActions(): array { return [Actions\CreateAction::make()]; } 
+
+final class ListRooms extends ListRecords
+{
     /**
      * Component: ListRooms
      *
@@ -12,13 +17,19 @@ final class ListRooms extends ListRecords { protected static string $resource = 
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
      */
     /**
      * Version identifier for this component.
      */
     private const VERSION = '1.0.0';
+
+    protected static string $resource = RoomResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\CreateAction::make()];
+    }
 
     /**
      * ListRooms — CatVRF 2026 Component.
@@ -27,10 +38,11 @@ final class ListRooms extends ListRecords { protected static string $resource = 
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
+     *
      * @see https://catvrf.ru/docs/listrooms
      * @see https://catvrf.ru/docs/listrooms
      * @see https://catvrf.ru/docs/listrooms
@@ -55,5 +67,4 @@ final class ListRooms extends ListRecords { protected static string $resource = 
      * @see https://catvrf.ru/docs/listrooms
      * @see https://catvrf.ru/docs/listrooms
      */
-
 }

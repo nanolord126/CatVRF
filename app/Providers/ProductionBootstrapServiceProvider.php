@@ -6,7 +6,7 @@ use App\Services\Infrastructure\DopplerService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiter as RateLimiterManager;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
@@ -78,27 +78,27 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
      */
     private function bootRateLimiting(): void
     {
-        RateLimiter::for('api', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
-        RateLimiter::for('payments', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('payments', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });
 
-        RateLimiter::for('promo', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('promo', function (Request $request) {
             return Limit::perMinute(100)->by($request->user()?->id ?: $request->ip());
         });
 
-        RateLimiter::for('wishlist', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('wishlist', function (Request $request) {
             return Limit::perMinute(200)->by($request->user()?->id ?: $request->ip());
         });
 
-        RateLimiter::for('referral', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('referral', function (Request $request) {
             return Limit::perMinute(50)->by($request->user()?->id ?: $request->ip());
         });
 
-        RateLimiter::for('bulk_import', function (Request $request) {
+        $this->app->make(RateLimiterManager::class)->for('bulk_import', function (Request $request) {
             $tenantId = $request->user()?->current_tenant_id ?? 0;
             return Limit::perDay(10)
                 ->by("bulk_import_{$tenantId}");

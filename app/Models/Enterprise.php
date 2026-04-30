@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Enterprise клиент (крупные B2B-заказчики)
- *
- * @package App\Models
  */
 final class Enterprise extends Model
 {
-
     protected $table = 'enterprises';
 
     protected $fillable = [

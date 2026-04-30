@@ -1,18 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\User;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\Auth\AuthManager;
 use App\Models\User;
-use App\Models\Wallet;
 use App\Services\WalletService;
 use App\Services\AI\AIConstructorService;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\View\View;
 use Livewire\Component;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
 
 /**
  * User Dashboard — главная страница личного кабинета.
@@ -28,35 +29,44 @@ final class Dashboard extends Component
 {
     // ── публичные свойства ───────────────────────────────────────────────────
 
-    private int $walletBalance    = 0;     // в копейках
-    private int $walletAvailable  = 0;
-    private int $bonusBalance     = 0;
-    private int $ordersTotal      = 0;
-    private int $aiDesignsTotal   = 0;
-    private bool $isB2B            = false;
-    private string $userMode         = 'b2c'; // 'b2c' | 'b2b'
-    private array $recentOrders     = [];
-    private array $recentDesigns    = [];
-    private string $correlationId    = '';
+    public int $walletBalance    = 0;     // в копейках
+
+    public int $walletAvailable  = 0;
+
+    public int $bonusBalance     = 0;
+
+    public int $ordersTotal      = 0;
+
+    public int $aiDesignsTotal   = 0;
+
+    public bool $isB2B            = false;
+
+    public string $userMode         = 'b2c'; // 'b2c' | 'b2b'
+
+    public array $recentOrders     = [];
+
+    public array $recentDesigns    = [];
+
+    public string $correlationId    = '';
 
     // ── lifecycle ───────────────────────────────────────────────────────────
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly AuthManager $authManager,
-        private WalletService        $wallet,
-        private AIConstructorService $aiConstructor,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly WalletService $wallet,
+        private readonly AIConstructorService $aiConstructor,
+        private readonly DatabaseManager $db,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
 
         /** @var User $user */
         $user = $this->authManager->user();
 
-        if (!$user) {
+        if (! $user) {
             $this->redirect(route('login'));
+
             return;
         }
 
@@ -64,6 +74,49 @@ final class Dashboard extends Component
         $this->loadOrders($user);
         $this->loadAiDesigns($user);
         $this->detectMode($user);
+    }
+
+    // ── публичные экшены ─────────────────────────────────────────────────────
+
+    /**
+     * Переключить режим B2C ↔ B2B.
+     * Доступно только если у пользователя есть активный BusinessGroup.
+     */
+    public function switchMode(string $mode): void
+    {
+        if (! in_array($mode, ['b2c', 'b2b'], true)) {
+            return;
+        }
+
+        if ($mode === 'b2b' && ! $this->isB2B) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'B2B-доступ не предоставлен.']);
+
+            return;
+        }
+
+        $this->userMode = $mode;
+        session(['user_mode' => $mode]);
+
+        $this->dispatch('mode-switched', ['mode' => $mode]);
+    }
+
+    public function refresh(): void
+    {
+        /** @var User $user */
+        $user = $this->authManager->user();
+        if ($user) {
+            $this->loadWallet($user);
+            $this->loadOrders($user);
+            $this->loadAiDesigns($user);
+        }
+    }
+
+    // ── рендер ──────────────────────────────────────────────────────────────
+
+    public function render(): View
+    {
+        return $this->viewFactory->make('livewire.user.dashboard')
+            ->layout('layouts.user-cabinet');
     }
 
     // ── приватные загрузчики ─────────────────────────────────────────────────
@@ -99,7 +152,7 @@ final class Dashboard extends Component
             ->limit(5)
             ->select(['id', 'uuid', 'status', 'total_kopecks', 'created_at'])
             ->get()
-            ->map(fn(object $row): array => [
+            ->map(fn (object $row): array => [
                 'id'         => $row->id,
                 'uuid'       => $row->uuid,
                 'status'     => $row->status,
@@ -121,7 +174,7 @@ final class Dashboard extends Component
             ->limit(4)
             ->select(['id', 'vertical', 'created_at'])
             ->get()
-            ->map(fn(object $row): array => [
+            ->map(fn (object $row): array => [
                 'id'       => $row->id,
                 'vertical' => $row->vertical,
                 'created'  => $row->created_at,
@@ -138,47 +191,5 @@ final class Dashboard extends Component
             ->exists();
 
         $this->userMode = session('user_mode', 'b2c');
-    }
-
-    // ── публичные экшены ─────────────────────────────────────────────────────
-
-    /**
-     * Переключить режим B2C ↔ B2B.
-     * Доступно только если у пользователя есть активный BusinessGroup.
-     */
-    public function switchMode(string $mode): void
-    {
-        if (!in_array($mode, ['b2c', 'b2b'], true)) {
-            return;
-        }
-
-        if ($mode === 'b2b' && !$this->isB2B) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'B2B-доступ не предоставлен.']);
-            return;
-        }
-
-        $this->userMode = $mode;
-        session(['user_mode' => $mode]);
-
-        $this->dispatch('mode-switched', ['mode' => $mode]);
-    }
-
-    public function refresh(): void
-    {
-        /** @var User $user */
-        $user = $this->authManager->user();
-        if ($user) {
-            $this->loadWallet($user);
-            $this->loadOrders($user);
-            $this->loadAiDesigns($user);
-        }
-    }
-
-    // ── рендер ──────────────────────────────────────────────────────────────
-
-    public function render(): View
-    {
-        return view('livewire.user.dashboard')
-            ->layout('layouts.user-cabinet');
     }
 }

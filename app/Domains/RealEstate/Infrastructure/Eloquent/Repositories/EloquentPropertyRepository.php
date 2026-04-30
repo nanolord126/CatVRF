@@ -17,11 +17,14 @@ use App\Domains\RealEstate\Infrastructure\Eloquent\Models\PropertyPhotoModel;
 use App\Domains\RealEstate\Infrastructure\Eloquent\Models\PropertyDocumentModel;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
+use App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum;
 
 final class EloquentPropertyRepository implements PropertyRepositoryInterface
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
+
     public function findById(PropertyId $id): ?Property
     {
         $model = PropertyModel::withoutGlobalScope('tenant')
@@ -62,7 +65,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
     }
 
     public function searchPublic(
-        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
+        ?PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minArea,
@@ -114,7 +117,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
     }
 
     public function countSearchPublic(
-        ?\App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum $type,
+        ?PropertyTypeEnum $type,
         ?int $minPriceKopecks,
         ?int $maxPriceKopecks,
         ?float $minArea,
@@ -174,7 +177,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             'floor'         => $property->getFloor(),
             'total_floors'  => $property->getTotalFloors(),
             'status'        => $property->getStatus()->value,
-            'correlation_id'=> $property->getCorrelationId(),
+            'correlation_id' => $property->getCorrelationId(),
         ];
 
         PropertyModel::withoutGlobalScope('tenant')
@@ -208,7 +211,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             }
         }
 
-        $this->logger->info('PropertyRepository::save', [
+        $this->logger->$this->logger->info('PropertyRepository::save', [
             'property_id'    => $data['id'],
             'status'         => $data['status'],
             'correlation_id' => $data['correlation_id'],
@@ -221,7 +224,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             ->where('id', $id->getValue())
             ->delete();
 
-        $this->logger->info('PropertyRepository::delete', [
+        $this->logger->$this->logger->info('PropertyRepository::delete', [
             'property_id' => $id->getValue(),
         ]);
     }
@@ -244,7 +247,7 @@ final class EloquentPropertyRepository implements PropertyRepositoryInterface
             description:   $model->description,
             address:       $model->address,
             coordinates:   new Coordinate($model->latitude, $model->longitude),
-            type:          \App\Domains\RealEstate\Domain\Enums\PropertyTypeEnum::from($model->type),
+            type:          PropertyTypeEnum::from($model->type),
             price:         Price::fromKopecks($model->price_kopecks),
             area:          new Area($model->area_sqm),
             rooms:         $model->rooms,

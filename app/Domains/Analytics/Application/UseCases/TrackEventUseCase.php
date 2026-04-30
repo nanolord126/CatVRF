@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Analytics\Application\UseCases;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use App\Services\Fraud\FraudControlService;
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Analytics\Domain\Entities\AnalyticsEvent;
@@ -23,15 +26,13 @@ use Illuminate\Support\Str;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Analytics\Application\UseCases
  */
 final readonly class TrackEventUseCase
 {
-    public function __construct(
-        private AnalyticsEventRepositoryInterface $repository, private readonly LoggerInterface $logger
-    ) {
-}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly FraudControlService $fraudControlService,
+        private readonly AnalyticsEventRepositoryInterface $repository,
+        private readonly LoggerInterface $logger) {}
 
     public function execute(
         int $tenantId,
@@ -43,6 +44,7 @@ final readonly class TrackEventUseCase
         ?string $deviceFingerprint,
         ?string $correlationId
     ): void {
+        $this->fraudControlService->check('execute', ['context' => __CLASS__]);
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
         $event = AnalyticsEvent::create(
@@ -59,9 +61,9 @@ final readonly class TrackEventUseCase
         // In a high-traffic environment, this should be a batch insert via a queue.
         $this->repository->save($event);
 
-        event(new AnalyticsEventTracked($eventType, $payload, $correlationId));
+        $this->eventDispatcher->dispatch(new AnalyticsEventTracked($eventType, $payload, $correlationId));
 
-        $this->logger->info('Analytics event tracked', [
+        $this->logger->$this->logger->info('Analytics event tracked', [
             'event_type' => $eventType,
             'tenant_id' => $tenantId,
             'user_id' => $userId,

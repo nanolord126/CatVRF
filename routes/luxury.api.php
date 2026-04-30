@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Luxury\LuxuryAIConstructorController;
  * Appends to API v1 middleware group (auth, tenant, rate-limit)
  *
  * @version 1.0.0
+ *
  * @author CatVRF
  */
 Route::prefix('luxury')->group(function () {

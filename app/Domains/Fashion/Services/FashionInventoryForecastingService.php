@@ -1,31 +1,38 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Illuminate\Support\Collection;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Inventory Management with Demand Forecasting для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Прогнозирование спроса, оптимизация запасов,
         автоматические заказы, анализ Out-of-Stock.
  */
 final readonly class FashionInventoryForecastingService
 {
     private const FORECAST_DAYS = 30;
+
     private const REORDER_THRESHOLD = 0.2;
+
     private const SAFETY_STOCK_DAYS = 14;
 
     public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
     ) {}
 
     /**
@@ -55,10 +62,10 @@ final readonly class FashionInventoryForecastingService
 
         $forecast = [];
         for ($day = 1; $day <= $daysAhead; $day++) {
-            $forecastDate = Carbon::now()->addDays($day);
+            $forecastDate = CarbonImmutable::now()->addDays($day);
             $dayOfWeek = $forecastDate->dayOfWeek;
             $seasonMultiplier = $seasonality[$dayOfWeek] ?? 1.0;
-            
+
             $dailyDemand = $baseDemand * $trend * $seasonMultiplier;
             $forecast[] = [
                 'date' => $forecastDate->toIso8601String(),
@@ -114,7 +121,7 @@ final readonly class FashionInventoryForecastingService
         $reorderList = [];
         foreach ($products as $product) {
             $forecast = $this->forecastDemand((int) $product['id'], self::FORECAST_DAYS, $correlationId);
-            
+
             if ($forecast['reorder_recommendation']['should_reorder']) {
                 $reorderList[] = [
                     'product_id' => $product['id'],
@@ -152,10 +159,10 @@ final readonly class FashionInventoryForecastingService
         foreach ($products as $product) {
             $historicalSales = $this->getHistoricalSales((int) $product['id'], $tenantId, 90);
             $avgDailySales = array_sum($historicalSales) / max(count($historicalSales), 1);
-            
+
             $optimalStock = $avgDailySales * self::SAFETY_STOCK_DAYS;
             $currentStock = $product['stock_quantity'];
-            
+
             if ($currentStock < $optimalStock * 0.5) {
                 $optimizations[] = [
                     'product_id' => $product['id'],
@@ -195,7 +202,7 @@ final readonly class FashionInventoryForecastingService
 
         $outOfStockEvents = $this->db->table('fashion_out_of_stock_events')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->get()
             ->toArray();
 
@@ -204,7 +211,7 @@ final readonly class FashionInventoryForecastingService
 
         $topOutOfStockProducts = $this->db->table('fashion_out_of_stock_events')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->selectRaw('product_id, COUNT(*) as out_of_stock_count, SUM(estimated_lost_sales) as total_lost_sales')
             ->groupBy('product_id')
             ->orderBy('total_lost_sales', 'desc')
@@ -230,7 +237,7 @@ final readonly class FashionInventoryForecastingService
             ->where('oi.product_id', $productId)
             ->where('o.tenant_id', $tenantId)
             ->where('o.status', 'completed')
-            ->where('o.created_at', '>=', Carbon::now()->subDays($days))
+            ->where('o.created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->selectRaw('DATE(o.created_at) as sale_date, SUM(oi.quantity) as quantity')
             ->groupBy('sale_date')
             ->orderBy('sale_date')
@@ -239,8 +246,8 @@ final readonly class FashionInventoryForecastingService
 
         $dailySales = [];
         for ($i = $days - 1; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i)->format('Y-m-d');
-            $sale = collect($sales)->firstWhere('sale_date', $date);
+            $date = CarbonImmutable::now()->subDays($i)->format('Y-m-d');
+            $sale = new Collection($sales)->firstWhere('sale_date', $date);
             $dailySales[] = $sale ? (int) $sale['quantity'] : 0;
         }
 
@@ -270,7 +277,7 @@ final readonly class FashionInventoryForecastingService
             ->where('oi.product_id', $productId)
             ->where('o.tenant_id', $tenantId)
             ->where('o.status', 'completed')
-            ->where('o.created_at', '>=', Carbon::now()->subDays(90))
+            ->where('o.created_at', '>=', CarbonImmutable::now()->subDays(90))
             ->selectRaw('DAYOFWEEK(o.created_at) as day_of_week, SUM(oi.quantity) as quantity')
             ->groupBy('day_of_week')
             ->get()
@@ -278,7 +285,7 @@ final readonly class FashionInventoryForecastingService
             ->toArray();
 
         $totalQuantity = array_sum(array_column($salesByDay, 'quantity'));
-        
+
         $seasonality = [];
         for ($day = 1; $day <= 7; $day++) {
             $daySales = $salesByDay[$day]['quantity'] ?? 0;
@@ -327,9 +334,9 @@ final readonly class FashionInventoryForecastingService
             ['product_id' => $productId, 'tenant_id' => $tenantId],
             [
                 'forecast_data' => json_encode($forecast, JSON_UNESCAPED_UNICODE),
-                'forecasted_at' => Carbon::now(),
+                'forecasted_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
     }

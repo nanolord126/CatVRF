@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources\SalonResource\Pages;
 
@@ -11,12 +13,21 @@ use Filament\Resources\Pages\CreateRecord;
  */
 final class CreateSalon extends CreateRecord
 {
-    protected static string $resource = SalonResource::class;
+    /**
+     * Component: CreateSalon
+     *
+     * Part of the CatVRF 2026 multi-vertical marketplace platform.
+     * Implements tenant-aware, fraud-checked business logic
+     * with full correlation_id tracing and audit logging.
+     *
+     * @version 2026.1
+     */
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
 
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+    protected static string $resource = SalonResource::class;
 
     /**
      * Строковое представление для отладки.
@@ -26,20 +37,10 @@ final class CreateSalon extends CreateRecord
         return 'CreateSalon';
     }
 
-    /**
-     * Component: CreateSalon
-     *
-     * Part of the CatVRF 2026 multi-vertical marketplace platform.
-     * Implements tenant-aware, fraud-checked business logic
-     * with full correlation_id tracing and audit logging.
-     *
-     * @package CatVRF
-     * @version 2026.1
-     */
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 
     /**
      * CreateSalon — CatVRF 2026 Component.
@@ -48,12 +49,12 @@ final class CreateSalon extends CreateRecord
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
+     *
      * @see https://catvrf.ru/docs/createsalon
      * @see https://catvrf.ru/docs/createsalon
      */
-
 }

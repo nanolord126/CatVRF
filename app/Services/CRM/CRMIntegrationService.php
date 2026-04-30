@@ -1,34 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\CRM;
 
-use Illuminate\Support\Facades\Http;
-use Psr\Log\LoggerInterface;
+use App\Services\Fraud\FraudControlService;
+
+use Illuminate\Cache\CacheManager;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Contracts\Cache\Repository;
+use Psr\Log\LoggerInterface;
 
 /**
  * CRM Integration Service
- * 
+ *
  * Integrates with external CRM systems (HubSpot, Salesforce, AmoCRM, Bitrix24).
  * Syncs contacts, bookings, and customer journey data.
  */
 final readonly class CRMIntegrationService
 {
-    public function __construct(
+    public function __construct(private readonly FraudControlService $fraudControlService,
         private readonly LoggerInterface $logger,
         private readonly Repository $cache,
-    ) {}
+        private readonly HttpFactory $http,
+        private readonly CacheManager $cacheManager,) {}
 
     /**
      * Update or create contact in CRM system.
-     * 
-     * @param array $contactData Contact and booking data
+     *
+     * @param  array  $contactData  Contact and booking data
      * @return string|null CRM contact ID
      */
     public function updateOrCreateContact(array $contactData): ?string
     {
+        $this->fraudControlService->check('update', ['context' => __CLASS__]);
         $provider = config('services.crm.provider', 'hubspot');
-        
+
         try {
             return match ($provider) {
                 'hubspot' => $this->syncToHubSpot($contactData),
@@ -75,15 +82,15 @@ final readonly class CRMIntegrationService
         ];
 
         if ($data['contact_id'] ?? null) {
-            $response = Http::withToken($apiKey)
+            $response = $this->http->withToken($apiKey)
                 ->patch("{$endpoint}/contacts/{$data['contact_id']}", $hubSpotData);
         } else {
-            $response = Http::withToken($apiKey)
+            $response = $this->http->withToken($apiKey)
                 ->post("{$endpoint}/contacts", $hubSpotData);
         }
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('HubSpot sync failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('HubSpot sync failed: '.$response->body());
         }
 
         return $response->json('id');
@@ -113,15 +120,15 @@ final readonly class CRMIntegrationService
         ];
 
         if ($data['contact_id'] ?? null) {
-            $response = Http::withToken($accessToken)
+            $response = $this->http->withToken($accessToken)
                 ->patch("{$endpoint}/sobjects/Contact/{$data['contact_id']}", $salesforceData);
         } else {
-            $response = Http::withToken($accessToken)
+            $response = $this->http->withToken($accessToken)
                 ->post("{$endpoint}/sobjects/Contact", $salesforceData);
         }
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('Salesforce sync failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('Salesforce sync failed: '.$response->body());
         }
 
         return $response->json('id');
@@ -136,7 +143,7 @@ final readonly class CRMIntegrationService
         $endpoint = config('services.crm.amocrm.endpoint');
 
         $amoData = [
-            'name' => trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')),
+            'name' => trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')),
             'custom_fields_values' => [
                 [
                     'field_code' => 'EMAIL',
@@ -162,15 +169,15 @@ final readonly class CRMIntegrationService
         ];
 
         if ($data['contact_id'] ?? null) {
-            $response = Http::withToken($accessToken)
+            $response = $this->http->withToken($accessToken)
                 ->patch("{$endpoint}/api/v4/contacts/{$data['contact_id']}", $amoData);
         } else {
-            $response = Http::withToken($accessToken)
+            $response = $this->http->withToken($accessToken)
                 ->post("{$endpoint}/api/v4/contacts", $amoData);
         }
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('AmoCRM sync failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('AmoCRM sync failed: '.$response->body());
         }
 
         return $response->json('_embedded.contacts.0.id');
@@ -203,13 +210,13 @@ final readonly class CRMIntegrationService
         ];
 
         if ($data['contact_id'] ?? null) {
-            $response = Http::post("{$endpoint}/crm.contact.update", array_merge($bitrixData, ['id' => $data['contact_id']]));
+            $response = $this->http->post("{$endpoint}/crm.contact.update", array_merge($bitrixData, ['id' => $data['contact_id']]));
         } else {
-            $response = Http::post("{$endpoint}/crm.contact.add", $bitrixData);
+            $response = $this->http->post("{$endpoint}/crm.contact.add", $bitrixData);
         }
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('Bitrix24 sync failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('Bitrix24 sync failed: '.$response->body());
         }
 
         return $response->json('result');
@@ -223,13 +230,13 @@ final readonly class CRMIntegrationService
         $endpoint = config('services.crm.custom.endpoint');
         $apiKey = config('services.crm.custom.api_key');
 
-        $response = Http::withHeaders([
+        $response = $this->http->withHeaders([
             'X-API-Key' => $apiKey,
             'Content-Type' => 'application/json',
         ])->post($endpoint, $data);
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('Custom CRM sync failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('Custom CRM sync failed: '.$response->body());
         }
 
         return $response->json('contact_id');
@@ -247,7 +254,7 @@ final readonly class CRMIntegrationService
             return $cached;
         }
 
-        $response = Http::asForm()->post(config('services.crm.salesforce.token_url'), [
+        $response = $this->http->asForm()->post(config('services.crm.salesforce.token_url'), [
             'grant_type' => 'password',
             'client_id' => config('services.crm.salesforce.client_id'),
             'client_secret' => config('services.crm.salesforce.client_secret'),
@@ -255,7 +262,7 @@ final readonly class CRMIntegrationService
             'password' => config('services.crm.salesforce.password'),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException('Salesforce token request failed');
         }
 
@@ -279,7 +286,7 @@ final readonly class CRMIntegrationService
             return $cached;
         }
 
-        $response = Http::asForm()->post(config('services.crm.amocrm.token_url'), [
+        $response = $this->http->asForm()->post(config('services.crm.amocrm.token_url'), [
             'client_id' => config('services.crm.amocrm.client_id'),
             'client_secret' => config('services.crm.amocrm.client_secret'),
             'grant_type' => 'authorization_code',
@@ -287,14 +294,14 @@ final readonly class CRMIntegrationService
             'redirect_uri' => config('services.crm.amocrm.redirect_uri'),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException('AmoCRM token request failed');
         }
 
         $token = $response->json('access_token');
         $expiresIn = $response->json('expires_in', 86400);
 
-        \Ioken =l$responuemijsnn('accate\topport\Facades\Cache::put($cacheKey, $token, $expiresIn - 60);
+        $this->cacheManager->put($cacheKey, $token, $expiresIn - 60);
 
         return $token;
     }

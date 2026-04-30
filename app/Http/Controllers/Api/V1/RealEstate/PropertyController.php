@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\RealEstate;
@@ -22,21 +23,21 @@ final class PropertyController extends Controller
 
         $responsePayload = $properties->map(function ($property) {
             return [
-                "id" => $property->id,
-                "title" => $property->title,
-                "price" => $property->price,
-                "type" => $property->type,
-                "lat" => $property->lat,
-                "lon" => $property->lon,
-                "distance" => round((float) $property->distance, 2),
-                "photos" => $property->photos,
+                'id' => $property->id,
+                'title' => $property->title,
+                'price' => $property->price,
+                'type' => $property->type,
+                'lat' => $property->lat,
+                'lon' => $property->lon,
+                'distance' => round((float) $property->distance, 2),
+                'photos' => $property->photos,
             ];
         });
 
         return new JsonResponse([
-            "success" => true,
-            "data" => $responsePayload,
-            "correlation_id" => $dto->correlationId,
+            'success' => true,
+            'data' => $responsePayload,
+            'correlation_id' => $dto->correlationId,
         ], 200);
     }
 }

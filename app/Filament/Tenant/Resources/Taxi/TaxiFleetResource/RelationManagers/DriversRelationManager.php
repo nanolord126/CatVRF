@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Taxi\TaxiFleetResource\RelationManagers;
+
+use AddDriverToFleetUseCase;
 
 use App\Domains\Auto\Taxi\Application\B2B\UseCases\AddDriverToFleetUseCase;
 use App\Domains\Auto\Taxi\Domain\ValueObjects\DriverId;
@@ -11,13 +14,15 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 
 final class DriversRelationManager extends RelationManager
 {
     protected static string $relationship = 'drivers';
+
+    public function __construct(
+        private readonly AddDriverToFleetUseCase $addDriverToFleetUseCase,
+    ) {}
 
     public function form(Form $form): Form
     {
@@ -45,7 +50,7 @@ final class DriversRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make(),
                 Tables\Actions\AttachAction::make()
                     ->action(function (array $data, RelationManager $livewire) {
-                        $useCase = app(AddDriverToFleetUseCase::class);
+                        $useCase = $this->addDriverToFleetUseCase /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
                         $fleetId = new TaxiFleetId($livewire->ownerRecord->id);
                         $correlationId = Str::uuid()->toString();
 

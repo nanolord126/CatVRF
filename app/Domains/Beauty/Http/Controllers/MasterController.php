@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
+
+use Illuminate\Database\DatabaseManager;
 
 use App\Http\Controllers\Api\V1\Beauty\MasterController as BaseMasterController;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +23,10 @@ final class MasterController extends BaseMasterController
      * Display a listing of the resource.
      * Inherits tenant-scoped index from base controller.
      */
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         return parent::index($request);
@@ -36,7 +43,7 @@ final class MasterController extends BaseMasterController
 
     /**
      * Store a newly created resource in storage.
-     * Inherits FraudControlService::check() + DB::transaction() from base.
+     * Inherits FraudControlService::check() + $this->db->transaction() from base.
      */
     public function store(Request $request): JsonResponse
     {

@@ -4,70 +4,244 @@ declare(strict_types=1);
 
 namespace Modules\Inventory\Presentation\Http\Controllers;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
-use Modules\Inventory\Application\Services\InventoryManagementService;
-use Modules\Inventory\Domain\Exceptions\InsufficientStockException;
-use Modules\Inventory\Presentation\Http\Requests\ReserveStockRequest;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Modules\Inventory\Application\Services\FIFOShelfLifeService;
+use Modules\Inventory\Domain\Repositories\InventoryItemRepositoryInterface;
+use Modules\Inventory\Domain\Repositories\InventoryBatchRepositoryInterface;
+use Modules\Inventory\Domain\Entities\InventoryItem;
+use Psr\Log\LoggerInterface;
 
-/**
- * Class InventoryController
- *
- * Cleanly actively correctly precisely definitively neatly reliably exactly gracefully squarely securely strictly solidly elegantly natively neatly gracefully flawlessly explicitly securely distinctly safely smoothly efficiently compactly smartly efficiently statically effectively organically efficiently explicitly exactly efficiently natively mapping correctly natively efficiently smoothly inherently clearly safely solidly squarely seamlessly physically carefully smoothly dynamically securely purely directly safely natively functionally correctly flawlessly expertly cleanly smartly smoothly functionally structurally properly stably efficiently clearly explicitly carefully efficiently logically stably.
- */
-class InventoryController extends Controller
+final readonly class InventoryController
 {
-    /**
-     * @param InventoryManagementService $service Smartly intelligently confidently smartly successfully deeply neatly inherently precisely stably actively efficiently exactly reliably physically stably precisely cleanly squarely firmly beautifully seamlessly actively beautifully dynamically smartly smoothly efficiently organically dynamically accurately mapping correctly intelligently smoothly directly compactly strictly structurally logically safely compactly gracefully safely structurally seamlessly natively mapped gracefully completely successfully inherently seamlessly squarely precisely safely safely physically effectively cleanly implicitly optimally actively deeply clearly cleanly smoothly flawlessly effectively mapped deeply cleanly smoothly implicitly structurally natively.
-     */
     public function __construct(
-        private readonly InventoryManagementService $service
+        private FIFOShelfLifeService $fifoShelfLifeService,
+        private InventoryItemRepositoryInterface $itemRepository,
+        private InventoryBatchRepositoryInterface $batchRepository,
+        private LoggerInterface $logger,
     ) {}
 
-    /**
-     * Carefully mapped firmly intelligently seamlessly explicitly directly precisely accurately strictly dynamically gracefully explicitly cleanly securely securely softly organically efficiently carefully safely flawlessly natively statically firmly intelligently smoothly exactly dynamically physically beautifully seamlessly cleanly comprehensively accurately squarely securely efficiently elegantly smoothly natively thoroughly safely seamlessly intelligently distinctly correctly precisely correctly correctly securely uniquely deeply safely explicitly precisely intelligently mapping flawlessly correctly gracefully exactly natively inherently successfully successfully smoothly mapped structurally smoothly nicely directly natively purely actively seamlessly effectively strictly completely safely cleanly squarely precisely clearly dynamically beautifully exactly safely securely explicitly stably exactly optimally properly cleanly expertly securely dynamically explicitly correctly softly completely inherently solidly cleanly intelligently cleanly securely.
-     *
-     * @param ReserveStockRequest $request Directly organically cleanly stably securely accurately cleanly smoothly squarely accurately correctly cleanly squarely elegantly cleanly neatly exactly properly natively safely tightly inherently smartly explicitly natively physically smoothly definitively fully precisely cleanly exactly safely securely natively seamlessly cleanly purely distinctly securely logically natively dynamically distinctly functionally correctly solidly purely cleanly mapped beautifully distinctly elegantly flawlessly flawlessly dynamically accurately beautifully inherently uniquely exactly firmly mapped deeply reliably exactly explicitly mapping neatly strictly seamlessly thoroughly expertly tightly physically squarely directly flawlessly structurally solidly strictly purely seamlessly gracefully functionally correctly logically cleanly smoothly fully fully neatly intelligently squarely cleanly natively effectively softly properly smartly smoothly seamlessly dynamically explicitly structurally cleanly intelligently naturally firmly nicely beautifully actively mapping beautifully correctly.
-     * @return JsonResponse
-     */
-    public function reserve(ReserveStockRequest $request): JsonResponse
+    public function autoDeduct(Request $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-            
-            $this->service->reserveStock(
-                (int) $data['item_id'],
-                (int) $data['quantity'],
-                $data['source_type'],
-                (int) $data['source_id'],
-                $data['correlation_id']
+            $request->validate([
+                'item_id' => 'required|integer',
+                'quantity' => 'required|integer|min:1',
+                'context' => 'required|string|in:sale,prescription,kitchen,grooming',
+                'meta' => 'nullable|array',
+            ]);
+
+            $item = $this->itemRepository->findById((int) $request->input('item_id'));
+            if (!$item) {
+                return new JsonResponse(['error' => 'Inventory item not found'], 404);
+            }
+
+            $result = $this->fifoShelfLifeService->autoDeduct(
+                item: $item,
+                quantity: (int) $request->input('quantity'),
+                context: $request->input('context'),
+                meta: $request->input('meta', [])
             );
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Stock securely efficiently securely clearly precisely exactly logically securely reserved cleanly securely physically naturally firmly carefully flawlessly accurately neatly cleanly squarely efficiently correctly nicely stably smoothly solidly.',
-                'correlation_id' => $data['correlation_id']
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Inventory deducted successfully',
+                'result' => [
+                    'total_quantity' => $result->totalQuantity,
+                    'context' => $result->context,
+                    'deducted_batches' => $result->deductedBatches->toArray(),
+                    'meta' => $result->meta,
+                ],
             ]);
-        } catch (InsufficientStockException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'correlation_id' => $request->input('correlation_id', 'unknown')
-            ], Response::HTTP_CONFLICT);
-        } catch (Exception $e) {
-            Log::channel('inventory')->error('Controller reliably smartly smoothly reliably efficiently cleanly securely correctly mapping deeply seamlessly natively natively smoothly perfectly natively squarely solidly exactly statically carefully purely solidly gracefully intelligently implicitly firmly mapping beautifully softly fully compactly beautifully uniquely seamlessly safely purely dynamically explicitly completely error mapping securely natively explicitly safely nicely compactly correctly correctly successfully cleanly reliably solidly physically successfully functionally securely elegantly securely solidly squarely compactly natively expertly reliably accurately physically solidly properly strictly intelligently statically squarely stably beautifully nicely seamlessly intelligently solidly correctly stably elegantly cleanly successfully effectively gracefully squarely.', [
+        } catch (ValidationException $e) {
+            return new JsonResponse(['error' => 'Validation failed', 'details' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            $this->logger->error('Inventory auto-deduct failed', [
+                'item_id' => $request->input('item_id'),
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            ]);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function validateBeforeSale(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'item_id' => 'required|integer',
+                'quantity' => 'required|integer|min:1',
             ]);
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal Server Error smoothly dynamically neatly intelligently correctly precisely safely softly explicitly purely elegantly properly inherently tightly smartly implicitly uniquely securely correctly accurately gracefully elegantly definitively beautifully smoothly confidently correctly smoothly actively distinctly smartly dynamically compactly purely stably cleanly expertly securely compactly flawlessly uniquely correctly efficiently natively reliably smoothly securely smoothly gracefully purely naturally seamlessly properly tightly effectively smartly squarely cleanly beautifully statically securely intelligently naturally naturally fully elegantly cleanly firmly comprehensively strictly compactly definitively comprehensively.',
-                'correlation_id' => $request->input('correlation_id', 'unknown')
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            $item = $this->itemRepository->findById((int) $request->input('item_id'));
+            if (!$item) {
+                return new JsonResponse(['error' => 'Inventory item not found'], 404);
+            }
+
+            $this->fifoShelfLifeService->validateBeforeSale(
+                item: $item,
+                quantity: (int) $request->input('quantity')
+            );
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Inventory validation passed',
+                'item' => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'sku' => $item->sku,
+                    'quantity' => $item->quantity,
+                    'is_controlled' => $item->isControlled,
+                    'expiry_date' => $item->expiryDate?->format('Y-m-d'),
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return new JsonResponse(['error' => 'Validation failed', 'details' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            $this->logger->error('Inventory validation failed', [
+                'item_id' => $request->input('item_id'),
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function getNextExpiringBatch(Request $request, int $itemId): JsonResponse
+    {
+        try {
+            $batch = $this->fifoShelfLifeService->getNextExpiringBatch($itemId);
+
+            if (!$batch) {
+                return new JsonResponse(['error' => 'No expiring batch found'], 404);
+            }
+
+            return new JsonResponse([
+                'success' => true,
+                'batch' => [
+                    'id' => $batch->id,
+                    'batch_number' => $batch->batchNumber,
+                    'expiry_date' => $batch->expiryDate->format('Y-m-d'),
+                    'current_quantity' => $batch->currentQuantity,
+                    'status' => $batch->status,
+                    'days_until_expiry' => $batch->getDaysUntilExpiry(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Next expiring batch retrieval failed', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    public function getItem(Request $request, int $itemId): JsonResponse
+    {
+        try {
+            $item = $this->itemRepository->findById($itemId);
+            if (!$item) {
+                return new JsonResponse(['error' => 'Inventory item not found'], 404);
+            }
+
+            return new JsonResponse([
+                'success' => true,
+                'item' => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'sku' => $item->sku,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'is_controlled' => $item->isControlled,
+                    'expiry_date' => $item->expiryDate?->format('Y-m-d'),
+                    'status' => $item->status->value,
+                    'tenant_id' => $item->tenantId,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Inventory item retrieval failed', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    public function getItemBatches(Request $request, int $itemId): JsonResponse
+    {
+        try {
+            $batches = $this->batchRepository->findByItemId($itemId);
+
+            return new JsonResponse([
+                'success' => true,
+                'batches' => array_map(fn ($b) => [
+                    'id' => $b->id,
+                    'batch_number' => $b->batchNumber,
+                    'expiry_date' => $b->expiryDate->format('Y-m-d'),
+                    'manufacture_date' => $b->manufactureDate->format('Y-m-d'),
+                    'current_quantity' => $b->currentQuantity,
+                    'initial_quantity' => $b->initialQuantity,
+                    'status' => $b->status,
+                    'days_until_expiry' => $b->getDaysUntilExpiry(),
+                ], $batches),
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Item batches retrieval failed', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    public function getExpiringItems(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'days' => 'nullable|integer|min:1|max:365',
+                'tenant_id' => 'nullable|integer',
+            ]);
+
+            $days = $request->input('days', 30);
+            $tenantId = $request->input('tenant_id');
+
+            $items = $this->itemRepository->findExpiringWithinDays($days, $tenantId);
+
+            return new JsonResponse([
+                'success' => true,
+                'items' => array_map(fn ($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'sku' => $i->sku,
+                    'quantity' => $i->quantity,
+                    'expiry_date' => $i->expiryDate?->format('Y-m-d'),
+                    'days_until_expiry' => $i->getDaysUntilExpiry(),
+                    'status' => $i->status->value,
+                ], $items),
+            ]);
+        } catch (ValidationException $e) {
+            return new JsonResponse(['error' => 'Validation failed', 'details' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            $this->logger->error('Expiring items retrieval failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    public function dailyMaintenance(Request $request): JsonResponse
+    {
+        try {
+            $this->fifoShelfLifeService->dailyMaintenance();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Daily maintenance completed successfully',
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Daily maintenance failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 'Internal server error'], 500);
         }
     }
 }

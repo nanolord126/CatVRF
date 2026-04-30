@@ -38,9 +38,17 @@ final class B2BPanelProvider extends PanelProvider
             ->path('b2b')
             ->login()
             ->maxContentWidth('full')
-            // ->discoverResources(in: app_path('Domains'), for: 'App\Domains')
-            // ->discoverPages(in: app_path('Filament/B2B/Pages'), for: 'App\Filament\B2B\Pages')
-            // ->discoverWidgets(in: app_path('Filament/B2B/Widgets'), for: 'App\Filament\B2B\Widgets')
+            ->resources([
+                \App\Domains\Supermarket\Filament\B2B\Resources\B2BProductResource::class,
+                \App\Domains\Supermarket\Filament\B2B\Resources\B2BOrderResource::class,
+                \App\Domains\Supermarket\Filament\B2B\Resources\B2BCompanyResource::class,
+            ])
+            ->navigationGroups([
+                'Каталог',
+                'Мои заказы',
+                'Документы',
+                'Настройки компании',
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

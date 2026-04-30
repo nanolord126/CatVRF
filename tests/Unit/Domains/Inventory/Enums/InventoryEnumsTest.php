@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 final class InventoryEnumsTest extends TestCase
 {
     /* ================================================================== */
-    /*  StockMovementType                                                  */
+    /*  StockMovementType */
     /* ================================================================== */
 
     #[Test]
@@ -93,7 +93,7 @@ final class InventoryEnumsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  InventoryCheckStatus                                               */
+    /*  InventoryCheckStatus */
     /* ================================================================== */
 
     #[Test]

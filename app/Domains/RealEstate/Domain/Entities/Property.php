@@ -16,33 +16,34 @@ use DomainException;
 
 final class Property
 {
-    private PropertyStatusEnum $status;
+    private readonly PropertyStatusEnum $status;
 
     /** @var array<int, array{url: string, caption: string}> */
-    private array $photos = [];
+    private readonly array $photos = [];
 
     /** @var array<int, array{url: string, type: string, name: string}> */
-    private array $documents = [];
+    private readonly array $documents = [];
 
     /** @var list<object> */
-    private array $domainEvents = [];
+    private readonly array $domainEvents = [];
 
     public function __construct(
-        private readonly PropertyId        $id,
-        private readonly AgentId           $agentId,
-        private readonly int               $tenantId,
-        private string                     $title,
-        protected string                     $description,
-        private string                     $address,
-        private Coordinate                 $coordinates,
-        private readonly PropertyTypeEnum  $type,
-        private Price                      $price,
-        private readonly Area              $area,
-        private readonly int               $rooms,
-        private readonly int               $floor,
-        private readonly int               $totalFloors,
-        private readonly string            $correlationId,
-        PropertyStatusEnum                 $status = PropertyStatusEnum::Draft) {
+        private readonly PropertyId $id,
+        private readonly AgentId $agentId,
+        private readonly int $tenantId,
+        private readonly string $title,
+        protected readonly string $description,
+        private readonly string $address,
+        private readonly Coordinate $coordinates,
+        private readonly PropertyTypeEnum $type,
+        private readonly Price $price,
+        private readonly Area $area,
+        private readonly int $rooms,
+        private readonly int $floor,
+        private readonly int $totalFloors,
+        private readonly string $correlationId,
+        PropertyStatusEnum $status = PropertyStatusEnum::Draft
+    ) {
         $this->status = $status;
     }
 
@@ -116,24 +117,95 @@ final class Property
         return $this->price->percentage($this->type->commissionPercent());
     }
 
-    public function getId(): PropertyId { return $this->id; }
-    public function getAgentId(): AgentId { return $this->agentId; }
-    public function getTenantId(): int { return $this->tenantId; }
-    public function getTitle(): string { return $this->title; }
-    public function getDescription(): string { return $this->description; }
-    public function getAddress(): string { return $this->address; }
-    public function getCoordinates(): Coordinate { return $this->coordinates; }
-    public function getType(): PropertyTypeEnum { return $this->type; }
-    public function getPrice(): Price { return $this->price; }
-    public function getArea(): Area { return $this->area; }
-    public function getRooms(): int { return $this->rooms; }
-    public function getFloor(): int { return $this->floor; }
-    public function getTotalFloors(): int { return $this->totalFloors; }
-    public function getStatus(): PropertyStatusEnum { return $this->status; }
-    public function getPhotos(): array { return $this->photos; }
-    public function getDocuments(): array { return $this->documents; }
-    public function getCorrelationId(): string { return $this->correlationId; }
-    public function isActive(): bool { return $this->status === PropertyStatusEnum::Active; }
+    public function getId(): PropertyId
+    {
+        return $this->id;
+    }
+
+    public function getAgentId(): AgentId
+    {
+        return $this->agentId;
+    }
+
+    public function getTenantId(): int
+    {
+        return $this->tenantId;
+    }
+
+    public function getTitle(): string
+    {
+        return $this->title;
+    }
+
+    public function getDescription(): string
+    {
+        return $this->description;
+    }
+
+    public function getAddress(): string
+    {
+        return $this->address;
+    }
+
+    public function getCoordinates(): Coordinate
+    {
+        return $this->coordinates;
+    }
+
+    public function getType(): PropertyTypeEnum
+    {
+        return $this->type;
+    }
+
+    public function getPrice(): Price
+    {
+        return $this->price;
+    }
+
+    public function getArea(): Area
+    {
+        return $this->area;
+    }
+
+    public function getRooms(): int
+    {
+        return $this->rooms;
+    }
+
+    public function getFloor(): int
+    {
+        return $this->floor;
+    }
+
+    public function getTotalFloors(): int
+    {
+        return $this->totalFloors;
+    }
+
+    public function getStatus(): PropertyStatusEnum
+    {
+        return $this->status;
+    }
+
+    public function getPhotos(): array
+    {
+        return $this->photos;
+    }
+
+    public function getDocuments(): array
+    {
+        return $this->documents;
+    }
+
+    public function getCorrelationId(): string
+    {
+        return $this->correlationId;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === PropertyStatusEnum::Active;
+    }
 
     /** @return list<object> */
     public function pullDomainEvents(): array

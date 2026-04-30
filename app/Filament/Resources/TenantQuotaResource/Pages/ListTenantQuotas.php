@@ -1,10 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Resources\TenantQuotaResource\Pages;
+
+use TenantResourceLimiterService;
+
+use Illuminate\Http\JsonResponse;
+
+use Carbon\CarbonImmutable;
 
 use App\Filament\Resources\TenantQuotaResource;
 use Filament\Pages\Actions;
 use Filament\Resources\Pages\ListRecords;
+use App\Models\Tenant;
+use App\Services\Tenancy\TenantResourceLimiterService;
 
 /**
  * List Tenant Quotas Page
@@ -12,6 +22,7 @@ use Filament\Resources\Pages\ListRecords;
  * Production 2026 CANON - Filament Dashboard
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class ListTenantQuotas extends ListRecords
@@ -26,9 +37,9 @@ final class ListTenantQuotas extends ListRecords
                 ->label('Export Statistics')
                 ->icon('heroicon-o-download')
                 ->action(function () {
-                    $limiter = app(\App\Services\Tenancy\TenantResourceLimiterService::class);
-                    $tenants = \App\Models\Tenant::all();
-                    
+                    $limiter = $this->tenantResourceLimiterService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
+                    $tenants = Tenant::all();
+
                     $stats = [];
                     foreach ($tenants as $tenant) {
                         $stats[$tenant->id] = [
@@ -37,10 +48,10 @@ final class ListTenantQuotas extends ListRecords
                             'quotas' => $limiter->getQuotaStats($tenant->id),
                         ];
                     }
-                    
+
                     return response()->streamDownload(function () use ($stats) {
                         echo json_encode($stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-                    }, 'tenant-quota-stats-' . now()->format('Y-m-d') . '.json');
+                    }, 'tenant-quota-stats-'.CarbonImmutable::now()->format('Y-m-d').'.json');
                 }),
         ];
     }

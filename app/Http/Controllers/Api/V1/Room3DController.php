@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
@@ -8,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Http\Controllers\BaseApiController;
 
 /**
  * Room3DController
@@ -15,7 +18,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * Основной класс для работы с платформой CatVRF.
  *
  * @author CatVRF
- * @package App\Http\Controllers\API\V1
+ *
  * @version 1.0.0
  */
 /**
@@ -27,17 +30,14 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * - Response via ResponseFactory DI
  * - correlation_id in all responses
  *
- * @see \App\Http\Controllers\BaseApiController
- * @package App\Http\Controllers\Api\V1
+ * @see BaseApiController
  */
 final class Room3DController extends Controller
 {
-    public function __construct(private readonly Room3DVisualizerService $service,
+    public function __construct(
+        private readonly Room3DVisualizerService $service,
         private readonly ResponseFactory $response,
-    )
-    {
-
-    }
+    ) {}
 
     public function visualize(int $roomId, Request $request): JsonResponse
     {
@@ -49,11 +49,13 @@ final class Room3DController extends Controller
             'furniture' => 'array',
         ]);
         $visualization = $this->service->generateRoomVisualization($roomData);
+
         return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),
         ]);
     }
+
     public function propertyVisualize(int $propertyId, Request $request): JsonResponse
     {
         $propertyData = $request->validate([
@@ -61,6 +63,7 @@ final class Room3DController extends Controller
             'rooms' => 'array',
         ]);
         $visualization = $this->service->generatePropertyVisualization($propertyData);
+
         return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),

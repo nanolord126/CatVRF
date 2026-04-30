@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Webhooks;
 
@@ -7,35 +9,20 @@ use App\Services\Webhook\WebhookSignatureValidator;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
 use Tests\TestCase;
 
 final class WebhookServiceTest extends TestCase
 {
     private WebhookManagementService $service;
+
     private WebhookSignatureValidator $validator;
+
     private DatabaseManager $db;
+
     private AuditService $audit;
+
     private FraudControlService $fraud;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->db = app(DatabaseManager::class);
-        $this->audit = app(AuditService::class);
-        $this->fraud = app(FraudControlService::class);
-        
-        $this->service = new WebhookManagementService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-            $this->fraud,
-        );
-
-        $this->validator = new WebhookSignatureValidator();
-    }
 
     public function test_create_webhook_endpoint(): void
     {
@@ -222,6 +209,24 @@ final class WebhookServiceTest extends TestCase
         $this->assertArrayHasKey('successful_deliveries', $stats);
         $this->assertArrayHasKey('failed_deliveries', $stats);
         $this->assertEquals(2, $stats['total_deliveries']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->db = app(DatabaseManager::class);
+        $this->audit = app(AuditService::class);
+        $this->fraud = app(FraudControlService::class);
+
+        $this->service = new WebhookManagementService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+            $this->fraud,
+        );
+
+        $this->validator = new WebhookSignatureValidator();
     }
 
     protected function tearDown(): void

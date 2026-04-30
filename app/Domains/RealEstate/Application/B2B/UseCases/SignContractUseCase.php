@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\B2B\UseCases;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
 use App\Domains\RealEstate\Domain\Repository\ContractRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\ContractId;
 use App\Services\FraudControlService;
@@ -13,12 +15,11 @@ use RuntimeException;
 
 final class SignContractUseCase
 {
-    public function __construct(
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
         private readonly ContractRepositoryInterface $contractRepository,
-        private readonly FraudControlService         $fraud,
-        private readonly ConnectionInterface         $db,
-        private readonly LoggerInterface             $logger,
-    ) {}
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Signs a pending contract — changes status to Signed, records signature metadata.
@@ -26,11 +27,11 @@ final class SignContractUseCase
      * @throws RuntimeException
      */
     public function handle(
-        string  $contractId,
-        int     $signerUserId,
-        int     $tenantId,
-        string  $signatureDocumentUrl,
-        string  $correlationId,
+        string $contractId,
+        int $signerUserId,
+        int $tenantId,
+        string $signatureDocumentUrl,
+        string $correlationId,
         ?string $ipAddress = null,
         ?string $deviceFingerprint = null,
     ): void {
@@ -43,7 +44,7 @@ final class SignContractUseCase
             correlationId: $correlationId,
         );
 
-        $this->logger->info('RealEstate.SignContract started', [
+        $this->logger->$this->logger->info('RealEstate.SignContract started', [
             'correlation_id' => $correlationId,
             'contract_id'    => $contractId,
             'signer_user_id' => $signerUserId,
@@ -86,10 +87,10 @@ final class SignContractUseCase
         });
 
         foreach ($events as $event) {
-            event($event);
+            $this->eventDispatcher->dispatch($event);
         }
 
-        $this->logger->info('RealEstate.SignContract completed', [
+        $this->logger->$this->logger->info('RealEstate.SignContract completed', [
             'correlation_id'        => $correlationId,
             'contract_id'           => $contractId,
             'signer_user_id'        => $signerUserId,

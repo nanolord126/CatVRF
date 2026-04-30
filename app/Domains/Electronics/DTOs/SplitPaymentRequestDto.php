@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class SplitPaymentRequestDto
 {
     /**
-     * @param array<array{source: string, amount_kopecks: int, metadata: array<string, mixed>}> $paymentSources
-     * @param array<string, mixed> $metadata
+     * @param  array<array{source: string, amount_kopecks: int, metadata: array<string, mixed>}>  $paymentSources
+     * @param  array<string, mixed>  $metadata
      */
     public function __construct(
         public int $orderId,
@@ -18,8 +20,7 @@ final readonly class SplitPaymentRequestDto
         public int $escrowReleaseDays,
         public array $metadata,
         public ?string $idempotencyKey = null,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(array $data, int $userId, string $correlationId): self
     {
@@ -54,6 +55,7 @@ final readonly class SplitPaymentRequestDto
     public function validatePaymentSources(): bool
     {
         $total = array_sum(array_column($this->paymentSources, 'amount_kopecks'));
+
         return $total === $this->totalAmountKopecks;
     }
 }

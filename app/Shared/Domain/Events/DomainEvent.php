@@ -1,13 +1,14 @@
 <?php
 
 declare(strict_types=1);
+
 namespace App\Shared\Domain\Events;
 
 abstract class DomainEvent
 {
-    private \DateTimeImmutable $occurredAt;
+    private readonly \DateTimeImmutable $occurredAt;
 
-    public function __construct(protected mixed $correlationId = null)
+    public function __construct(protected readonly mixed $correlationId = null)
     {
         $this->occurredAt = new \DateTimeImmutable();
     }

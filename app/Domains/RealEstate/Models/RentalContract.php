@@ -1,13 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class RentalContract extends Model
 {
+    use TenantScoped;
 
     protected $table = 'rental_contracts';
 
@@ -33,26 +38,24 @@ final class RentalContract extends Model
         'paid_deposit' => 'integer',
     ];
 
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
+    public function tenantUser(): BelongsTo
+    {
+        // Предполагается связь с таблицей пользователей
+        return $this->belongsTo(User::class, 'tenant_user_id');
+    }
+
     protected static function booted(): void
     {
-        static::creating(function (RentalContract $model) {
+        self::creating(function (RentalContract $model) {
             $model->uuid = $model->uuid ?? (string) Str::uuid();
             if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
                 $model->tenant_id = tenant()->id;
             }
         });
     }
-
-    public function listing(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Listing::class);
-    }
-
-    public function tenantUser(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        // Предполагается связь с таблицей пользователей
-        return $this->belongsTo(\App\Models\User::class, 'tenant_user_id');
-    }
-
-    
 }

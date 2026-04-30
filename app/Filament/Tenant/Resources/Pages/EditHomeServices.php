@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
 use Filament\Resources\Pages\EditRecord;
-
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class EditHomeServices
@@ -15,9 +18,8 @@ use Filament\Resources\Pages\EditRecord;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class EditHomeServices extends EditRecord
 {
@@ -33,31 +35,27 @@ final class EditHomeServices extends EditRecord
         return 'Edit HomeServices';
     }
 
+    /**
+     * Get the string representation of this object.
+     */
+    public function __toString(): string
+    {
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             ViewAction::make(),
             DeleteAction::make(),
         ];
-    }
-
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
     }
 }

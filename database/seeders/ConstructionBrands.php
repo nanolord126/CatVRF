@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -6,8 +7,10 @@ namespace Database\Seeders;
 /**
  * Строительные бренды (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-final class ConstructionBrands extends BaseBrandSeeder {
-    public function run(): void {
+final class ConstructionBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('Construction', [
             ['name' => 'Caterpillar', 'country' => 'USA'], ['name' => 'Komatsu', 'country' => 'Japan'],
             ['name' => 'Deere & Company', 'country' => 'USA'], ['name' => 'BHP Group', 'country' => 'Australia'],
@@ -38,5 +41,3 @@ final class ConstructionBrands extends BaseBrandSeeder {
         ]);
     }
 }
-
-

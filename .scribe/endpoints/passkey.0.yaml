@@ -1,0 +1,326 @@
+name: Passkey Authentication
+description: Enterprise passwordless authentication using WebAuthn/Passkeys (FIDO2 Level 3)
+version: 1.0.0
+endpoints:
+  -
+    httpMethods:
+      - POST
+    uri: api/v1/auth/passkey/login-options
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Authentication
+      title: Generate login options
+      description: Generate PublicKeyCredentialRequestOptions for passkey authentication. This endpoint is public and does not require authentication.
+      authenticated: false
+    headers:
+      Content-Type: application/json
+    urlParameters: []
+    queryParameters: []
+    bodyParameters:
+      email:
+        name: email
+        type: string
+        description: User email address
+        required: true
+        example: user@example.com
+    responses:
+      -
+        status: 200
+        content: '{"options":{"challenge":"base64-encoded-challenge","rpId":"catvrf.ru","allowCredentials":[{"id":"credential-id","type":"public-key","transports":["internal"]}],"userVerification":"preferred","timeout":60000},"challenge_id":"uuid","user_found":true,"has_credentials":true}'
+        headers: []
+        description: Successful response
+      -
+        status: 500
+        content: '{"error":"Error message"}'
+        headers: []
+        description: Server error
+    responseFields: {}
+  -
+    httpMethods:
+      - POST
+    uri: api/v1/auth/passkey/login
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Authentication
+      title: Complete passkey authentication
+      description: Verify assertion and authenticate user using passkey. This endpoint is public and does not require authentication.
+      authenticated: false
+    headers:
+      Content-Type: application/json
+    urlParameters: []
+    queryParameters: []
+    bodyParameters:
+      challenge_id:
+        name: challenge_id
+        type: string
+        description: Challenge ID from login-options endpoint
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+      assertion:
+        name: assertion
+        type: object
+        description: WebAuthn assertion from navigator.credentials.get()
+        required: true
+        example: '{"id":"credential-id","response":{"clientDataJSON":"base64","signature":"base64"},"authenticatorData":{"counter":123}}'
+    responses:
+      -
+        status: 200
+        content: '{"message":"Authentication successful","user":{"id":1,"name":"John Doe","email":"user@example.com"},"token":"sanctum-token","credential":{"id":1,"name":"iPhone Face ID","last_used_at":"2026-04-19T10:00:00Z"}}'
+        headers: []
+        description: Authentication successful
+      -
+        status: 401
+        content: '{"error":"Error message"}'
+        headers: []
+        description: Authentication failed
+    responseFields: {}
+  -
+    httpMethods:
+      - POST
+    uri: api/v1/auth/passkey/register-options
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Registration
+      title: Generate registration options
+      description: Generate PublicKeyCredentialCreationOptions for new passkey registration. Requires authentication.
+      authenticated: true
+    headers:
+      Content-Type: application/json
+      Authorization: 'Bearer {token}'
+    urlParameters: []
+    queryParameters: []
+    bodyParameters:
+      authenticator_attachment:
+        name: authenticator_attachment
+        type: string
+        description: Type of authenticator (platform or cross-platform)
+        required: false
+        example: platform
+      user_verification_required:
+        name: user_verification_required
+        type: boolean
+        description: Whether to require user verification (biometric)
+        required: false
+        example: true
+    responses:
+      -
+        status: 200
+        content: '{"options":{"challenge":"base64-encoded-challenge","rp":{"id":"catvrf.ru","name":"CatVRF Healthcare Marketplace"},"user":{"id":"1","name":"user@example.com","displayName":"John Doe"},"pubKeyCredParams":[{"type":"public-key","alg":-7},{"type":"public-key","alg":-257}],"timeout":60000,"attestation":"none","authenticatorSelection":{"authenticatorAttachment":"platform","userVerification":"required","residentKey":"preferred"},"excludeCredentials":[]},"challenge_id":"uuid"}'
+        headers: []
+        description: Successful response
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+      -
+        status: 500
+        content: '{"error":"Error message"}'
+        headers: []
+        description: Server error
+    responseFields: {}
+  -
+    httpMethods:
+      - POST
+    uri: api/v1/auth/passkey/register
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Registration
+      title: Complete passkey registration
+      description: Verify attestation and register new passkey. Requires authentication.
+      authenticated: true
+    headers:
+      Content-Type: application/json
+      Authorization: 'Bearer {token}'
+    urlParameters: []
+    queryParameters: []
+    bodyParameters:
+      challenge_id:
+        name: challenge_id
+        type: string
+        description: Challenge ID from register-options endpoint
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+      attestation:
+        name: attestation
+        type: object
+        description: WebAuthn attestation from navigator.credentials.create()
+        required: true
+        example: '{"id":"credential-id","response":{"clientDataJSON":"base64","publicKey":"base64"},"authenticatorData":{"aaguid":"00000000-0000-0000-0000-000000000000"},"transports":["internal"],"backedUp":false}'
+      credential_name:
+        name: credential_name
+        type: string
+        description: User-defined name for the passkey
+        required: false
+        example: My iPhone
+    responses:
+      -
+        status: 201
+        content: '{"message":"Passkey registered successfully","credential":{"id":1,"name":"My iPhone","device_type":"single_device","backed_up":false,"created_at":"2026-04-19T10:00:00Z"}}'
+        headers: []
+        description: Registration successful
+      -
+        status: 400
+        content: '{"error":"Error message"}'
+        headers: []
+        description: Registration failed
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+    responseFields: {}
+  -
+    httpMethods:
+      - GET
+    uri: api/v1/auth/passkey/credentials
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Credential Management
+      title: List user passkeys
+      description: Get list of all passkeys registered for the authenticated user. Requires authentication.
+      authenticated: true
+    headers:
+      Authorization: 'Bearer {token}'
+    urlParameters: []
+    queryParameters: []
+    bodyParameters: []
+    responses:
+      -
+        status: 200
+        content: '{"credentials":[{"id":1,"name":"iPhone Face ID","device_type":"single_device","device_type_label":"Single Device","backed_up":false,"is_platform_authenticator":true,"is_synced":false,"last_used_at":"2026-04-19T10:00:00Z","created_at":"2026-04-19T09:00:00Z"}],"stats":{"total":1,"platform":1,"syncable":0,"single_device":1,"last_used":"2026-04-19T10:00:00Z"}}'
+        headers: []
+        description: Successful response
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+    responseFields: {}
+  -
+    httpMethods:
+      - GET
+    uri: api/v1/auth/passkey/credentials/{id}
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Credential Management
+      title: Get single credential
+      description: Get details of a specific passkey. Requires authentication.
+      authenticated: true
+    headers:
+      Authorization: 'Bearer {token}'
+    urlParameters:
+      id:
+        name: id
+        type: integer
+        description: Credential ID
+        required: true
+        example: 1
+    queryParameters: []
+    bodyParameters: []
+    responses:
+      -
+        status: 200
+        content: '{"id":1,"name":"iPhone Face ID","device_type":"single_device","device_type_label":"Single Device","backed_up":false,"is_platform_authenticator":true,"is_synced":false,"transports":["internal"],"last_used_at":"2026-04-19T10:00:00Z","created_at":"2026-04-19T09:00:00Z","user_agent":"Mozilla/5.0...","ip_address":"192.168.1.1"}'
+        headers: []
+        description: Successful response
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+      -
+        status: 404
+        content: '{"error":"Credential not found"}'
+        headers: []
+        description: Credential not found
+    responseFields: {}
+  -
+    httpMethods:
+      - PUT
+    uri: api/v1/auth/passkey/credentials/{id}
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Credential Management
+      title: Rename credential
+      description: Rename a passkey. Requires authentication.
+      authenticated: true
+    headers:
+      Content-Type: application/json
+      Authorization: 'Bearer {token}'
+    urlParameters:
+      id:
+        name: id
+        type: integer
+        description: Credential ID
+        required: true
+        example: 1
+    queryParameters: []
+    bodyParameters:
+      name:
+        name: name
+        type: string
+        description: New name for the credential
+        required: true
+        example: My New iPhone
+    responses:
+      -
+        status: 200
+        content: '{"message":"Credential renamed successfully","credential":{"id":1,"name":"My New iPhone"}}'
+        headers: []
+        description: Successful response
+      -
+        status: 400
+        content: '{"error":"Error message"}'
+        headers: []
+        description: Rename failed
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+    responseFields: {}
+  -
+    httpMethods:
+      - DELETE
+    uri: api/v1/auth/passkey/credentials/{id}
+    metadata:
+      groupName: Passkey Authentication
+      subgroupName: Credential Management
+      title: Delete credential
+      description: Delete a passkey. Cannot delete the last passkey. Requires authentication.
+      authenticated: true
+    headers:
+      Authorization: 'Bearer {token}'
+    urlParameters:
+      id:
+        name: id
+        type: integer
+        description: Credential ID
+        required: true
+        example: 1
+    queryParameters: []
+    bodyParameters:
+      revoke_sessions:
+        name: revoke_sessions
+        type: boolean
+        description: Whether to revoke all sessions for this credential
+        required: false
+        example: true
+    responses:
+      -
+        status: 200
+        content: '{"message":"Credential deleted successfully"}'
+        headers: []
+        description: Successful response
+      -
+        status: 400
+        content: '{"error":"Cannot delete the last passkey. Add another passkey first."}'
+        headers: []
+        description: Cannot delete last passkey
+      -
+        status: 401
+        content: '{"error":"Unauthorized"}'
+        headers: []
+        description: Unauthorized
+    responseFields: {}

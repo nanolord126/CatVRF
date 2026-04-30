@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\B2B\UseCases;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
 use App\Domains\RealEstate\Domain\Repository\PropertyRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\PropertyId;
 use App\Services\FraudControlService;
@@ -13,11 +15,11 @@ use RuntimeException;
 
 final class PublishPropertyUseCase
 {
-    public function __construct(
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
         private readonly PropertyRepositoryInterface $propertyRepository,
-        private readonly FraudControlService         $fraud,
-        private readonly ConnectionInterface         $db,
-        private readonly LoggerInterface             $logger) {}
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger) {}
 
     /**
      * Publishes a Draft property — changes status to Active, fires PropertyListed event.
@@ -26,7 +28,7 @@ final class PublishPropertyUseCase
      */
     public function handle(
         string $propertyId,
-        int    $tenantId,
+        int $tenantId,
         string $correlationId,
     ): void {
         $this->fraud->check(
@@ -38,7 +40,7 @@ final class PublishPropertyUseCase
             correlationId: $correlationId,
         );
 
-        $this->logger->info('RealEstate.PublishProperty started', [
+        $this->logger->$this->logger->info('RealEstate.PublishProperty started', [
             'correlation_id' => $correlationId,
             'property_id'    => $propertyId,
             'tenant_id'      => $tenantId,
@@ -62,10 +64,10 @@ final class PublishPropertyUseCase
         });
 
         foreach ($events as $event) {
-            event($event);
+            $this->eventDispatcher->dispatch($event);
         }
 
-        $this->logger->info('RealEstate.PublishProperty completed', [
+        $this->logger->$this->logger->info('RealEstate.PublishProperty completed', [
             'correlation_id' => $correlationId,
             'property_id'    => $propertyId,
         ]);

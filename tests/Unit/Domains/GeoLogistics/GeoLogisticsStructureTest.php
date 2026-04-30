@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\GeoLogistics;
 
@@ -13,35 +15,35 @@ use PHPUnit\Framework\TestCase;
  */
 final class GeoLogisticsStructureTest extends TestCase
 {
-    private const BASE = __DIR__ . '/../../../../app/Domains/GeoLogistics';
+    private const BASE = __DIR__.'/../../../../app/Domains/GeoLogistics';
 
     /* ================================================================== */
-    /*  Layer 1 — Models                                                   */
+    /*  Layer 1 — Models */
     /* ================================================================== */
 
     #[Test]
     public function layer1_models_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Models');
+        self::assertDirectoryExists(self::BASE.'/Models');
     }
 
     #[Test]
     public function layer1_model_files_present(): void
     {
-        $models = glob(self::BASE . '/Models/*.php');
+        $models = glob(self::BASE.'/Models/*.php');
         self::assertNotEmpty($models, 'GeoLogistics: Models directory must contain files');
     }
 
     #[Test]
     public function layer1_models_are_final(): void
     {
-        $files = glob(self::BASE . '/Models/*.php') ?: [];
+        $files = glob(self::BASE.'/Models/*.php') ?: [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
             $name = pathinfo($file, PATHINFO_FILENAME);
 
-            if (str_contains($content, 'class ') && !str_contains($content, 'abstract ')) {
+            if (str_contains($content, 'class ') && ! str_contains($content, 'abstract ')) {
                 self::assertTrue(
                     str_contains($content, 'final'),
                     "Model {$name} must be final class",
@@ -51,26 +53,26 @@ final class GeoLogisticsStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Layer 2 — DTOs                                                     */
+    /*  Layer 2 — DTOs */
     /* ================================================================== */
 
     #[Test]
     public function layer2_dtos_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/DTOs');
+        self::assertDirectoryExists(self::BASE.'/DTOs');
     }
 
     #[Test]
     public function layer2_dto_files_present(): void
     {
-        $dtos = glob(self::BASE . '/DTOs/*.php');
+        $dtos = glob(self::BASE.'/DTOs/*.php');
         self::assertNotEmpty($dtos, 'GeoLogistics: DTOs directory must contain files');
     }
 
     #[Test]
     public function layer2_dtos_are_final_readonly(): void
     {
-        $files = glob(self::BASE . '/DTOs/*.php') ?: [];
+        $files = glob(self::BASE.'/DTOs/*.php') ?: [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
@@ -86,32 +88,32 @@ final class GeoLogisticsStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Layer 3 — Services                                                 */
+    /*  Layer 3 — Services */
     /* ================================================================== */
 
     #[Test]
     public function layer3_services_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Services');
+        self::assertDirectoryExists(self::BASE.'/Services');
     }
 
     #[Test]
     public function layer3_service_files_present(): void
     {
-        $services = glob(self::BASE . '/Services/*.php');
+        $services = glob(self::BASE.'/Services/*.php');
         self::assertNotEmpty($services, 'GeoLogistics: Services directory must contain files');
     }
 
     #[Test]
     public function layer3_services_are_final(): void
     {
-        $files = glob(self::BASE . '/Services/*.php') ?: [];
+        $files = glob(self::BASE.'/Services/*.php') ?: [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
             $name = pathinfo($file, PATHINFO_FILENAME);
 
-            if (str_contains($content, 'class ') && !str_contains($content, 'interface ')) {
+            if (str_contains($content, 'class ') && ! str_contains($content, 'interface ')) {
                 self::assertTrue(
                     str_contains($content, 'final'),
                     "Service {$name} must be final class",
@@ -124,46 +126,46 @@ final class GeoLogisticsStructureTest extends TestCase
     public function layer3_ai_constructor_exists(): void
     {
         self::assertDirectoryExists(
-            self::BASE . '/Services/AI',
+            self::BASE.'/Services/AI',
             'GeoLogistics: AI-constructor directory is PRODUCTION MANDATORY',
         );
 
-        $aiFiles = glob(self::BASE . '/Services/AI/*.php');
+        $aiFiles = glob(self::BASE.'/Services/AI/*.php');
         self::assertNotEmpty($aiFiles, 'GeoLogistics: Must have AI constructor service');
     }
 
     /* ================================================================== */
-    /*  Layer 6 — Events                                                   */
+    /*  Layer 6 — Events */
     /* ================================================================== */
 
     #[Test]
     public function layer6_events_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Events');
+        self::assertDirectoryExists(self::BASE.'/Events');
     }
 
     /* ================================================================== */
-    /*  Layer 7 — Listeners                                                */
+    /*  Layer 7 — Listeners */
     /* ================================================================== */
 
     #[Test]
     public function layer7_listeners_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Listeners');
+        self::assertDirectoryExists(self::BASE.'/Listeners');
     }
 
     /* ================================================================== */
-    /*  Layer 8 — Jobs                                                     */
+    /*  Layer 8 — Jobs */
     /* ================================================================== */
 
     #[Test]
     public function layer8_jobs_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Jobs');
+        self::assertDirectoryExists(self::BASE.'/Jobs');
     }
 
     /* ================================================================== */
-    /*  Canon Compliance                                                    */
+    /*  Canon Compliance */
     /* ================================================================== */
 
     #[Test]
@@ -182,14 +184,14 @@ final class GeoLogisticsStructureTest extends TestCase
 
             $content = file_get_contents($file->getPathname());
 
-            if (!str_contains($content, 'declare(strict_types=1)')) {
-                $violations[] = str_replace(self::BASE . '/', '', $file->getPathname());
+            if (! str_contains($content, 'declare(strict_types=1)')) {
+                $violations[] = str_replace(self::BASE.'/', '', $file->getPathname());
             }
         }
 
         self::assertEmpty(
             $violations,
-            'GeoLogistics: strict_types=1 violations: ' . implode(', ', array_slice($violations, 0, 5)),
+            'GeoLogistics: strict_types=1 violations: '.implode(', ', array_slice($violations, 0, 5)),
         );
     }
 
@@ -197,7 +199,7 @@ final class GeoLogisticsStructureTest extends TestCase
     public function services_have_no_forbidden_facades(): void
     {
         $forbidden = ['DB::', 'Log::', 'Auth::', 'Cache::', 'request(', 'config(', 'auth('];
-        $files = glob(self::BASE . '/Services/*.php') ?: [];
+        $files = glob(self::BASE.'/Services/*.php') ?: [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
@@ -216,13 +218,13 @@ final class GeoLogisticsStructureTest extends TestCase
     #[Test]
     public function services_use_constructor_injection(): void
     {
-        $files = glob(self::BASE . '/Services/*.php') ?: [];
+        $files = glob(self::BASE.'/Services/*.php') ?: [];
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
             $name = pathinfo($file, PATHINFO_FILENAME);
 
-            if (str_contains($content, 'class ') && !str_contains($content, 'interface ')) {
+            if (str_contains($content, 'class ') && ! str_contains($content, 'interface ')) {
                 self::assertTrue(
                     str_contains($content, '__construct'),
                     "GeoLogistics/Services/{$name}: must use constructor injection",
@@ -248,14 +250,14 @@ final class GeoLogisticsStructureTest extends TestCase
             $lines = substr_count(file_get_contents($file->getPathname()), "\n") + 1;
 
             if ($lines < 60) {
-                $relative = str_replace(self::BASE . '/', '', $file->getPathname());
+                $relative = str_replace(self::BASE.'/', '', $file->getPathname());
                 $shortFiles[] = "{$relative} ({$lines} lines)";
             }
         }
 
         self::assertEmpty(
             $shortFiles,
-            'GeoLogistics: Files under 60 lines: ' . implode(', ', array_slice($shortFiles, 0, 5)),
+            'GeoLogistics: Files under 60 lines: '.implode(', ', array_slice($shortFiles, 0, 5)),
         );
     }
 }

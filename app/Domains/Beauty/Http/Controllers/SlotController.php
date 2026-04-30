@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class SlotController extends Controller
 {
@@ -23,13 +25,13 @@ final class SlotController extends Controller
 
         $slots = $this->db->table('beauty_slots')
             ->where('master_id', $master)
-            ->where('date', '>=', now()->toDateString())
+            ->where('date', '>=', CarbonImmutable::now()->toDateString())
             ->where('is_available', true)
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
 
-        $this->logger->info('Slots listed', [
+        $this->logger->$this->logger->info('Slots listed', [
             'correlation_id' => $correlationId,
             'master_id' => $master,
             'count' => $slots->count(),
@@ -63,8 +65,8 @@ final class SlotController extends Controller
                 ->update([
                     'is_available' => false,
                     'reserved_by' => $request->user()?->id,
-                    'reserved_at' => now(),
-                    'updated_at' => now(),
+                    'reserved_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             $this->db->table('beauty_reservations')->insert([
@@ -72,13 +74,13 @@ final class SlotController extends Controller
                 'user_id' => $request->user()?->id,
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'expires_at' => now()->addMinutes(20),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'expires_at' => CarbonImmutable::now()->addMinutes(20),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('Slot reserved', [
+        $this->logger->$this->logger->info('Slot reserved', [
             'correlation_id' => $correlationId,
             'slot_id' => $slot,
         ]);
@@ -100,7 +102,7 @@ final class SlotController extends Controller
                     'is_available' => true,
                     'reserved_by' => null,
                     'reserved_at' => null,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             $this->db->table('beauty_reservations')
@@ -108,7 +110,7 @@ final class SlotController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Slot released', [
+        $this->logger->$this->logger->info('Slot released', [
             'correlation_id' => $correlationId,
             'slot_id' => $slot,
         ]);
@@ -151,8 +153,8 @@ final class SlotController extends Controller
                     'is_available' => true,
                     'uuid' => (string) Str::uuid(),
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
                 $slots[] = ['id' => $id, 'start_time' => $startTime, 'end_time' => $endTime];
@@ -160,7 +162,7 @@ final class SlotController extends Controller
             }
         });
 
-        $this->logger->info('Slots generated', [
+        $this->logger->$this->logger->info('Slots generated', [
             'correlation_id' => $correlationId,
             'master_id' => $master,
             'count' => count($slots),

@@ -1,21 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Inventory;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Auth\AuthManager;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use App\Traits\WithAuditLogging;
 
 /**
  * InventoryAuditService — плановые и внеплановые инвентаризации.
@@ -30,12 +30,15 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class InventoryAuditService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly AuthManager $authManager,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
     ) {}
 
@@ -78,14 +81,14 @@ final readonly class InventoryAuditService
                 'employee_id'      => $employeeId,
                 'status'           => 'in_progress',
                 'total_positions'  => $positions->count(),
-                'checked_positions'=> 0,
-                'discrepancy_count'=> 0,
+                'checked_positions' => 0,
+                'discrepancy_count' => 0,
                 'discrepancies'    => json_encode([]),
-                'started_at'       => now()->toDateTimeString(),
+                'started_at'       => CarbonImmutable::now()->toDateTimeString(),
                 'correlation_id'   => $correlationId,
                 'tags'             => json_encode([]),
-                'created_at'       => now()->toDateTimeString(),
-                'updated_at'       => now()->toDateTimeString(),
+                'created_at'       => CarbonImmutable::now()->toDateTimeString(),
+                'updated_at'       => CarbonImmutable::now()->toDateTimeString(),
             ]);
 
             // Сохраняем ожидаемые остатки как JSON-снимок (для последующего сравнения)
@@ -95,10 +98,10 @@ final readonly class InventoryAuditService
                 ->where('id', $auditId)
                 ->update(['discrepancies' => json_encode(['snapshot' => $snapshot])]);
 
-            $this->logger->channel('audit')->info('Inventory audit started', [
+            $this->logger->channel('audit')->$this->logger->info('Inventory audit started', [
                 'audit_id'       => $auditId,
                 'warehouse_id'   => $warehouseId,
-                'total_positions'=> $positions->count(),
+                'total_positions' => $positions->count(),
                 'correlation_id' => $correlationId,
             ]);
 
@@ -110,7 +113,7 @@ final readonly class InventoryAuditService
             return [
                 'audit_id'       => $auditId,
                 'uuid'           => $uuid,
-                'total_positions'=> $positions->count(),
+                'total_positions' => $positions->count(),
                 'positions'      => $positions->all(),
             ];
         });
@@ -132,7 +135,7 @@ final readonly class InventoryAuditService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$audit) {
+            if (! $audit) {
                 throw new \DomainException("Инвентаризация #{$auditId} не найдена или уже завершена.");
             }
 
@@ -152,12 +155,12 @@ final readonly class InventoryAuditService
                     $diff < 0  => 'shortage',
                     default    => 'match',
                 },
-                'recorded_at' => now()->toIso8601String(),
+                'recorded_at' => CarbonImmutable::now()->toIso8601String(),
             ];
 
             $checkedNow      = count($discrepancies['items'] ?? []);
-            $discrepancyCount = collect($discrepancies['items'])
-                ->filter(fn($i) => $i['diff'] !== 0)
+            $discrepancyCount = new Collection($discrepancies['items'])
+                ->filter(fn ($i) => $i['diff'] !== 0)
                 ->count();
 
             $this->db->table('inventory_audits')
@@ -166,10 +169,10 @@ final readonly class InventoryAuditService
                     'discrepancies'     => json_encode($discrepancies),
                     'checked_positions' => $checkedNow,
                     'discrepancy_count' => $discrepancyCount,
-                    'updated_at'        => now()->toDateTimeString(),
+                    'updated_at'        => CarbonImmutable::now()->toDateTimeString(),
                 ]);
 
-            $this->logger->channel('audit')->info('Inventory actual count recorded', [
+            $this->logger->channel('audit')->$this->logger->info('Inventory actual count recorded', [
                 'audit_id'       => $auditId,
                 'product_id'     => $productId,
                 'expected'       => $expected,
@@ -202,7 +205,7 @@ final readonly class InventoryAuditService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$audit) {
+            if (! $audit) {
                 throw new \DomainException("Инвентаризация #{$auditId} не в статусе in_progress.");
             }
 
@@ -225,7 +228,7 @@ final readonly class InventoryAuditService
                     ->where('product_id', $item['product_id'])
                     ->update([
                         'quantity'   => $item['actual'],
-                        'updated_at' => now()->toDateTimeString(),
+                        'updated_at' => CarbonImmutable::now()->toDateTimeString(),
                     ]);
             }
 
@@ -235,9 +238,9 @@ final readonly class InventoryAuditService
                 ->where('id', $auditId)
                 ->update([
                     'status'           => $finalStatus,
-                    'completed_at'     => now()->toDateTimeString(),
-                    'discrepancy_count'=> $shortages + $surpluses,
-                    'updated_at'       => now()->toDateTimeString(),
+                    'completed_at'     => CarbonImmutable::now()->toDateTimeString(),
+                    'discrepancy_count' => $shortages + $surpluses,
+                    'updated_at'       => CarbonImmutable::now()->toDateTimeString(),
                 ]);
 
             $this->audit->record('inventory_audit_completed', 'inventory_audits', $auditId, [], [
@@ -247,7 +250,7 @@ final readonly class InventoryAuditService
                 'matches'    => $matches,
             ], $correlationId);
 
-            $this->logger->channel('audit')->info('Inventory audit completed', [
+            $this->logger->channel('audit')->$this->logger->info('Inventory audit completed', [
                 'audit_id'       => $auditId,
                 'status'         => $finalStatus,
                 'surpluses'      => $surpluses,
@@ -279,12 +282,13 @@ final readonly class InventoryAuditService
             ->get()
             ->map(function (object $row): array {
                 $data = json_decode($row->discrepancies, true) ?? [];
+
                 return [
                     'audit_id'         => $row->id,
                     'uuid'             => $row->uuid,
                     'completed_at'     => $row->completed_at,
                     'status'           => $row->status,
-                    'discrepancy_count'=> $row->discrepancy_count,
+                    'discrepancy_count' => $row->discrepancy_count,
                     'items'            => $data['items'] ?? [],
                 ];
             });

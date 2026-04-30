@@ -1,27 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Domains\RealEstate\Services\AI\RealEstateAIConstructorService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 final readonly class RealEstateVirtualTourService
 {
     private const CACHE_TTL_SECONDS = 7200;
+
     private const TOUR_EXPIRY_HOURS = 168;
+
     private const MAX_HOTSPOTS = 20;
+
     private const AR_VIEWING_TIMEOUT_SECONDS = 3600;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit,
-        private RealEstateAIConstructorService $aiConstructor
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly RealEstateAIConstructorService $aiConstructor,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function generateVirtualTour(
@@ -41,7 +49,7 @@ final readonly class RealEstateVirtualTourService
         );
 
         if ($idempotencyKey !== null) {
-            $cached = Cache::get("tour:{$property->id}:{$idempotencyKey}");
+            $cached = $this->cache->get("tour:{$property->id}:{$idempotencyKey}");
             if ($cached !== null) {
                 return json_decode($cached, true);
             }
@@ -51,7 +59,7 @@ final readonly class RealEstateVirtualTourService
             throw new \InvalidArgumentException('At least one image is required');
         }
 
-        $result = DB::transaction(function () use ($property, $images, $userId, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $images, $correlationId) {
             $tourId = $this->generateTourId($property->id);
             $hotspots = $this->generateHotspots($images);
             $tourUrl = $this->buildVirtualTourUrl($tourId, $images);
@@ -65,13 +73,13 @@ final readonly class RealEstateVirtualTourService
                 'tour_url' => $tourUrl,
                 'ar_viewing_url' => $arViewingUrl,
                 'total_hotspots' => count($hotspots),
-                'created_at' => now()->toIso8601String(),
-                'expires_at' => now()->addHours(self::TOUR_EXPIRY_HOURS)->toIso8601String(),
+                'created_at' => CarbonImmutable::now()->toIso8601String(),
+                'expires_at' => CarbonImmutable::now()->addHours(self::TOUR_EXPIRY_HOURS)->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
             $cacheKey = "tour:{$property->id}:{$tourId}";
-            Cache::put($cacheKey, json_encode($tourData), self::CACHE_TTL_SECONDS);
+            $this->cache->put($cacheKey, json_encode($tourData), self::CACHE_TTL_SECONDS);
 
             $property->update([
                 'metadata->virtual_tour_id' => $tourId,
@@ -96,7 +104,7 @@ final readonly class RealEstateVirtualTourService
         });
 
         if ($idempotencyKey !== null) {
-            Cache::put("tour:{$property->id}:{$idempotencyKey}", json_encode($result), self::CACHE_TTL_SECONDS);
+            $this->cache->put("tour:{$property->id}:{$idempotencyKey}", json_encode($result), self::CACHE_TTL_SECONDS);
         }
 
         return $result;
@@ -118,7 +126,7 @@ final readonly class RealEstateVirtualTourService
         );
 
         $cacheKey = "tour:ai:description:{$tourId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return json_decode($cached, true);
@@ -133,11 +141,11 @@ final readonly class RealEstateVirtualTourService
             'description' => $description,
             'tour_narrative' => $tourNarrative,
             'voiceover_script' => $this->generateVoiceoverScript($tourNarrative),
-            'generated_at' => now()->toIso8601String(),
+            'generated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Cache::put($cacheKey, json_encode($aiData), self::CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, json_encode($aiData), self::CACHE_TTL_SECONDS);
 
         $this->audit->record(
             'ai_tour_description_generated',
@@ -169,7 +177,7 @@ final readonly class RealEstateVirtualTourService
 
         $property = Property::findOrFail($propertyId);
 
-        if (!isset($property->metadata['virtual_tour_id'])) {
+        if (! isset($property->metadata['virtual_tour_id'])) {
             throw new \DomainException('Virtual tour must be created before enabling AR viewing');
         }
 
@@ -181,12 +189,12 @@ final readonly class RealEstateVirtualTourService
             'user_id' => $userId,
             'ar_token' => $arToken,
             'ar_viewing_url' => $property->metadata['ar_viewing_url'],
-            'expires_at' => now()->addSeconds(self::AR_VIEWING_TIMEOUT_SECONDS)->toIso8601String(),
-            'created_at' => now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::AR_VIEWING_TIMEOUT_SECONDS)->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Cache::put($arSessionKey, json_encode($arData), self::AR_VIEWING_TIMEOUT_SECONDS);
+        $this->cache->put($arSessionKey, json_encode($arData), self::AR_VIEWING_TIMEOUT_SECONDS);
 
         $this->audit->record(
             'ar_viewing_enabled',
@@ -217,7 +225,7 @@ final readonly class RealEstateVirtualTourService
         );
 
         $cacheKey = "tour:analytics:{$tourId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return json_decode($cached, true);
@@ -233,11 +241,11 @@ final readonly class RealEstateVirtualTourService
             'ar_sessions' => random_int(0, 50),
             'most_viewed_hotspots' => $this->getTopHotspots($tourId),
             'peak_viewing_hours' => $this->getPeakHours(),
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Cache::put($cacheKey, json_encode($analytics), 3600);
+        $this->cache->put($cacheKey, json_encode($analytics), 3600);
 
         return $analytics;
     }
@@ -258,11 +266,11 @@ final readonly class RealEstateVirtualTourService
         );
 
         if (count($hotspots) > self::MAX_HOTSPOTS) {
-            throw new \InvalidArgumentException("Maximum {self::MAX_HOTSPOTS} hotspots allowed");
+            throw new \InvalidArgumentException('Maximum {self::MAX_HOTSPOTS} hotspots allowed');
         }
 
         $cacheKey = "tour:{$tourId}";
-        $tourDataJson = Cache::get($cacheKey);
+        $tourDataJson = $this->cache->get($cacheKey);
 
         if ($tourDataJson === null) {
             throw new \DomainException('Tour not found');
@@ -271,9 +279,9 @@ final readonly class RealEstateVirtualTourService
         $tourData = json_decode($tourDataJson, true);
         $tourData['hotspots'] = $hotspots;
         $tourData['total_hotspots'] = count($hotspots);
-        $tourData['updated_at'] = now()->toIso8601String();
+        $tourData['updated_at'] = CarbonImmutable::now()->toIso8601String();
 
-        Cache::put($cacheKey, json_encode($tourData), self::CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, json_encode($tourData), self::CACHE_TTL_SECONDS);
 
         $this->audit->record(
             'tour_hotspots_updated',
@@ -306,15 +314,15 @@ final readonly class RealEstateVirtualTourService
         );
 
         $cacheKey = "tour:{$tourId}";
-        $tourDataJson = Cache::get($cacheKey);
+        $tourDataJson = $this->cache->get($cacheKey);
 
         if ($tourDataJson !== null) {
             $tourData = json_decode($tourDataJson, true);
             $propertyId = $tourData['property_id'];
 
-            Cache::delete($cacheKey);
-            Cache::delete("tour:analytics:{$tourId}");
-            Cache::delete("tour:ai:description:{$tourId}");
+            $this->cache->delete($cacheKey);
+            $this->cache->delete("tour:analytics:{$tourId}");
+            $this->cache->delete("tour:ai:description:{$tourId}");
 
             $property = Property::find($propertyId);
             if ($property !== null) {
@@ -338,7 +346,7 @@ final readonly class RealEstateVirtualTourService
 
     private function generateTourId(int $propertyId): string
     {
-        return 'vt_' . $propertyId . '_' . now()->timestamp . '_' . Str::random(8);
+        return 'vt_'.$propertyId.'_'.CarbonImmutable::now()->timestamp.'_'.Str::random(8);
     }
 
     private function generateHotspots(array $images): array
@@ -351,12 +359,12 @@ final readonly class RealEstateVirtualTourService
 
             for ($i = 0; $i < $hotspotCount; $i++) {
                 $hotspots[] = [
-                    'id' => 'hs_' . $index . '_' . $i,
+                    'id' => 'hs_'.$index.'_'.$i,
                     'image_index' => $index,
                     'x' => rand(10, 90),
                     'y' => rand(10, 90),
                     'type' => $hotspotTypes[array_rand($hotspotTypes)],
-                    'title' => 'Hotspot ' . ($i + 1),
+                    'title' => 'Hotspot '.($i + 1),
                     'description' => 'Interactive hotspot for detailed view',
                 ];
             }
@@ -367,17 +375,18 @@ final readonly class RealEstateVirtualTourService
 
     private function buildVirtualTourUrl(string $tourId, array $images): string
     {
-        return config('app.url') . '/virtual-tour/' . $tourId;
+        return config('app.url').'/virtual-tour/'.$tourId;
     }
 
     private function buildARViewingUrl(string $tourId): string
     {
-        return config('app.url') . '/ar-viewing/' . $tourId;
+        return config('app.url').'/ar-viewing/'.$tourId;
     }
 
     private function generateTourNarrative(Property $property, string $correlationId): string
     {
         $narrative = $this->aiConstructor->generatePropertyDescription($property, $correlationId);
+
         return "Welcome to this {$property->type}. {$narrative} Explore the space in 360° and use AR features for an immersive experience.";
     }
 

@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Luxury\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -15,10 +17,12 @@ use Illuminate\Support\Str;
 final readonly class LuxuryConstructorService
 {
     public function __construct(
-        private FraudControlService   $fraud,
-        private RecommendationService  $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache                  $cache, private readonly LoggerInterface $logger, private readonly Guard $guard
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
     ) {}
 
     /**
@@ -31,9 +35,9 @@ final readonly class LuxuryConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'luxury_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:Luxury:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:Luxury:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 
@@ -43,7 +47,7 @@ final readonly class LuxuryConstructorService
             // Получаем рекомендации
             $recommendations = $this->recommendation->getForVertical('Luxury', $fullProfile, $userId);
 
-            $this->logger->info('Luxury AI constructor used', [
+            $this->logger->$this->logger->info('Luxury AI constructor used', [
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
                 'vertical'       => 'Luxury',

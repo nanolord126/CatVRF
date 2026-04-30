@@ -1,5 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Domains\Advertising\Infrastructure\Providers\AdvertisingServiceProvider;
+use App\Domains\Auto\Taxi\Application\Providers\TaxiServiceProvider;
+use App\Domains\Beauty\Application\Providers\BeautyServiceProvider;
+use App\Domains\Delivery\Providers\DeliveryServiceProvider;
+// use App\Domains\Hotels\Infrastructure\Providers\HotelsServiceProvider; // Temporarily commented out
+use App\Domains\RealEstate\Application\Providers\RealEstateServiceProvider;
+use App\Domains\Staff\Providers\StaffServiceProvider;
+use App\Providers\AppServiceProvider;
+use App\Providers\EventServiceProvider;
+use App\Providers\ModelBootServiceProvider;
+use App\Providers\OnboardingServiceProvider;
+use App\Providers\PaymentServiceProvider;
+use App\Providers\RouteServiceProvider;
+use App\Services\Infrastructure\DopplerService;
+use Illuminate\Auth\AuthServiceProvider;
+use Illuminate\Auth\Passwords\PasswordResetServiceProvider;
+use Illuminate\Broadcasting\BroadcastServiceProvider;
+use Illuminate\Bus\BusServiceProvider;
+use Illuminate\Cache\CacheServiceProvider;
+use Illuminate\Cookie\CookieServiceProvider;
+use Illuminate\Database\DatabaseServiceProvider;
+use Illuminate\Encryption\EncryptionServiceProvider;
+use Illuminate\Filesystem\FilesystemServiceProvider;
+use Illuminate\Foundation\Providers\ConsoleSupportServiceProvider;
+use Illuminate\Foundation\Providers\FoundationServiceProvider;
+use Illuminate\Hashing\HashServiceProvider;
+use Illuminate\Mail\MailServiceProvider;
+use Illuminate\Notifications\NotificationServiceProvider;
+use Illuminate\Pagination\PaginationServiceProvider;
+use Illuminate\Pipeline\PipelineServiceProvider;
+use Illuminate\Queue\QueueServiceProvider;
+use Illuminate\Redis\RedisServiceProvider;
+use Illuminate\Session\SessionServiceProvider;
+use Illuminate\Translation\TranslationServiceProvider;
+use Illuminate\Validation\ValidationServiceProvider;
+use Illuminate\View\ViewServiceProvider;
+use Modules\Fashion\Infrastructure\Providers\FashionServiceProvider;
+use Modules\FraudDetection\Interfaces\Providers\FraudDetectionServiceProvider;
+use Modules\Analytics\AnalyticsServiceProvider;
+use Modules\BigData\BigDataServiceProvider;
+
 return [
 
     /*
@@ -13,7 +56,7 @@ return [
     |
     */
 
-    'name' => App\Services\Infrastructure\DopplerService::get('APP_NAME', 'Laravel'),
+    'name' => DopplerService::get('APP_NAME', 'Laravel'),
 
     /*
     |--------------------------------------------------------------------------
@@ -26,7 +69,7 @@ return [
     |
     */
 
-    'env' => App\Services\Infrastructure\DopplerService::get('APP_ENV', 'production'),
+    'env' => DopplerService::get('APP_ENV', 'production'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,7 +82,7 @@ return [
     |
     */
 
-    'debug' => (bool) App\Services\Infrastructure\DopplerService::get('APP_DEBUG', false),
+    'debug' => (bool) DopplerService::get('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +95,7 @@ return [
     |
     */
 
-    'url' => App\Services\Infrastructure\DopplerService::get('APP_URL', 'http://localhost'),
+    'url' => DopplerService::get('APP_URL', 'http://localhost'),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,11 +121,11 @@ return [
     |
     */
 
-    'locale' => App\Services\Infrastructure\DopplerService::get('APP_LOCALE', 'en'),
+    'locale' => DopplerService::get('APP_LOCALE', 'en'),
 
-    'fallback_locale' => App\Services\Infrastructure\DopplerService::get('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => DopplerService::get('APP_FALLBACK_LOCALE', 'en'),
 
-    'faker_locale' => App\Services\Infrastructure\DopplerService::get('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => DopplerService::get('APP_FAKER_LOCALE', 'en_US'),
 
     /*
     |--------------------------------------------------------------------------
@@ -97,11 +140,11 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    'key' => App\Services\Infrastructure\DopplerService::get('APP_KEY'),
+    'key' => DopplerService::get('APP_KEY'),
 
     'previous_keys' => [
         ...array_filter(
-            explode(',', (string) App\Services\Infrastructure\DopplerService::get('APP_PREVIOUS_KEYS', ''))
+            explode(',', (string) DopplerService::get('APP_PREVIOUS_KEYS', ''))
         ),
     ],
 
@@ -119,8 +162,8 @@ return [
     */
 
     'maintenance' => [
-        'driver' => App\Services\Infrastructure\DopplerService::get('APP_MAINTENANCE_DRIVER', 'file'),
-        'store' => App\Services\Infrastructure\DopplerService::get('APP_MAINTENANCE_STORE', 'database'),
+        'driver' => DopplerService::get('APP_MAINTENANCE_DRIVER', 'file'),
+        'store' => DopplerService::get('APP_MAINTENANCE_STORE', 'database'),
     ],
 
     /*
@@ -140,55 +183,68 @@ return [
         /*
          * Laravel Framework Service Providers...
          */
-        Illuminate\Auth\AuthServiceProvider::class,
-        Illuminate\Broadcasting\BroadcastServiceProvider::class,
-        Illuminate\Bus\BusServiceProvider::class,
-        Illuminate\Cache\CacheServiceProvider::class,
-        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
-        Illuminate\Cookie\CookieServiceProvider::class,
-        Illuminate\Database\DatabaseServiceProvider::class,
-        Illuminate\Encryption\EncryptionServiceProvider::class,
-        Illuminate\Filesystem\FilesystemServiceProvider::class,
-        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-        Illuminate\Hashing\HashServiceProvider::class,
-        Illuminate\Mail\MailServiceProvider::class,
-        Illuminate\Notifications\NotificationServiceProvider::class,
-        Illuminate\Pagination\PaginationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
-        Illuminate\Redis\RedisServiceProvider::class,
-        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
-        Illuminate\Session\SessionServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Validation\ValidationServiceProvider::class,
-        Illuminate\View\ViewServiceProvider::class,
+        AuthServiceProvider::class,
+        BroadcastServiceProvider::class,
+        BusServiceProvider::class,
+        CacheServiceProvider::class,
+        ConsoleSupportServiceProvider::class,
+        CookieServiceProvider::class,
+        DatabaseServiceProvider::class,
+        EncryptionServiceProvider::class,
+        FilesystemServiceProvider::class,
+        FoundationServiceProvider::class,
+        HashServiceProvider::class,
+        MailServiceProvider::class,
+        NotificationServiceProvider::class,
+        PaginationServiceProvider::class,
+        PipelineServiceProvider::class,
+        QueueServiceProvider::class,
+
+        /*
+         * Module Service Providers...
+         */
+        Modules\Media\Infrastructure\Providers\MediaServiceProvider::class,
+        Modules\Video\Infrastructure\Providers\VideoServiceProvider::class,
+        Modules\BigData\BigDataServiceProvider::class,
+        RedisServiceProvider::class,
+        PasswordResetServiceProvider::class,
+        SessionServiceProvider::class,
+        TranslationServiceProvider::class,
+        ValidationServiceProvider::class,
+        ViewServiceProvider::class,
 
         /*
          * Application Service Providers...
          */
-        App\Providers\AppServiceProvider::class,
+        AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
+        EventServiceProvider::class,
+        RouteServiceProvider::class,
+
+        /*
+         * WMS Compliance Service Providers...
+         */
+        App\Providers\WMSServiceProvider::class,
 
         /*
          * Custom Domain Service Providers...
          */
-        Modules\FraudDetection\Interfaces\Providers\FraudDetectionServiceProvider::class,
-        App\Domains\Advertising\Infrastructure\Providers\AdvertisingServiceProvider::class,
-        App\Domains\Delivery\Providers\DeliveryServiceProvider::class,
-        App\Domains\Staff\Providers\StaffServiceProvider::class,
-        App\Providers\ModelBootServiceProvider::class,
-        App\Providers\PaymentServiceProvider::class,
+        FraudDetectionServiceProvider::class,
+        AdvertisingServiceProvider::class,
+        DeliveryServiceProvider::class,
+        StaffServiceProvider::class,
+        ModelBootServiceProvider::class,
+        PaymentServiceProvider::class,
+        App\Domains\Audit\Providers\AuditServiceProvider::class,
 
         /*
          * Taxi Service Providers...
          */
-        App\Domains\Auto\Taxi\Application\Providers\TaxiServiceProvider::class,
-        App\Domains\Beauty\Application\Providers\BeautyServiceProvider::class,
-        App\Domains\RealEstate\Application\Providers\RealEstateServiceProvider::class,
-        App\Domains\Hotels\Infrastructure\Providers\HotelsServiceProvider::class,
+        TaxiServiceProvider::class,
+        BeautyServiceProvider::class,
+        RealEstateServiceProvider::class,
+        // HotelsServiceProvider::class, // Temporarily commented out
 
         /*
          * Food Service Providers...
@@ -198,8 +254,38 @@ return [
         /*
          * Fashion Service Provider...
          */
-        Modules\Fashion\Providers\FashionServiceProvider::class,
+        FashionServiceProvider::class,
 
+        /*
+         * Onboarding Service Provider...
+         */
+        OnboardingServiceProvider::class,
+
+        /*
+         * CRM Service Provider...
+         */
+        \App\Domains\CRM\Providers\CrmServiceProvider::class,
+    /*
+         * Analytics Service Provider...
+         */
+        AnalyticsServiceProvider::class,
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Class Aliases
+    |--------------------------------------------------------------------------
+    |
+    | This array of class aliases will be registered when this application
+    | is started. However, feel free to register as many as you wish as
+    | the aliases are "lazy" loaded so they don't hinder performance.
+    |
+    */
+
+    'aliases' => [
+        'SellerAnalytics' => \Modules\Analytics\Application\Facades\SellerAnalytics::class,
+    
     ],
 
 ];

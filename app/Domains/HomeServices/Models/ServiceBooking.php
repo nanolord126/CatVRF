@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ServiceBooking — CatVRF 2026 Component.
@@ -7,29 +9,36 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/servicebooking
  */
 
-
 namespace App\Domains\HomeServices\Models;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ServiceBooking extends Model
 {
-
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='service_bookings';protected $fillable=['uuid','tenant_id','provider_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','service_date','duration_hours','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','service_date'=>'datetime','duration_hours'=>'integer','tags'=>'json'];protected static function booted_disabled(){static::addGlobalScope('tenant',fn($q)=>$q->where('service_bookings.tenant_id',tenant()->id));}
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
+
+    protected $table = 'service_bookings';
+
+    protected $fillable = ['uuid', 'tenant_id', 'provider_id', 'client_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'service_date', 'duration_hours', 'tags'];
+
+    protected $casts = ['total_kopecks' => 'integer', 'payout_kopecks' => 'integer', 'service_date' => 'datetime', 'duration_hours' => 'integer', 'tags' => 'json'];
 
     /**
      * Get the string representation of this instance.
@@ -38,7 +47,7 @@ final class ServiceBooking extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -49,8 +58,13 @@ final class ServiceBooking extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('service_bookings.tenant_id', tenant()->id));
     }
 }

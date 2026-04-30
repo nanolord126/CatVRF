@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль EventManagement (организация мероприятий)
- *
- * @package App\Models
  */
 final class EventManagement extends Model
 {
-
     protected $table = 'event_managements';
 
     protected $fillable = [

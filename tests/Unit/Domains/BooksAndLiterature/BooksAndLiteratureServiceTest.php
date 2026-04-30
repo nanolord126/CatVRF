@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\BooksAndLiterature;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for BooksAndLiteratureService.
- *
- * @covers \App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService
- */
-final class BooksAndLiteratureServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'BooksAndLiteratureService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'BooksAndLiteratureService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('BooksAndLiterature');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'BooksAndLiteratureService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('BooksAndLiteratureService exists and is instantiable', function () {
+    $this->assertServiceExists('BooksAndLiteratureService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class, 'create'),
-            'BooksAndLiteratureService must implement create()'
-        );
-    }
+test('BooksAndLiteratureService follows clean architecture', function () {
+    $this->assertCleanArchitecture('BooksAndLiteratureService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class, 'update'),
-            'BooksAndLiteratureService must implement update()'
-        );
-    }
+test('BooksAndLiteratureService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('BooksAndLiteratureService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class, 'delete'),
-            'BooksAndLiteratureService must implement delete()'
-        );
-    }
+test('BooksAndLiteratureService enforces quota limits', function () {
+    $this->testServiceWithQuota('BooksAndLiteratureService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class, 'list'),
-            'BooksAndLiteratureService must implement list()'
-        );
-    }
+test('BooksAndLiteratureService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\BooksAndLiterature\Services\BooksAndLiteratureService::class, 'getById'),
-            'BooksAndLiteratureService must implement getById()'
-        );
-    }
+test('BooksAndLiteratureService has proper caching', function () {
+    $cacheKey = 'booksandliterature:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('BooksAndLiteratureService dispatches proper events', function () {
+    $eventClass = "App\Domains\BooksAndLiterature\Events\BooksAndLiteratureProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+        $service->process([]);
+    });
+});
+
+test('BooksAndLiteratureService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\BooksAndLiterature\Jobs\ProcessBooksAndLiteratureJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+        $service->processAsync([]);
+    });
+});
+
+test('BooksAndLiteratureService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('BooksAndLiteratureService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('BooksAndLiteratureService'));
+        $service->process([]);
+    }, 'BooksAndLiteratureService processed');
+});
+
+test('BooksAndLiteratureService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

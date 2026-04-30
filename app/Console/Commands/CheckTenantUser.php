@@ -1,22 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
-
 
 use Psr\Log\LoggerInterface;
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class CheckTenantUser extends Command
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {
-        parent::__construct();
-    }
-
     protected $signature = 'app:check-tenant-user
         {--tenant-id= : Tenant ID to check against}
         {--user-id= : User ID to check}
@@ -24,6 +18,12 @@ final class CheckTenantUser extends Command
         {--correlation-id= : Correlation identifier for audit logs}';
 
     protected $description = 'Verify that a user belongs to the specified tenant and is active';
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -34,11 +34,13 @@ final class CheckTenantUser extends Command
 
         if ($tenantId <= 0) {
             $this->error('Provide --tenant-id');
+
             return self::FAILURE;
         }
 
         if ($userId === null && $email === null) {
             $this->error('Provide --user-id or --email');
+
             return self::FAILURE;
         }
 
@@ -63,6 +65,7 @@ final class CheckTenantUser extends Command
             ]);
 
             $this->error('User not found for tenant');
+
             return self::FAILURE;
         }
 

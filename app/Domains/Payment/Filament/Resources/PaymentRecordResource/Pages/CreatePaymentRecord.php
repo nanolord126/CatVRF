@@ -18,8 +18,7 @@ final class CreatePaymentRecord extends CreateRecord
     /**
      * Подставляем tenant_id, uuid, correlation_id перед сохранением.
      *
-     * @param array<string, mixed> $data
-     *
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     protected function mutateFormDataBeforeCreate(array $data): array

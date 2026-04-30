@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,13 +11,18 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 final class LowPartsStock implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
         public readonly AutoPart $part,
-        public readonly string $correlationId, public readonly LoggerInterface $logger) {
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
+    ) {
         $this->logger->warning('Low parts stock detected', [
             'correlation_id' => $this->correlationId,
             'part_id' => $this->part->id,

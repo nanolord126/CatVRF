@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
 
 /**
  * Class StockMovement
@@ -22,44 +23,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class StockMovement extends Model
 {
+    protected $table = 'stock_movements';
 
-        protected $table = 'stock_movements';
-
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'inventory_item_id',
-            'type',
-            'quantity',
-            'reason',
-            'source_type',
-            'source_id',
-            'correlation_id',
-            'created_by',
-        ];
+        'inventory_item_id',
+        'type',
+        'quantity',
+        'reason',
+        'source_type',
+        'source_id',
+        'correlation_id',
+        'created_by',
+        'performed_by',
+        'approved_by',
+    ];
 
-        protected $casts = [
-            'quantity' => 'integer',
-        ];
+    protected $casts = [
+        'quantity' => 'integer',
+        'performed_by' => \App\Casts\EncryptedPIICast::class,
+        'approved_by' => \App\Casts\EncryptedPIICast::class,
+    ];
 
-        public function inventoryItem(): BelongsTo
-        {
-            return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
-        }
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
+    }
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope("tenant_id", function ($query) {
-                if (function_exists("tenant") && tenant("id")) {
-                    $query->where("tenant_id", tenant("id"));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

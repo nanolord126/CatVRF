@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Services;
 
@@ -6,8 +8,8 @@ use App\Services\FraudControlService;
 use App\Services\Payment\WalletService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
+use App\Domains\Auto\Models\AutoPart;
 
 final readonly class OrderService
 {
@@ -23,30 +25,31 @@ final readonly class OrderService
     {
         // Auto vertical: 8% for B2C, 6% for B2B
         $rate = $isB2B ? 0.06 : 0.08;
+
         return (int) ($total * $rate);
     }
 
     public function validateOrder(array $data, string $correlationId): array
     {
         $fraudScore = $this->fraudService->check($data, $correlationId);
-        
+
         if ($fraudScore > 85) {
             $this->logger->warning('Auto order rejected due to high fraud score', [
                 'fraud_score' => $fraudScore,
                 'correlation_id' => $correlationId,
             ]);
-            
+
             return ['valid' => false, 'reason' => 'high_fraud_risk', 'fraud_score' => $fraudScore];
         }
 
         if (isset($data['items']) && is_array($data['items'])) {
             $inventoryCheck = $this->checkInventory($data['items']);
-            if (!$inventoryCheck['available']) {
+            if (! $inventoryCheck['available']) {
                 $this->logger->warning('Auto order rejected due to insufficient inventory', [
                     'items' => $inventoryCheck['unavailable_items'],
                     'correlation_id' => $correlationId,
                 ]);
-                
+
                 return ['valid' => false, 'reason' => 'insufficient_inventory', 'unavailable_items' => $inventoryCheck['unavailable_items']];
             }
         }
@@ -62,26 +65,28 @@ final readonly class OrderService
             $productId = $item['product_id'] ?? null;
             $quantity = $item['quantity'] ?? 1;
 
-            if (!$productId) {
+            if (! $productId) {
                 continue;
             }
 
             // Check inventory for auto parts
-            $part = \App\Domains\Auto\Models\AutoPart::find($productId);
+            $part = AutoPart::find($productId);
 
-            if (!$part) {
+            if (! $part) {
                 $unavailableItems[] = [
                     'product_id' => $productId,
                     'reason' => 'product_not_found',
                 ];
+
                 continue;
             }
 
-            if (!$part->is_active) {
+            if (! $part->is_active) {
                 $unavailableItems[] = [
                     'product_id' => $productId,
                     'reason' => 'product_inactive',
                 ];
+
                 continue;
             }
 

@@ -7,6 +7,9 @@ namespace App\Domains\Auto\Taxi\Domain\Services;
 use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
 use Illuminate\Cache\CacheManager;
 use Psr\Log\LoggerInterface;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Class SurgePricingService
@@ -21,25 +24,25 @@ use Psr\Log\LoggerInterface;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Taxi\Domain\Services
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class SurgePricingService
 {
+    private const CACHE_TTL = 300;
+
+    private const DEFAULT_MULTIPLIER = 1.0;
+
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly DatabaseManager $db,
         private readonly CacheManager $cache,
         private readonly LoggerInterface $logger,
     ) {}
 
-    private const CACHE_TTL = 300;
-    private const DEFAULT_MULTIPLIER = 1.0;
-
     /**
      * Calculate the surge pricing multiplier for a given pickup location.
      *
-     * @param Coordinate $pickup Pickup location coordinates
+     * @param  Coordinate  $pickup  Pickup location coordinates
      * @return float Surge multiplier (1.0 = no surge)
      */
     public function getMultiplier(Coordinate $pickup): float
@@ -65,8 +68,8 @@ final readonly class SurgePricingService
     /**
      * Apply surge multiplier to base price and return adjusted price in kopecks.
      *
-     * @param int $basePrice Base trip price in kopecks
-     * @param float $multiplier Surge multiplier (>= 1.0)
+     * @param  int  $basePrice  Base trip price in kopecks
+     * @param  float  $multiplier  Surge multiplier (>= 1.0)
      * @return int Final price after applying surge, in kopecks
      */
     public function applyMultiplier(int $basePrice, float $multiplier): int
@@ -74,7 +77,7 @@ final readonly class SurgePricingService
         $finalPrice = (int) ceil($basePrice * $multiplier);
 
         if ($multiplier > self::DEFAULT_MULTIPLIER) {
-            $this->logger->info('Surge pricing applied to trip', [
+            $this->logger->$this->logger->info('Surge pricing applied to trip', [
                 'base_price' => $basePrice,
                 'multiplier' => $multiplier,
                 'final_price' => $finalPrice,

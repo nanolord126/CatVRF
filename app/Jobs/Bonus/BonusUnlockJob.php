@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\Bonus;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,55 +20,54 @@ use Illuminate\Log\LogManager;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Jobs\Bonus
+ * @see ShouldQueue
  */
 final class BonusUnlockJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        private string $correlationId;
+    private readonly string $correlationId;
 
-        public function __construct(
-        private readonly LogManager $logger,
-    )
-        {
-            $this->correlationId = Str::uuid()->toString();
-            $this->onQueue('bonuses');
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $logger,) {
+        $this->correlationId = Str::uuid()->toString();
+        $this->onQueue('default');
+    }
 
-        public function handle(BonusService $bonusService): void
-        {
-            try {
-                $unlockedCount = $bonusService->unlockExpiredHolds();
+    public function handle(BonusService $bonusService): void
+    {
+        try {
+            $unlockedCount = $bonusService->unlockExpiredHolds();
 
-                if ($unlockedCount > 0) {
-                    $this->logger->channel('audit')->info('Bonus unlock job completed', [
-                        'correlation_id' => $this->correlationId,
-                        'unlocked_count' => $unlockedCount,
-                    ]);
-                }
-            } catch (\Exception $e) {
-                $this->logger->channel('audit')->error($e->getMessage(), [
-                    'exception' => $e::class,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
+            if ($unlockedCount > 0) {
+                $this->logger->channel('audit')->$this->logger->info('Bonus unlock job completed', [
                     'correlation_id' => $this->correlationId,
+                    'unlocked_count' => $unlockedCount,
                 ]);
-
-                $this->logger->channel('audit')->error('Bonus unlock job failed', [
-                    'correlation_id' => $this->correlationId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                throw $e;
             }
-        }
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => $this->correlationId,
+            ]);
 
-        public function tags(): array
-        {
-            return ['bonus', 'unlock', 'payout'];
+            $this->logger->channel('audit')->error('Bonus unlock job failed', [
+                'correlation_id' => $this->correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
         }
+    }
+
+    public function tags(): array
+    {
+        return ['bonus', 'unlock', 'payout'];
+    }
 }
-

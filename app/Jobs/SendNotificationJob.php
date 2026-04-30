@@ -1,17 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
 use App\Models\Notification as NotificationModel;
 use App\Models\User;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
-
 
 /**
  * SendNotificationJob - асинхронная отправка уведомлений через Queue
@@ -25,22 +23,6 @@ use Illuminate\Log\LogManager;
  */
 final class SendNotificationJob implements ShouldQueue
 {
-
-    /**
-     * ID уведомления
-     */
-    private int $notificationId;
-
-    /**
-     * Correlation ID для трейсинга
-     */
-    private string $correlationId;
-
-    /**
-     * Tenant ID
-     */
-    private int $tenantId;
-
     /**
      * Максимум попыток отправки
      */
@@ -59,20 +41,20 @@ final class SendNotificationJob implements ShouldQueue
     /**
      * Конструктор
      */
-    public function __construct(int $notificationId, string $correlationId, int $tenantId,
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly int $notificationId,
+        private readonly string $correlationId,
+        private readonly int $tenantId,
         private readonly LogManager $logger,
-    )
-    {
-        $this->notificationId = $notificationId;
-        $this->correlationId = $correlationId;
-        $this->tenantId = $tenantId;
-
+        private readonly \App\Services\EmailService $emailService,
+        private readonly \App\Services\SmsService $smsService,
+        private readonly \App\Services\PushNotificationService $pushService,) {
         // Добавить теги для мониторинга
-        $this->onQueue('notifications');
+        $this->onQueue('notification');
         $this->withTags([
             'notification',
-            "tenant:{$tenantId}",
-            "correlation:{$correlationId}",
+            "tenant:{$this->tenantId}",
+            "correlation:{$this->correlationId}",
         ]);
     }
 
@@ -87,10 +69,11 @@ final class SendNotificationJob implements ShouldQueue
 
             // Проверить статус (может уже быть отправлено)
             if ($notification->status !== 'pending') {
-                $this->logger->info('Notification already processed', [
+                $this->logger->$this->logger->info('Notification already processed', [
                     'notification_id' => $this->notificationId,
                     'status' => $notification->status,
                 ]);
+
                 return;
             }
 
@@ -115,7 +98,7 @@ final class SendNotificationJob implements ShouldQueue
             if (empty($failedChannels) || count($failedChannels) < count($notification->channels)) {
                 $notification->markAsSent();
 
-                $this->logger->channel('audit')->info('Notification sent successfully', [
+                $this->logger->channel('audit')->$this->logger->info('Notification sent successfully', [
                     'notification_id' => $this->notificationId,
                     'user_id' => $user->id,
                     'channels' => $notification->channels,
@@ -123,7 +106,7 @@ final class SendNotificationJob implements ShouldQueue
                 ]);
             } else {
                 // Все каналы неудачны - переход на retry
-                throw new \RuntimeException('All channels failed: ' . json_encode($failedChannels));
+                throw new \RuntimeException('All channels failed: '.json_encode($failedChannels));
             }
 
         } catch (\Exception $e) {
@@ -145,22 +128,38 @@ final class SendNotificationJob implements ShouldQueue
     }
 
     /**
+     * Job не удалось выполнить после всех попыток
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $this->handleJobFailure($exception);
+    }
+
+    /**
+     * Получить display name для Queue
+     */
+    public function displayName(): string
+    {
+        return "SendNotification#{$this->notificationId}";
+    }
+
+    /**
      * Отправить на один канал
      */
     protected function sendToChannel(NotificationModel $notification, User $user, string $channel): void
     {
         match($channel) {
-            'email' => app('App\Services\EmailService')->sendNotification(
+            'email' => $this->emailService->sendNotification(
                 $notification,
                 $user,
                 $this->correlationId
             ),
-            'sms' => app('App\Services\SmsService')->sendNotification(
+            'sms' => $this->smsService->sendNotification(
                 $notification,
                 $user,
                 $this->correlationId
             ),
-            'push' => app('App\Services\PushNotificationService')->sendNotification(
+            'push' => $this->pushService->sendNotification(
                 $notification,
                 $user,
                 $this->correlationId
@@ -194,21 +193,5 @@ final class SendNotificationJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Job не удалось выполнить после всех попыток
-     */
-    public function failed(\Throwable $exception): void
-    {
-        $this->handleJobFailure($exception);
-    }
-
-    /**
-     * Получить display name для Queue
-     */
-    public function displayName(): string
-    {
-        return "SendNotification#{$this->notificationId}";
     }
 }

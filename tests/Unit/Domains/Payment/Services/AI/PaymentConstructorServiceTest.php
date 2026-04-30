@@ -32,7 +32,7 @@ final class PaymentConstructorServiceTest extends TestCase
         $params = $ctor->getParameters();
         $this->assertGreaterThanOrEqual(5, count($params));
 
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
         $this->assertContains('db', $names);
         $this->assertContains('logger', $names);
         $this->assertContains('fraud', $names);
@@ -62,7 +62,7 @@ final class PaymentConstructorServiceTest extends TestCase
 
         $method = $ref->getMethod('analyzeAndRecommend');
         $params = $method->getParameters();
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
 
         $this->assertContains('tenantId', $names);
         $this->assertContains('correlationId', $names);
@@ -197,7 +197,7 @@ final class PaymentConstructorServiceTest extends TestCase
 
     public function test_no_facade_imports(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../../app/Domains/Payment/Services/AI/PaymentConstructorService.php');
+        $src = file_get_contents(__DIR__.'/../../../../../../app/Domains/Payment/Services/AI/PaymentConstructorService.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
         $this->assertStringNotContainsString('Cache::', $src);
@@ -206,7 +206,7 @@ final class PaymentConstructorServiceTest extends TestCase
 
     public function test_has_strict_types(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../../app/Domains/Payment/Services/AI/PaymentConstructorService.php');
+        $src = file_get_contents(__DIR__.'/../../../../../../app/Domains/Payment/Services/AI/PaymentConstructorService.php');
         $this->assertIsString($src);
         $this->assertStringContainsString('declare(strict_types=1);', $src);
     }

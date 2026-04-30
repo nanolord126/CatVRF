@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\DTOs;
 
@@ -23,7 +25,7 @@ final readonly class AIDiagnosticResultDto
     public static function fromJson(string $json): self
     {
         $data = json_decode($json, true);
-        
+
         return new self(
             primaryDiagnosis: strval($data['primary_diagnosis'] ?? ''),
             differentialDiagnoses: array_map('strval', $data['differential_diagnoses'] ?? []),

@@ -1,0 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Analytics\Filament\Resources\ExperimentResource\Pages;
+
+use Modules\Analytics\Filament\Resources\ExperimentResource;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateExperiment extends CreateRecord
+{
+    protected static string $resource = ExperimentResource::class;
+}

@@ -1,18 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\B2B;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\B2BApiKey;
 use App\Models\BusinessGroup;
 use App\Services\FraudControlService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Carbon\CarbonImmutable;
 
 /**
  * B2BApiKeyService — создание и валидация API-ключей B2B-клиентов.
@@ -27,9 +30,9 @@ use Illuminate\Contracts\Auth\Guard;
 final readonly class B2BApiKeyService
 {
     public function __construct(
-        private readonly Request $request,
-        private FraudControlService $fraud,
         private readonly LogManager $logger,
+        private readonly Request $request,
+        private readonly FraudControlService $fraud,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
     ) {}
@@ -37,14 +40,14 @@ final readonly class B2BApiKeyService
     /**
      * Создать новый API-ключ для BusinessGroup.
      *
-     * @param string[] $permissions
-     * @return array{key: string, model: B2BApiKey}  key показывается только один раз
+     * @param  string[]  $permissions
+     * @return array{key: string, model: B2BApiKey} key показывается только один раз
      */
     public function create(
         BusinessGroup $group,
-        string        $name,
-        array         $permissions,
-        string        $correlationId,
+        string $name,
+        array $permissions,
+        string $correlationId,
         ?\DateTimeInterface $expiresAt = null,
     ): array {
         $this->fraud->check(
@@ -57,7 +60,7 @@ final readonly class B2BApiKeyService
         );
 
         return $this->db->transaction(function () use ($group, $name, $permissions, $expiresAt, $correlationId): array {
-            $rawKey    = 'b2b_' . bin2hex(random_bytes(32));
+            $rawKey    = 'b2b_'.bin2hex(random_bytes(32));
             $hashedKey = hash('sha256', $rawKey);
 
             $model = B2BApiKey::create([
@@ -89,7 +92,7 @@ final readonly class B2BApiKeyService
      * Валидировать входящий ключ.
      * Возвращает BusinessGroup или выбрасывает исключение.
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\HttpException 401
+     * @throws HttpException 401
      */
     public function validate(string $rawKey, string $requiredPermission = ''): BusinessGroup
     {
@@ -100,21 +103,21 @@ final readonly class B2BApiKeyService
             ->first();
 
         if ($keyModel === null) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(401, 'Invalid B2B API key');
+            throw new HttpException(401, 'Invalid B2B API key');
         }
 
         if ($keyModel->isExpired()) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(401, 'B2B API key expired');
+            throw new HttpException(401, 'B2B API key expired');
         }
 
-        if ($requiredPermission !== '' && !$keyModel->hasPermission($requiredPermission)) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(403, "Permission denied: {$requiredPermission}");
+        if ($requiredPermission !== '' && ! $keyModel->hasPermission($requiredPermission)) {
+            throw new HttpException(403, "Permission denied: {$requiredPermission}");
         }
 
         // Асинхронное обновление last_used_at (не блокирует запрос)
         $this->db->table('b2b_api_keys')
             ->where('id', $keyModel->id)
-            ->update(['last_used_at' => now(), 'last_ip' => $this->request->ip()]);
+            ->update(['last_used_at' => CarbonImmutable::now(), 'last_ip' => $this->request->ip()]);
 
         return $keyModel->businessGroup()->with('tenant')->firstOrFail();
     }
@@ -142,7 +145,7 @@ final readonly class B2BApiKeyService
 
             $newKey = $this->create(
                 $group,
-                $oldKey->name . ' (rotated)',
+                $oldKey->name.' (rotated)',
                 (array) $oldKey->permissions,
                 $correlationId,
                 $oldKey->expires_at?->toDateTimeImmutable(),
@@ -164,14 +167,12 @@ final readonly class B2BApiKeyService
      */
     public function revoke(B2BApiKey $keyModel, string $correlationId): void
     {
-        $this->db->transaction(static function () use ($keyModel, $correlationId): void {
-            $keyModel->update(['is_active' => false, 'correlation_id' => $correlationId]);
+        $keyModel->update(['is_active' => false, 'correlation_id' => $correlationId]);
 
-            $this->logger->channel('audit')->info('B2B API key revoked', [
-                'b2b_api_key_id'    => $keyModel->id,
-                'business_group_id' => $keyModel->business_group_id,
-                'correlation_id'    => $correlationId,
-            ]);
-        });
+        $this->logger->channel('audit')->info('B2B API key revoked', [
+            'b2b_api_key_id'    => $keyModel->id,
+            'business_group_id' => $keyModel->business_group_id,
+            'correlation_id'    => $correlationId,
+        ]);
     }
 }

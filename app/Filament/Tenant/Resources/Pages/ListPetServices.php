@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListPetServices — CatVRF 2026 Component.
@@ -7,27 +9,27 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listpetservices
  * @see https://catvrf.ru/docs/listpetservices
  */
 
-
 namespace App\Filament\Tenant\Resources\Pages;
 
 use Filament\Resources\Pages\ListRecords;
-
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\CreateAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
-
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class ListPetServices
@@ -39,9 +41,8 @@ use Filament\Tables\Actions\DeleteBulkAction;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ListPetServices extends ListRecords
 {
@@ -55,13 +56,6 @@ final class ListPetServices extends ListRecords
     public function getTitle(): string
     {
         return 'List PetServices';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
     }
 
     /**
@@ -79,5 +73,12 @@ final class ListPetServices extends ListRecords
             ->filters([])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->bulkActions([DeleteBulkAction::make()]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
     }
 }

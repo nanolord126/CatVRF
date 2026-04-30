@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Domains\CRM;
 
-use App\Domains\CRM\DTOs\CreateCrmClientDto;
 use App\Domains\CRM\Models\CrmClient;
 use App\Domains\CRM\Models\CrmInteraction;
 use App\Domains\CRM\Models\CrmSegment;
@@ -23,13 +22,8 @@ final class CrmApiFeatureTest extends TestCase
     use WithFaker;
 
     private int $tenantId = 1;
-    private string $correlationId;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->correlationId = $this->faker->uuid();
-    }
+    private string $correlationId;
 
     // ═══════════════════════════════════════════════════════
     //  CLIENTS — CRUD
@@ -469,5 +463,11 @@ final class CrmApiFeatureTest extends TestCase
 
         $response->assertJsonStructure(['correlation_id']);
         $this->assertEquals($this->correlationId, $response->json('correlation_id'));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->correlationId = $this->faker->uuid();
     }
 }

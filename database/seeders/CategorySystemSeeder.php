@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -7,7 +8,6 @@ use Illuminate\Database\Seeder;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Filter;
-use Illuminate\Support\Str;
 
 /**
  * Система категорий (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -29,7 +29,7 @@ final class CategorySystemSeeder extends Seeder
             foreach ($cats as $c) {
                 Category::create([
                     'name' => $c, 'slug' => (string) str($c)->slug(),
-                    'vertical' => $v, 'is_active' => true
+                    'vertical' => $v, 'is_active' => true,
                 ]);
             }
         }

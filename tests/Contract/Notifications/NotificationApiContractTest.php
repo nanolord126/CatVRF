@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Contract\Notifications;
 
@@ -9,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * NotificationApiContractTest
- * 
+ *
  * Контрактные тесты - валидация структуры ответов по OpenAPI
  */
 final class NotificationApiContractTest extends TestCase
@@ -41,14 +43,14 @@ final class NotificationApiContractTest extends TestCase
                     'correlation_id',
                     'created_at',
                     'updated_at',
-                ]
+                ],
             ],
             'meta' => [
                 'total',
                 'per_page',
                 'current_page',
                 'last_page',
-            ]
+            ],
         ]);
     }
 
@@ -78,7 +80,7 @@ final class NotificationApiContractTest extends TestCase
                 'correlation_id',
                 'created_at',
                 'updated_at',
-            ]
+            ],
         ]);
     }
 
@@ -105,7 +107,7 @@ final class NotificationApiContractTest extends TestCase
                 'status',
                 'correlation_id',
                 'created_at',
-            ]
+            ],
         ]);
     }
 
@@ -126,7 +128,7 @@ final class NotificationApiContractTest extends TestCase
                 'status',
                 'read_at',
                 'updated_at',
-            ]
+            ],
         ]);
     }
 
@@ -168,13 +170,13 @@ final class NotificationApiContractTest extends TestCase
                     'max_per_day',
                     'created_at',
                     'updated_at',
-                ]
+                ],
             ],
             'meta' => [
                 'total',
                 'per_page',
                 'current_page',
-            ]
+            ],
         ]);
     }
 
@@ -206,7 +208,7 @@ final class NotificationApiContractTest extends TestCase
                     'quiet_hours_start',
                     'quiet_hours_end',
                     'max_per_day',
-                ]
+                ],
             ]);
         }
     }
@@ -226,7 +228,7 @@ final class NotificationApiContractTest extends TestCase
             'data' => [
                 'updated' => [],
                 'count',
-            ]
+            ],
         ]);
     }
 
@@ -243,7 +245,7 @@ final class NotificationApiContractTest extends TestCase
                 'code',
                 'message',
                 'trace',
-            ]
+            ],
         ]);
     }
 
@@ -263,8 +265,8 @@ final class NotificationApiContractTest extends TestCase
                 '*' => [
                     'field',
                     'message',
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
@@ -308,7 +310,7 @@ final class NotificationApiContractTest extends TestCase
                 'last_page',
                 'from',
                 'to',
-            ]
+            ],
         ]);
 
         $this->assertEquals(25, $response['meta']['total']);

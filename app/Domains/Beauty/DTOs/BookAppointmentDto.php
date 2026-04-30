@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\DTOs;
+
+use Illuminate\Http\Request;
 
 final readonly class BookAppointmentDto
 {
@@ -16,7 +19,7 @@ final readonly class BookAppointmentDto
         public bool $isB2b = false
     ) {}
 
-    public static function fromRequest(\Illuminate\Http\Request $request, string $correlationId): self
+    public static function fromRequest(Request $request, string $correlationId): self
     {
         return new self(
             (int) ($request->user()->tenant_id ?? 1),

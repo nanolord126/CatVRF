@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Contract\Payment;
 
@@ -10,7 +12,7 @@ use Tests\TestCase;
 
 /**
  * PaymentApiContractTest
- * 
+ *
  * OpenAPI schema validation для Payment API endpoints
  */
 final class PaymentApiContractTest extends TestCase
@@ -18,16 +20,8 @@ final class PaymentApiContractTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->actingAs($this->user);
-    }
 
     /** @test */
     public function it_conforms_to_payment_init_response_contract(): void
@@ -236,10 +230,10 @@ final class PaymentApiContractTest extends TestCase
 
         // Rate limit headers should be present
         $headers = $response->headers->all();
-        
+
         // X-RateLimit-* headers are optional but valid
         $this->assertTrue(
-            isset($headers['x-ratelimit-limit']) || 
+            isset($headers['x-ratelimit-limit']) ||
             isset($headers['x-ratelimit-remaining']) ||
             $response->status() < 429
         );
@@ -282,7 +276,7 @@ final class PaymentApiContractTest extends TestCase
         $response = $this->getJson("/api/v1/payments/{$payment->id}");
 
         $data = $response->json('data');
-        
+
         // ISO 8601 format: 2026-03-24T12:34:56Z or 2026-03-24T12:34:56+00:00
         $this->assertMatchesRegularExpression(
             '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/',
@@ -298,7 +292,7 @@ final class PaymentApiContractTest extends TestCase
         $response = $this->getJson("/api/v1/payments/{$payment->id}");
 
         $data = $response->json('data');
-        
+
         // UUID v4 format
         $this->assertMatchesRegularExpression(
             '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
@@ -416,5 +410,14 @@ final class PaymentApiContractTest extends TestCase
                 'per_page',
             ],
         ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->actingAs($this->user);
     }
 }

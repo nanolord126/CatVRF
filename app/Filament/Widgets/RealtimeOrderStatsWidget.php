@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Widgets;
-
 
 use Illuminate\Cache\CacheManager;
 use Filament\Widgets\StatsOverviewWidget;
@@ -10,58 +11,61 @@ use Illuminate\Support\Facades\Cache;
 
 final class RealtimeOrderStatsWidget extends StatsOverviewWidget
 {
+    protected static ?int $sort = 1;
+
+    protected readonly int|string|array $columnSpan = 'full';
+
     public function __construct(
         private readonly CacheManager $cache,
     ) {}
 
-    protected static ?int $sort = 1;
-        protected int | string | array $columnSpan = 'full';
+    public function getStats(): array
+    {
+        $tenantId = filament()->getTenant()?->id;
 
-        public function getStats(): array
-        {
-            $tenantId = filament()->getTenant()?->id;
+        try {
+            // Get real-time stats from cache (updated via events)
+            $todayOrders = $this->cache->get("stats:orders:today:{$tenantId}", 0);
+            $todayRevenue = $this->cache->get("stats:revenue:today:{$tenantId}", 0);
+            $pendingOrders = $this->cache->get("stats:orders:pending:{$tenantId}", 0);
 
-            try {
-                // Get real-time stats from cache (updated via events)
-                $todayOrders = $this->cache->get("stats:orders:today:{$tenantId}", 0);
-                $todayRevenue = $this->cache->get("stats:revenue:today:{$tenantId}", 0);
-                $pendingOrders = $this->cache->get("stats:orders:pending:{$tenantId}", 0);
+            // Trending data
+            $yesterdayOrders = $this->cache->get("stats:orders:yesterday:{$tenantId}", 1);
+            $orderTrend = $yesterdayOrders > 0
+                ? (($todayOrders - $yesterdayOrders) / $yesterdayOrders) * 100
+                : 0;
 
-                // Trending data
-                $yesterdayOrders = $this->cache->get("stats:orders:yesterday:{$tenantId}", 1);
-                $orderTrend = $yesterdayOrders > 0
-                    ? (($todayOrders - $yesterdayOrders) / $yesterdayOrders) * 100
-                    : 0;
+            return [
+                Stat::make('Заказы сегодня', $todayOrders)
+                    ->description(sprintf(
+                        '%s%% чем вчера',
+                        $orderTrend > 0 ? '+'.round($orderTrend, 1) : round($orderTrend, 1)
+                    ))
+                    ->descriptionIcon($orderTrend > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
+                    ->color($orderTrend > 0 ? 'success' : 'danger')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->url(route('filament.admin.resources.orders.index')),
 
-                return [
-                    Stat::make('Заказы сегодня', $todayOrders)
-                        ->description(sprintf('%s%% чем вчера',
-                            $orderTrend > 0 ? '+' . round($orderTrend, 1) : round($orderTrend, 1)
-                        ))
-                        ->descriptionIcon($orderTrend > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                        ->color($orderTrend > 0 ? 'success' : 'danger')
-                        ->icon('heroicon-o-shopping-cart')
-                        ->url(route('filament.admin.resources.orders.index')),
+                Stat::make('Доход сегодня', number_format($todayRevenue / 100, 2, ',', ' ').' ₽')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success'),
 
-                    Stat::make('Доход сегодня', number_format($todayRevenue / 100, 2, ',', ' ') . ' ₽')
-                        ->icon('heroicon-o-banknotes')
-                        ->color('success'),
-
-                    Stat::make('В ожидании', $pendingOrders)
-                        ->description('Требуют внимания')
-                        ->descriptionIcon('heroicon-m-clock')
-                        ->icon('heroicon-o-clock')
-                        ->color($pendingOrders > 0 ? 'warning' : 'info')
-                        ->url(route('filament.admin.resources.orders.index',
-                            ['tableFilters[status][value]' => 'pending']
-                        )),
-                ];
-            } catch (\Throwable $e) {
-                return [
-                    Stat::make('Ошибка', 'Не удалось загрузить статистику')
-                        ->color('danger')
-                        ->icon('heroicon-o-exclamation-triangle'),
-                ];
-            }
+                Stat::make('В ожидании', $pendingOrders)
+                    ->description('Требуют внимания')
+                    ->descriptionIcon('heroicon-m-clock')
+                    ->icon('heroicon-o-clock')
+                    ->color($pendingOrders > 0 ? 'warning' : 'info')
+                    ->url(route(
+                        'filament.admin.resources.orders.index',
+                        ['tableFilters[status][value]' => 'pending']
+                    )),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                Stat::make('Ошибка', 'Не удалось загрузить статистику')
+                    ->color('danger')
+                    ->icon('heroicon-o-exclamation-triangle'),
+            ];
         }
+    }
 }

@@ -24,23 +24,19 @@ use Psr\Log\LoggerInterface;
  * VerticalItemService — главный сервис вертикали VerticalName.
  *
  * CANON 2026 — Layer 3: Services.
- * Все мутации: FraudControlService::check() → DB::transaction() → AuditService → Event dispatch.
+ * Все мутации: FraudControlService::check() → $this->db->transaction() → AuditService → Event dispatch.
  * Никаких фасадов — только constructor injection.
  * correlation_id обязателен в каждом логе и событии.
- *
- * @package App\Domains\VerticalName\Services
  */
 final readonly class VerticalItemService implements VerticalItemServicePort
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private Dispatcher $events,
-    ) {
-    }
+    public function __construct(private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly Dispatcher $events,) {}
 
     /**
      * Создать новый товар VerticalName.
@@ -75,7 +71,7 @@ final readonly class VerticalItemService implements VerticalItemServicePort
                 isB2B: $dto->isB2B,
             ));
 
-            $this->logger->info('VerticalName item created', [
+            $this->logger->$this->logger->info('VerticalName item created', [
                 'item_id' => $item->id,
                 'item_uuid' => $item->uuid,
                 'tenant_id' => $dto->tenantId,
@@ -128,7 +124,7 @@ final readonly class VerticalItemService implements VerticalItemServicePort
                 changedFields: array_keys($dto->toArray()),
             ));
 
-            $this->logger->info('VerticalName item updated', [
+            $this->logger->$this->logger->info('VerticalName item updated', [
                 'item_id' => $item->id,
                 'tenant_id' => $dto->tenantId,
                 'changed_fields' => array_keys($dto->toArray()),
@@ -173,7 +169,7 @@ final readonly class VerticalItemService implements VerticalItemServicePort
                 tenantId: $tenantId,
             ));
 
-            $this->logger->info('VerticalName item deleted', [
+            $this->logger->$this->logger->info('VerticalName item deleted', [
                 'item_id' => $itemId,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -201,9 +197,9 @@ final readonly class VerticalItemService implements VerticalItemServicePort
 
         if ($dto->query !== null) {
             $query->where(function ($q) use ($dto): void {
-                $q->where('name', 'ilike', '%' . $dto->query . '%')
-                    ->orWhere('description', 'ilike', '%' . $dto->query . '%')
-                    ->orWhere('sku', 'ilike', '%' . $dto->query . '%');
+                $q->where('name', 'ilike', '%'.$dto->query.'%')
+                    ->orWhere('description', 'ilike', '%'.$dto->query.'%')
+                    ->orWhere('sku', 'ilike', '%'.$dto->query.'%');
             });
         }
 
@@ -304,7 +300,7 @@ final readonly class VerticalItemService implements VerticalItemServicePort
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('VerticalName stock reserved', [
+            $this->logger->$this->logger->info('VerticalName stock reserved', [
                 'item_id' => $itemId,
                 'quantity' => $quantity,
                 'remaining' => $item->stock_quantity,
@@ -336,7 +332,7 @@ final readonly class VerticalItemService implements VerticalItemServicePort
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('VerticalName stock released', [
+            $this->logger->$this->logger->info('VerticalName stock released', [
                 'item_id' => $itemId,
                 'quantity' => $quantity,
                 'new_stock' => $item->stock_quantity,

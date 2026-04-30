@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Food;
 
@@ -11,29 +13,17 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Support\Str;
 use Mockery;
+use Psr\Log\LoggerInterface;
 
 final class FoodDeliveryServiceTest extends BaseTestCase
 {
     private FoodDeliveryService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private FakeDeliveryServiceGateway $deliveryGateway;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = Mockery::mock(FraudControlService::class);
-        $this->audit = Mockery::mock(AuditService::class);
-        $this->deliveryGateway = Mockery::mock(FakeDeliveryServiceGateway::class);
-
-        $this->service = new FoodDeliveryService(
-            $this->fraud,
-            $this->audit,
-            $this->deliveryGateway,
-            $this->app->make(\Psr\Log\LoggerInterface::class)
-        );
-    }
 
     public function test_create_delivery_for_order(): void
     {
@@ -46,10 +36,10 @@ final class FoodDeliveryServiceTest extends BaseTestCase
         $this->fraud->shouldReceive('check')
             ->once()
             ->with(
-                \Mockery::type('int'),
+                Mockery::type('int'),
                 'food_delivery_create',
-                \Mockery::type('float'),
-                \Mockery::type('string')
+                Mockery::type('float'),
+                Mockery::type('string')
             );
 
         $this->deliveryGateway->shouldReceive('scheduleDelivery')
@@ -66,10 +56,10 @@ final class FoodDeliveryServiceTest extends BaseTestCase
             ->with(
                 'created',
                 DeliveryOrder::class,
-                \Mockery::type('int'),
+                Mockery::type('int'),
                 [],
-                \Mockery::type('array'),
-                \Mockery::type('string')
+                Mockery::type('array'),
+                Mockery::type('string')
             );
 
         $delivery = $this->service->createDeliveryForOrder($order);
@@ -92,10 +82,10 @@ final class FoodDeliveryServiceTest extends BaseTestCase
         $this->fraud->shouldReceive('check')
             ->once()
             ->with(
-                \Mockery::type('int'),
+                Mockery::type('int'),
                 'food_delivery_update',
                 0,
-                \Mockery::type('string')
+                Mockery::type('string')
             );
 
         $this->audit->shouldReceive('log')
@@ -106,7 +96,7 @@ final class FoodDeliveryServiceTest extends BaseTestCase
                 $delivery->id,
                 ['status' => DeliveryOrder::STATUS_PENDING],
                 ['status' => DeliveryOrder::STATUS_ON_WAY],
-                \Mockery::type('string')
+                Mockery::type('string')
             );
 
         $updated = $this->service->updateDeliveryStatus(
@@ -149,7 +139,7 @@ final class FoodDeliveryServiceTest extends BaseTestCase
             ->once()
             ->with(
                 $delivery->uuid,
-                \Mockery::type('string')
+                Mockery::type('string')
             )
             ->andReturn([
                 'delivery_id' => $delivery->uuid,
@@ -175,10 +165,10 @@ final class FoodDeliveryServiceTest extends BaseTestCase
         $this->fraud->shouldReceive('check')
             ->once()
             ->with(
-                \Mockery::type('int'),
+                Mockery::type('int'),
                 'food_delivery_cancel',
                 0,
-                \Mockery::type('string')
+                Mockery::type('string')
             );
 
         $this->audit->shouldReceive('log')
@@ -189,7 +179,7 @@ final class FoodDeliveryServiceTest extends BaseTestCase
                 $delivery->id,
                 [],
                 ['cancellation_reason' => 'Customer request'],
-                \Mockery::type('string')
+                Mockery::type('string')
             );
 
         $cancelled = $this->service->cancelDelivery(
@@ -238,5 +228,21 @@ final class FoodDeliveryServiceTest extends BaseTestCase
         $this->assertFalse($delivery->isOnWay());
         $this->assertFalse($delivery->isDelivered());
         $this->assertTrue($delivery->isCancelled());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = Mockery::mock(FraudControlService::class);
+        $this->audit = Mockery::mock(AuditService::class);
+        $this->deliveryGateway = Mockery::mock(FakeDeliveryServiceGateway::class);
+
+        $this->service = new FoodDeliveryService(
+            $this->fraud,
+            $this->audit,
+            $this->deliveryGateway,
+            $this->app->make(LoggerInterface::class)
+        );
     }
 }

@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\database\factories;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Art\Models\PortfolioItem;
 use App\Domains\Art\Models\Project;
@@ -27,7 +30,7 @@ final class PortfolioItemFactory extends Factory
             'title' => $this->faker->sentence(3),
             'cover_url' => $this->faker->imageUrl(),
             'description' => $this->faker->paragraph(),
-            'published_at' => Carbon::now(),
+            'published_at' => CarbonImmutable::now(),
             'tags' => ['type' => 'portfolio'],
             'meta' => ['source' => 'factory'],
         ];

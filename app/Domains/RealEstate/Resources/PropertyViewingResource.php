@@ -4,11 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Resources;
 
+use Illuminate\Filesystem\FilesystemManager;
+
+use Illuminate\Support\Collection;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
 final class PropertyViewingResource extends JsonResource
 {
+    public function __construct(
+        private readonly FilesystemManager $storage,
+    ) {}
+
     public function toArray($request): array
     {
         return [
@@ -28,16 +38,16 @@ final class PropertyViewingResource extends JsonResource
             'faceid_verified' => $this->faceid_verified,
             'cancellation_reason' => $this->cancellation_reason,
             'is_expired' => $this->isExpired(),
-            'time_until_expiry' => $this->hold_expires_at 
-                ? now()->diffForHumans($this->hold_expires_at, true) 
+            'time_until_expiry' => $this->hold_expires_at
+                ? CarbonImmutable::now()->diffForHumans($this->hold_expires_at, true)
                 : null,
             'correlation_id' => $this->correlation_id,
             'metadata' => $this->metadata,
             'tags' => $this->tags,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
-            
-            'property' => $this->whenLoaded('property', fn() => [
+
+            'property' => $this->whenLoaded('property', fn () => [
                 'id' => $this->property->id,
                 'uuid' => $this->property->uuid,
                 'title' => $this->property->title,
@@ -45,11 +55,11 @@ final class PropertyViewingResource extends JsonResource
                 'price' => $this->property->price,
                 'type' => $this->property->type,
                 'area_sqm' => $this->property->area_sqm,
-                'photos' => collect($this->property->photos ?? [])->map(fn($photo) => Storage::url($photo)),
+                'photos' => new Collection($this->property->photos ?? [])->map(fn ($photo) => $this->storage->url($photo)),
                 'features' => $this->property->features ?? [],
             ]),
-            
-            'agent' => $this->whenLoaded('agent', fn() => [
+
+            'agent' => $this->whenLoaded('agent', fn () => [
                 'id' => $this->agent?->id,
                 'uuid' => $this->agent?->uuid,
                 'full_name' => $this->agent?->full_name,
@@ -57,12 +67,12 @@ final class PropertyViewingResource extends JsonResource
                 'rating' => $this->agent?->rating,
                 'deals_count' => $this->agent?->deals_count,
             ]),
-            
+
             'actions' => [
-                'can_confirm' => $this->status === 'held' && !$this->isExpired(),
-                'can_cancel' => in_array($this->status, ['pending', 'held', 'confirmed']),
+                'can_confirm' => $this->status === 'held' && ! $this->isExpired(),
+                'can_cancel' => in_array($this->status, ['pending', 'held', 'confirmed'], true),
                 'can_complete' => $this->status === 'confirmed',
-                'can_reschedule' => in_array($this->status, ['pending', 'held']),
+                'can_reschedule' => in_array($this->status, ['pending', 'held'], true),
             ],
         ];
     }

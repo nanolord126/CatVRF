@@ -1,11 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Collectibles;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * Class CollectibleReview
@@ -22,48 +24,46 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Collectibles
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CollectibleReview extends Model
 {
-
     protected $table = 'collectible_reviews';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'user_id',
-            'reviewable_id',
-            'reviewable_type',
-            'rating',
-            'comment',
-            'correlation_id',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'user_id',
+        'reviewable_id',
+        'reviewable_type',
+        'rating',
+        'comment',
+        'correlation_id',
+    ];
 
-        protected $casts = [
-            'rating' => 'integer',
-            'reviewable_id' => 'integer',
-        ];
+    protected $casts = [
+        'rating' => 'integer',
+        'reviewable_id' => 'integer',
+    ];
 
-        protected static function booted(): void
-        {
-            static::creating(function (CollectibleReview $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-                $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 1);
-            });
+    /**
+     * Polymorphic relation to Reviewable entities (Store, Item).
+     */
+    public function reviewable(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
-            static::addGlobalScope('tenant_id', function ($builder) {
-                $builder->where('tenant_id', (tenant()->id ?? 1));
-            });
-        }
+    protected static function booted(): void
+    {
+        self::creating(function (CollectibleReview $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 1);
+        });
 
-        /**
-         * Polymorphic relation to Reviewable entities (Store, Item).
-         */
-        public function reviewable(): MorphTo
-        {
-            return $this->morphTo();
-        }
+        self::addGlobalScope('tenant_id', function ($builder) {
+            $builder->where('tenant_id', (tenant()->id ?? 1));
+        });
+    }
 }

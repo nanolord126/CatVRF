@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\Collectibles\CollectibleCategory;
@@ -9,89 +12,89 @@ use App\Models\Collectibles\CollectibleItem;
 use App\Services\Inventory\InventoryManagementService;
 use App\Services\RecommendationService;
 use Illuminate\Support\Collection;
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 final readonly class AICollectibleMatcher
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private RecommendationService $recommendations,
-        private InventoryManagementService $inventory,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly RecommendationService $recommendations,
+        private readonly InventoryManagementService $inventory,
+        private readonly LogManager $logger,) {}
+
+    /**
+     * Matches a collectible to a specific theme or interior style for high-end investors.
+     */
+    public function getThemeMatches(string $theme, ?int $limit = 5): Collection
+    {
+        $themeLower = strtolower($theme);
+
+        // Logic for semantic mapping (Mock: real OpenAI text-embedding integration)
+        $matches = CollectibleItem::with(['store', 'category'])
+            ->where('is_active', true)
+            ->where(function ($query) use ($themeLower) {
+                $query->whereRaw('LOWER(name) LIKE ?', ["%{$themeLower}%"])
+                    ->orWhereRaw('LOWER(metadata->>\'theme\') = ?', [$themeLower])
+                    ->orWhereRaw('LOWER(tags->>0) = ?', [$themeLower]);
+            })
+            ->limit($limit)
+            ->get();
+
+        $this->logger->channel('recommend')->$this->logger->info('AI Theme Matching executed', [
+            'theme' => $theme,
+            'matches_found' => $matches->count(),
+            'timestamp' => CarbonImmutable::now(),
+            'correlation_id' => $this->correlationId(),
+        ]);
+
+        return $matches;
+    }
+
+    /**
+     * Suggests items to fill "gaps" in a user's collection using ML similarity.
+     */
+    public function suggestGaps(int $userId, int $categoryId): Collection
+    {
+        $category = CollectibleCategory::findOrFail($categoryId);
+
+        // Core Recommendation logic (AI-powered backend call)
+        $suggestions = $this->recommendations->getForUser($userId, 'Collectibles', [
+            'category_id' => $categoryId,
+            'source' => 'collection_gap_analysis',
+        ]);
+
+        return $suggestions->filter(function ($item) {
+            return $this->inventory->getCurrentStock($item->id) > 0;
+        });
+    }
+
+    /**
+     * Calculates the "Rarity Score" ([0.0 - 1.0]) based on total circulation vs global demand.
+     */
+    public function calculateRarityScore(int $itemId): float
+    {
+        $item = CollectibleItem::findOrFail($itemId);
+
+        // Complex algorithm using historical auction frequency and total existing certificates
+        $circulationCount = CollectibleItem::where('name', $item->name)->count();
+        $demandScore = random_int(70, 100) / 100; // Simulated demand metric
+
+        $rarityScore = 1.0 - min(1, ($circulationCount / 1000));
+        $finalScore = (float) ($rarityScore * $demandScore);
+
+        $this->logger->channel('audit')->$this->logger->info('AI Rarity Scoring completed', [
+            'item_id' => $itemId,
+            'score' => $finalScore,
+            'correlation_id' => $this->correlationId(),
+        ]);
+
+        return $finalScore;
+    }
 
     private function correlationId(): string
     {
         return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
     }
-
-        /**
-         * Matches a collectible to a specific theme or interior style for high-end investors.
-         */
-        public function getThemeMatches(string $theme, ?int $limit = 5): Collection
-        {
-            $themeLower = strtolower($theme);
-
-            // Logic for semantic mapping (Mock: real OpenAI text-embedding integration)
-            $matches = CollectibleItem::with(['store', 'category'])
-                ->where('is_active', true)
-                ->where(function ($query) use ($themeLower) {
-                    $query->whereRaw('LOWER(name) LIKE ?', ["%{$themeLower}%"])
-                          ->orWhereRaw('LOWER(metadata->>\'theme\') = ?', [$themeLower])
-                          ->orWhereRaw('LOWER(tags->>0) = ?', [$themeLower]);
-                })
-                ->limit($limit)
-                ->get();
-
-            $this->logger->channel('recommend')->info('AI Theme Matching executed', [
-                'theme' => $theme,
-                'matches_found' => $matches->count(),
-                'correlation_id' => $this->correlationId(),
-            ]);
-
-            return $matches;
-        }
-
-        /**
-         * Suggests items to fill "gaps" in a user's collection using ML similarity.
-         */
-        public function suggestGaps(int $userId, int $categoryId): Collection
-        {
-            $category = CollectibleCategory::findOrFail($categoryId);
-
-            // Core Recommendation logic (AI-powered backend call)
-            $suggestions = $this->recommendations->getForUser($userId, 'Collectibles', [
-                'category_id' => $categoryId,
-                'source' => 'collection_gap_analysis',
-            ]);
-
-            return $suggestions->filter(function ($item) {
-                return $this->inventory->getCurrentStock($item->id) > 0;
-            });
-        }
-
-        /**
-         * Calculates the "Rarity Score" ([0.0 - 1.0]) based on total circulation vs global demand.
-         */
-        public function calculateRarityScore(int $itemId): float
-        {
-            $item = CollectibleItem::findOrFail($itemId);
-
-            // Complex algorithm using historical auction frequency and total existing certificates
-            $circulationCount = CollectibleItem::where('name', $item->name)->count();
-            $demandScore = random_int(70, 100) / 100; // Simulated demand metric
-
-            $rarityScore = 1.0 - min(1, ($circulationCount / 1000));
-            $finalScore = (float) ($rarityScore * $demandScore);
-
-            $this->logger->channel('audit')->info('AI Rarity Scoring completed', [
-                'item_id' => $itemId,
-                'score' => $finalScore,
-                'correlation_id' => $this->correlationId(),
-            ]);
-
-            return $finalScore;
-        }
 }

@@ -1,15 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies\Domains;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\InventoryItem;
 use App\Models\User;
+
 final class InventoryItemPolicy
 {
     /**
      * Admins can do anything
      */
-    public function before(User $user, string $ability): bool|null
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
+    public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('admin')) {
             return true;
@@ -21,7 +30,7 @@ final class InventoryItemPolicy
     /**
      * View inventory item
      */
-    public function view(User $user, InventoryItem $item): bool
+    public function $this->viewFactory->make(User $user, InventoryItem $item): bool
     {
         // Tenant scoping
         if ($item->tenant_id !== $user->tenant_id) {

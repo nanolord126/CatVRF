@@ -20,11 +20,11 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class CrmActivityTimelineWidget extends Widget
 {
-    protected static string $view = 'filament.tenant.widgets.crm-activity-timeline';
-
     public ?CrmClient $record = null;
 
-    protected int|string|array $columnSpan = 'full';
+    protected static string $view = 'filament.tenant.widgets.crm-activity-timeline';
+
+    protected readonly int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 20;
 

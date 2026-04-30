@@ -1,47 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Entertainment\BookingResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Log\LogManager;
 
 final class EditBooking extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = BookingResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-            ];
-        }
-
-        protected function beforeSave(): void
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Booking modification started', [
-                'booking_id' => $this->record->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $this->record->correlation_id,
-            ]);
-        }
-
-        protected function afterSave(): void
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Entertainment Booking modification completed', [
-                'booking_id' => $this->record->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $this->record->correlation_id,
-            ]);
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -50,7 +25,7 @@ final class EditBooking extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -61,8 +36,34 @@ final class EditBooking extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function beforeSave(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Entertainment Booking modification started', [
+            'booking_id' => $this->record->id,
+            'user_id' => auth()->id(),
+            'correlation_id' => $this->record->correlation_id,
+        ]);
+    }
+
+    protected function afterSave(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Entertainment Booking modification completed', [
+            'booking_id' => $this->record->id,
+            'user_id' => auth()->id(),
+            'correlation_id' => $this->record->correlation_id,
+        ]);
     }
 }

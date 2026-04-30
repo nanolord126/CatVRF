@@ -21,33 +21,15 @@ final class SportsFraudDetectionTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private FraudControlService $fraud;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->app->make(FraudControlService::class);
-        $this->audit = $this->app->make(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_rapid_booking_attempts_blocked(): void
     {
         $userId = 1;
-        
+
         for ($i = 0; $i < 15; $i++) {
             $dto = new RealTimeBookingDto(
                 userId: $userId,
@@ -65,7 +47,7 @@ final class SportsFraudDetectionTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
+
                 if ($i >= 10) {
                     $this->assertFalse($result['success'], 'Should be blocked after rapid attempts');
                     $this->assertStringContainsString('rate limit', strtolower($result['message'] ?? ''));
@@ -79,7 +61,7 @@ final class SportsFraudDetectionTest extends TestCase
     public function test_multiple_user_same_ip_blocked(): void
     {
         $sameIp = '192.168.1.100';
-        
+
         for ($i = 1; $i <= 20; $i++) {
             $dto = new RealTimeBookingDto(
                 userId: $i,
@@ -97,7 +79,7 @@ final class SportsFraudDetectionTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
+
                 if ($i > 15) {
                     $this->assertFalse($result['success'], 'Should be blocked for multiple users from same IP');
                 }
@@ -156,7 +138,7 @@ final class SportsFraudDetectionTest extends TestCase
 
         try {
             $result = $this->service->holdSlot($dto);
-            
+
             $confirmResult = $this->service->confirmBooking($dto, [
                 'amount' => 0,
                 'transaction_id' => null,
@@ -186,7 +168,7 @@ final class SportsFraudDetectionTest extends TestCase
         );
 
         $holdResult = $this->service->holdSlot($dto);
-        
+
         if ($holdResult['success']) {
             $extensionAttempts = 0;
             $maxExtensions = 5;
@@ -194,7 +176,7 @@ final class SportsFraudDetectionTest extends TestCase
             for ($i = 0; $i < $maxExtensions + 2; $i++) {
                 try {
                     $result = $this->service->extendHold(1, null, $dto->slotStart, 1, $dto->correlationId);
-                    
+
                     if ($i >= $maxExtensions) {
                         $this->assertFalse($result['success'], 'Should block excessive hold extensions');
                     } else {
@@ -235,7 +217,7 @@ final class SportsFraudDetectionTest extends TestCase
 
         try {
             $result = $this->service->holdSlot($dto);
-            
+
             if ($result['success']) {
                 $verifyResult = $this->service->verifyBiometricOnCheckIn(1, 1, $suspiciousBiometric, $dto->correlationId);
                 $this->assertFalse($verifyResult, 'Suspicious biometric should fail verification');
@@ -248,7 +230,7 @@ final class SportsFraudDetectionTest extends TestCase
     public function test_booking_from_blacklisted_countries_blocked(): void
     {
         $blacklistedCountries = ['XX', 'YY', 'ZZ'];
-        
+
         foreach ($blacklistedCountries as $country) {
             $dto = new RealTimeBookingDto(
                 userId: 1,
@@ -296,7 +278,7 @@ final class SportsFraudDetectionTest extends TestCase
 
             try {
                 $holdResult = $this->service->holdSlot($dto);
-                
+
                 if ($holdResult['success']) {
                     $this->service->releaseSlot(1, null, $dto->slotStart, $userId, $dto->correlationId);
                     $cancellationCount++;
@@ -427,5 +409,25 @@ final class SportsFraudDetectionTest extends TestCase
 
         $slotKey = "sports:slot:hold:1::{$slotStart}";
         $this->redis->del($slotKey);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->app->make(FraudControlService::class);
+        $this->audit = $this->app->make(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

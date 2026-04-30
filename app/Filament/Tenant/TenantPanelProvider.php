@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant;
 
@@ -9,6 +11,14 @@ use Filament\Navigation\NavigationItem;
 use Filament\PanelProvider;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
+use App\Http\Middleware\Authenticate;
+use Filament\Pages\Dashboard;
+use Filament\Widgets\AccountWidget;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 final class TenantPanelProvider extends PanelProvider
 {
@@ -28,23 +38,23 @@ final class TenantPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')
             ->discoverPages(in: app_path('Filament/Tenant/Pages'), for: 'App\\Filament\\Tenant\\Pages')
             ->pages([
-                \Filament\Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Tenant/Widgets'), for: 'App\\Filament\\Tenant\\Widgets')
             ->widgets([
-                \Filament\Widgets\AccountWidget::class,
+                AccountWidget::class,
             ])
             ->middleware([
-                \Illuminate\Session\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-                \Illuminate\Session\Middleware\StartSession::class,
-                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-                \Illuminate\Routing\Middleware\SubstituteBindings::class,
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                ShareErrorsFromSession::class,
+                SubstituteBindings::class,
                 TenantScoping::class,
                 TenantCRMOnly::class,
             ])
             ->authMiddleware([
-                \App\Http\Middleware\Authenticate::class,
+                Authenticate::class,
             ])
             ->authGuard('web')
             ->navigationGroups([

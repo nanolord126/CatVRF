@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -8,23 +10,17 @@ use App\Domains\Electronics\Models\ElectronicsWarranty;
 use App\Domains\Electronics\Services\ElectronicsWarrantyService;
 use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class ElectronicsWarrantyServiceTest extends BaseTestCase
 {
     use RefreshDatabase;
 
     private ElectronicsWarrantyService $service;
-    private FraudControlService $fraudControl;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = $this->app->make(ElectronicsWarrantyService::class);
-        $this->fraudControl = $this->app->make(FraudControlService::class);
-    }
+    private FraudControlService $fraudControl;
 
     public function test_register_warranty_creates_warranty_record(): void
     {
@@ -117,7 +113,7 @@ final class ElectronicsWarrantyServiceTest extends BaseTestCase
 
     public function test_void_warranty_throws_exception_if_not_found(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         $this->service->voidWarranty(
             serialNumber: 'SN_NON_EXISTENT',
@@ -208,5 +204,12 @@ final class ElectronicsWarrantyServiceTest extends BaseTestCase
 
         $this->assertNotNull($warranty);
         $this->assertEquals('SN_FRAUD_TEST', $warranty->serial_number);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = $this->app->make(ElectronicsWarrantyService::class);
+        $this->fraudControl = $this->app->make(FraudControlService::class);
     }
 }

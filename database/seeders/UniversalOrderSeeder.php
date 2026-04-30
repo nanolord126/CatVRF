@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
-
 use App\Models\Order;
 use App\Models\OrderItem;
 
@@ -31,6 +31,7 @@ final class UniversalOrderSeeder extends Seeder
     ];
 
     private const B2C_ORDERS_PER_VERTICAL = 10;
+
     private const B2B_ORDERS_PER_VERTICAL = 5;
 
     public function __construct(
@@ -127,7 +128,7 @@ final class UniversalOrderSeeder extends Seeder
                 'payment_method' => 'b2b_credit',
                 'is_b2b' => true,
                 'inn' => $this->getRandomINN(),
-                'business_card_id' => 'BC-' . Str::random(8),
+                'business_card_id' => 'BC-'.Str::random(8),
                 'delivery_address' => $this->getRandomAddress(),
                 'delivery_lat' => rand(55000000, 60000000) / 1000000,
                 'delivery_lon' => rand(35000000, 40000000) / 1000000,
@@ -150,9 +151,9 @@ final class UniversalOrderSeeder extends Seeder
 
             OrderItem::create([
                 'order_id' => $orderId,
-                'product_type' => $vertical . '_product',
+                'product_type' => $vertical.'_product',
                 'product_id' => rand(1, 1000),
-                'product_name' => ucfirst($vertical) . ' Product ' . ($i + 1),
+                'product_name' => ucfirst($vertical).' Product '.($i + 1),
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'total_price' => $quantity * $unitPrice,
@@ -186,18 +187,21 @@ final class UniversalOrderSeeder extends Seeder
     private function getRandomStatus(): string
     {
         $statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+
         return $statuses[array_rand($statuses)];
     }
 
     private function getRandomPaymentStatus(): string
     {
         $statuses = ['pending', 'paid', 'failed', 'refunded', 'partial_refund'];
+
         return $statuses[array_rand($statuses)];
     }
 
     private function getRandomPaymentMethod(): string
     {
         $methods = ['card', 'sbp', 'wallet'];
+
         return $methods[array_rand($methods)];
     }
 
@@ -205,7 +209,8 @@ final class UniversalOrderSeeder extends Seeder
     {
         $streets = ['Main Street', 'Park Avenue', 'Oak Road', 'Elm Street', 'Broadway'];
         $numbers = rand(1, 999);
-        return $numbers . ' ' . $streets[array_rand($streets)] . ', Moscow';
+
+        return $numbers.' '.$streets[array_rand($streets)].', Moscow';
     }
 
     private function getRandomINN(): string
@@ -216,12 +221,14 @@ final class UniversalOrderSeeder extends Seeder
     private function getRandomColor(): string
     {
         $colors = ['red', 'blue', 'green', 'black', 'white', 'yellow', 'purple'];
+
         return $colors[array_rand($colors)];
     }
 
     private function getRandomSize(): string
     {
         $sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+
         return $sizes[array_rand($sizes)];
     }
 }

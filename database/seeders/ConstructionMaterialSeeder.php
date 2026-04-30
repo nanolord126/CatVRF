@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -32,7 +34,7 @@ final class ConstructionMaterialSeeder extends Seeder
                     'correlation_id' => Str::uuid(),
                     'name' => $material['name'],
                     'category' => $material['category'],
-                    'description' => 'Строительный материал: ' . $material['name'],
+                    'description' => 'Строительный материал: '.$material['name'],
                     'price' => $material['price'],
                     'unit' => $material['unit'],
                     'current_stock' => rand(50, 500),

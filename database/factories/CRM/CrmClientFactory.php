@@ -14,8 +14,6 @@ use Illuminate\Support\Str;
  */
 final class CrmClientFactory extends Factory
 {
-    protected $model = CrmClient::class;
-
     private const VERTICALS = [
         'beauty', 'hotel', 'flowers', 'auto', 'food', 'furniture',
         'fashion', 'fitness', 'real_estate', 'medical', 'education',
@@ -23,9 +21,14 @@ final class CrmClientFactory extends Factory
     ];
 
     private const STATUSES = ['active', 'inactive', 'vip', 'blocked'];
+
     private const SOURCES = ['website', 'phone', 'referral', 'social', 'manual', 'import'];
+
     private const CLIENT_TYPES = ['individual', 'company', 'freelancer'];
+
     private const TIERS = ['bronze', 'silver', 'gold', 'platinum'];
+
+    protected $model = CrmClient::class;
 
     /**
      * @return array<string, mixed>
@@ -43,7 +46,7 @@ final class CrmClientFactory extends Factory
             'last_name' => $this->faker->lastName(),
             'company_name' => $this->faker->optional(0.3)->company(),
             'email' => $this->faker->unique()->safeEmail(),
-            'phone' => '+7' . $this->faker->numerify('9#########'),
+            'phone' => '+7'.$this->faker->numerify('9#########'),
             'phone_secondary' => $this->faker->optional(0.2)->numerify('+79#########'),
             'client_type' => $this->faker->randomElement(self::CLIENT_TYPES),
             'status' => $this->faker->randomElement(self::STATUSES),

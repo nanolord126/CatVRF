@@ -20,7 +20,6 @@ use Spatie\LaravelData\Data;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Analytics\Data\DTOs
  */
 final class AnalyticsEventData extends Data
 {
@@ -35,6 +34,5 @@ final class AnalyticsEventData extends Data
         private readonly ?string $device_fingerprint,
         private readonly Carbon $created_at,
         private readonly string $correlation_id
-    ) {
-}
+    ) {}
 }

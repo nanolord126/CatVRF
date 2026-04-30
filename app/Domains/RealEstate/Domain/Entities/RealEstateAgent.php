@@ -11,26 +11,27 @@ use DomainException;
 final class RealEstateAgent
 {
     /** @var list<string> */
-    private array $assignedPropertyIds = [];
+    private readonly array $assignedPropertyIds = [];
 
-    private bool $isActive;
+    private readonly bool $isActive;
 
-    private float $rating;
+    private readonly float $rating;
 
-    private int $dealsCount;
+    private readonly int $dealsCount;
 
     public function __construct(
         private readonly AgentId $id,
-        private readonly int     $tenantId,
-        private readonly int     $userId,
-        private string           $fullName,
-        private string           $phone,
-        private string           $email,
-        private string           $licenseNumber,
-        private string           $correlationId,
-        float                    $rating = 0.0,
-        int                      $dealsCount = 0,
-        bool                     $isActive = true) {
+        private readonly int $tenantId,
+        private readonly int $userId,
+        private readonly string $fullName,
+        private readonly string $phone,
+        private readonly string $email,
+        private readonly string $licenseNumber,
+        private readonly string $correlationId,
+        float $rating = 0.0,
+        int $dealsCount = 0,
+        bool $isActive = true
+    ) {
         $this->rating     = $rating;
         $this->dealsCount = $dealsCount;
         $this->isActive   = $isActive;
@@ -90,18 +91,64 @@ final class RealEstateAgent
         $this->rating = $newRating;
     }
 
-    public function getId(): AgentId { return $this->id; }
-    public function getTenantId(): int { return $this->tenantId; }
-    public function getUserId(): int { return $this->userId; }
-    public function getFullName(): string { return $this->fullName; }
-    public function getPhone(): string { return $this->phone; }
-    public function getEmail(): string { return $this->email; }
-    public function getLicenseNumber(): string { return $this->licenseNumber; }
-    public function getCorrelationId(): string { return $this->correlationId; }
-    public function isActive(): bool { return $this->isActive; }
-    public function getRating(): float { return $this->rating; }
-    public function getDealsCount(): int { return $this->dealsCount; }
+    public function getId(): AgentId
+    {
+        return $this->id;
+    }
+
+    public function getTenantId(): int
+    {
+        return $this->tenantId;
+    }
+
+    public function getUserId(): int
+    {
+        return $this->userId;
+    }
+
+    public function getFullName(): string
+    {
+        return $this->fullName;
+    }
+
+    public function getPhone(): string
+    {
+        return $this->phone;
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function getLicenseNumber(): string
+    {
+        return $this->licenseNumber;
+    }
+
+    public function getCorrelationId(): string
+    {
+        return $this->correlationId;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function getRating(): float
+    {
+        return $this->rating;
+    }
+
+    public function getDealsCount(): int
+    {
+        return $this->dealsCount;
+    }
 
     /** @return list<string> */
-    public function getAssignedPropertyIds(): array { return $this->assignedPropertyIds; }
+    public function getAssignedPropertyIds(): array
+    {
+        return $this->assignedPropertyIds;
+    }
 }

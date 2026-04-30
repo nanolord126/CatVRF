@@ -1,27 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class RealEstateCommissionSplitService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const STANDARD_COMMISSION_RATE = 0.03;
+
     private const B2B_COMMISSION_RATE = 0.02;
+
     private const MAX_COMMISSION_RATE = 0.05;
+
     private const MIN_COMMISSION_RATE = 0.01;
+
     private const COMMISSION_PAYOUT_DAYS = 7;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function calculateCommissionSplit(
@@ -49,7 +58,7 @@ final readonly class RealEstateCommissionSplitService
         }
 
         $splits = $this->calculateSplits($agents, $totalCommission);
-        $payoutDate = now()->addDays(self::COMMISSION_PAYOUT_DAYS);
+        $payoutDate = CarbonImmutable::now()->addDays(self::COMMISSION_PAYOUT_DAYS);
 
         $commissionData = [
             'property_id' => $property->id,
@@ -60,7 +69,7 @@ final readonly class RealEstateCommissionSplitService
             'splits' => $splits,
             'total_payout' => array_sum(array_column($splits, 'amount')),
             'payout_date' => $payoutDate->toIso8601String(),
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
@@ -95,19 +104,19 @@ final readonly class RealEstateCommissionSplitService
             $correlationId
         );
 
-        return DB::transaction(function () use ($propertyId, $agentId, $amount, $userId, $correlationId) {
+        return $this->db->transaction(function () use ($propertyId, $agentId, $amount, $correlationId) {
             $paymentData = [
                 'property_id' => $propertyId,
                 'agent_id' => $agentId,
                 'amount' => $amount,
                 'status' => 'pending',
-                'payment_date' => now()->addDays(self::COMMISSION_PAYOUT_DAYS)->toIso8601String(),
-                'created_at' => now()->toIso8601String(),
+                'payment_date' => CarbonImmutable::now()->addDays(self::COMMISSION_PAYOUT_DAYS)->toIso8601String(),
+                'created_at' => CarbonImmutable::now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
             $cacheKey = "commission:payment:{$propertyId}:{$agentId}";
-            Cache::put($cacheKey, json_encode($paymentData), self::CACHE_TTL_SECONDS);
+            $this->cache->put($cacheKey, json_encode($paymentData), self::CACHE_TTL_SECONDS);
 
             $this->audit->record(
                 'commission_payment_recorded',
@@ -141,7 +150,7 @@ final readonly class RealEstateCommissionSplitService
         );
 
         $cacheKey = "commission:payment:{$propertyId}:{$agentId}";
-        $paymentDataJson = Cache::get($cacheKey);
+        $paymentDataJson = $this->cache->get($cacheKey);
 
         if ($paymentDataJson === null) {
             throw new \DomainException('Commission payment record not found');
@@ -153,12 +162,12 @@ final readonly class RealEstateCommissionSplitService
             throw new \DomainException('Commission already paid');
         }
 
-        return DB::transaction(function () use ($propertyId, $agentId, $paymentData, $userId, $correlationId) {
+        return $this->db->transaction(function () use ($propertyId, $agentId, $paymentData, $userId, $correlationId) {
             $paymentData['status'] = 'paid';
-            $paymentData['paid_at'] = now()->toIso8601String();
+            $paymentData['paid_at'] = CarbonImmutable::now()->toIso8601String();
             $paymentData['paid_by'] = $userId;
 
-            Cache::put($cacheKey, json_encode($paymentData), self::CACHE_TTL_SECONDS);
+            $this->cache->put($cacheKey, json_encode($paymentData), self::CACHE_TTL_SECONDS);
 
             $this->audit->record(
                 'commission_payout_processed',
@@ -191,7 +200,7 @@ final readonly class RealEstateCommissionSplitService
         );
 
         $cacheKey = "commission:history:{$agentId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return json_decode($cached, true);
@@ -205,11 +214,11 @@ final readonly class RealEstateCommissionSplitService
             'total_deals' => random_int(5, 50),
             'avg_commission_per_deal' => random_int(20000, 100000),
             'recent_payouts' => $this->getRecentPayouts($agentId),
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Cache::put($cacheKey, json_encode($history), self::CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, json_encode($history), self::CACHE_TTL_SECONDS);
 
         return $history;
     }
@@ -239,7 +248,7 @@ final readonly class RealEstateCommissionSplitService
                 'min' => $property->price * self::MIN_COMMISSION_RATE,
                 'max' => $property->price * self::MAX_COMMISSION_RATE,
             ],
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
@@ -271,12 +280,12 @@ final readonly class RealEstateCommissionSplitService
             'validation_errors' => [],
         ];
 
-        if (!$isValid) {
+        if (! $isValid) {
             if ($rate < self::MIN_COMMISSION_RATE) {
-                $validation['validation_errors'][] = "Rate cannot be below " . (self::MIN_COMMISSION_RATE * 100) . "%";
+                $validation['validation_errors'][] = 'Rate cannot be below '.(self::MIN_COMMISSION_RATE * 100).'%';
             }
             if ($rate > self::MAX_COMMISSION_RATE) {
-                $validation['validation_errors'][] = "Rate cannot exceed " . (self::MAX_COMMISSION_RATE * 100) . "%";
+                $validation['validation_errors'][] = 'Rate cannot exceed '.(self::MAX_COMMISSION_RATE * 100).'%';
             }
         }
 
@@ -294,7 +303,7 @@ final readonly class RealEstateCommissionSplitService
 
             $splits[] = [
                 'agent_id' => $agent['agent_id'],
-                'agent_name' => $agent['agent_name'] ?? 'Agent ' . ($index + 1),
+                'agent_name' => $agent['agent_name'] ?? 'Agent '.($index + 1),
                 'percentage' => $percentage,
                 'amount' => $totalCommission * $percentage,
                 'role' => $agent['role'] ?? 'agent',
@@ -314,13 +323,13 @@ final readonly class RealEstateCommissionSplitService
             [
                 'property_id' => random_int(1, 100),
                 'amount' => random_int(20000, 100000),
-                'paid_at' => now()->subDays(random_int(1, 30))->toIso8601String(),
+                'paid_at' => CarbonImmutable::now()->subDays(random_int(1, 30))->toIso8601String(),
                 'status' => 'paid',
             ],
             [
                 'property_id' => random_int(1, 100),
                 'amount' => random_int(20000, 100000),
-                'paid_at' => now()->subDays(random_int(1, 30))->toIso8601String(),
+                'paid_at' => CarbonImmutable::now()->subDays(random_int(1, 30))->toIso8601String(),
                 'status' => 'paid',
             ],
         ];

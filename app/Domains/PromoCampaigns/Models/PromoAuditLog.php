@@ -6,7 +6,7 @@ namespace App\Domains\PromoCampaigns\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
 /**
  * Исключительная модель строгого аудита операций с маркетинговыми кампаниями (PromoAuditLog).
@@ -17,6 +17,10 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  */
 final class PromoAuditLog extends Model
 {
+    /**
+     * Безжалостно отключаем стандартные timestamp колонки (используем только created_at).
+     */
+    public const UPDATED_AT = null;
 
     /**
      * @var string Жестко определенное имя таблицы.
@@ -46,33 +50,26 @@ final class PromoAuditLog extends Model
     ];
 
     /**
-     * Безжалостно отключаем стандартные timestamp колонки (используем только created_at).
-     */
-    public const UPDATED_AT = null;
-
-    /**
      * Связь с инспектируемой кампанией.
-     *
-     * @return BelongsTo
      */
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(PromoCampaign::class, 'promo_campaign_id', 'id');
-    }
+    }
+
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
+        self::creating(function ($model) {
             if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+                $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
 }

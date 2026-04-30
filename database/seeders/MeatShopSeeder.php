@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use App\Domains\MeatShops\Models\MeatShop;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 final class MeatShopSeeder extends Seeder
 {
@@ -26,7 +29,7 @@ final class MeatShopSeeder extends Seeder
             MeatShop::updateOrCreate(
                 ['sku' => $item['sku'], 'tenant_id' => 1],
                 array_merge($item, [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'current_stock' => random_int(10, 100),
                     'is_certified' => true,

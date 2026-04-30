@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Events;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -18,15 +22,17 @@ use Illuminate\Queue\SerializesModels;
  */
 final class CourierLocationUpdated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
-        private readonly int    $courierId,
-        private readonly float  $lat,
-        private readonly float  $lon,
-        private readonly float  $speed,
-        private readonly float  $bearing,
-        private readonly ?int   $deliveryOrderId,
+        private readonly int $courierId,
+        private readonly float $lat,
+        private readonly float $lon,
+        private readonly float $speed,
+        private readonly float $bearing,
+        private readonly ?int $deliveryOrderId,
         private readonly string $correlationId,
     ) {}
 
@@ -60,7 +66,7 @@ final class CourierLocationUpdated implements ShouldBroadcast
             'bearing'           => $this->bearing,
             'delivery_order_id' => $this->deliveryOrderId,
             'correlation_id'    => $this->correlationId,
-            'timestamp'         => now()->toIso8601String(),
+            'timestamp'         => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

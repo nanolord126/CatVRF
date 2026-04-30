@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Warehouse;
+
+use Carbon\CarbonImmutable;
 
 use App\Models\InventoryItem;
 use Filament\Forms\Components\Hidden;
@@ -19,15 +23,25 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\CreateWarehouse;
+use App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\EditWarehouse;
+use App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\ListWarehouses;
+use App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\ViewWarehouse;
 
 final class WarehouseResource extends Resource
 {
     protected static ?string $model = InventoryItem::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
+
     protected static ?string $navigationGroup = 'Склад';
+
     protected static ?string $navigationLabel = 'Остатки';
+
     protected static ?string $modelLabel = 'Позиция склада';
+
     protected static ?string $pluralModelLabel = 'Остатки склада';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
@@ -179,7 +193,7 @@ final class WarehouseResource extends Resource
                         $newStock = max(0, $record->current_stock + $delta);
                         $record->update([
                             'current_stock' => $newStock,
-                            'last_checked_at' => now(),
+                            'last_checked_at' => CarbonImmutable::now(),
                         ]);
                     }),
             ])
@@ -202,10 +216,10 @@ final class WarehouseResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\ListWarehouses::route('/'),
-            'create' => \App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\CreateWarehouse::route('/create'),
-            'view'   => \App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\ViewWarehouse::route('/{record}'),
-            'edit'   => \App\Filament\Tenant\Resources\Warehouse\WarehouseResource\Pages\EditWarehouse::route('/{record}/edit'),
+            'index'  => ListWarehouses::route('/'),
+            'create' => CreateWarehouse::route('/create'),
+            'view'   => ViewWarehouse::route('/{record}'),
+            'edit'   => EditWarehouse::route('/{record}/edit'),
         ];
     }
 }

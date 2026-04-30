@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use App\Models\BalanceTransaction;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
+use Carbon\Carbon;
 
 /**
  * Модель кошелька тенанта или бизнес-группы.
@@ -26,11 +31,13 @@ use Illuminate\Support\Str;
  * @property array|null $tags
  * @property array|null $metadata
  * @property bool $is_active
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Wallet extends Model
 {
+    use TenantScoped;
+
     protected $table = 'wallets';
 
     protected $fillable = [
@@ -52,43 +59,22 @@ final class Wallet extends Model
         'is_active' => 'boolean',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            if (function_exists('tenant') && tenant()?->id) {
-                $builder->where('tenant_id', tenant()?->id);
-            }
-        });
-
-        static::addGlobalScope('businessGroup', static function (Builder $builder): void {
-            if (function_exists('tenant') && tenant()?->business_group_id) {
-                $builder->where('business_group_id', tenant()?->business_group_id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
-    /** @return BelongsTo<\App\Models\Tenant, self> */
+    /** @return BelongsTo<Tenant, self> */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
-    /** @return BelongsTo<\App\Models\BusinessGroup, self> */
+    /** @return BelongsTo<BusinessGroup, self> */
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class, 'business_group_id');
+        return $this->belongsTo(BusinessGroup::class, 'business_group_id');
     }
 
     /** @return HasMany<Model> Все балансовые транзакции этого кошелька. */
     public function balanceTransactions(): HasMany
     {
-        return $this->hasMany(\App\Models\BalanceTransaction::class, 'wallet_id');
+        return $this->hasMany(BalanceTransaction::class, 'wallet_id');
     }
 
     /** Доступный баланс = текущий − замороженный. */
@@ -107,5 +93,26 @@ final class Wallet extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            if (function_exists('tenant') && tenant()?->id) {
+                $builder->where('tenant_id', tenant()?->id);
+            }
+        });
+
+        self::addGlobalScope('businessGroup', static function (Builder $builder): void {
+            if (function_exists('tenant') && tenant()?->business_group_id) {
+                $builder->where('business_group_id', tenant()?->business_group_id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

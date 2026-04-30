@@ -7,7 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -28,7 +28,8 @@ final readonly class PaymentFraudRateLimitMiddleware
     private const TENANT_LIMIT = 1000; // 1000 requests per minute per tenant
 
     public function __construct(
-        private RateLimiter $limiter,
+        private readonly RateLimiter $limiter,
+        private readonly LogManager $log,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -93,7 +94,7 @@ final readonly class PaymentFraudRateLimitMiddleware
      */
     private function logRateLimitExceeded(string $type, string $identifier, int $limit): void
     {
-        Log::warning('Payment fraud rate limit exceeded', [
+        $this->log->warning('Payment fraud rate limit exceeded', [
             'type' => $type,
             'identifier' => $identifier,
             'limit' => $limit,

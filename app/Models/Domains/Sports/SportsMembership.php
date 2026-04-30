@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Domains\Sports;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\SportsMembershipFactory;
 
 /**
  * Class SportsMembership
@@ -23,38 +26,36 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Sports
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class SportsMembership extends Model
 {
+    protected $table = 'sports_memberships';
 
-        protected $table = 'sports_memberships';
-
-        protected $fillable = [
+    protected $fillable = [
         'uuid',
         'correlation_id',
-            'tenant_id',
-            'athlete_id',
-            'tier',
-            'status',
-            'expires_at',
-            'monthly_fee',
-        ];
+        'tenant_id',
+        'athlete_id',
+        'tier',
+        'status',
+        'expires_at',
+        'monthly_fee',
+    ];
 
-        protected static function newFactory()
-        {
-            return \Database\Factories\SportsMembershipFactory::new();
-        }
+    protected static function newFactory()
+    {
+        return SportsMembershipFactory::new();
+    }
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (function_exists('tenant') && tenant('id')) {
-                    $query->where('tenant_id', tenant('id'));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

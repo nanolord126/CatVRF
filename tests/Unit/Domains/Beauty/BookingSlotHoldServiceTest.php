@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Beauty;
 
@@ -7,6 +9,7 @@ use App\Domains\Beauty\Events\SlotHeldEvent;
 use App\Domains\Beauty\Events\SlotReleasedEvent;
 use App\Domains\Beauty\Models\BookingSlot;
 use App\Domains\Beauty\Services\BookingSlotHoldService;
+use App\Octane\Services\SwooleTableService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\IdempotencyService;
@@ -15,7 +18,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -36,27 +39,6 @@ final class BookingSlotHoldServiceTest extends TestCase
     private ConnectionInterface $db;
 
     private Logger $logger;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraudControl = $this->createMock(FraudControlService::class);
-        $this->auditService = $this->createMock(AuditService::class);
-        $this->idempotencyService = $this->createMock(IdempotencyService::class);
-        $this->crmService = $this->createMock(CRMService::class);
-        $this->db = $this->app->make(ConnectionInterface::class);
-        $this->logger = $this->app->make(Logger::class);
-
-        $this->service = new BookingSlotHoldService(
-            $this->fraudControl,
-            $this->auditService,
-            $this->idempotencyService,
-            $this->crmService,
-            $this->db,
-            $this->logger,
-        );
-    }
 
     public function test_hold_slot_successfully(): void
     {
@@ -254,5 +236,96 @@ final class BookingSlotHoldServiceTest extends TestCase
 
         $validSlot->refresh();
         $this->assertEquals('held', $validSlot->status);
+    }
+
+    public function test_swoole_table_service_injection(): void
+    {
+        // Test that service can be instantiated with SwooleTableService
+        $swooleTableServiceMock = $this->createMock(SwooleTableService::class);
+
+        $serviceWithSwoole = new BookingSlotHoldService(
+            $this->fraudControl,
+            $this->auditService,
+            $this->idempotencyService,
+            $this->crmService,
+            $this->db,
+            $this->logger,
+            $swooleTableServiceMock,
+        );
+
+        $this->assertInstanceOf(BookingSlotHoldService::class, $serviceWithSwoole);
+    }
+
+    public function test_slot_hold_uses_redis_fallback_when_swoole_null(): void
+    {
+        Event::fake();
+        Redis::flushdb();
+
+        $this->fraudControl->expects($this->once())
+            ->method('check');
+
+        $this->idempotencyService->expects($this->once())
+            ->method('checkOrSkip');
+
+        $slot = BookingSlot::factory()->create([
+            'status' => 'available',
+            'tenant_id' => 1,
+        ]);
+
+        $dto = new HoldBookingSlotDto(
+            bookingSlotId: $slot->id,
+            customerId: 100,
+            tenantId: 1,
+            businessGroupId: null,
+            isB2b: false,
+            correlationId: Str::uuid()->toString(),
+            idempotencyKey: null,
+        );
+
+        // Service without SwooleTableService should use Redis fallback
+        $result = $this->service->holdSlot($dto);
+
+        $this->assertInstanceOf(BookingSlot::class, $result);
+
+        // Check Redis fallback was used
+        $redisKey = "beauty:slot_hold:{$slot->id}";
+        $redisData = Redis::get($redisKey);
+        $this->assertNotNull($redisData);
+
+        $decoded = json_decode($redisData, true);
+        $this->assertEquals($slot->id, $decoded['slot_id']);
+        $this->assertEquals(100, $decoded['customer_id']);
+    }
+
+    public function test_is_slot_held_returns_false_for_non_held_slot(): void
+    {
+        $slot = BookingSlot::factory()->create([
+            'status' => 'available',
+            'tenant_id' => 1,
+        ]);
+
+        $isHeld = $this->service->isSlotHeld($slot->id);
+        $this->assertFalse($isHeld);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraudControl = $this->createMock(FraudControlService::class);
+        $this->auditService = $this->createMock(AuditService::class);
+        $this->idempotencyService = $this->createMock(IdempotencyService::class);
+        $this->crmService = $this->createMock(CRMService::class);
+        $this->db = $this->app->make(ConnectionInterface::class);
+        $this->logger = $this->app->make(Logger::class);
+
+        $this->service = new BookingSlotHoldService(
+            $this->fraudControl,
+            $this->auditService,
+            $this->idempotencyService,
+            $this->crmService,
+            $this->db,
+            $this->logger,
+        );
     }
 }

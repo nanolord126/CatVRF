@@ -154,8 +154,8 @@ enum ElectronicsType: string
     case HOBBY_ELECTRONICS = 'hobby_electronics';
     case ARDUINO = 'arduino';
     case RASPBERRY_PI = 'raspberry_pi';
-    case 3D_PRINTERS = '3d_printers';
-    case 3D_SCANNERS = '3d_scanners';
+    case PRINTERS_3D = '3d_printers';
+    case SCANNERS_3D = '3d_scanners';
     case TOOLS = 'tools';
     case SOLDERING = 'soldering';
 

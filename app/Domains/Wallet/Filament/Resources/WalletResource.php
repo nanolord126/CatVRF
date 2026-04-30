@@ -7,9 +7,12 @@ namespace App\Domains\Wallet\Filament\Resources;
 use App\Domains\Wallet\Models\Wallet;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Wallet\Filament\Resources\WalletResource\Pages\CreateWallet;
+use App\Domains\Wallet\Filament\Resources\WalletResource\Pages\EditWallet;
+use App\Domains\Wallet\Filament\Resources\WalletResource\Pages\ListWallets;
 
 /**
  * Filament-ресурс для управления кошельками в Tenant Panel.
@@ -17,7 +20,7 @@ use Filament\Tables\Table;
  * CANON 2026: tenant-scoped (global scope на модели Wallet),
  * все реальные поля модели, NO facades, NO $this в static.
  */
-final class WalletResource extends Resource
+final class WalletResource extends BaseOptimizedResource
 {
     protected static ?string $model = Wallet::class;
 
@@ -153,9 +156,17 @@ final class WalletResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Wallet\Filament\Resources\WalletResource\Pages\ListWallets::route('/'),
-            'create' => \App\Domains\Wallet\Filament\Resources\WalletResource\Pages\CreateWallet::route('/create'),
-            'edit' => \App\Domains\Wallet\Filament\Resources\WalletResource\Pages\EditWallet::route('/{record}/edit'),
+            'index' => ListWallets::route('/'),
+            'create' => CreateWallet::route('/create'),
+            'edit' => EditWallet::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Wallet
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
+
+use LoggerInterface;
 
 use App\Filament\Tenant\Resources\FlowersResource;
 use Filament\Actions\DeleteAction;
@@ -15,8 +19,6 @@ use Psr\Log\LoggerInterface;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class EditFlowers extends EditRecord
 {
@@ -37,14 +39,15 @@ final class EditFlowers extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['correlation_id'] = (string) Str::uuid();
+
         return $data;
     }
 
     protected function afterSave(): void
     {
         $record = $this->record;
-        $logger = app(LoggerInterface::class);
-        $logger->info('Flower B2B storefront updated', [
+        $logger = $this->loggerInterface /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
+        $logger->$this->logger->info('Flower B2B storefront updated', [
             'storefront_id'  => $record->id,
             'company_name'   => $record->company_name,
             'is_active'      => $record->is_active,

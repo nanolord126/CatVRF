@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Api\ShortTermRentals;
 
@@ -13,24 +15,10 @@ final class ShortTermRentalsApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected User $propertyOwner;
+
     protected Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create(['is_business' => false]);
-        $this->propertyOwner = User::factory()->create(['is_business' => true]);
-        
-        $this->property = Property::factory()
-            ->for($this->propertyOwner, 'owner')
-            ->create([
-                'price_per_night' => 10000,  // 100 руб (в копейках)
-                'is_active' => true,
-                'is_b2c_available' => true,
-            ]);
-    }
 
     /**
      * Тест: пользователь может получить список квартир с географическим фильтром
@@ -284,5 +272,21 @@ final class ShortTermRentalsApiTest extends TestCase
         // Проверить в БД
         $booking = PropertyBooking::first();
         $this->assertNotNull($booking->correlation_id);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create(['is_business' => false]);
+        $this->propertyOwner = User::factory()->create(['is_business' => true]);
+
+        $this->property = Property::factory()
+            ->for($this->propertyOwner, 'owner')
+            ->create([
+                'price_per_night' => 10000,  // 100 руб (в копейках)
+                'is_active' => true,
+                'is_b2c_available' => true,
+            ]);
     }
 }

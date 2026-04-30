@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Domains\Toys;
 
@@ -26,14 +28,8 @@ class ToysIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private ToyDomainService $toyService;
-    private AIToyConstructor $aiConstructor;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->toyService = app(ToyDomainService::class);
-        $this->aiConstructor = app(AIToyConstructor::class);
-    }
+    private AIToyConstructor $aiConstructor;
 
     /**
      * Test B2B Pricing Logic for Institutional Bulk Orders.
@@ -44,7 +40,7 @@ class ToysIntegrationTest extends TestCase
         $user = User::factory()->create();
         $store = ToyStore::create(['name' => 'Kindergarten Supply Co', 'tenant_id' => 1, 'uuid' => Str::uuid()]);
         $cat = ToyCategory::create(['name' => 'Educational blocks', 'tenant_id' => 1, 'uuid' => Str::uuid()]);
-        
+
         $toy = Toy::create([
             'store_id' => $store->id,
             'category_id' => $cat->id,
@@ -55,13 +51,13 @@ class ToysIntegrationTest extends TestCase
             'stock_quantity' => 100,
             'is_active' => true,
             'tenant_id' => 1,
-            'uuid' => Str::uuid()
+            'uuid' => Str::uuid(),
         ]);
 
         // Scenario 1: Bulk order (10+ units) -> Expect B2B price
         $dtoBulk = new VolumeToyOrderDto($user->id, $toy->id, 20, true, Str::uuid());
         $orderB2B = $this->toyService->createB2BOrder($dtoBulk);
-        
+
         $this->assertEquals(70000 * 20, $orderB2B->total_amount);
         $this->assertTrue($orderB2B->is_b2b);
         $this->assertEquals(80, $toy->fresh()->stock_quantity);
@@ -69,7 +65,7 @@ class ToysIntegrationTest extends TestCase
         // Scenario 2: Small order (< 10 units) -> Expect B2C price regardless of flag
         $dtoSmall = new VolumeToyOrderDto($user->id, $toy->id, 5, true, Str::uuid());
         $orderB2C = $this->toyService->createB2BOrder($dtoSmall);
-        
+
         $this->assertEquals(100000 * 5, $orderB2C->total_amount);
         $this->assertFalse($orderB2C->is_b2b);
     }
@@ -96,7 +92,7 @@ class ToysIntegrationTest extends TestCase
             'is_active' => true,
             'tags' => ['space', 'astronomy', 'stars'],
             'tenant_id' => 1,
-            'uuid' => Str::uuid()
+            'uuid' => Str::uuid(),
         ]);
 
         // AI Request
@@ -124,19 +120,26 @@ class ToysIntegrationTest extends TestCase
         // This test simulates internal locking behavior
         $toy = Toy::factory([
             'stock_quantity' => 1,
-            'title' => 'Limited Edition Dragon'
+            'title' => 'Limited Edition Dragon',
         ])->create();
-        
+
         $user = User::factory()->create();
         $dto = new VolumeToyOrderDto($user->id, $toy->id, 1, false, Str::uuid());
 
         // Process first order
         $this->toyService->createB2BOrder($dto);
-        
+
         // Try second order for same toy (now 0 stock)
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Insufficient stock for order');
-        
+
         $this->toyService->createB2BOrder($dto);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->toyService = app(ToyDomainService::class);
+        $this->aiConstructor = app(AIToyConstructor::class);
     }
 }

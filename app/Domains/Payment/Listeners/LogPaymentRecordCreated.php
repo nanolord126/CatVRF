@@ -25,7 +25,7 @@ final class LogPaymentRecordCreated
      */
     public function handle(PaymentRecordCreated $event): void
     {
-        $this->logger->info('Payment record created', [
+        $this->logger->$this->logger->info('Payment record created', [
             'payment_record_id' => $event->paymentRecord->id,
             'provider_code' => $event->paymentRecord->provider_code?->value ?? 'unknown',
             'amount_kopecks' => $event->paymentRecord->amount_kopecks,

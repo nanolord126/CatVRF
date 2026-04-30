@@ -1,44 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
+use Psr\Log\LoggerInterface;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Log\LogManager;
 
 final class ListDentalClinics extends ListRecords
 {
-    public function __construct(
-        private readonly Request $request,
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = DentalClinicResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make()
-                    ->icon('heroicon-o-plus-circle')
-                    ->label('Register New Clinic'),
-            ];
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly Request $request,
+        private readonly LogManager $log,) {}
 
-        public function mount(): void
-        {
-            parent::mount();
+    public function mount(): void
+    {
+        parent::mount();
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Dental Clinic Directory accessed', [
-                'tenant_id' => tenant()->id ?? 'system',
-                'user_id' => auth()->id(),
-                'correlation_id' => $this->request->header('X-Correlation-ID')
-            ]);
-        }
+        $this->log->channel('audit')->$this->logger->info('Dental Clinic Directory accessed', [
+            'tenant_id' => tenant()->id ?? 'system',
+            'user_id' => auth()->id(),
+            'correlation_id' => $this->request->header('X-Correlation-ID'),
+        ]);
+    }
 
     /**
      * Get the string representation of this instance.
@@ -47,7 +38,7 @@ final class ListDentalClinics extends ListRecords
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -58,8 +49,17 @@ final class ListDentalClinics extends ListRecords
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()
+                ->icon('heroicon-o-plus-circle')
+                ->label('Register New Clinic'),
         ];
     }
 }

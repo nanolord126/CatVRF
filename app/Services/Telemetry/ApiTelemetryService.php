@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Telemetry;
 
-use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
 
 final class ApiTelemetryService
 {
-    private array $metrics = [];
+    private readonly array $metrics = [];
 
     public function __construct(
         private readonly LoggerInterface $logger
@@ -16,11 +17,11 @@ final class ApiTelemetryService
     /**
      * Record an API call with telemetry data.
      *
-     * @param string $service Service name (e.g., 'openai', 'payment_gateway')
-     * @param string $operation Operation name (e.g., 'chat', 'init_payment')
-     * @param bool $success Whether the call was successful
-     * @param int $responseTimeMs Response time in milliseconds
-     * @param array $additionalData Additional context data
+     * @param  string  $service  Service name (e.g., 'openai', 'payment_gateway')
+     * @param  string  $operation  Operation name (e.g., 'chat', 'init_payment')
+     * @param  bool  $success  Whether the call was successful
+     * @param  int  $responseTimeMs  Response time in milliseconds
+     * @param  array  $additionalData  Additional context data
      */
     public function recordApiCall(
         string $service,
@@ -45,7 +46,7 @@ final class ApiTelemetryService
 
         // Log individual call for debugging
         $logLevel = $success ? 'info' : 'warning';
-        $this->logger->$logLevel("API call telemetry: {$service}::{$operation}", array_filter($metric, fn($v) => $v !== null));
+        $this->logger->$logLevel("API call telemetry: {$service}::{$operation}", array_filter($metric, fn ($v) => $v !== null));
 
         // Flush metrics if buffer is full
         if (count($this->metrics) >= 100) {
@@ -92,7 +93,7 @@ final class ApiTelemetryService
         $aggregated = $this->aggregateMetrics();
 
         // Log aggregated metrics
-        $this->logger->info('API telemetry metrics flushed', [
+        $this->logger->$this->logger->info('API telemetry metrics flushed', [
             'total_calls' => count($this->metrics),
             'aggregated' => $aggregated,
         ]);
@@ -110,8 +111,8 @@ final class ApiTelemetryService
 
         foreach ($this->metrics as $metric) {
             $key = "{$metric['service']}::{$metric['operation']}";
-            
-            if (!isset($aggregated[$key])) {
+
+            if (! isset($aggregated[$key])) {
                 $aggregated[$key] = [
                     'service' => $metric['service'],
                     'operation' => $metric['operation'],
@@ -157,11 +158,12 @@ final class ApiTelemetryService
     /**
      * Execute a callable with automatic telemetry recording.
      *
-     * @param string $service Service name
-     * @param string $operation Operation name
-     * @param callable $callback The operation to execute
-     * @param array $additionalData Additional context data
+     * @param  string  $service  Service name
+     * @param  string  $operation  Operation name
+     * @param  callable  $callback  The operation to execute
+     * @param  array  $additionalData  Additional context data
      * @return mixed The result of the callback
+     *
      * @throws \Throwable If the callback throws an exception
      */
     public function withTelemetry(
@@ -171,17 +173,17 @@ final class ApiTelemetryService
         array $additionalData = []
     ): mixed {
         $startTime = microtime(true);
-        
+
         try {
             $result = $callback();
             $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
-            
+
             $this->recordSuccess($service, $operation, $responseTimeMs, $additionalData);
-            
+
             return $result;
         } catch (\Throwable $e) {
             $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
-            
+
             $this->recordFailure(
                 $service,
                 $operation,
@@ -189,7 +191,7 @@ final class ApiTelemetryService
                 $e->getMessage(),
                 $additionalData
             );
-            
+
             throw $e;
         }
     }

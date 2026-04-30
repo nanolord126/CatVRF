@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Requests;
 
+use Illuminate\Filesystem\Filesystem;
+
+use Illuminate\Http\JsonResponse;
+
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -11,6 +15,10 @@ use Illuminate\Validation\Rules\File;
 
 final class MatchMastersByPhotoRequest extends FormRequest
 {
+    public function __construct(
+        private readonly Filesystem $fileSystem,
+    ) {}
+
     public function authorize(): bool
     {
         return true;
@@ -22,7 +30,7 @@ final class MatchMastersByPhotoRequest extends FormRequest
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'photo' => [
                 'required',
-                File::image()
+                $this->fileSystem->image()
                     ->max(10240)
                     ->mimes('jpg,jpeg,png,webp'),
             ],
@@ -61,7 +69,7 @@ final class MatchMastersByPhotoRequest extends FormRequest
     protected function failedValidation(Validator $validator): void
     {
         throw new HttpResponseException(
-            response()->json([
+            new JsonResponse([
                 'success' => false,
                 'errors' => $validator->errors(),
                 'correlation_id' => $this->header('X-Correlation-ID'),

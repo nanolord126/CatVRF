@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Finances\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Finances\DTOs\CalculateCommissionDto;
 
 /**
  * Unit tests for CalculateCommissionDto.
@@ -14,7 +17,7 @@ final class CalculateCommissionDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Finances\DTOs\CalculateCommissionDto::class
+            CalculateCommissionDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CalculateCommissionDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CalculateCommissionDto must be readonly');
@@ -23,11 +26,11 @@ final class CalculateCommissionDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Finances\DTOs\CalculateCommissionDto::class
+            CalculateCommissionDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('amountKopecks', $params, 'Constructor must have amountKopecks');
         $this->assertContains('isB2B', $params, 'Constructor must have isB2B');
         $this->assertContains('b2bTier', $params, 'Constructor must have b2bTier');
@@ -35,7 +38,7 @@ final class CalculateCommissionDtoTest extends TestCase
         $this->assertContains('correlationId', $params, 'Constructor must have correlationId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -45,6 +48,6 @@ final class CalculateCommissionDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Finances\DTOs\CalculateCommissionDto::class;
+        return CalculateCommissionDto::class;
     }
 }

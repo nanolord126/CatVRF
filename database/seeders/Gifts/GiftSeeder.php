@@ -34,7 +34,7 @@ final class GiftSeeder extends Seeder
                     'name' => $gift['name'],
                 ],
                 [
-                    'sku' => strtoupper('GFT-' . Str::random(8)),
+                    'sku' => strtoupper('GFT-'.Str::random(8)),
                     'category' => $gift['category'],
                     'occasion' => $gift['occasion'],
                     'description' => 'Идеальный подарок для любого случая',

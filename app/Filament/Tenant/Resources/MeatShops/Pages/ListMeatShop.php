@@ -1,24 +1,34 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\MeatShops\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\MeatShops\MeatShopsResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\View\View;
 
 final class ListMeatShop extends ListRecords
 {
+    protected static string $resource = MeatShopsResource::class;
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
 
-    protected static string $resource = MeatShopsResource::class;
+    public function render(): View
+    {
+        $this->logger->$this->logger->info('ListMeatShop page rendered', [
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+        ]);
+
+        return parent::render();
+    }
 
     protected function getHeaderActions(): array
     {
@@ -35,7 +45,7 @@ final class ListMeatShop extends ListRecords
         $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->info('MeatShops ListRecords accessed', [
+        $this->logger->$this->logger->info('MeatShops ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -55,14 +65,5 @@ final class ListMeatShop extends ListRecords
                 ->label('Удалить выбранные')
                 ->icon('heroicon-m-trash'),
         ];
-    }
-
-    public function render(): \Illuminate\Contracts\View\View {
-        $this->logger->info('ListMeatShop page rendered', [
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-        ]);
-
-        return parent::render();
     }
 }

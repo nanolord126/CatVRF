@@ -1,16 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Models\VehicleInspection;
+use Illuminate\Database\Eloquent\Builder;
 
-final class VehicleInspectionResource extends Resource
+final class VehicleInspectionResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Domains\Auto\Models\VehicleInspection::class;
+    protected static ?string $model = VehicleInspection::class;
 
     protected static ?string $navigationLabel = 'Техосмотр';
 
@@ -117,8 +121,16 @@ final class VehicleInspectionResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

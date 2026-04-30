@@ -1,323 +1,289 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Performance;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Log\LogManager;
-
-
+use Carbon\CarbonImmutable;
 
 final readonly class CDNConfigurationService
 {
-    public function __construct(
+    /**
+     * Поддерживаемые провайдеры CDN
+     */
+    private const PROVIDERS = [
+        'cloudflare' => 'Cloudflare',
+        'bunny' => 'BunnyCDN',
+        'aws_cloudfront' => 'AWS CloudFront',
+        'azure_cdn' => 'Azure CDN',
+        'akamai' => 'Akamai',
+    ];
+
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    ) {}
-
+        private readonly LogManager $logger,) {}
 
     /**
-         * Поддерживаемые провайдеры CDN
-         */
-        private const PROVIDERS = [
-            'cloudflare' => 'Cloudflare',
-            'bunny' => 'BunnyCDN',
-            'aws_cloudfront' => 'AWS CloudFront',
-            'azure_cdn' => 'Azure CDN',
-            'akamai' => 'Akamai',
+     * Получает URL ресурса с CDN
+     */
+    public static function getUrl(string $path, string $provider = 'cloudflare'): string
+    {
+        $providers = [
+            'cloudflare' => fn ($path) => 'https://'.$this->config->get('cdn.cloudflare_domain').'/'.ltrim($path, '/'),
+            'bunny' => fn ($path) => 'https://'.$this->config->get('cdn.bunny_domain').'/'.ltrim($path, '/'),
+            'aws_cloudfront' => fn ($path) => 'https://'.$this->config->get('cdn.cloudfront_domain').'/'.ltrim($path, '/'),
+            'azure_cdn' => fn ($path) => 'https://'.$this->config->get('cdn.azure_domain').'.azureedge.net/'.ltrim($path, '/'),
         ];
 
-        /**
-         * Получает URL ресурса с CDN
-         *
-         * @param string $path
-         * @param string $provider
-         * @return string
-         */
-        public static function getUrl(string $path, string $provider = 'cloudflare'): string
-        {
-            $providers = [
-                'cloudflare' => fn($path) => 'https://' . $this->config->get('cdn.cloudflare_domain') . '/' . ltrim($path, '/'),
-                'bunny' => fn($path) => 'https://' . $this->config->get('cdn.bunny_domain') . '/' . ltrim($path, '/'),
-                'aws_cloudfront' => fn($path) => 'https://' . $this->config->get('cdn.cloudfront_domain') . '/' . ltrim($path, '/'),
-                'azure_cdn' => fn($path) => 'https://' . $this->config->get('cdn.azure_domain') . '.azureedge.net/' . ltrim($path, '/'),
-            ];
+        return isset($providers[$provider])
+            ? $providers[$provider]($path)
+            : asset($path);
+    }
 
-            return isset($providers[$provider])
-                ? $providers[$provider]($path)
-                : asset($path);
+    /**
+     * Получает конфигурацию кэширования для типа контента
+     *
+     * @return array {ttl, cache_control, gzip}
+     */
+    public static function getCacheConfig(string $contentType): array
+    {
+        $configs = [
+            'html' => ['ttl' => 3600, 'cache_control' => 'public, max-age=3600', 'gzip' => true],
+            'css' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400, immutable', 'gzip' => true],
+            'js' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400, immutable', 'gzip' => true],
+            'json' => ['ttl' => 300, 'cache_control' => 'public, max-age=300', 'gzip' => true],
+            'image' => ['ttl' => 31536000, 'cache_control' => 'public, max-age=31536000, immutable', 'gzip' => false],
+            'font' => ['ttl' => 31536000, 'cache_control' => 'public, max-age=31536000, immutable', 'gzip' => false],
+            'video' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400', 'gzip' => false],
+        ];
+
+        return $configs[$contentType] ?? $configs['html'];
+    }
+
+    /**
+     * Получает рекомендованные правила кэширования
+     */
+    public static function getRecommendedRules(): array
+    {
+        return [
+            [
+                'path_pattern' => '*.html',
+                'ttl' => 3600,
+                'cache_control' => 'public, max-age=3600',
+                'description' => 'HTML pages - short cache',
+            ],
+            [
+                'path_pattern' => '*.css',
+                'ttl' => 86400,
+                'cache_control' => 'public, max-age=86400, immutable',
+                'description' => 'Stylesheets - long cache',
+            ],
+            [
+                'path_pattern' => '*.js',
+                'ttl' => 86400,
+                'cache_control' => 'public, max-age=86400, immutable',
+                'description' => 'JavaScript - long cache',
+            ],
+            [
+                'path_pattern' => '/api/*',
+                'ttl' => 300,
+                'cache_control' => 'public, max-age=300',
+                'description' => 'API responses - medium cache',
+            ],
+            [
+                'path_pattern' => '/images/*',
+                'ttl' => 31536000,
+                'cache_control' => 'public, max-age=31536000, immutable',
+                'description' => 'Images - very long cache',
+            ],
+            [
+                'path_pattern' => '/fonts/*',
+                'ttl' => 31536000,
+                'cache_control' => 'public, max-age=31536000, immutable',
+                'description' => 'Fonts - very long cache',
+            ],
+        ];
+    }
+
+    /**
+     * Инвалидирует кэш на CDN
+     */
+    public static function purgeCache(array|string $paths, string $provider = 'cloudflare'): array
+    {
+        $paths = is_string($paths) ? [$paths] : $paths;
+
+        $result = match ($provider) {
+            'bunny' => self::purgeBunnyCache($paths),
+            'aws_cloudfront' => self::purgeCloudFrontCache($paths),
+            default => ['status' => 'error', 'message' => 'Unknown provider'],
+        };
+
+        $this->logger->channel('performance')->$this->logger->info('CDN cache purged', [
+            'provider' => $provider,
+            'paths_count' => count($paths),
+            'result' => $result,
+            'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Очищает весь кэш
+     */
+    public static function purgeAllCache(string $provider = 'cloudflare'): array
+    {
+        $result = match ($provider) {
+            'bunny' => ['status' => 'success', 'message' => 'All cache purged'],
+            default => ['status' => 'error', 'message' => 'Unknown provider'],
+        };
+
+        $this->logger->channel('performance')->warning('All CDN cache purged', [
+            'provider' => $provider,
+            'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Получает статистику CDN
+     */
+    public static function getStats(string $provider = 'cloudflare'): array
+    {
+        // Плейсхолдер для интеграции с API провайдера
+        return [
+            'provider' => $provider,
+            'bandwidth_used_gb' => 0,
+            'requests_total' => 0,
+            'cache_hit_ratio' => 0,
+            'average_response_time_ms' => 0,
+            'top_countries' => [],
+        ];
+    }
+
+    /**
+     * Получает оптимальные настройки для типа контента
+     */
+    public static function getOptimalSettings(string $fileExtension): array
+    {
+        $extension = strtolower($fileExtension);
+
+        $settings = [
+            'html' => ['compress' => true, 'cache_ttl' => 3600, 'min_file_size' => 0],
+            'css' => ['compress' => true, 'cache_ttl' => 86400, 'min_file_size' => 0],
+            'js' => ['compress' => true, 'cache_ttl' => 86400, 'min_file_size' => 0],
+            'json' => ['compress' => true, 'cache_ttl' => 300, 'min_file_size' => 1024],
+            'svg' => ['compress' => true, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'png' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'jpg' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'webp' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'woff' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'woff2' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
+            'mp4' => ['compress' => false, 'cache_ttl' => 86400, 'min_file_size' => 0],
+            'webm' => ['compress' => false, 'cache_ttl' => 86400, 'min_file_size' => 0],
+        ];
+
+        return $settings[$extension] ?? $settings['html'];
+    }
+
+    /**
+     * Генерирует отчёт о конфигурации CDN
+     */
+    public static function generateReport(): string
+    {
+        $report = "\n╔════════════════════════════════════════════════════════════╗\n";
+        $report .= "║             CDN CONFIGURATION REPORT                       ║\n";
+        $report .= '║             '.CarbonImmutable::now()->toDateTimeString()."                    ║\n";
+        $report .= "╚════════════════════════════════════════════════════════════╝\n\n";
+
+        $report .= "  RECOMMENDED CACHING RULES:\n\n";
+
+        foreach (self::getRecommendedRules() as $rule) {
+            $report .= sprintf("    [%s]\n", $rule['path_pattern']);
+            $report .= sprintf("      TTL: %d seconds (%s)\n", $rule['ttl'], self::secondsToHuman($rule['ttl']));
+            $report .= sprintf("      Cache-Control: %s\n", $rule['cache_control']);
+            $report .= sprintf("      Description: %s\n\n", $rule['description']);
         }
 
-        /**
-         * Получает конфигурацию кэширования для типа контента
-         *
-         * @param string $contentType
-         * @return array {ttl, cache_control, gzip}
-         */
-        public static function getCacheConfig(string $contentType): array
-        {
-            $configs = [
-                'html' => ['ttl' => 3600, 'cache_control' => 'public, max-age=3600', 'gzip' => true],
-                'css' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400, immutable', 'gzip' => true],
-                'js' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400, immutable', 'gzip' => true],
-                'json' => ['ttl' => 300, 'cache_control' => 'public, max-age=300', 'gzip' => true],
-                'image' => ['ttl' => 31536000, 'cache_control' => 'public, max-age=31536000, immutable', 'gzip' => false],
-                'font' => ['ttl' => 31536000, 'cache_control' => 'public, max-age=31536000, immutable', 'gzip' => false],
-                'video' => ['ttl' => 86400, 'cache_control' => 'public, max-age=86400', 'gzip' => false],
-            ];
+        $report .= "  SUPPORTED PROVIDERS:\n\n";
 
-            return $configs[$contentType] ?? $configs['html'];
+        foreach (self::PROVIDERS as $key => $name) {
+            $report .= sprintf("    - %s (%s)\n", $name, $key);
         }
 
-        /**
-         * Получает рекомендованные правила кэширования
-         *
-         * @return array
-         */
-        public static function getRecommendedRules(): array
-        {
-            return [
-                [
-                    'path_pattern' => '*.html',
-                    'ttl' => 3600,
-                    'cache_control' => 'public, max-age=3600',
-                    'description' => 'HTML pages - short cache',
-                ],
-                [
-                    'path_pattern' => '*.css',
-                    'ttl' => 86400,
-                    'cache_control' => 'public, max-age=86400, immutable',
-                    'description' => 'Stylesheets - long cache',
-                ],
-                [
-                    'path_pattern' => '*.js',
-                    'ttl' => 86400,
-                    'cache_control' => 'public, max-age=86400, immutable',
-                    'description' => 'JavaScript - long cache',
-                ],
-                [
-                    'path_pattern' => '/api/*',
-                    'ttl' => 300,
-                    'cache_control' => 'public, max-age=300',
-                    'description' => 'API responses - medium cache',
-                ],
-                [
-                    'path_pattern' => '/images/*',
-                    'ttl' => 31536000,
-                    'cache_control' => 'public, max-age=31536000, immutable',
-                    'description' => 'Images - very long cache',
-                ],
-                [
-                    'path_pattern' => '/fonts/*',
-                    'ttl' => 31536000,
-                    'cache_control' => 'public, max-age=31536000, immutable',
-                    'description' => 'Fonts - very long cache',
-                ],
-            ];
-        }
+        $report .= "\n";
 
-        /**
-         * Инвалидирует кэш на CDN
-         *
-         * @param array|string $paths
-         * @param string $provider
-         * @return array
-         */
-        public static function purgeCache(array|string $paths, string $provider = 'cloudflare'): array
-        {
-            $paths = is_string($paths) ? [$paths] : $paths;
+        return $report;
+    }
 
-            $result = match ($provider) {
-                'bunny' => self::purgeBunnyCache($paths),
-                'aws_cloudfront' => self::purgeCloudFrontCache($paths),
-                default => ['status' => 'error', 'message' => 'Unknown provider'],
-            };
+    /**
+     * Очищает кэш Cloudflare
+     */
+    private static function purgeCloudflareCache(array $paths): array
+    {
+        // Интеграция с Cloudflare API
+        return [
+            'status' => 'success',
+            'provider' => 'cloudflare',
+            'paths_purged' => count($paths),
+        ];
+    }
 
-            $this->logger->channel('performance')->info('CDN cache purged', [
-                'provider' => $provider,
-                'paths_count' => count($paths),
-                'result' => $result,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+    /**
+     * Очищает кэш BunnyCDN
+     */
+    private static function purgeBunnyCache(array $paths): array
+    {
+        // Интеграция с BunnyCDN API
+        return [
+            'status' => 'success',
+            'provider' => 'bunny',
+            'paths_purged' => count($paths),
+        ];
+    }
 
-            return $result;
-        }
+    /**
+     * Очищает кэш CloudFront
+     */
+    private static function purgeCloudFrontCache(array $paths): array
+    {
+        // Интеграция с AWS CloudFront API
+        return [
+            'status' => 'success',
+            'provider' => 'aws_cloudfront',
+            'paths_purged' => count($paths),
+        ];
+    }
 
-        /**
-         * Очищает весь кэш
-         *
-         * @param string $provider
-         * @return array
-         */
-        public static function purgeAllCache(string $provider = 'cloudflare'): array
-        {
-            $result = match ($provider) {
-                'bunny' => ['status' => 'success', 'message' => 'All cache purged'],
-                default => ['status' => 'error', 'message' => 'Unknown provider'],
-            };
+    /**
+     * Преобразует секунды в читаемый формат
+     */
+    private static function secondsToHuman(int $seconds): string
+    {
+        $intervals = [
+            'year' => 31536000,
+            'month' => 2592000,
+            'week' => 604800,
+            'day' => 86400,
+            'hour' => 3600,
+            'minute' => 60,
+        ];
 
-            $this->logger->channel('performance')->warning('All CDN cache purged', [
-                'provider' => $provider,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+        foreach ($intervals as $name => $value) {
+            if ($seconds >= $value) {
+                $time = round($seconds / $value);
 
-            return $result;
-        }
-
-        /**
-         * Получает статистику CDN
-         *
-         * @param string $provider
-         * @return array
-         */
-        public static function getStats(string $provider = 'cloudflare'): array
-        {
-            // Плейсхолдер для интеграции с API провайдера
-            return [
-                'provider' => $provider,
-                'bandwidth_used_gb' => 0,
-                'requests_total' => 0,
-                'cache_hit_ratio' => 0,
-                'average_response_time_ms' => 0,
-                'top_countries' => [],
-            ];
-        }
-
-        /**
-         * Получает оптимальные настройки для типа контента
-         *
-         * @param string $fileExtension
-         * @return array
-         */
-        public static function getOptimalSettings(string $fileExtension): array
-        {
-            $extension = strtolower($fileExtension);
-
-            $settings = [
-                'html' => ['compress' => true, 'cache_ttl' => 3600, 'min_file_size' => 0],
-                'css' => ['compress' => true, 'cache_ttl' => 86400, 'min_file_size' => 0],
-                'js' => ['compress' => true, 'cache_ttl' => 86400, 'min_file_size' => 0],
-                'json' => ['compress' => true, 'cache_ttl' => 300, 'min_file_size' => 1024],
-                'svg' => ['compress' => true, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'png' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'jpg' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'webp' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'woff' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'woff2' => ['compress' => false, 'cache_ttl' => 31536000, 'min_file_size' => 0],
-                'mp4' => ['compress' => false, 'cache_ttl' => 86400, 'min_file_size' => 0],
-                'webm' => ['compress' => false, 'cache_ttl' => 86400, 'min_file_size' => 0],
-            ];
-
-            return $settings[$extension] ?? $settings['html'];
-        }
-
-        /**
-         * Генерирует отчёт о конфигурации CDN
-         *
-         * @return string
-         */
-        public static function generateReport(): string
-        {
-            $report = "\n╔════════════════════════════════════════════════════════════╗\n";
-            $report .= "║             CDN CONFIGURATION REPORT                       ║\n";
-            $report .= "║             " . now()->toDateTimeString() . "                    ║\n";
-            $report .= "╚════════════════════════════════════════════════════════════╝\n\n";
-
-            $report .= "  RECOMMENDED CACHING RULES:\n\n";
-
-            foreach (self::getRecommendedRules() as $rule) {
-                $report .= sprintf("    [%s]\n", $rule['path_pattern']);
-                $report .= sprintf("      TTL: %d seconds (%s)\n", $rule['ttl'], self::secondsToHuman($rule['ttl']));
-                $report .= sprintf("      Cache-Control: %s\n", $rule['cache_control']);
-                $report .= sprintf("      Description: %s\n\n", $rule['description']);
+                return $time.' '.$name.($time > 1 ? 's' : '');
             }
-
-            $report .= "  SUPPORTED PROVIDERS:\n\n";
-
-            foreach (self::PROVIDERS as $key => $name) {
-                $report .= sprintf("    - %s (%s)\n", $name, $key);
-            }
-
-            $report .= "\n";
-
-            return $report;
         }
 
-        /**
-         * Очищает кэш Cloudflare
-         *
-         * @param array $paths
-         * @return array
-         */
-        private static function purgeCloudflareCache(array $paths): array
-        {
-            // Интеграция с Cloudflare API
-            return [
-                'status' => 'success',
-                'provider' => 'cloudflare',
-                'paths_purged' => count($paths),
-            ];
-        }
-
-        /**
-         * Очищает кэш BunnyCDN
-         *
-         * @param array $paths
-         * @return array
-         */
-        private static function purgeBunnyCache(array $paths): array
-        {
-            // Интеграция с BunnyCDN API
-            return [
-                'status' => 'success',
-                'provider' => 'bunny',
-                'paths_purged' => count($paths),
-            ];
-        }
-
-        /**
-         * Очищает кэш CloudFront
-         *
-         * @param array $paths
-         * @return array
-         */
-        private static function purgeCloudFrontCache(array $paths): array
-        {
-            // Интеграция с AWS CloudFront API
-            return [
-                'status' => 'success',
-                'provider' => 'aws_cloudfront',
-                'paths_purged' => count($paths),
-            ];
-        }
-
-        /**
-         * Преобразует секунды в читаемый формат
-         *
-         * @param int $seconds
-         * @return string
-         */
-        private static function secondsToHuman(int $seconds): string
-        {
-            $intervals = [
-                'year' => 31536000,
-                'month' => 2592000,
-                'week' => 604800,
-                'day' => 86400,
-                'hour' => 3600,
-                'minute' => 60,
-            ];
-
-            foreach ($intervals as $name => $value) {
-                if ($seconds >= $value) {
-                    $time = round($seconds / $value);
-                    return $time . ' ' . $name . ($time > 1 ? 's' : '');
-                }
-            }
-
-            return $seconds . ' seconds';
-        }
+        return $seconds.' seconds';
+    }
 }

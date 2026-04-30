@@ -1,0 +1,241 @@
+# CatVRF Fashion LoRA Training Configuration
+# Optimized for Flux.1-dev base model with fashion-specific fine-tuning
+
+[general]
+# Base model configuration
+base_model = "flux.1-dev"
+alternative_models = ["sdxl-1.0", "pony-diffusion-v6"]
+output_name = "catvrf_fashion_v1"
+output_dir = "./output/loras/catvrf_fashion"
+
+# Training parameters
+rank = 32
+alpha = 16
+batch_size = 2
+gradient_accumulation_steps = 4
+learning_rate = 1e-4
+lr_scheduler = "cosine_with_restarts"
+max_train_steps = 5500
+save_every_n_steps = 500
+save_precision = "fp16"
+mixed_precision = "bf16"
+seed = 42
+
+# Resolution
+resolution = 1024
+enable_bucket = true
+min_bucket_reso = 512
+max_bucket_reso = 1536
+
+[dataset]
+# Dataset configuration
+dataset_dir = "./datasets/catvrf_fashion"
+metadata_file = "./datasets/catvrf_fashion/metadata.jsonl"
+color_aug = false
+flip_aug = false
+random_crop = false
+shuffle_caption = true
+caption_dropout_rate = 0.05
+keep_tokens = 2
+
+# Dataset statistics
+num_train_images = 1200
+min_images = 800
+max_images = 1500
+target_images = 1200
+
+[optimizer]
+# Optimizer configuration
+optimizer_type = "AdamW8bit"
+lr_warmup_steps = 500
+lr_scheduler_num_cycles = 1
+lr_scheduler_power = 1.0
+
+# Gradient settings
+max_grad_norm = 1.0
+clip_grad_norm = true
+
+[network]
+# Network configuration
+network_module = "networks.lora"
+network_args = [
+    "conv_dim=32",
+    "conv_alpha=16",
+    "dropout=0.1",
+]
+network_train_unet_only = false
+network_train_text_encoder_only = false
+
+# LoRA specific
+lora_network_weights = ""
+scale_weight_norms = false
+
+[saving]
+# Saving configuration
+save_model_as = "safetensors"
+save_state = false
+save_last_n_steps = 500
+save_state_every_n_steps = 1000
+
+# Output format
+output_name = "catvrf_fashion_v1"
+output_dir = "./output/loras/catvrf_fashion"
+prior_loss_weight = 1.0
+
+[sample]
+# Sampling configuration during training
+sample_every_n_steps = 500
+sample_sampler = "DPM++ 2M Karras"
+sample_steps = 30
+sample_cfg_scale = 7.0
+sample_prompt = "catvrf fashion product, studio product shot, detailed clothing texture, white background, 8k"
+sample_negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, deformed, ugly"
+
+[logging]
+# Logging configuration
+logging_dir = "./logs/catvrf_fashion"
+log_with = ["tensorboard", "wandb"]
+log_prefix = "catvrf_fashion"
+wandb_api_key = ""  # Set via environment variable
+wandb_project = "catvrf-fashion-lora"
+
+[advanced]
+# Advanced training settings
+xformers = true
+sdpa = true
+persistent_data_loader_workers = true
+cache_latents = true
+cache_latents_to_disk = true
+vae_batch_size = 1
+
+# Memory optimization
+gradient_checkpointing = true
+full_fp16 = false
+full_bf16 = true
+
+# Data loading
+max_data_loader_n_workers = 8
+pin_memory = true
+
+[trigger_words]
+# Trigger words for the trained LoRA
+trigger_words = [
+    "catvrf fashion product",
+    "studio product shot",
+    "detailed clothing texture",
+]
+
+# Optional: class-specific triggers
+class_triggers = {
+    "fabric" = ["detailed fabric weave", "realistic cloth texture"],
+    "leather" = ["genuine leather texture", "visible pores"],
+    "denim" = ["detailed denim weave", "jeans fabric"],
+    "knitwear" = ["cable knit", "ribbed texture"],
+    "silk" = ["smooth silk", "sheen fabric"],
+}
+
+[validation]
+# Validation settings
+validation_steps = 500
+validation_images = 4
+validation_prompt = "catvrf fashion product, detailed clothing texture, studio lighting, 8k"
+validation_negative_prompt = "lowres, bad quality, blurry, deformed"
+validation_resolution = 1024
+
+[hardware]
+# Hardware requirements
+min_gpu_memory = "24GB"
+recommended_gpu_memory = "40GB"
+gpu_count = 1
+multi_gpu = false
+
+# CPU requirements
+min_cpu_cores = 8
+recommended_cpu_cores = 16
+min_ram = "32GB"
+recommended_ram = "64GB"
+
+[monitoring]
+# Monitoring settings
+enable_early_stopping = true
+early_stopping_patience = 1000
+early_stopping_threshold = 0.001
+
+# Quality metrics
+monitor_loss = true
+monitor_lr = true
+monitor_grad_norm = true
+
+[post_processing]
+# Post-processing after training
+convert_to_safetensors = true
+optimize_for_inference = true
+quantize = false
+quantization_bits = 8
+
+# Metadata
+add_metadata = true
+metadata_author = "CatVRF AI Team"
+metadata_description = "Fashion LoRA trained on CatVRF dataset for realistic clothing texture generation"
+metadata_date = "2026-04-24"
+
+[environment]
+# Environment variables (to be set in .env)
+CUDA_VISIBLE_DEVICES = "0"
+HF_HOME = "./cache/huggingface"
+TRANSFORMERS_CACHE = "./cache/transformers"
+DIFFUSERS_CACHE = "./cache/diffusers"
+
+[regimen]
+# Training regimen phases
+[[regimen.phases]]
+name = "warmup"
+steps = 500
+learning_rate = "5e-5"
+description = "Warmup phase with lower learning rate"
+
+[[regimen.phases]]
+name = "main_training"
+steps = 4000
+learning_rate = "1e-4"
+description = "Main training phase with target learning rate"
+
+[[regimen.phases]]
+name = "fine_tuning"
+steps = 1000
+learning_rate = "5e-5"
+description = "Fine-tuning phase with reduced learning rate"
+
+[quality_control]
+# Quality control settings
+min_loss_threshold = 0.1
+max_loss_threshold = 2.0
+loss_spike_threshold = 5.0
+
+# Automatic quality checks
+check_for_nans = true
+check_for_infs = true
+check_gradient_explosion = true
+
+[deployment]
+# Deployment settings
+target_platform = "catvrf-production"
+api_endpoint = "https://api.catvrf.com/v1/texture-generation"
+model_registry = "catvrf-model-registry"
+
+# Versioning
+version = "1.0.0"
+model_versioning = "semantic"
+
+[documentation]
+# Documentation settings
+generate_training_report = true
+generate_model_card = true
+generate_inference_script = true
+generate_usage_examples = true
+
+# Report format
+report_format = "markdown"
+include_sample_images = true
+include_loss_curves = true
+include_lr_schedule = true

@@ -1,14 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class Appointment extends Model
 {
+    use TenantScoped;
+
     protected $table = 'beauty_appointments';
 
     protected $fillable = [
@@ -24,7 +28,7 @@ final class Appointment extends Model
         'ends_at',
         'total_price',
         'is_b2b',
-        'cancellation_reason'
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -34,20 +38,31 @@ final class Appointment extends Model
         'is_b2b' => 'boolean',
     ];
 
+    public function salon(): BelongsTo
+    {
+        return $this->belongsTo(Salon::class);
+    }
+
+    public function master(): BelongsTo
+    {
+        return $this->belongsTo(Master::class);
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(BeautyService::class);
+    }
+
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             $query->where('tenant_id', tenant()->id ?? 1);
         });
 
-        static::creating(function ($model) {
-            if (!$model->uuid) {
+        self::creating(function ($model) {
+            if (! $model->uuid) {
                 $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
-    public function salon(): BelongsTo { return $this->belongsTo(Salon::class); }
-    public function master(): BelongsTo { return $this->belongsTo(Master::class); }
-    public function service(): BelongsTo { return $this->belongsTo(BeautyService::class); }
 }

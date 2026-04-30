@@ -1,0 +1,529 @@
+{
+    "scan_date": "2026-04-20 02:59:04",
+    "files_scanned": 9482,
+    "errors": [
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeDiagnosticsPatternsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeDiagnosticsPatternsJob.php on line 80\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeDiagnosticsPatternsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeImportPatternsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeImportPatternsJob.php on line 99\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AnalyzeImportPatternsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AutoServiceReminderJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AutoServiceReminderJob.php on line 14\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\AutoServiceReminderJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CarWashReminderJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CarWashReminderJob.php on line 15\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CarWashReminderJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CleanupExpiredVideoCallsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CleanupExpiredVideoCallsJob.php on line 52\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\CleanupExpiredVideoCallsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\ProcessDiagnosticsImageJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\ProcessDiagnosticsImageJob.php on line 91\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\ProcessDiagnosticsImageJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateCustomsStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateCustomsStatusJob.php on line 112\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateCustomsStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateLogisticsTrackingJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateLogisticsTrackingJob.php on line 123\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\UpdateLogisticsTrackingJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\VerifyImportDocumentsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\VerifyImportDocumentsJob.php on line 136\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Jobs\\VerifyImportDocumentsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Services\\AIDiagnosticsService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$imageData\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Services\\AIDiagnosticsService.php on line 315\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Auto\\Services\\AIDiagnosticsService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Events\\AppointmentBookedApplicationEvent.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Beauty\\Application\\Events\\AppointmentBookedApplicationEvent::$queue cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Events\\AppointmentBookedApplicationEvent.php on line 16\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Events\\AppointmentBookedApplicationEvent.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Listeners\\AppointmentBookedListener.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Beauty\\Application\\Listeners\\AppointmentBookedListener::$queue cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Listeners\\AppointmentBookedListener.php on line 18\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Application\\Listeners\\AppointmentBookedListener.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotHeldNotificationListener.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Beauty\\Listeners\\SendSlotHeldNotificationListener::$delay cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotHeldNotificationListener.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotHeldNotificationListener.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotReleasedNotificationListener.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Beauty\\Listeners\\SendSlotReleasedNotificationListener::$delay cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotReleasedNotificationListener.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Beauty\\Listeners\\SendSlotReleasedNotificationListener.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Consulting\\Finances\\Services\\PaymentService.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Cannot declare class App\\Domains\\Consulting\\Finances\\Services\\PaymentService because the name is already in use in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Consulting\\Finances\\Services\\PaymentService.php on line 27\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Consulting\\Finances\\Services\\PaymentService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Jobs\\PayoutInstructorJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Jobs\\PayoutInstructorJob.php on line 100\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Jobs\\PayoutInstructorJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Services\\B2BVerticalTrainingService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  Unclosed '{' on line 187 does not match ')' in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Services\\B2BVerticalTrainingService.php on line 205\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Education\\Services\\B2BVerticalTrainingService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Enums\\ElectronicsType.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected integer \"3\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Enums\\ElectronicsType.php on line 157\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Enums\\ElectronicsType.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Jobs\\ElectronicsInventoryAuditJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Jobs\\ElectronicsInventoryAuditJob.php on line 15\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Electronics\\Jobs\\ElectronicsInventoryAuditJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateStoreEarningsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateStoreEarningsJob.php on line 17\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateStoreEarningsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateTrendScoreJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateTrendScoreJob.php on line 287\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\CalculateTrendScoreJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\Generate3DModelJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\Generate3DModelJob.php on line 190\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\Generate3DModelJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\ReleaseStockReservationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\ReleaseStockReservationJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\ReleaseStockReservationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\SyncWithCRMJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\SyncWithCRMJob.php on line 73\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\SyncWithCRMJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\UpdateOrderStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\UpdateOrderStatusJob.php on line 15\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Jobs\\UpdateOrderStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Services\\FashionABPriceTestingService.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Services\\FashionABPriceTestingService.php on line 312\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Fashion\\Services\\FashionABPriceTestingService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\CalculateFlowerShopEarningsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\CalculateFlowerShopEarningsJob.php on line 17\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\CalculateFlowerShopEarningsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\FreshnessControlJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\FreshnessControlJob.php on line 31\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\FreshnessControlJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\ProcessFlowerOrderStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\ProcessFlowerOrderStatusJob.php on line 16\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Flowers\\Jobs\\ProcessFlowerOrderStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Food\\Services\\FoodDeliveryService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \",\", expecting variable in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Food\\Services\\FoodDeliveryService.php on line 19\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Food\\Services\\FoodDeliveryService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\FraudML\\Listeners\\HandleSignificantFeatureDrift.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\FraudML\\Listeners\\HandleSignificantFeatureDrift::$tries cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\FraudML\\Listeners\\HandleSignificantFeatureDrift.php on line 26\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\FraudML\\Listeners\\HandleSignificantFeatureDrift.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\CalculateFreelancerEarningsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\CalculateFreelancerEarningsJob.php on line 17\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\CalculateFreelancerEarningsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\UpdateDeliverableStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\UpdateDeliverableStatusJob.php on line 31\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Freelance\\Jobs\\UpdateDeliverableStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Furniture\\Jobs\\ValidateOversizedFurnitureDeliveryJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Furniture\\Jobs\\ValidateOversizedFurnitureDeliveryJob.php on line 118\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Furniture\\Jobs\\ValidateOversizedFurnitureDeliveryJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Gardening\\Jobs\\GardeningSeasonalSyncJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Gardening\\Jobs\\GardeningSeasonalSyncJob.php on line 18\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Gardening\\Jobs\\GardeningSeasonalSyncJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\CalculateContractorEarningsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\CalculateContractorEarningsJob.php on line 96\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\CalculateContractorEarningsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\SendJobReminderJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\SendJobReminderJob.php on line 73\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\HomeServices\\Jobs\\SendJobReminderJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\AvailabilitySyncJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\AvailabilitySyncJob.php on line 145\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\AvailabilitySyncJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\HotelPayoutJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\HotelPayoutJob.php on line 136\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Jobs\\HotelPayoutJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Services\\HotelBookingOrchestratorService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"HOLD_DURATION_MINUTES\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Services\\HotelBookingOrchestratorService.php on line 41\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Hotels\\Services\\HotelBookingOrchestratorService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Jobs\\UpdateCourierRouteJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Jobs\\UpdateCourierRouteJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Jobs\\UpdateCourierRouteJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Services\\UnifiedFleetService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"public\", expecting \";\" or \"{\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Services\\UnifiedFleetService.php on line 306\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Logistics\\Services\\UnifiedFleetService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Luxury\\Jobs\\CheckBookingPaymentTimeout.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Luxury\\Jobs\\CheckBookingPaymentTimeout.php on line 31\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Luxury\\Jobs\\CheckBookingPaymentTimeout.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Events\\AppointmentBookedApplicationEvent.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Medical\\Application\\Events\\AppointmentBookedApplicationEvent::$queue cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Events\\AppointmentBookedApplicationEvent.php on line 17\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Events\\AppointmentBookedApplicationEvent.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Listeners\\AppointmentBookedListener.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\Medical\\Application\\Listeners\\AppointmentBookedListener::$queue cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Listeners\\AppointmentBookedListener.php on line 19\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Application\\Listeners\\AppointmentBookedListener.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\MedicalHealthcare\\Services\\AI\\HealthcareAIDiagnosticService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  Unclosed '(' on line 228 does not match ']' in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\MedicalHealthcare\\Services\\AI\\HealthcareAIDiagnosticService.php on line 229\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\MedicalHealthcare\\Services\\AI\\HealthcareAIDiagnosticService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Psychology\\Services\\PsychologicalPricingService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  Unmatched '}' in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Psychology\\Services\\PsychologicalPricingService.php on line 121\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Psychology\\Services\\PsychologicalPricingService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Services\\AppointmentService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Services\\AppointmentService.php on line 83\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Medical\\Services\\AppointmentService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Enums\\PaymentStatus.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected single-quoted string \",D => \", expecting \"=>\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Enums\\PaymentStatus.php on line 31\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Enums\\PaymentStatus.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\AsyncFraudCheckJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"->\", expecting identifier or variable or \"{\" or \"$\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\AsyncFraudCheckJob.php on line 129\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\AsyncFraudCheckJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\PaymentFraudCheckJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\PaymentFraudCheckJob.php on line 184\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\PaymentFraudCheckJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessCaptureJob.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Cannot redeclare App\\Domains\\Payment\\Jobs\\ProcessCaptureJob::$backoff in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessCaptureJob.php on line 32\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessCaptureJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessGatewayPaymentJob.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Cannot redeclare App\\Domains\\Payment\\Jobs\\ProcessGatewayPaymentJob::$backoff in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessGatewayPaymentJob.php on line 39\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessGatewayPaymentJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessWebhookJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessWebhookJob.php on line 95\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Payment\\Jobs\\ProcessWebhookJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pet\\Jobs\\UpdateAppointmentStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pet\\Jobs\\UpdateAppointmentStatusJob.php on line 12\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pet\\Jobs\\UpdateAppointmentStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pharmacy\\Services\\SubscriptionService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"return\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pharmacy\\Services\\SubscriptionService.php on line 40\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Pharmacy\\Services\\SubscriptionService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\CalculateRatingsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\CalculateRatingsJob.php on line 74\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\CalculateRatingsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\ProcessPortfolioImageJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\ProcessPortfolioImageJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\ProcessPortfolioImageJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\UpdateSessionStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\UpdateSessionStatusJob.php on line 69\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Photography\\Jobs\\UpdateSessionStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\DTOs\\UpdateListingDto.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Domains\\RealEstate\\DTOs\\UpdateListingDto::$video must have type in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\DTOs\\UpdateListingDto.php on line 12\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\DTOs\\UpdateListingDto.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\Services\\AI\\RealEstateAIConstructorService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  Unclosed '{' on line 99 does not match ')' in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\Services\\AI\\RealEstateAIConstructorService.php on line 102\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\RealEstate\\Services\\AI\\RealEstateAIConstructorService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrCalendarSyncJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrCalendarSyncJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrCalendarSyncJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrPayoutJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrPayoutJob.php on line 16\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\ShortTermRentals\\Jobs\\StrPayoutJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Jobs\\BookingConfirmationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Jobs\\BookingConfirmationJob.php on line 80\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Jobs\\BookingConfirmationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Services\\SportsFraudDetectionService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"rec\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Services\\SportsFraudDetectionService.php on line 449\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Sports\\Services\\SportsFraudDetectionService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\SportsNutrition\\Jobs\\VapeMarkingRegistrationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\SportsNutrition\\Jobs\\VapeMarkingRegistrationJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\SportsNutrition\\Jobs\\VapeMarkingRegistrationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\CalculateSurgePricingJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\CalculateSurgePricingJob.php on line 107\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\CalculateSurgePricingJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\ProcessRideMatching.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\ProcessRideMatching.php on line 31\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\ProcessRideMatching.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\RideReminderJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\RideReminderJob.php on line 15\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\RideReminderJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\SurgeRecalculationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\SurgeRecalculationJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\SurgeRecalculationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\UpdateDriverLocationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\UpdateDriverLocationJob.php on line 61\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Taxi\\Jobs\\UpdateDriverLocationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Tickets\\Jobs\\TicketGenerationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Tickets\\Jobs\\TicketGenerationJob.php on line 64\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Tickets\\Jobs\\TicketGenerationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\ScheduleVideoCallWithGuideJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\ScheduleVideoCallWithGuideJob.php on line 89\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\ScheduleVideoCallWithGuideJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\SendBiometricVerificationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\SendBiometricVerificationJob.php on line 80\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\SendBiometricVerificationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateBookingStatusJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateBookingStatusJob.php on line 72\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateBookingStatusJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateCRMContactJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateCRMContactJob.php on line 92\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Jobs\\UpdateCRMContactJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismBookingOrchestratorService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"Adapter\", expecting variable in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismBookingOrchestratorService.php on line 50\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismBookingOrchestratorService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismRecommendationService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"private\", expecting variable in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismRecommendationService.php on line 26\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Travel\\Services\\TourismRecommendationService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganInventorySyncJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$this\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganInventorySyncJob.php on line 46\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganInventorySyncJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganSubscriptionBatchRenewalJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganSubscriptionBatchRenewalJob.php on line 15\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\VeganProducts\\Jobs\\VeganSubscriptionBatchRenewalJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Wallet\\Services\\WalletService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \",\" in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Wallet\\Services\\WalletService.php on line 135\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\Wallet\\Services\\WalletService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Domains\\WeddingPlanning\\Jobs\\CleanupExpiredWeddingBookingsJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"implements\", expecting end of file in C:\\opt\\kotvrf\\CatVRF/app\\Domains\\WeddingPlanning\\Jobs\\CleanupExpiredWeddingBookingsJob.php on line 13\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Domains\\WeddingPlanning\\Jobs\\CleanupExpiredWeddingBookingsJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\CrmTaskResource\\Pages\\ListCrmTasks.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"\\\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\CrmTaskResource\\Pages\\ListCrmTasks.php on line 41\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\CrmTaskResource\\Pages\\ListCrmTasks.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\LeadResource\\Pages\\ListLeads.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"\\\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\LeadResource\\Pages\\ListLeads.php on line 45\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Filament\\CRM\\Resources\\LeadResource\\Pages\\ListLeads.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Resources\\TenantQuotaResource.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"Progr\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Resources\\TenantQuotaResource.php on line 68\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Resources\\TenantQuotaResource.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Medical\\Pages\\CreateMedical.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected fully qualified name \"\\Facade\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Medical\\Pages\\CreateMedical.php on line 44\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Medical\\Pages\\CreateMedical.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Travel\\Pages\\ListTravel.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected single-quoted string \"correlation_id\", expecting \"]\" in C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Travel\\Pages\\ListTravel.php on line 41\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Filament\\Tenant\\Resources\\Travel\\Pages\\ListTravel.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\LoginForm.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  A void function must not return a value in C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\LoginForm.php on line 44\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\LoginForm.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\PasskeyLogin.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  A void function must not return a value in C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\PasskeyLogin.php on line 85\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Http\\Livewire\\Auth\\PasskeyLogin.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Http\\Middleware\\PiiGuardMiddleware.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"PII_FIELDS\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Http\\Middleware\\PiiGuardMiddleware.php on line 19\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Http\\Middleware\\PiiGuardMiddleware.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\Analytics\\SyncQuotaUsageToClickHouseJob.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Cannot use array as default value for property App\\Jobs\\Analytics\\SyncQuotaUsageToClickHouseJob::$backoff of type int in C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\Analytics\\SyncQuotaUsageToClickHouseJob.php on line 34\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\Analytics\\SyncQuotaUsageToClickHouseJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\EmergencyNotificationJob.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \",\" in C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\EmergencyNotificationJob.php on line 123\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\EmergencyNotificationJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\FraudMLInferenceJob.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Cannot use array as default value for property App\\Jobs\\FraudMLInferenceJob::$backoff of type int in C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\FraudMLInferenceJob.php on line 25\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Jobs\\FraudMLInferenceJob.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Models\\BusinessGroup.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"public\" in C:\\opt\\kotvrf\\CatVRF/app\\Models\\BusinessGroup.php on line 103\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Models\\BusinessGroup.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Notifications\\Security\\BruteForceCriticalAlert.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"??\", expecting \"->\" or \"?->\" or \"{\" or \"[\" in C:\\opt\\kotvrf\\CatVRF/app\\Notifications\\Security\\BruteForceCriticalAlert.php on line 32\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Notifications\\Security\\BruteForceCriticalAlert.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Octane\\Services\\SwooleWebSocketService.php",
+            "type": "syntax_error",
+            "message": "PHP Fatal error:  Readonly property App\\Octane\\Services\\SwooleWebSocketService::$server cannot have default value in C:\\opt\\kotvrf\\CatVRF/app\\Octane\\Services\\SwooleWebSocketService.php on line 23\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Octane\\Services\\SwooleWebSocketService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\OpenApi\\OpenApiSpec.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected token \"*\", expecting \"function\" or \"const\" in C:\\opt\\kotvrf\\CatVRF/app\\OpenApi\\OpenApiSpec.php on line 28\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\OpenApi\\OpenApiSpec.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\Analytics\\QuotaClickHouseRepository.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"MAX_RETRIES\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\Analytics\\QuotaClickHouseRepository.php on line 24\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\Analytics\\QuotaClickHouseRepository.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\ML\\FraudMLService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"urn\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\ML\\FraudMLService.php on line 54\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\ML\\FraudMLService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\Payment\\PaymentIdempotencyService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"LOCK_PREFIX\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\Payment\\PaymentIdempotencyService.php on line 21\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\Payment\\PaymentIdempotencyService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\Pricing\\PricingEngineService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"CACHE_PREFIX\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\Pricing\\PricingEngineService.php on line 24\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\Pricing\\PricingEngineService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\Security\\FilamentAuditService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"LOG_CHANNEL\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\Security\\FilamentAuditService.php on line 18\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\Security\\FilamentAuditService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Services\\Wallet\\AtomicWalletOperationsService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected identifier \"BALANCE_PREFIX\", expecting \"=\" in C:\\opt\\kotvrf\\CatVRF/app\\Services\\Wallet\\AtomicWalletOperationsService.php on line 26\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Services\\Wallet\\AtomicWalletOperationsService.php"
+        },
+        {
+            "file": "C:\\opt\\kotvrf\\CatVRF/app\\Shared\\Application\\Services\\DeadLetterQueueService.php",
+            "type": "syntax_error",
+            "message": "PHP Parse error:  syntax error, unexpected variable \"$metrics\", expecting \";\" in C:\\opt\\kotvrf\\CatVRF/app\\Shared\\Application\\Services\\DeadLetterQueueService.php on line 22\nErrors parsing C:\\opt\\kotvrf\\CatVRF/app\\Shared\\Application\\Services\\DeadLetterQueueService.php"
+        }
+    ],
+    "warnings": [],
+    "total_errors": 104,
+    "total_warnings": 0
+}

@@ -8,14 +8,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class SurgeRecalculationJob
+
+final class SurgeRecalculationJob implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
-
-        private readonly string $correlationId;
+    private readonly string $correlationId;
 
         public function __construct(private readonly LoggerInterface $logger)
         {
@@ -25,7 +25,7 @@ final class SurgeRecalculationJob
 
         public function handle(SurgeService $surgeService): void
         {
-            $this->logger->info('Surge recalculation started', [
+            $this->logger->$this->logger->info('Surge recalculation started', [
                 'correlation_id' => $this->correlationId,
                 'job' => self::class,
             ]);
@@ -41,15 +41,15 @@ final class SurgeRecalculationJob
 
                     $zone->update([
                         'current_multiplier' => $multiplier,
-                        'last_calculated_at' => now(),
+                        'last_calculated_at' => CarbonImmutable::now(),
                     ]);
                 }
 
-                $this->logger->info('Surge recalculation completed', [
+                $this->logger->$this->logger->info('Surge recalculation completed', [
                     'correlation_id' => $this->correlationId,
                     'zones_updated' => $activeZones->count(),
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Exception $e) {
                 $this->logger->error('Surge recalculation failed', [
                     'correlation_id' => $this->correlationId,
                     'error' => $e->getMessage(),
@@ -64,5 +64,13 @@ final class SurgeRecalculationJob
         {
             return ['auto', 'surge', 'recalculation', $this->correlationId];
         }
+
+
+    public function failed(Exception $exception): void
+    {
+        $this->logger->error('taxi job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }
 

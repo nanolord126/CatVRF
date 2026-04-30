@@ -18,16 +18,6 @@ final class ListAppointments extends ListRecords
 {
     protected static string $resource = AppointmentResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [];
-    }
-
     /**
      * Заголовок страницы со счётчиком сегодняшних записей.
      */
@@ -54,6 +44,16 @@ final class ListAppointments extends ListRecords
             'Beauty'  => null,
             'Записи'  => route('filament.tenant.resources.beauty.appointments.index'),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [];
     }
 
     /**
