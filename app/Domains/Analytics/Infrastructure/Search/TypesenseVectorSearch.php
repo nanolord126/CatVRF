@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/typesensevectorsearch
  */
-
 
 namespace App\Domains\Analytics\Infrastructure\Search;
 
@@ -35,14 +35,10 @@ use Typesense\Client;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Analytics\Infrastructure\Search
  */
 final readonly class TypesenseVectorSearch implements VectorSearchInterface
 {
-    public function __construct(private readonly Client $client)
-    {
-}
+    public function __construct(private readonly Client $client) {}
 
     /**
      * Handle search operation.
@@ -53,7 +49,7 @@ final readonly class TypesenseVectorSearch implements VectorSearchInterface
     {
         return $this->client->collections[$collection]->documents->search([
             'q' => '*',
-            'vector_query' => 'vec:(' . implode(',', $vector) . ')',
+            'vector_query' => 'vec:('.implode(',', $vector).')',
             'per_page' => $limit,
         ]);
     }

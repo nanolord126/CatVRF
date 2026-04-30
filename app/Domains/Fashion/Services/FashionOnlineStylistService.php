@@ -1,20 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 
 final readonly class FashionOnlineStylistService
 {
     public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function getStyleConsultation(
@@ -47,85 +47,98 @@ final readonly class FashionOnlineStylistService
     public function getMensStyle(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'men', 'all', [], $correlationId);
     }
 
     public function getWomensStyle(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'women', 'all', [], $correlationId);
     }
 
     public function getWomensUnderwear(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'women', 'underwear', [], $correlationId);
     }
 
     public function getMensShoes(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'men', 'shoes', [], $correlationId);
     }
 
     public function getWomensShoes(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'women', 'shoes', [], $correlationId);
     }
 
     public function getChildrensClothing(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'children', 'clothing', [], $correlationId);
     }
 
     public function getChildrensShoes(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'children', 'shoes', [], $correlationId);
     }
 
     public function getScarvesAndAccessories(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'unisex', 'scarves', [], $correlationId);
     }
 
     public function getHeadwear(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'unisex', 'headwear', [], $correlationId);
     }
 
     public function getCareProducts(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'unisex', 'care_products', [], $correlationId);
     }
 
     public function getUmbrellas(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'unisex', 'umbrellas', [], $correlationId);
     }
 
     public function getMensAccessories(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'men', 'accessories', [], $correlationId);
     }
 
     public function getWomensAccessories(int $userId, string $correlationId = ''): array
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
+
         return $this->getStyleConsultation($userId, 'women', 'accessories', [], $correlationId);
     }
 
     private function getGenderBasedRecommendations(int $userId, string $gender, string $category, int $tenantId, array $preferences): array
     {
         $categories = $this->getCategoryMapping($gender, $category);
-        
+
         $query = $this->db->table('fashion_products as fp')
             ->where('fp.tenant_id', $tenantId)
             ->where('fp.status', 'active')
@@ -134,7 +147,7 @@ final readonly class FashionOnlineStylistService
 
         if ($categories !== 'all') {
             $query->whereExists(function ($q) use ($categories, $tenantId) {
-                $q->select(DB::raw(1))
+                $q->select($this->db->raw(1))
                     ->from('fashion_product_categories')
                     ->whereColumn('fashion_product_categories.product_id', 'fp.id')
                     ->where('fashion_product_categories.tenant_id', $tenantId)
@@ -142,10 +155,10 @@ final readonly class FashionOnlineStylistService
             });
         }
 
-        if (!empty($preferences['price_min'])) {
+        if (! empty($preferences['price_min'])) {
             $query->where('fp.price_b2c', '>=', $preferences['price_min']);
         }
-        if (!empty($preferences['price_max'])) {
+        if (! empty($preferences['price_max'])) {
             $query->where('fp.price_b2c', '<=', $preferences['price_max']);
         }
 
@@ -154,7 +167,9 @@ final readonly class FashionOnlineStylistService
 
     private function getCategoryMapping(string $gender, string $category): array|string
     {
-        if ($category === 'all') return 'all';
+        if ($category === 'all') {
+            return 'all';
+        }
 
         return match (true) {
             $gender === 'men' && $category === 'shoes' => ['shoes', 'sneakers', 'boots', 'formal_shoes', 'loafers'],
@@ -244,7 +259,7 @@ final readonly class FashionOnlineStylistService
     private function getTrendingItems(string $gender, string $category, int $tenantId): array
     {
         $categories = $this->getCategoryMapping($gender, $category);
-        
+
         return $this->db->table('fashion_trend_scores as fts')
             ->join('fashion_products as fp', 'fts.product_id', '=', 'fp.id')
             ->where('fp.tenant_id', $tenantId)

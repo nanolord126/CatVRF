@@ -4,30 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
-
-
 use Psr\Log\LoggerInterface;
 
-use Illuminate\Foundation\Events\Dispatchable;
 /**
-     * ElectronicsOrderProcessed - Event triggered after a successful gadget sale and stock lock.
-     */
+ * ElectronicsOrderProcessed - Event triggered after a successful gadget sale and stock lock.
+ */
 final class ElectronicsOrderProcessed
 {
-
-        public function __construct(
-            public readonly int $orderId,
-            public readonly int $productId,
-            public readonly int $quantity,
-            public readonly string $correlationId) {
-            $this->logger->info('LAYER-7: ElectronicsOrderProcessed EVENT', [
-                'order_id' => $orderId,
-                'product_id' => $productId,
-                'qty' => $quantity,
-                'correlation_id' => $correlationId,
-            ]);
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -37,5 +20,18 @@ final class ElectronicsOrderProcessed
      * Maximum number of retry attempts for operations.
      */
     private const MAX_RETRIES = 3;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        public readonly int $orderId,
+        public readonly int $productId,
+        public readonly int $quantity,
+        public readonly string $correlationId) {
+        $this->logger->$this->logger->info('LAYER-7: ElectronicsOrderProcessed EVENT', [
+            'order_id' => $orderId,
+            'product_id' => $productId,
+            'qty' => $quantity,
+            'correlation_id' => $correlationId,
+        ]);
+    }
 
 }

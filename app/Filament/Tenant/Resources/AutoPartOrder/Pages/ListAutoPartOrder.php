@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListRecordsAutoPartOrder — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listrecordsautopartorder
  * @see https://catvrf.ru/docs/listrecordsautopartorder
  * @see https://catvrf.ru/docs/listrecordsautopartorder
@@ -31,14 +34,14 @@
  * @see https://catvrf.ru/docs/listrecordsautopartorder
  */
 
-
 namespace App\Filament\Tenant\Resources\AutoPartOrder\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\ListRecords;
 
 final class ListRecordsAutoPartOrder extends ListRecords
 {
-
     protected static string $resource = AutoPartOrderResource::class;
 
     /**
@@ -48,7 +51,7 @@ final class ListRecordsAutoPartOrder extends ListRecords
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +62,8 @@ final class ListRecordsAutoPartOrder extends ListRecords
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

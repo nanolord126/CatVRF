@@ -4,34 +4,37 @@ declare(strict_types=1);
 
 namespace App\Services\ML;
 
+use Psr\Log\LoggerInterface;
+
 use App\Services\ML\Traits\HasFeatureDriftDetection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Abstract AI Constructor Service with Feature Drift Detection
- * 
+ *
  * Base class for all vertical AI Constructor Services with built-in drift detection.
  * Extends HasFeatureDriftDetection trait and provides common AI service functionality.
- * 
+ *
  * Usage:
  * ```php
  * final class MedicalAIConstructorService extends AbstractAIConstructorService
  * {
- *     protected string $verticalCode = 'medical';
- *     
- *     public function __construct(
- *         FeatureDriftDetectorService $driftDetector,
+ *     protected readonly string $verticalCode = 'medical';
+ *
+ *     public function __construct(private readonly LoggerInterface $logger,
+        *         FeatureDriftDetectorService $driftDetector,
  *         FeatureDriftMetricsService $driftMetrics
- *     ) {
+ *) {
  *         parent::__construct($driftDetector, $driftMetrics);
  *     }
- *     
+ *
  *     public function generateAIResponse(string $prompt): array
  *     {
  *         // Check drift for key features
  *         $this->checkFeatureDrift('prompt_length', strlen($prompt));
- *         
+ *
  *         // Your AI logic here
  *         return [];
  *     }
@@ -42,59 +45,48 @@ abstract class AbstractAIConstructorService
 {
     use HasFeatureDriftDetection;
 
-    protected FeatureDriftDetectorService $driftDetector;
-    protected FeatureDriftMetricsService $driftMetrics;
-    protected string $verticalCode = 'default';
-    protected bool $driftDetectionEnabled = true;
+    protected readonly FeatureDriftDetectorService $driftDetector;
+
+    protected readonly FeatureDriftMetricsService $driftMetrics;
+
+    protected readonly string $verticalCode = 'default';
+
+    protected readonly bool $driftDetectionEnabled = true;
 
     /**
      * Constructor
-     * 
-     * @param FeatureDriftDetectorService $driftDetector
-     * @param FeatureDriftMetricsService $driftMetrics
      */
     public function __construct(
         FeatureDriftDetectorService $driftDetector,
-        FeatureDriftMetricsService $driftMetrics
+        FeatureDriftMetricsService $driftMetrics,
+        protected readonly ConfigRepository $config,
+        protected readonly LogManager $log,
     ) {
         $this->driftDetector = $driftDetector;
         $this->driftMetrics = $driftMetrics;
-        $this->driftDetectionEnabled = Config::get('fraud.drift_detection.enabled', true);
-        
+        $this->driftDetectionEnabled = $this->config->get('fraud.drift_detection.enabled', true);
+
         $this->initializeDriftDetection();
-        
-        Log::info('AI Constructor Service initialized with drift detection', [
+
+        $this->log->$this->logger->info('AI Constructor Service initialized with drift detection', [
             'vertical' => $this->verticalCode,
             'drift_detection_enabled' => $this->driftDetectionEnabled,
         ]);
     }
 
     /**
-     * Get vertical-specific monitored features
-     * Override in child classes to define custom features
-     * 
-     * @return array
-     */
-    protected function getMonitoredFeatures(): array
-    {
-        return Config::get("fraud.drift_detection.monitored_features.{$this->verticalCode}", []);
-    }
-
-    /**
      * Store reference distribution for model training
      * Call this after model training to establish baseline
-     * 
-     * @param string $modelVersion
-     * @param array $features ['feature_name' => [values]]
-     * @return void
+     *
+     * @param  array  $features  ['feature_name' => [values]]
      */
     public function storeReferenceDistributions(string $modelVersion, array $features): void
     {
         foreach ($features as $featureName => $values) {
             $distribution = $this->calculateDistribution($values);
             $this->storeReferenceDistribution($modelVersion, $featureName, $distribution);
-            
-            Log::debug('Reference distribution stored', [
+
+            $this->log->debug('Reference distribution stored', [
                 'vertical' => $this->verticalCode,
                 'model_version' => $modelVersion,
                 'feature' => $featureName,
@@ -104,11 +96,26 @@ abstract class AbstractAIConstructorService
     }
 
     /**
+     * Get vertical code
+     */
+    public function getVerticalCode(): string
+    {
+        return $this->verticalCode;
+    }
+
+    /**
+     * Get vertical-specific monitored features
+     * Override in child classes to define custom features
+     */
+    protected function getMonitoredFeatures(): array
+    {
+        return $this->config->get("fraud.drift_detection.monitored_features.{$this->verticalCode}", []);
+    }
+
+    /**
      * Calculate distribution from values (histogram)
-     * 
-     * @param array $values
-     * @param int $bins Number of bins
-     * @return array
+     *
+     * @param  int  $bins  Number of bins
      */
     protected function calculateDistribution(array $values, int $bins = 10): array
     {
@@ -119,7 +126,7 @@ abstract class AbstractAIConstructorService
         sort($values);
         $min = $values[0];
         $max = $values[count($values) - 1];
-        
+
         if ($min === $max) {
             return [$min => count($values)];
         }
@@ -138,14 +145,11 @@ abstract class AbstractAIConstructorService
 
     /**
      * Log drift detection results for monitoring
-     * 
-     * @param array $driftReport
-     * @return void
      */
     protected function logDriftResults(array $driftReport): void
     {
         if ($driftReport['overall_drift_detected']) {
-            Log::warning('Feature drift detected in AI service', [
+            $this->log->warning('Feature drift detected in AI service', [
                 'vertical' => $this->verticalCode,
                 'drifted_features_count' => count($driftReport['drifted_features']),
                 'max_drift_score' => $driftReport['max_drift_score'] ?? 0,
@@ -156,8 +160,6 @@ abstract class AbstractAIConstructorService
     /**
      * Get current model version for the vertical
      * Override in child classes if needed
-     * 
-     * @return string|null
      */
     protected function getCurrentModelVersion(): ?string
     {
@@ -166,15 +168,12 @@ abstract class AbstractAIConstructorService
 
     /**
      * Set current model version
-     * 
-     * @param string $version
-     * @return void
      */
     protected function setCurrentModelVersion(string $version): void
     {
-        cache(["{$this->verticalCode}_model_active_version" => $version], now()->addHours(24));
-        
-        Log::info('Model version updated', [
+        cache(["{$this->verticalCode}_model_active_version" => $version], CarbonImmutable::now()->addHours(24));
+
+        $this->log->$this->logger->info('Model version updated', [
             'vertical' => $this->verticalCode,
             'version' => $version,
         ]);
@@ -182,27 +181,15 @@ abstract class AbstractAIConstructorService
 
     /**
      * Check if service should use shadow mode due to drift
-     * 
-     * @return bool
      */
     protected function shouldUseShadowMode(): bool
     {
         $driftReport = cache("{$this->verticalCode}_drift_report");
-        
+
         if ($driftReport === null) {
             return false;
         }
 
         return $driftReport['overall_drift_detected'] ?? false;
-    }
-
-    /**
-     * Get vertical code
-     * 
-     * @return string
-     */
-    public function getVerticalCode(): string
-    {
-        return $this->verticalCode;
     }
 }

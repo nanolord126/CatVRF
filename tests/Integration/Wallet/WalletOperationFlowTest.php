@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Wallet;
 
@@ -16,7 +18,7 @@ use Tests\TestCase;
 
 /**
  * WalletOperationFlowTest
- * 
+ *
  * Интеграционные тесты: платёж → wallet credit → refund
  */
 final class WalletOperationFlowTest extends TestCase
@@ -24,26 +26,14 @@ final class WalletOperationFlowTest extends TestCase
     use RefreshDatabase;
 
     protected WalletService $walletService;
+
     protected PaymentService $paymentService;
+
     protected User $user;
+
     protected Wallet $wallet;
+
     protected Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Log::fake();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->wallet = Wallet::factory()
-            ->for($this->tenant)
-            ->for($this->user)
-            ->create(['current_balance' => 0]);
-
-        $this->walletService = app(WalletService::class);
-        $this->paymentService = app(PaymentService::class);
-    }
 
     /** @test */
     public function it_processes_payment_and_credits_wallet(): void
@@ -220,7 +210,7 @@ final class WalletOperationFlowTest extends TestCase
 
         $withdrawAmount = 100000;
         $commissionPercent = 1; // 1% commission
-        $commission = (int)($withdrawAmount * $commissionPercent / 100);
+        $commission = (int) ($withdrawAmount * $commissionPercent / 100);
 
         $transaction = BalanceTransaction::factory()
             ->for($this->wallet)
@@ -339,7 +329,7 @@ final class WalletOperationFlowTest extends TestCase
         // Calculate balance from statement
         $calculatedBalance = 0;
         foreach ($statement as $transaction) {
-            if (in_array($transaction->type, ['deposit', 'bonus', 'refund'])) {
+            if (in_array($transaction->type, ['deposit', 'bonus', 'refund'], true)) {
                 $calculatedBalance += $transaction->amount;
             } elseif ($transaction->type === 'withdrawal') {
                 $calculatedBalance -= $transaction->amount;
@@ -378,8 +368,24 @@ final class WalletOperationFlowTest extends TestCase
             ->create(['type' => 'deposit', 'amount' => 50000]);
 
         Log::assertLogged(function ($message) {
-            return str_contains($message, 'wallet') || 
+            return str_contains($message, 'wallet') ||
                    str_contains($message, 'transaction');
         });
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Log::fake();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->wallet = Wallet::factory()
+            ->for($this->tenant)
+            ->for($this->user)
+            ->create(['current_balance' => 0]);
+
+        $this->walletService = app(WalletService::class);
+        $this->paymentService = app(PaymentService::class);
     }
 }

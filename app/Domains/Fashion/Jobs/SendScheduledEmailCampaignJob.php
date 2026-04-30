@@ -1,43 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Jobs;
 
-use App\Domains\Fashion\Services\FashionEmailCampaignService;
-use Illuminate\Bus\Batchable;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 final class SendScheduledEmailCampaignJob implements ShouldQueue
 {
-    use Batchable, Queueable;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
-        private readonly int $campaignId,
-        private readonly int $tenantId,
-        private readonly string $correlationId,
-    ) {
-        $this->onQueue('email');
+    public int $tries = 3;
+    public int $backoff = 60;
+    public bool $deleteWhenMissingModels = true;
+
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly LoggerInterface $logger,
+        public readonly int $campaignId,
+        public readonly int $tenantId,
+        public readonly string $correlationId = '',) {}
+
+    public function handle(LogManager $log): void
+    {
+        $log->channel('fashion')->$this->logger->info('Scheduled email campaign sending started', [
+            'campaign_id' => $this->campaignId,
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+        ]);
+
+        // TODO: Implement scheduled email campaign dispatch
     }
 
-    public function handle(FashionEmailCampaignService $service): void
+    public function failed(\Throwable $exception): void
     {
-        try {
-            $service->sendCampaign($this->campaignId, $this->correlationId);
-            
-            Log::channel('audit')->info('Scheduled email campaign sent', [
-                'campaign_id' => $this->campaignId,
-                'tenant_id' => $this->tenantId,
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send scheduled email campaign', [
-                'campaign_id' => $this->campaignId,
-                'tenant_id' => $this->tenantId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-            ]);
-            throw $e;
-        }
+        $this->loggerInterface /* TODO: inject via DI */->error('SendScheduledEmailCampaignJob failed', [
+            'campaign_id' => $this->campaignId,
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

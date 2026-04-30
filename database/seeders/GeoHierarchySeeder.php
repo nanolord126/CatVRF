@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Domains\Geo\Models\{Country, Region, City, District};
+use App\Domains\Geo\Models\{Country};
 use Illuminate\Database\Seeder;
 
 /**
  * Географическая иерархия (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-final class GeoHierarchySeeder extends Seeder {
-    public function run(): void {
+final class GeoHierarchySeeder extends Seeder
+{
+    public function run(): void
+    {
         $data = [
             'Russia' => ['Moscow' => ['Moscow'], 'St Petersburg' => ['St Petersburg'], 'Kazan' => ['Kazan']],
             'Kazakhstan' => ['Astana' => ['Astana'], 'Almaty' => ['Almaty'], 'Shymkent' => ['Shymkent']],
@@ -24,7 +26,7 @@ final class GeoHierarchySeeder extends Seeder {
                 $region = $country->regions()->create(['name' => $rName]);
                 foreach ($cities as $cityName) {
                     $region->districts()->create(['name' => 'City District'])
-                           ->cities()->create(['name' => $cityName]);
+                        ->cities()->create(['name' => $cityName]);
                 }
             }
         }

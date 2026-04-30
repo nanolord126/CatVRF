@@ -1,25 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Events\ServiceOrderCreatedEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class NotifyServiceCentersListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly NotificationService $notificationService,
-    ) {}
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function handle(ServiceOrderCreatedEvent $event): void
     {
-        $vehicle = DB::table('auto_vehicles')
+        $vehicle = $this->db->table('auto_vehicles')
             ->where('id', $event->order->vehicle_id)
             ->first();
 
@@ -27,7 +32,7 @@ final class NotifyServiceCentersListener implements ShouldQueue
             return;
         }
 
-        $nearestServices = DB::table('auto_services')
+        $nearestServices = $this->db->table('auto_services')
             ->where('tenant_id', $event->tenantId)
             ->where('is_active', true)
             ->limit(5)
@@ -48,7 +53,7 @@ final class NotifyServiceCentersListener implements ShouldQueue
             );
         }
 
-        Log::channel('audit')->info('auto.service_centers.notified', [
+        $this->log->channel('audit')->$this->logger->info('auto.service_centers.notified', [
             'correlation_id' => $event->correlationId,
             'order_id' => $event->order->id,
             'services_count' => $nearestServices->count(),

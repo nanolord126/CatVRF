@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\WeddingPlanning;
 
@@ -17,6 +19,7 @@ use Tests\TestCase;
  * Проверка основного workflows вертикали Wedding Planning.
  *
  * @version 1.0.0
+ *
  * @author CatVRF
  */
 class WeddingIntegrationTest extends TestCase

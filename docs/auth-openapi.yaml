@@ -1,0 +1,283 @@
+openapi: 3.0.0
+info:
+  title: CatVRF Authentication API
+  version: 1.0.0
+  description: Enterprise authentication and authorization endpoints
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+paths:
+  /auth/register:
+    post:
+      summary: Register new user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                email: {type: string, format: email}
+                phone: {type: string}
+                password: {type: string, format: password}
+                password_confirmation: {type: string}
+                invite_code: {type: string}
+      responses:
+        '201':
+          description: Registration successful
+        '422':
+          description: Validation error
+
+  /auth/register/social:
+    post:
+      summary: Register via social provider
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string, enum: [google,yandex,vk,telegram,apple]}
+                provider_id: {type: string}
+                name: {type: string}
+                email: {type: string}
+      responses:
+        '201':
+          description: Social registration successful
+
+  /auth/login:
+    post:
+      summary: Login user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string}
+                password: {type: string}
+                device_name: {type: string}
+                device_type: {type: string}
+                fingerprint: {type: string}
+      responses:
+        '200':
+          description: Login successful
+        '422':
+          description: Invalid credentials
+
+  /auth/login/2fa:
+    post:
+      summary: Verify 2FA and complete login
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id: {type: integer}
+                code: {type: string}
+      responses:
+        '200':
+          description: 2FA verified
+
+  /auth/logout:
+    post:
+      summary: Logout user
+      tags: [Authentication]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+
+  /auth/refresh:
+    post:
+      summary: Refresh token
+      tags: [Authentication]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+
+  /auth/me:
+    get:
+      summary: Get current user
+      tags: [Authentication]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User data
+
+  /auth/2fa/enable:
+    post:
+      summary: Enable 2FA
+      tags: [Authentication]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 2FA setup initiated
+
+  /auth/2fa/confirm:
+    post:
+      summary: Confirm 2FA setup
+      tags: [Authentication]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: {type: string}
+      responses:
+        '200':
+          description: 2FA enabled
+
+  /auth/devices:
+    get:
+      summary: List user devices
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Devices list
+
+  /auth/devices/{id}:
+    delete:
+      summary: Revoke device
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Device revoked
+
+  /tenants/register:
+    post:
+      summary: Register business tenant
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                inn: {type: string}
+                phone: {type: string}
+                email: {type: string}
+                legal_entity_type: {type: string}
+      responses:
+        '201':
+          description: Tenant registered
+
+  /tenants/{id}/approve:
+    post:
+      summary: Approve tenant
+      tags: [Tenants]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tenant approved
+
+  /tenants/{id}/reject:
+    post:
+      summary: Reject tenant
+      tags: [Tenants]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: {type: string}
+      responses:
+        '200':
+          description: Tenant rejected
+
+  /tenants/{tenant_id}/invitations:
+    post:
+      summary: Send team invitation
+      tags: [Invitations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string}
+                role: {type: string}
+      responses:
+        '201':
+          description: Invitation sent
+
+  /tenants/invitations/{token}/accept:
+    post:
+      summary: Accept invitation
+      tags: [Invitations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation accepted
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

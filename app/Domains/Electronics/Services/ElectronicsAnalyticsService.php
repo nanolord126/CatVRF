@@ -4,27 +4,26 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Electronics\DTOs\AnalyticsDto;
 use App\Domains\Electronics\Models\ElectronicsProduct;
 use App\Services\FraudControlService;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
+use Illuminate\Support\Str;
 
 final readonly class ElectronicsAnalyticsService
 {
     private const CACHE_TTL = 300; // 5 minutes
 
     public function __construct(
-        private FraudControlService $fraud,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {
-    }
+        private readonly FraudControlService $fraud,
+        private readonly Cache $cache,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+    ) {}
 
     public function getAnalytics(string $period = '7d', ?string $type = null): AnalyticsDto
     {
@@ -38,7 +37,7 @@ final readonly class ElectronicsAnalyticsService
         $tenantId = tenant()->id ?? 0;
         $cacheKey = "electronics_analytics_{$tenantId}_{$period}_{$type}";
 
-        $data = $this->cache->remember($cacheKey, now()->addSeconds(self::CACHE_TTL), function () use ($period, $type) {
+        $data = $this->cache->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL), function () use ($period, $type) {
             return [
                 'sales_data' => $this->getSalesData($period, $type),
                 'traffic_data' => $this->getTrafficData($period, $type),
@@ -50,22 +49,38 @@ final readonly class ElectronicsAnalyticsService
                 'inventory_stats' => $this->getInventoryStats($type),
                 'customer_behavior' => $this->getCustomerBehavior($period, $type),
                 'period' => $period,
-                'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
+                'correlation_id' => (string) Str::uuid(),
             ];
         });
 
         return AnalyticsDto::fromArray($data);
     }
 
+    public function clearCache(?string $type = null): void
+    {
+        $tenantId = tenant()->id ?? 0;
+        $periods = ['1d', '7d', '30d', '90d', '1y'];
+
+        foreach ($periods as $period) {
+            $cacheKey = "electronics_analytics_{$tenantId}_{$period}_{$type}";
+            $this->cache->forget($cacheKey);
+        }
+
+        $this->logger->$this->logger->info('Electronics analytics cache cleared', [
+            'tenant_id' => $tenantId,
+            'type' => $type,
+        ]);
+    }
+
     private function getDateRange(string $period): array
     {
         return match ($period) {
-            '1d' => [now()->subDay(), now()],
-            '7d' => [now()->subDays(7), now()],
-            '30d' => [now()->subDays(30), now()],
-            '90d' => [now()->subDays(90), now()],
-            '1y' => [now()->subYear(), now()],
-            default => [now()->subDays(7), now()],
+            '1d' => [CarbonImmutable::now()->subDay(), CarbonImmutable::now()],
+            '7d' => [CarbonImmutable::now()->subDays(7), CarbonImmutable::now()],
+            '30d' => [CarbonImmutable::now()->subDays(30), CarbonImmutable::now()],
+            '90d' => [CarbonImmutable::now()->subDays(90), CarbonImmutable::now()],
+            '1y' => [CarbonImmutable::now()->subYear(), CarbonImmutable::now()],
+            default => [CarbonImmutable::now()->subDays(7), CarbonImmutable::now()],
         };
     }
 
@@ -222,6 +237,7 @@ final readonly class ElectronicsAnalyticsService
         $totalRevenue = $brandStats->sum('total_revenue');
         $brandStats = $brandStats->map(function ($stat) use ($totalRevenue) {
             $stat['market_share'] = $totalRevenue > 0 ? round(($stat['total_revenue'] / $totalRevenue) * 100, 2) : 0;
+
             return $stat;
         })->sortByDesc('total_revenue')->values();
 
@@ -258,6 +274,7 @@ final readonly class ElectronicsAnalyticsService
         $totalRevenue = $categoryStats->sum('total_revenue');
         $categoryStats = $categoryStats->map(function ($stat) use ($totalRevenue) {
             $stat['market_share'] = $totalRevenue > 0 ? round(($stat['total_revenue'] / $totalRevenue) * 100, 2) : 0;
+
             return $stat;
         })->sortByDesc('total_revenue')->values();
 
@@ -288,6 +305,7 @@ final readonly class ElectronicsAnalyticsService
         foreach ($priceRanges as $label => $range) {
             $count = $products->filter(function ($product) use ($range) {
                 $price = $product->price_kopecks;
+
                 return $price >= $range['min'] && $price < $range['max'];
             })->count();
 
@@ -411,7 +429,7 @@ final readonly class ElectronicsAnalyticsService
 
         $trend = [];
         for ($i = $days; $i > 0; $i--) {
-            $date = now()->subDays($i);
+            $date = CarbonImmutable::now()->subDays($i);
             $trend[] = [
                 'date' => $date->format('Y-m-d'),
                 'revenue' => rand(50000, 200000),
@@ -434,7 +452,7 @@ final readonly class ElectronicsAnalyticsService
 
         $trend = [];
         for ($i = $days; $i > 0; $i--) {
-            $date = now()->subDays($i);
+            $date = CarbonImmutable::now()->subDays($i);
             $trend[] = [
                 'date' => $date->format('Y-m-d'),
                 'visitors' => rand(1000, 5000),
@@ -472,21 +490,5 @@ final readonly class ElectronicsAnalyticsService
         }
 
         return ($array[$middle - 1] + $array[$middle]) / 2;
-    }
-
-    public function clearCache(?string $type = null): void
-    {
-        $tenantId = tenant()->id ?? 0;
-        $periods = ['1d', '7d', '30d', '90d', '1y'];
-
-        foreach ($periods as $period) {
-            $cacheKey = "electronics_analytics_{$tenantId}_{$period}_{$type}";
-            $this->cache->forget($cacheKey);
-        }
-
-        $this->logger->info('Electronics analytics cache cleared', [
-            'tenant_id' => $tenantId,
-            'type' => $type,
-        ]);
     }
 }

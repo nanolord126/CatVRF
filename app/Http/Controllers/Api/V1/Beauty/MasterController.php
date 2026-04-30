@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,15 +21,14 @@ use App\Services\FraudControlService;
 /**
  * Beauty Master API Controller — CRUD + portfolio + schedule.
  */
-class MasterController extends Controller
+final class MasterController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * GET /masters — список мастеров (публичный).
@@ -41,7 +46,7 @@ class MasterController extends Controller
             }
 
             if ($request->filled('specialization')) {
-                $query->where('specialization', 'like', '%' . $request->input('specialization') . '%');
+                $query->where('specialization', 'like', '%'.$request->input('specialization').'%');
             }
 
             $masters = $query->orderBy('rating', 'desc')
@@ -182,7 +187,7 @@ class MasterController extends Controller
                 ], 404);
             }
 
-            $date = $request->input('date', now()->toDateString());
+            $date = $request->input('date', CarbonImmutable::now()->toDateString());
 
             $bookedSlots = $this->db->table('beauty_appointments')
                 ->where('master_id', $id)
@@ -198,7 +203,7 @@ class MasterController extends Controller
                     $slot = sprintf('%02d:%s', $hour, $min);
                     $slots[] = [
                         'time' => $slot,
-                        'available' => !in_array($slot, $bookedSlots, true),
+                        'available' => ! in_array($slot, $bookedSlots, true),
                     ];
                 }
             }
@@ -251,11 +256,11 @@ class MasterController extends Controller
                     'specialization' => $request->input('specialization'),
                     'rating' => 5.0,
                     'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Master created', [
+                $this->logger->channel('audit')->$this->logger->info('Master created', [
                     'correlation_id' => $correlationId,
                     'master_id' => $masterId,
                     'user_id' => auth()->id(),
@@ -297,7 +302,7 @@ class MasterController extends Controller
                         'full_name' => $request->input('full_name'),
                         'specialization' => $request->input('specialization'),
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]));
 
                 if ($updated === 0) {
@@ -308,7 +313,7 @@ class MasterController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Master updated', [
+                $this->logger->channel('audit')->$this->logger->info('Master updated', [
                     'correlation_id' => $correlationId,
                     'master_id' => $master,
                 ]);
@@ -344,7 +349,7 @@ class MasterController extends Controller
             return $this->db->transaction(function () use ($master, $correlationId): JsonResponse {
                 $updated = $this->db->table('beauty_masters')
                     ->where('id', $master)
-                    ->update(['is_active' => false, 'correlation_id' => $correlationId, 'updated_at' => now()]);
+                    ->update(['is_active' => false, 'correlation_id' => $correlationId, 'updated_at' => CarbonImmutable::now()]);
 
                 if ($updated === 0) {
                     return $this->response->json([
@@ -354,7 +359,7 @@ class MasterController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Master deactivated', [
+                $this->logger->channel('audit')->$this->logger->info('Master deactivated', [
                     'correlation_id' => $correlationId,
                     'master_id' => $master,
                 ]);

@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\HobbyAndCraft;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for HobbyAndCraftService.
- *
- * @covers \App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService
- */
-final class HobbyAndCraftServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'HobbyAndCraftService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'HobbyAndCraftService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('HobbyAndCraft');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'HobbyAndCraftService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('HobbyAndCraftService exists and is instantiable', function () {
+    $this->assertServiceExists('HobbyAndCraftService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class, 'create'),
-            'HobbyAndCraftService must implement create()'
-        );
-    }
+test('HobbyAndCraftService follows clean architecture', function () {
+    $this->assertCleanArchitecture('HobbyAndCraftService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class, 'update'),
-            'HobbyAndCraftService must implement update()'
-        );
-    }
+test('HobbyAndCraftService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('HobbyAndCraftService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class, 'delete'),
-            'HobbyAndCraftService must implement delete()'
-        );
-    }
+test('HobbyAndCraftService enforces quota limits', function () {
+    $this->testServiceWithQuota('HobbyAndCraftService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class, 'list'),
-            'HobbyAndCraftService must implement list()'
-        );
-    }
+test('HobbyAndCraftService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HobbyAndCraft\Domain\Services\HobbyAndCraftService::class, 'getById'),
-            'HobbyAndCraftService must implement getById()'
-        );
-    }
+test('HobbyAndCraftService has proper caching', function () {
+    $cacheKey = 'hobbyandcraft:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('HobbyAndCraftService dispatches proper events', function () {
+    $eventClass = "App\Domains\HobbyAndCraft\Events\HobbyAndCraftProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+        $service->process([]);
+    });
+});
+
+test('HobbyAndCraftService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\HobbyAndCraft\Jobs\ProcessHobbyAndCraftJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+        $service->processAsync([]);
+    });
+});
+
+test('HobbyAndCraftService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('HobbyAndCraftService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('HobbyAndCraftService'));
+        $service->process([]);
+    }, 'HobbyAndCraftService processed');
+});
+
+test('HobbyAndCraftService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

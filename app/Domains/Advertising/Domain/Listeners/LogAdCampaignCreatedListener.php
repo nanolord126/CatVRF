@@ -3,13 +3,10 @@
 declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Listeners;
-use Illuminate\Bus\Queueable;
-use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\Advertising\Domain\Events\AdCampaignCreated;
 use App\Services\AuditService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,12 +15,9 @@ use Psr\Log\LoggerInterface;
  * Logs campaign creation via AuditService and logger.
  * Runs asynchronously via queue (ShouldQueue).
  * Does NOT inject Request — unavailable in queue context.
- *
- * @package App\Domains\Advertising\Domain\Listeners
  */
 final class LogAdCampaignCreatedListener implements ShouldQueue
 {
-
     /**
      * The queue connection that should handle the job.
      */
@@ -35,7 +29,7 @@ final class LogAdCampaignCreatedListener implements ShouldQueue
      */
     public function handle(AdCampaignCreated $event, LoggerInterface $logger, AuditService $audit): void
     {
-        $logger->info('AdCampaignCreated event handled', [
+        $logger->$this->logger->info('AdCampaignCreated event handled', [
             'event' => 'AdCampaignCreated',
             'campaign_id' => $event->campaignId,
             'correlation_id' => $event->correlationId,

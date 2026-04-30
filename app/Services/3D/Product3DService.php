@@ -1,37 +1,40 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ThreeD;
 
-
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 final class Product3DService
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-    ) {}
-
     private const ALLOWED_FORMATS = ['glb', 'gltf', 'obj', 'fbx', 'usdz'];
+
     private const STORAGE_PATH = '3d-models';
+
+    public function __construct(private readonly FilesystemManager $storage,
+        private readonly DatabaseManager $db,
+        private readonly FilesystemManager $storage,) {}
 
     public function uploadProduct3DModel(string $filePath, string $productId, string $vertical): array
     {
-        $fileName = "{$vertical}-{$productId}-" . Str::uuid()->toString() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+        $fileName = "{$vertical}-{$productId}-".Str::uuid()->toString().'.'.pathinfo($filePath, PATHINFO_EXTENSION);
         $storagePath = "'.self::STORAGE_PATH.'/{$vertical}/{$fileName}";
 
-        Storage::disk('public')->put($storagePath, file_get_contents($filePath));
+        $this->storage->disk('public')->put($storagePath, file_get_contents($filePath));
 
         return [
             'id' => Str::uuid()->toString(),
             'product_id' => $productId,
             'vertical' => $vertical,
             'path' => $storagePath,
-            'url' => Storage::disk('public')->url($storagePath),
+            'url' => $this->storage->disk('public')->url($storagePath),
             'format' => pathinfo($filePath, PATHINFO_EXTENSION),
             'size' => filesize($filePath),
-            'uploaded_at' => now(),
+            'uploaded_at' => CarbonImmutable::now(),
         ];
     }
 
@@ -44,7 +47,8 @@ final class Product3DService
     public function validate3DModel(string $filePath): bool
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-        return in_array($extension, $this::ALLOWED_FORMATS);
+
+        return in_array($extension, $this::ALLOWED_FORMATS, true);
     }
 
     public function getProduct3DModel(int $productId): array
@@ -53,7 +57,7 @@ final class Product3DService
             ->where('product_id', $productId)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             throw new \RuntimeException("3D model not found for product {$productId}");
         }
 
@@ -61,7 +65,7 @@ final class Product3DService
             'id' => $record->id,
             'product_id' => $record->product_id,
             'path' => $record->path,
-            'url' => Storage::url($record->path),
+            'url' => $this->storage->url($record->path),
             'format' => $record->format,
             'size' => $record->size,
             'uploaded_at' => $record->uploaded_at,

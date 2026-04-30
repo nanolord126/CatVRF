@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
+
+use App\Services\Fraud\FraudControlService;
 
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Models\TaxiDispatcherQueue;
@@ -10,12 +16,11 @@ use App\Services\NotificationService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
 /**
  * TaxiDispatcherService - Production-ready dispatcher system for taxi operations
- * 
+ *
  * Features:
  * - Intelligent driver assignment based on location, rating, availability
  * - Queue management with priority handling
@@ -29,28 +34,29 @@ use Psr\Log\LoggerInterface;
 final readonly class TaxiDispatcherService
 {
     private const DRIVER_ASSIGNMENT_TIMEOUT_SECONDS = 30;
+
     private const DRIVER_ASSIGNMENT_RETRY_LIMIT = 3;
+
     private const CACHE_TTL_AVAILABLE_DRIVERS = 60;
 
-    public function __construct(
+    public function __construct(private readonly FraudControlService $fraudControlService,
         private readonly AuditService $audit,
         private readonly NotificationService $notification,
         private readonly DatabaseManager $db,
         private readonly TaxiGeoService $geoService,
         private readonly LoggerInterface $logger,
-        private readonly Cache $cache,
-    ) {}
+        private readonly Cache $cache,) {}
 
     /**
      * Assign driver to ride with intelligent matching
      */
-    public function assignDriverToRide(int $rideId, string $correlationId = null): array
+    public function assignDriverToRide(int $rideId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($rideId, $correlationId) {
             $ride = TaxiRide::with(['passenger'])->findOrFail($rideId);
-            
+
             if ($ride->status !== TaxiRide::STATUS_PENDING) {
                 throw new \InvalidArgumentException('Ride must be in pending status');
             }
@@ -78,7 +84,7 @@ final readonly class TaxiDispatcherService
                 'driver_id' => $bestDriver['driver_id'],
                 'status' => TaxiDispatcherQueue::STATUS_ASSIGNED,
                 'priority' => $this->calculatePriority($ride),
-                'timeout_at' => now()->addSeconds(self::DRIVER_ASSIGNMENT_TIMEOUT_SECONDS),
+                'timeout_at' => CarbonImmutable::now()->addSeconds(self::DRIVER_ASSIGNMENT_TIMEOUT_SECONDS),
                 'correlation_id' => $correlationId,
                 'metadata' => [
                     'selection_score' => $bestDriver['score'] ?? 0,
@@ -109,7 +115,7 @@ final readonly class TaxiDispatcherService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi driver assigned to ride', [
+            $this->logger->$this->logger->info('Taxi driver assigned to ride', [
                 'correlation_id' => $correlationId,
                 'queue_uuid' => $queueEntry->uuid,
                 'ride_id' => $rideId,
@@ -128,10 +134,10 @@ final readonly class TaxiDispatcherService
     /**
      * Accept ride assignment
      */
-    public function acceptRideAssignment(int $queueId, int $driverId, string $correlationId = null): TaxiDispatcherQueue
+    public function acceptRideAssignment(int $queueId, int $driverId, ?string $correlationId = null): TaxiDispatcherQueue
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($queueId, $driverId, $correlationId) {
             $queueEntry = TaxiDispatcherQueue::where('id', $queueId)
                 ->where('driver_id', $driverId)
@@ -160,7 +166,7 @@ final readonly class TaxiDispatcherService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi ride assignment accepted', [
+            $this->logger->$this->logger->info('Taxi ride assignment accepted', [
                 'correlation_id' => $correlationId,
                 'queue_uuid' => $queueEntry->uuid,
                 'driver_id' => $driverId,
@@ -173,10 +179,10 @@ final readonly class TaxiDispatcherService
     /**
      * Decline ride assignment
      */
-    public function declineRideAssignment(int $queueId, int $driverId, string $reason, string $correlationId = null): TaxiDispatcherQueue
+    public function declineRideAssignment(int $queueId, int $driverId, string $reason, ?string $correlationId = null): TaxiDispatcherQueue
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($queueId, $driverId, $reason, $correlationId) {
             $queueEntry = TaxiDispatcherQueue::where('id', $queueId)
                 ->where('driver_id', $driverId)
@@ -205,7 +211,7 @@ final readonly class TaxiDispatcherService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi ride assignment declined', [
+            $this->logger->$this->logger->info('Taxi ride assignment declined', [
                 'correlation_id' => $correlationId,
                 'queue_uuid' => $queueEntry->uuid,
                 'driver_id' => $driverId,
@@ -219,19 +225,20 @@ final readonly class TaxiDispatcherService
     /**
      * Process timeout assignments
      */
-    public function processTimeoutAssignments(string $correlationId = null): array
+    public function processTimeoutAssignments(?string $correlationId = null): array
     {
+        $this->fraudControlService->check('process', ['context' => __CLASS__]);
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $timedOutAssignments = TaxiDispatcherQueue::where('status', TaxiDispatcherQueue::STATUS_ASSIGNED)
-            ->where('timeout_at', '<', now())
+            ->where('timeout_at', '<', CarbonImmutable::now())
             ->with(['ride', 'driver'])
             ->get();
 
         $processed = [];
         foreach ($timedOutAssignments as $assignment) {
             $assignment->markAsTimeout();
-            
+
             // Mark driver as available again
             if ($assignment->driver) {
                 $assignment->driver->update(['is_available' => true]);
@@ -261,33 +268,33 @@ final readonly class TaxiDispatcherService
     /**
      * Get dispatcher dashboard data
      */
-    public function getDispatcherDashboard(string $correlationId = null): array
+    public function getDispatcherDashboard(?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
         $tenantId = tenant()->id ?? 1;
-        
+
         $pendingRides = TaxiRide::where('tenant_id', $tenantId)
             ->where('status', TaxiRide::STATUS_PENDING)
             ->count();
-        
+
         $activeRides = TaxiRide::where('tenant_id', $tenantId)
             ->whereIn('status', [TaxiRide::STATUS_ACCEPTED, TaxiRide::STATUS_STARTED])
             ->count();
-        
+
         $availableDrivers = Driver::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->where('is_available', true)
             ->count();
-        
+
         $busyDrivers = Driver::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->where('is_available', false)
             ->count();
-        
+
         $pendingAssignments = TaxiDispatcherQueue::where('tenant_id', $tenantId)
             ->where('status', TaxiDispatcherQueue::STATUS_ASSIGNED)
             ->count();
-        
+
         $recentAssignments = TaxiDispatcherQueue::where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -301,8 +308,8 @@ final readonly class TaxiDispatcherService
                 'available_drivers' => $availableDrivers,
                 'busy_drivers' => $busyDrivers,
                 'pending_assignments' => $pendingAssignments,
-                'driver_utilization' => $availableDrivers + $busyDrivers > 0 
-                    ? ($busyDrivers / ($availableDrivers + $busyDrivers)) * 100 
+                'driver_utilization' => $availableDrivers + $busyDrivers > 0
+                    ? ($busyDrivers / ($availableDrivers + $busyDrivers)) * 100
                     : 0,
             ],
             'recent_assignments' => $recentAssignments->map(function ($assignment) {
@@ -310,7 +317,7 @@ final readonly class TaxiDispatcherService
                     'uuid' => $assignment->uuid,
                     'ride_id' => $assignment->ride_id,
                     'driver_id' => $assignment->driver_id,
-                    'driver_name' => $assignment->driver?->first_name . ' ' . $assignment->driver?->last_name,
+                    'driver_name' => $assignment->driver?->first_name.' '.$assignment->driver?->last_name,
                     'status' => $assignment->status,
                     'assigned_at' => $assignment->assigned_at->toIso8601String(),
                     'timeout_at' => $assignment->timeout_at?->toIso8601String(),
@@ -329,14 +336,14 @@ final readonly class TaxiDispatcherService
 
         foreach ($drivers as $driver) {
             $score = $this->calculateDriverScore($driver, $ride, $correlationId);
-            
+
             if ($score > $bestScore) {
                 $bestScore = $score;
                 $bestDriver = array_merge($driver, ['score' => $score]);
             }
         }
 
-        if (!$bestDriver) {
+        if (! $bestDriver) {
             throw new \RuntimeException('No suitable driver found');
         }
 
@@ -351,10 +358,10 @@ final readonly class TaxiDispatcherService
         $distanceScore = max(0, 1 - ($driver['distance_meters'] / 3000)); // 3km max
         $ratingScore = $driver['rating'] / 5.0;
         $etaScore = max(0, 1 - ($driver['eta_minutes'] / 30)); // 30 min max
-        
+
         // Weighted score
         $totalScore = ($distanceScore * 0.4) + ($ratingScore * 0.3) + ($etaScore * 0.3);
-        
+
         return $totalScore;
     }
 
@@ -364,17 +371,17 @@ final readonly class TaxiDispatcherService
     private function calculatePriority(TaxiRide $ride): int
     {
         $priority = TaxiDispatcherQueue::PRIORITY_NORMAL;
-        
+
         // High priority for VIP passengers
         if ($ride->metadata['is_vip'] ?? false) {
             $priority = TaxiDispatcherQueue::PRIORITY_HIGH;
         }
-        
+
         // Urgent for airport rides
         if ($ride->metadata['is_airport'] ?? false) {
             $priority = TaxiDispatcherQueue::PRIORITY_URGENT;
         }
-        
+
         return $priority;
     }
 
@@ -384,8 +391,8 @@ final readonly class TaxiDispatcherService
     private function reassignRide(int $rideId, string $correlationId): void
     {
         $ride = TaxiRide::find($rideId);
-        
-        if (!$ride || $ride->status !== TaxiRide::STATUS_ACCEPTED) {
+
+        if (! $ride || $ride->status !== TaxiRide::STATUS_ACCEPTED) {
             return;
         }
 
@@ -456,7 +463,7 @@ final readonly class TaxiDispatcherService
 
         $this->notification->send(
             recipientId: $ride->passenger_id,
-            type: 'taxi_' . $type,
+            type: 'taxi_'.$type,
             title: 'Taxi Update',
             message: $messages[$type] ?? 'Ride update',
             data: [

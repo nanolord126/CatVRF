@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Construction;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Construction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -24,21 +22,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ConstructionResource extends Resource
 {
+    protected static ?string $model = Construction::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-home-modern';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 18;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Construction::class;
-    protected static ?string $navigationIcon = 'heroicon-o-home-modern';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 18;
 
     public static function form(Form $form): Form
     {
@@ -47,11 +46,11 @@ final class ConstructionResource extends Resource
                 TextInput::make('project_code')->label('Код проекта')->required()->hidden(),
                 TextInput::make('project_name')->label('Название проекта')->required(),
                 Select::make('project_type')->label('Тип проекта')->options([
-                    'residential' => 'Жилой','commercial' => 'Коммерческий','industrial' => 'Промышленный',
-                    'infrastructure' => 'Инфраструктура','renovation' => 'Реконструкция','repair' => 'Ремонт',
+                    'residential' => 'Жилой', 'commercial' => 'Коммерческий', 'industrial' => 'Промышленный',
+                    'infrastructure' => 'Инфраструктура', 'renovation' => 'Реконструкция', 'repair' => 'Ремонт',
                 ])->required(),
                 Select::make('status')->label('Статус')->options([
-                    'planning' => 'Планирование','tender' => 'Тендер','in_progress' => 'В процессе','completed' => 'Завершено',
+                    'planning' => 'Планирование', 'tender' => 'Тендер', 'in_progress' => 'В процессе', 'completed' => 'Завершено',
                 ])->required(),
                 DatePicker::make('start_date')->label('Дата начала')->required(),
                 DatePicker::make('end_date')->label('Дата завершения'),
@@ -92,8 +91,8 @@ final class ConstructionResource extends Resource
                 TextInput::make('reviews_count')->label('Отзывов')->numeric()->disabled(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -112,17 +111,18 @@ final class ConstructionResource extends Resource
         ])->defaultSort('project_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Construction project action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Construction project action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

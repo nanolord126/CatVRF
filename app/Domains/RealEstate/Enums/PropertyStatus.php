@@ -7,7 +7,6 @@ namespace App\Domains\RealEstate\Enums;
 /**
  * Enum PropertyStatus
  *
- * @package App\Domains\RealEstate\Enums
  *
  * @comment Статусы объекта недвижимости.
  * - PENDING: На модерации, ожидает проверки
@@ -20,18 +19,8 @@ namespace App\Domains\RealEstate\Enums;
  */
 enum PropertyStatus: string
 {
-    case PENDING = 'pending';
-    case ACTIVE = 'active';
-    case SOLD = 'sold';
-    case RENTED = 'rented';
-    case INACTIVE = 'inactive';
-    case REJECTED = 'rejected';
-    case ARCHIVED = 'archived';
-
     /**
      * Получить человекочитаемое название статуса.
-     *
-     * @return string
      */
     public function label(): string
     {
@@ -78,11 +67,16 @@ enum PropertyStatus: string
 
     /**
      * Проверяет, является ли статус активным.
-     *
-     * @return bool
      */
     public function isActive(): bool
     {
         return $this === self::ACTIVE;
     }
+    case PENDING = 'pending';
+    case ACTIVE = 'active';
+    case SOLD = 'sold';
+    case RENTED = 'rented';
+    case INACTIVE = 'inactive';
+    case REJECTED = 'rejected';
+    case ARCHIVED = 'archived';
 }

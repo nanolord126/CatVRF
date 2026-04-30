@@ -6,8 +6,6 @@ namespace Tests\Unit\Domains\Beauty\Services;
 
 use App\Domains\Beauty\DTOs\MasterMatchingByPhotoDto;
 use App\Domains\Beauty\Services\MasterMatchingByPhotoService;
-use App\Services\AuditService;
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,12 +14,6 @@ final class MasterMatchingByPhotoServiceTest extends TestCase
     use RefreshDatabase;
 
     private MasterMatchingByPhotoService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(MasterMatchingByPhotoService::class);
-    }
 
     public function test_match_masters_by_photo(): void
     {
@@ -60,5 +52,11 @@ final class MasterMatchingByPhotoServiceTest extends TestCase
 
         $this->expectException(\Exception::class);
         $this->service->matchByPhoto($dto);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(MasterMatchingByPhotoService::class);
     }
 }

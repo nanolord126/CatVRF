@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
+use App\Domains\RealEstate\Exceptions\RealEstateValidationException;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Security\IdempotencyService;
@@ -18,25 +26,31 @@ use App\Domains\RealEstate\Domain\Enums\TransactionStatusEnum;
 use App\Domains\RealEstate\Domain\Events\EscrowDepositCreated;
 use App\Domains\RealEstate\Domain\Events\EscrowFundsReleased;
 use App\Domains\RealEstate\Domain\Events\EscrowFundsRefunded;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Exception;
 
 final readonly class RealEstateEscrowWalletService
 {
     private const ESCROW_HOLD_DURATION_MINUTES = 30;
+
     private const COMMISSION_RATE_B2C = 0.14;
+
     private const COMMISSION_RATE_B2B = 0.10;
+
     private const MINIMUM_ESCROW_AMOUNT = 10000.00;
+
     private const MAXIMUM_ESCROW_AMOUNT = 50000000.00;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private IdempotencyService $idempotency,
-        private WalletService $wallet,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly IdempotencyService $idempotency,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function createEscrowDeposit(EscrowDepositDto $dto): PropertyTransaction
     {
@@ -58,7 +72,7 @@ final readonly class RealEstateEscrowWalletService
             }
         }
 
-        return DB::transaction(function () use ($dto) {
+        return $this->db->transaction(function () use ($dto) {
             $transaction = PropertyTransaction::create([
                 'tenant_id' => $dto->tenantId,
                 'business_group_id' => $dto->businessGroupId,
@@ -71,7 +85,7 @@ final readonly class RealEstateEscrowWalletService
                 'amount' => $dto->amount,
                 'currency' => $dto->currency,
                 'status' => TransactionStatusEnum::ESCROW_PENDING->value,
-                'escrow_hold_until' => now()->addMinutes(self::ESCROW_HOLD_DURATION_MINUTES),
+                'escrow_hold_until' => CarbonImmutable::now()->addMinutes(self::ESCROW_HOLD_DURATION_MINUTES),
                 'is_b2b' => $dto->isB2b,
                 'commission_rate' => $dto->isB2b ? self::COMMISSION_RATE_B2B : self::COMMISSION_RATE_B2C,
                 'commission_amount' => $dto->amount * ($dto->isB2b ? self::COMMISSION_RATE_B2B : self::COMMISSION_RATE_B2C),
@@ -92,7 +106,7 @@ final readonly class RealEstateEscrowWalletService
                 walletId: $dto->buyerWalletId,
             );
 
-            Log::channel('audit')->info('Escrow deposit created', [
+            $this->log->channel('audit')->$this->logger->info('Escrow deposit created', [
                 'transaction_id' => $transaction->id,
                 'transaction_uuid' => $transaction->uuid,
                 'property_id' => $dto->propertyId,
@@ -103,7 +117,7 @@ final readonly class RealEstateEscrowWalletService
 
             // CRM sync would be handled by event listeners
 
-            event(new EscrowDepositCreated($transaction, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new EscrowDepositCreated($transaction, $dto->correlationId));
 
             if ($dto->idempotencyKey !== null) {
                 $this->idempotency->store($dto->idempotencyKey, 'escrow_deposit', [
@@ -133,10 +147,10 @@ final readonly class RealEstateEscrowWalletService
 
         $this->validateEscrowRelease($transaction);
 
-        return DB::transaction(function () use ($dto, $transaction) {
+        return $this->db->transaction(function () use ($dto, $transaction) {
             $transaction->update([
                 'status' => TransactionStatusEnum::ESCROW_RELEASED->value,
-                'released_at' => now(),
+                'released_at' => CarbonImmutable::now(),
                 'release_reason' => $dto->reason,
                 'metadata' => array_merge($transaction->metadata ?? [], [
                     'released_by' => $dto->releasedBy,
@@ -152,7 +166,7 @@ final readonly class RealEstateEscrowWalletService
 
             $this->executeSplitPayment($transaction, $dto->correlationId);
 
-            Log::channel('audit')->info('Escrow funds released', [
+            $this->log->channel('audit')->$this->logger->info('Escrow funds released', [
                 'transaction_id' => $transaction->id,
                 'transaction_uuid' => $transaction->uuid,
                 'property_id' => $transaction->property_id,
@@ -163,7 +177,7 @@ final readonly class RealEstateEscrowWalletService
 
             // CRM sync would be handled by event listeners
 
-            event(new EscrowFundsReleased($transaction, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new EscrowFundsReleased($transaction, $dto->correlationId));
 
             return $transaction->fresh();
         });
@@ -187,10 +201,10 @@ final readonly class RealEstateEscrowWalletService
 
         $this->validateEscrowRefund($transaction, $dto->reason);
 
-        return DB::transaction(function () use ($dto, $transaction) {
+        return $this->db->transaction(function () use ($dto, $transaction) {
             $transaction->update([
                 'status' => TransactionStatusEnum::ESCROW_REFUNDED->value,
-                'refunded_at' => now(),
+                'refunded_at' => CarbonImmutable::now(),
                 'refund_reason' => $dto->reason,
                 'metadata' => array_merge($transaction->metadata ?? [], [
                     'refunded_by' => $dto->refundedBy,
@@ -207,7 +221,7 @@ final readonly class RealEstateEscrowWalletService
 
             // Payment refund would be handled by PaymentService via event listener
 
-            Log::channel('audit')->info('Escrow funds refunded', [
+            $this->log->channel('audit')->$this->logger->info('Escrow funds refunded', [
                 'transaction_id' => $transaction->id,
                 'transaction_uuid' => $transaction->uuid,
                 'property_id' => $transaction->property_id,
@@ -219,7 +233,7 @@ final readonly class RealEstateEscrowWalletService
 
             // CRM sync would be handled by event listeners
 
-            event(new EscrowFundsRefunded($transaction, $dto->correlationId));
+            $this->eventDispatcher->dispatch(new EscrowFundsRefunded($transaction, $dto->correlationId));
 
             return $transaction->fresh();
         });
@@ -321,13 +335,13 @@ final readonly class RealEstateEscrowWalletService
     private function validateEscrowAmount(float $amount): void
     {
         if ($amount < self::MINIMUM_ESCROW_AMOUNT) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('Minimum escrow amount is %s', number_format(self::MINIMUM_ESCROW_AMOUNT, 2))
             );
         }
 
         if ($amount > self::MAXIMUM_ESCROW_AMOUNT) {
-            throw new Exception(
+            throw new RealEstateValidationException(
                 sprintf('Maximum escrow amount is %s', number_format(self::MAXIMUM_ESCROW_AMOUNT, 2))
             );
         }
@@ -340,30 +354,30 @@ final readonly class RealEstateEscrowWalletService
             ->first();
 
         if ($property === null) {
-            throw new Exception('Property is not available for escrow transaction');
+            throw new RealEstateValidationException('Property is not available for escrow transaction');
         }
     }
 
     private function validateEscrowRelease(PropertyTransaction $transaction): void
     {
         if ($transaction->status !== TransactionStatusEnum::ESCROW_PENDING->value) {
-            throw new Exception('Transaction is not in escrow pending state');
+            throw new RealEstateValidationException('Transaction is not in escrow pending state');
         }
 
         if ($transaction->escrow_hold_until->isPast()) {
-            throw new Exception('Escrow hold period has expired');
+            throw new RealEstateValidationException('Escrow hold period has expired');
         }
     }
 
     private function validateEscrowRefund(PropertyTransaction $transaction, string $reason): void
     {
         if ($transaction->status !== TransactionStatusEnum::ESCROW_PENDING->value) {
-            throw new Exception('Transaction is not in escrow pending state');
+            throw new RealEstateValidationException('Transaction is not in escrow pending state');
         }
 
         $validReasons = ['buyer_cancellation', 'seller_rejection', 'fraud_detected', 'property_unavailable', 'mutual_agreement'];
-        if (!in_array($reason, $validReasons, true)) {
-            throw new Exception('Invalid refund reason');
+        if (! in_array($reason, $validReasons, true)) {
+            throw new RealEstateValidationException('Invalid refund reason');
         }
     }
 }

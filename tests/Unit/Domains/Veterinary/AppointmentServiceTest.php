@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Veterinary;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Veterinary\Domain\Services\AppointmentService;
 
 /**
  * Unit tests for AppointmentService.
@@ -14,7 +17,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $this->assertTrue($reflection->isFinal(), 'AppointmentService must be final');
     }
@@ -22,7 +25,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'AppointmentService must be readonly');
     }
@@ -30,7 +33,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Veterinary\Domain\Services\AppointmentService::class
+            AppointmentService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'AppointmentService must have __construct');
@@ -40,7 +43,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Veterinary\Domain\Services\AppointmentService::class, 'create'),
+            method_exists(AppointmentService::class, 'create'),
             'AppointmentService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class AppointmentServiceTest extends TestCase
     public function test_cancel_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Veterinary\Domain\Services\AppointmentService::class, 'cancel'),
+            method_exists(AppointmentService::class, 'cancel'),
             'AppointmentService must implement cancel()'
         );
     }
@@ -56,9 +59,8 @@ final class AppointmentServiceTest extends TestCase
     public function test_complete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Veterinary\Domain\Services\AppointmentService::class, 'complete'),
+            method_exists(AppointmentService::class, 'complete'),
             'AppointmentService must implement complete()'
         );
     }
-
 }

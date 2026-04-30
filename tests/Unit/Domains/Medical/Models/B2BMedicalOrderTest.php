@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Medical\Models;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Medical\Models\B2BMedicalOrder;
 
 /**
  * Unit tests for B2BMedicalOrder model.
@@ -14,27 +17,27 @@ final class B2BMedicalOrderTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Medical\Models\B2BMedicalOrder::class
+            B2BMedicalOrder::class
         );
         $this->assertTrue($reflection->isFinal(), 'B2BMedicalOrder must be final');
     }
 
     public function test_has_fillable_properties(): void
     {
-        $model = new \App\Domains\Medical\Models\B2BMedicalOrder();
+        $model = new B2BMedicalOrder();
         $this->assertNotEmpty($model->getFillable(), 'B2BMedicalOrder must have fillable');
         $this->assertContains('correlation_id', $model->getFillable(), 'Must have correlation_id');
     }
 
     public function test_has_casts(): void
     {
-        $model = new \App\Domains\Medical\Models\B2BMedicalOrder();
+        $model = new B2BMedicalOrder();
         $this->assertNotEmpty($model->getCasts(), 'B2BMedicalOrder must have casts');
     }
 
     public function test_has_tenant_id_in_fillable(): void
     {
-        $model = new \App\Domains\Medical\Models\B2BMedicalOrder();
+        $model = new B2BMedicalOrder();
         $this->assertContains('tenant_id', $model->getFillable(), 'Must have tenant_id');
     }
 }

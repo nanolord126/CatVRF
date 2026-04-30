@@ -1,55 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Models;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 final class FreelanceServiceOffer extends Model
 {
-
+    use TenantScoped;
+
     protected $table = 'freelance_service_offers';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'freelancer_id',
-            'title',
-            'description',
-            'price_kopecks',
-            'delivery_days',
-            'package_details',
-            'is_active',
-            'tags',
-            'correlation_id',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'freelancer_id',
+        'title',
+        'description',
+        'price_kopecks',
+        'delivery_days',
+        'package_details',
+        'is_active',
+        'tags',
+        'correlation_id',
+    ];
 
-        protected $casts = [
-            'price_kopecks' => 'integer',
-            'delivery_days' => 'integer',
-            'package_details' => 'json',
-            'tags' => 'json',
-            'is_active' => 'boolean',
-        ];
+    protected $casts = [
+        'price_kopecks' => 'integer',
+        'delivery_days' => 'integer',
+        'package_details' => 'json',
+        'tags' => 'json',
+        'is_active' => 'boolean',
+    ];
 
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = (string) Str::uuid();
-                $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
-            });
-
-            static::addGlobalScope('tenant', function ($builder) {
-                $builder->where('tenant_id', tenant()->id ?? 1);
-            });
-        }
-
-        public function freelancer(): BelongsTo
-        {
-            return $this->belongsTo(Freelancer::class);
-        }
+    public function freelancer(): BelongsTo
+    {
+        return $this->belongsTo(Freelancer::class);
+    }
 
     /**
      * Get the string representation of this instance.
@@ -58,7 +50,7 @@ final class FreelanceServiceOffer extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -69,8 +61,20 @@ final class FreelanceServiceOffer extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', tenant()->id ?? 1);
+        });
     }
 }

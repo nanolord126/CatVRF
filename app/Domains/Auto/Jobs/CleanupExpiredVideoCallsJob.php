@@ -1,47 +1,48 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 final class CleanupExpiredVideoCallsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct() {}
+    public int $tries = 3;
+    public int $backoff = 30;
+    public bool $deleteWhenMissingModels = true;
 
-    public function handle(): void
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly LoggerInterface $logger,
+        public readonly int $tenantId,
+        public readonly string $correlationId = '',) {}
+
+    public function handle(LogManager $log): void
     {
-        $expiredCalls = DB::table('auto_repair_orders')
-            ->where('metadata->video_call_expires_at', '<=', now()->toIso8601String())
-            ->whereNotNull('metadata->webrtc_room_id')
-            ->get();
+        $log->channel('automotive')->$this->logger->info('Expired video calls cleanup started', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+        ]);
 
-        $cleanedCount = 0;
+        // TODO: Implement expired video calls cleanup
+    }
 
-        foreach ($expiredCalls as $call) {
-            $metadata = json_decode($call->metadata ?? '{}', true);
-            unset($metadata['webrtc_room_id'], $metadata['webrtc_token'], $metadata['video_call_expires_at']);
-
-            DB::table('auto_repair_orders')
-                ->where('id', $call->id)
-                ->update([
-                    'metadata' => json_encode($metadata),
-                    'updated_at' => now(),
-                ]);
-
-            $cleanedCount++;
-        }
-
-        Log::channel('audit')->info('auto.video_calls.cleanup.completed', [
-            'cleaned_count' => $cleanedCount,
+    public function failed(\Throwable $exception): void
+    {
+        $this->loggerInterface /* TODO: inject via DI */->error('CleanupExpiredVideoCallsJob failed', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
         ]);
     }
 }

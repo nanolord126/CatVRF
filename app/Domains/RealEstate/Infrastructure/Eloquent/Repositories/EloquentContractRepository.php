@@ -18,7 +18,9 @@ use Psr\Log\LoggerInterface;
 final class EloquentContractRepository implements ContractRepositoryInterface
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
+
     public function findById(ContractId $id): ?Contract
     {
         $model = ContractModel::withoutGlobalScope('tenant')->find($id->getValue());
@@ -86,7 +88,7 @@ final class EloquentContractRepository implements ContractRepositoryInterface
         ContractModel::withoutGlobalScope('tenant')
             ->updateOrCreate(['id' => $data['id']], $data);
 
-        $this->logger->info('ContractRepository::save', [
+        $this->logger->$this->logger->info('ContractRepository::save', [
             'contract_id'    => $data['id'],
             'status'         => $data['status'],
             'correlation_id' => $data['correlation_id'],

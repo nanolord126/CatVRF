@@ -8,6 +8,14 @@ declare(strict_types=1);
  * Global Filament settings shared across all panels
  * (Admin, Tenant, B2B, CRM, Emergency).
  */
+
+// Отключаем Filament в тестовой среде
+if (env('APP_ENV') === 'testing') {
+    return [
+        'panels' => [],
+    ];
+}
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -95,7 +103,7 @@ return [
     | Registered panel providers. Each panel has its own provider class.
     */
     'panels' => [
-        // Temporarily disabled for seeder
+        // Temporarily disabled for migrations - Filament has initialization issue
         /*
         'admin' => [
             'provider' => \App\Providers\Filament\AdminPanelProvider::class,
@@ -141,4 +149,16 @@ return [
     */
     'default_paginator' => 25,
     'paginator_options' => [10, 25, 50, 100],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Panel Security
+    |--------------------------------------------------------------------------
+    | Security settings for landlord admin panel (/admin)
+    */
+    'admin' => [
+        'ip_whitelist' => env('FILAMENT_ADMIN_IP_WHITELIST', ''),
+        'audit_enabled' => env('FILAMENT_ADMIN_AUDIT_ENABLED', true),
+        'require_2fa' => env('FILAMENT_ADMIN_REQUIRE_2FA', false),
+    ],
 ];

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Events;
 
@@ -13,69 +15,64 @@ use App\Models\Order;
 /**
  * Event: Order status changed.
  * Broadcast: private-tenant.{tenantId}
- *
- * @package App\Events
  */
 final class OrderStatusChanged implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithBroadcasting, SerializesModels;
+    use Dispatchable;
+    use InteractsWithBroadcasting;
+    use SerializesModels;
 
-        private Order $order;
-        private string $oldStatus;
-        private string $newStatus;
-        private string $correlationId;
-        private int $tenantId;
+    private readonly Order $order;
 
-        /**
-         * @param Order $order
-         * @param string $oldStatus
-         * @param string $newStatus
-         * @param string $correlationId
-         */
-        public function __construct(
-            Order $order,
-            string $oldStatus,
-            string $newStatus,
-            string $correlationId
-        ) {
-            $this->order = $order;
-            $this->oldStatus = $oldStatus;
-            $this->newStatus = $newStatus;
-            $this->correlationId = $correlationId;
-            $this->tenantId = $order->tenant_id;
-        }
+    private readonly string $oldStatus;
 
-        /**
-         * Канал для broadcast
-         * @return Channel
-         */
-        public function broadcastOn(): Channel
-        {
-            return new PrivateChannel("tenant.{$this->tenantId}");
-        }
+    private readonly string $newStatus;
 
-        /**
-         * Имя события в фронтенде
-         * @return string
-         */
-        public function broadcastAs(): string
-        {
-            return 'order.status.changed';
-        }
+    private readonly string $correlationId;
 
-        /**
-         * Данные для broadcast
-         * @return array
-         */
-        public function broadcastWith(): array
-        {
-            return [
-                'id' => $this->order->id,
-                'uuid' => $this->order->uuid,
-                'old_status' => $this->oldStatus,
-                'new_status' => $this->newStatus,
-                'correlation_id' => $this->correlationId,
-                'updated_at' => $this->order->updated_at?->toIso8601String(),
-            ];
-        }
+    private readonly int $tenantId;
+
+    public function __construct(
+        Order $order,
+        string $oldStatus,
+        string $newStatus,
+        string $correlationId
+    ) {
+        $this->order = $order;
+        $this->oldStatus = $oldStatus;
+        $this->newStatus = $newStatus;
+        $this->correlationId = $correlationId;
+        $this->tenantId = $order->tenant_id;
+    }
+
+    /**
+     * Канал для broadcast
+     */
+    public function broadcastOn(): Channel
+    {
+        return new PrivateChannel("tenant.{$this->tenantId}");
+    }
+
+    /**
+     * Имя события в фронтенде
+     */
+    public function broadcastAs(): string
+    {
+        return 'order.status.changed';
+    }
+
+    /**
+     * Данные для broadcast
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'id' => $this->order->id,
+            'uuid' => $this->order->uuid,
+            'old_status' => $this->oldStatus,
+            'new_status' => $this->newStatus,
+            'correlation_id' => $this->correlationId,
+            'updated_at' => $this->order->updated_at?->toIso8601String(),
+        ];
+    }
 }

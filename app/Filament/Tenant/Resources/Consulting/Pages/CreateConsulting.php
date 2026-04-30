@@ -1,24 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Consulting\Pages;
 
-
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Consulting\ConsultingResource;
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateConsulting extends CreateRecord
 {
+    protected static string $resource = ConsultingResource::class;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static string $resource = ConsultingResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -29,7 +29,7 @@ final class CreateConsulting extends CreateRecord
             $data['tenant_id'] = filament()->getTenant()->id;
             $data['uuid'] = Str::uuid()->toString();
 
-            $this->logger->info('Consulting service creation form submitted', [
+            $this->logger->$this->logger->info('Consulting service creation form submitted', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $data['tenant_id'],
                 'user_id' => auth()->id(),
@@ -41,13 +41,13 @@ final class CreateConsulting extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->logger->info('Consulting service created successfully', [
+        $this->logger->$this->logger->info('Consulting service created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid,
             'correlation_id' => $this->record->correlation_id,
             'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 

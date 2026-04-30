@@ -1,16 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Party\PartyOrderResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
 use App\Filament\Tenant\Resources\Party\PartyOrderResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Class ListPartyOrders
@@ -18,16 +18,23 @@ use Illuminate\Support\Facades\Log;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Party\PartyOrderResource\Pages
  */
 final class ListPartyOrders extends ListRecords
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = PartyOrderResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->log->channel('audit')->$this->logger->info('PartyOrder registry viewed', [
+            'tenant_id' => tenant()->id ?? null,
+            'user_id' => auth()->id() ?? null,
+        ]);
+    }
 
     protected function getHeaderActions(): array
     {
@@ -47,15 +54,5 @@ final class ListPartyOrders extends ListRecords
         }
 
         return $query;
-    }
-
-    public function mount(): void
-    {
-        parent::mount();
-
-        \Illuminate\Support\Facades\Log::channel('audit')->info('PartyOrder registry viewed', [
-            'tenant_id' => tenant()->id ?? null,
-            'user_id' => auth()->id() ?? null,
-        ]);
     }
 }

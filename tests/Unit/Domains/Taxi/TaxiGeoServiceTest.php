@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
@@ -13,13 +15,6 @@ final class TaxiGeoServiceTest extends TestCase
     use RefreshDatabase;
 
     private TaxiGeoService $geoService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->geoService = new TaxiGeoService();
-    }
 
     public function test_calculate_distance(): void
     {
@@ -172,5 +167,12 @@ final class TaxiGeoServiceTest extends TestCase
         ]);
 
         $this->assertEquals(5000.0, $zone->getMaxPriceInRubles());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->geoService = new TaxiGeoService();
     }
 }

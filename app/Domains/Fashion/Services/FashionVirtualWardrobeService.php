@@ -1,18 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Virtual Wardrobe / Digital Closet Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Цифровой гардероб пользователя: управление вещами,
         организация по категориям, стилям, сезонам,
         создание аутфитов, статистика носки.
@@ -21,11 +26,11 @@ final readonly class FashionVirtualWardrobeService
 {
     private const MAX_WARDROBE_ITEMS = 500;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Добавить вещь в цифровой гардероб.
@@ -69,8 +74,8 @@ final readonly class FashionVirtualWardrobeService
             'is_favorite' => false,
             'status' => 'active',
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->audit->record(
@@ -86,7 +91,7 @@ final readonly class FashionVirtualWardrobeService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion wardrobe item added', [
+        $this->log->channel('audit')->$this->logger->info('Fashion wardrobe item added', [
             'wardrobe_item_id' => $wardrobeItemId,
             'user_id' => $userId,
             'tenant_id' => $tenantId,
@@ -134,9 +139,9 @@ final readonly class FashionVirtualWardrobeService
                 'fvw.created_at'
             );
 
-        if (!empty($filters['category'])) {
+        if (! empty($filters['category'])) {
             $query->whereExists(function ($q) use ($filters, $tenantId) {
-                $q->select(DB::raw(1))
+                $q->select($this->db->raw(1))
                     ->from('fashion_product_categories')
                     ->whereColumn('fashion_product_categories.product_id', 'fvw.product_id')
                     ->where('fashion_product_categories.tenant_id', $tenantId)
@@ -144,21 +149,21 @@ final readonly class FashionVirtualWardrobeService
             });
         }
 
-        if (!empty($filters['color'])) {
+        if (! empty($filters['color'])) {
             $query->where('fp.color', $filters['color']);
         }
 
-        if (!empty($filters['brand'])) {
+        if (! empty($filters['brand'])) {
             $query->where('fp.brand', $filters['brand']);
         }
 
-        if (!empty($filters['is_favorite'])) {
+        if (! empty($filters['is_favorite'])) {
             $query->where('fvw.is_favorite', true);
         }
 
-        if (!empty($filters['season'])) {
+        if (! empty($filters['season'])) {
             $query->whereExists(function ($q) use ($filters, $tenantId) {
-                $q->select(DB::raw(1))
+                $q->select($this->db->raw(1))
                     ->from('fashion_product_categories')
                     ->whereColumn('fashion_product_categories.product_id', 'fvw.product_id')
                     ->where('fashion_product_categories.tenant_id', $tenantId)
@@ -200,13 +205,13 @@ final readonly class FashionVirtualWardrobeService
 
         $this->db->table('fashion_virtual_wardrobe')
             ->where('id', $wardrobeItemId)
-            ->update(['last_worn_at' => Carbon::now()]);
+            ->update(['last_worn_at' => CarbonImmutable::now()]);
 
         $this->db->table('fashion_wear_history')->insert([
             'wardrobe_item_id' => $wardrobeItemId,
             'tenant_id' => $tenantId,
             'user_id' => $userId,
-            'worn_at' => Carbon::now(),
+            'worn_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
 
@@ -238,7 +243,7 @@ final readonly class FashionVirtualWardrobeService
                 ->where('tenant_id', $tenantId)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 throw new \InvalidArgumentException('Wardrobe item not found', 404);
             }
         }
@@ -252,8 +257,8 @@ final readonly class FashionVirtualWardrobeService
             'is_favorite' => false,
             'times_worn' => 0,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         foreach ($wardrobeItemIds as $itemId) {

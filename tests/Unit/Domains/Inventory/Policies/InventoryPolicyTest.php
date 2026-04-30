@@ -11,6 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionProperty;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Тесты Policy для InventoryCheck.
@@ -21,7 +22,7 @@ use ReflectionProperty;
 final class InventoryPolicyTest extends TestCase
 {
     /* ================================================================== */
-    /*  Structural                                                         */
+    /*  Structural */
     /* ================================================================== */
 
     #[Test]
@@ -47,7 +48,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Methods exist                                                      */
+    /*  Methods exist */
     /* ================================================================== */
 
     #[Test]
@@ -64,7 +65,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  viewAny: tenant check                                              */
+    /*  viewAny: tenant check */
     /* ================================================================== */
 
     #[Test]
@@ -86,7 +87,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  view: tenant match                                                 */
+    /*  view: tenant match */
     /* ================================================================== */
 
     #[Test]
@@ -110,7 +111,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  create: tenant check                                               */
+    /*  create: tenant check */
     /* ================================================================== */
 
     #[Test]
@@ -132,7 +133,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  update: tenant match                                               */
+    /*  update: tenant match */
     /* ================================================================== */
 
     #[Test]
@@ -156,7 +157,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  delete: tenant match                                               */
+    /*  delete: tenant match */
     /* ================================================================== */
 
     #[Test]
@@ -180,7 +181,7 @@ final class InventoryPolicyTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Helpers                                                            */
+    /*  Helpers */
     /* ================================================================== */
 
     private function buildUser(?int $tenantId): object
@@ -195,7 +196,7 @@ final class InventoryPolicyTest extends TestCase
         $ref   = new ReflectionClass(InventoryCheck::class);
         $check = $ref->newInstanceWithoutConstructor();
 
-        $prop = new ReflectionProperty(\Illuminate\Database\Eloquent\Model::class, 'attributes');
+        $prop = new ReflectionProperty(Model::class, 'attributes');
         $prop->setValue($check, [
             'tenant_id' => $tenantId,
         ]);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Security;
 
@@ -6,37 +8,23 @@ use App\Domains\RealEstate\Models\Property;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final class RealEstateSpamTest extends SecurityTestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private User $spammer;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->spammer = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-    }
 
     public function test_bulk_property_creation_blocked(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 50; $i++) {
             $propertyData = [
                 'tenant_id' => $this->tenant->id,
@@ -52,7 +40,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/properties', $propertyData);
         }
 
-        $blockedCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403, 422]))->count();
+        $blockedCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403, 422], true))->count();
         $this->assertGreaterThan(10, $blockedCount, 'Bulk property creation should be rate-limited');
     }
 
@@ -70,7 +58,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/inquiries', $inquiryData);
         }
 
-        $blockedCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403, 409]))->count();
+        $blockedCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403, 409], true))->count();
         $this->assertGreaterThan(5, $blockedCount, 'Duplicate inquiries should be blocked');
     }
 
@@ -124,7 +112,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/contact', $contactData);
         }
 
-        $blockedCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403]))->count();
+        $blockedCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403], true))->count();
         $this->assertGreaterThan(15, $blockedCount, 'Contact form spam should be rate-limited');
     }
 
@@ -142,7 +130,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/reviews', $reviewData);
         }
 
-        $duplicateCount = collect($responses)->filter(fn($r) => $r->status() === 409)->count();
+        $duplicateCount = collect($responses)->filter(fn ($r) => $r->status() === 409)->count();
         $this->assertGreaterThan(0, $duplicateCount, 'Duplicate reviews should be blocked');
     }
 
@@ -163,7 +151,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/agents', $fakeAgentData);
         }
 
-        $blockedCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403]))->count();
+        $blockedCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403], true))->count();
         $this->assertGreaterThan(3, $blockedCount, 'Fake agent creation should be rate-limited');
     }
 
@@ -182,7 +170,7 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/viewings', $viewingData);
         }
 
-        $blockedCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403]))->count();
+        $blockedCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403], true))->count();
         $this->assertGreaterThan(10, $blockedCount, 'Mass viewing requests should be blocked');
     }
 
@@ -284,8 +272,23 @@ final class RealEstateSpamTest extends SecurityTestCase
                 ->postJson('/api/real-estate/properties', $propertyData);
         }
 
-        $sameIpCount = collect($responses)->filter(fn($r) => in_array($r->status(), [429, 403]))->count();
+        $sameIpCount = collect($responses)->filter(fn ($r) => in_array($r->status(), [429, 403], true))->count();
         $this->assertGreaterThan(0, $sameIpCount, 'Multiple accounts from same IP should be rate-limited');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->spammer = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
     }
 
     protected function assertHasSpamScore($response): void

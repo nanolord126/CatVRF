@@ -1,20 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class ElectronicsProduct extends Model
 {
-
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'electronics_products';
 
@@ -75,67 +78,67 @@ final class ElectronicsProduct extends Model
         'tags' => 'json',
     ];
 
+    /* --- Relations --- */
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ElectronicsCategory::class, 'category_id');
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(ElectronicsStore::class, 'store_id');
+    }
+
+    public function gadget(): HasMany
+    {
+        return $this->hasMany(ElectronicsGadget::class, 'product_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ElectronicsReview::class, 'product_id');
+    }
+
+    public function warranties(): HasMany
+    {
+        return $this->hasMany(ElectronicsWarranty::class, 'product_id');
+    }
+
+    /* --- Scopes --- */
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('availability', 'in_stock')
+            ->where('current_stock', '>', 0);
+    }
+
+    public function scopeB2B(Builder $query): Builder
+    {
+        return $query->whereNotNull('b2b_price_kopecks');
+    }
+
+    /* --- Helpers --- */
+
+    public function getInStockCountAttribute(): int
+    {
+        return $this->current_stock - $this->hold_stock;
+    }
+
     /**
      * Global Scope: Tenant Isolation.
      */
     protected static function booted(): void
     {
-        static::creating(function (Model $model) {
+        self::creating(function (Model $model) {
             $model->uuid = $model->uuid ?: (string) Str::uuid();
             $model->tenant_id = $model->tenant_id ?: (tenant()->id ?? 0);
         });
 
-        static::addGlobalScope('tenant', function (Builder $builder) {
+        self::addGlobalScope('tenant', function (Builder $builder) {
             if (tenant()) {
                 $builder->where('tenant_id', tenant()->id);
             }
         });
     }
-
-        /* --- Relations --- */
-
-        public function category(): BelongsTo
-        {
-            return $this->belongsTo(ElectronicsCategory::class, 'category_id');
-        }
-
-        public function store(): BelongsTo
-        {
-            return $this->belongsTo(ElectronicsStore::class, 'store_id');
-        }
-
-        public function gadget(): HasMany
-        {
-            return $this->hasMany(ElectronicsGadget::class, 'product_id');
-        }
-
-        public function reviews(): HasMany
-        {
-            return $this->hasMany(ElectronicsReview::class, 'product_id');
-        }
-
-        public function warranties(): HasMany
-        {
-            return $this->hasMany(ElectronicsWarranty::class, 'product_id');
-        }
-
-        /* --- Scopes --- */
-
-        public function scopeAvailable(Builder $query): Builder
-        {
-            return $query->where('availability', 'in_stock')
-                         ->where('current_stock', '>', 0);
-        }
-
-        public function scopeB2B(Builder $query): Builder
-        {
-            return $query->whereNotNull('b2b_price_kopecks');
-        }
-
-        /* --- Helpers --- */
-
-        public function getInStockCountAttribute(): int
-        {
-            return $this->current_stock - $this->hold_stock;
-        }
 }

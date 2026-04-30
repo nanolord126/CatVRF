@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -10,7 +12,6 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -20,19 +21,10 @@ use Filament\Tables\Table;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListDentalConsumable extends ListRecords
 {
     protected static string $resource = DentalConsumableResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Добавить расходник')->icon('heroicon-o-plus'),
-        ];
-    }
 
     /**
      * Handle table operation.
@@ -55,5 +47,12 @@ final class ListDentalConsumable extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('current_stock', 'asc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Добавить расходник')->icon('heroicon-o-plus'),
+        ];
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -18,15 +20,6 @@ final class ListAutoPart extends ListRecords
     public function getTitle(): string
     {
         return 'Запчасти';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить запчасть')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -54,11 +47,11 @@ final class ListAutoPart extends ListRecords
                     ->toggleable(),
                 TextColumn::make('price_kopecks')
                     ->label('Цена')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('wholesale_price_kopecks')
                     ->label('Опт')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->toggleable(),
                 TextColumn::make('stock_quantity')
                     ->label('Остаток')
@@ -86,5 +79,14 @@ final class ListAutoPart extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить запчасть')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

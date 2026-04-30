@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListB2BDeals — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listb2bdeals
  * @see https://catvrf.ru/docs/listb2bdeals
  * @see https://catvrf.ru/docs/listb2bdeals
@@ -31,22 +34,16 @@
  * @see https://catvrf.ru/docs/listb2bdeals
  */
 
-
 namespace App\Filament\Tenant\Resources\B2BDealResource\Pages;
 
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\CreateAction;
 
 final class ListB2BDeals extends ListRecords
 {
-
     protected static string $resource = B2BDealResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                \Filament\Actions\CreateAction::make(),
-            ];
-        }
 
     /**
      * Get the string representation of this instance.
@@ -55,7 +52,7 @@ final class ListB2BDeals extends ListRecords
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -66,8 +63,15 @@ final class ListB2BDeals extends ListRecords
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
         ];
     }
 }

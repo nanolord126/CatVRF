@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionCollaborativeFilteringServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionCollaborativeFilteringService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionCollaborativeFilteringService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_get_recommendations_returns_structure(): void
     {
@@ -83,6 +74,17 @@ final class FashionCollaborativeFilteringServiceTest extends BaseTestCase
         $similarity = $method->invoke($this->service, $vector1, $vector2);
 
         $this->assertEquals(1.0, $similarity);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionCollaborativeFilteringService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createUser(): int

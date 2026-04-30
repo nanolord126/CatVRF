@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Domain\Services;
@@ -13,22 +14,22 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use Throwable;
 use RuntimeException;
+use App\DTOs\OperationDto;
 
 final readonly class AppointmentService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private Dispatcher $events
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly Dispatcher $events
     ) {}
 
     public function book(BookAppointmentDto $dto): Appointment
     {
         // No Facades. Injection only.
-        $this->fraud->check(new \App\DTOs\OperationDto(
+        $this->fraud->check(new OperationDto(
             userId: $dto->userId,
             operationType: 'book_beauty_appointment',
             amount: 0.0,
@@ -45,7 +46,7 @@ final readonly class AppointmentService
                 ->where('status', '!=', 'cancelled')
                 ->where(function ($q) use ($start, $end) {
                     $q->whereBetween('starts_at', [$start, $end])
-                      ->orWhereBetween('ends_at', [$start, $end]);
+                        ->orWhereBetween('ends_at', [$start, $end]);
                 })->exists();
 
             if ($exists) {
@@ -81,6 +82,124 @@ final readonly class AppointmentService
             $this->events->dispatch(new AppointmentBooked($appointment, $dto->correlationId));
 
             return $appointment;
+        });
+    }
+
+    public function moveAppointment(int $appointmentId, int $newMasterId, string $newDate, string $newTime, string $correlationId): Appointment
+    {
+        $this->fraud->check(new OperationDto(
+            userId: auth()->id(),
+            operationType: 'move_beauty_appointment',
+            amount: 0.0,
+            correlationId: $correlationId,
+            isB2B: false
+        ));
+
+        return $this->db->transaction(function () use ($appointmentId, $newMasterId, $newDate, $newTime, $correlationId) {
+            $appointment = Appointment::findOrFail($appointmentId);
+            $service = BeautyService::findOrFail($appointment->service_id);
+            
+            $start = Carbon::parse("{$newDate} {$newTime}");
+            $end = $start->copy()->addMinutes($service->duration_minutes);
+
+            // Check for conflicts at new time slot
+            $exists = Appointment::where('master_id', $newMasterId)
+                ->where('id', '!=', $appointmentId)
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($q) use ($start, $end) {
+                    $q->whereBetween('starts_at', [$start, $end])
+                        ->orWhereBetween('ends_at', [$start, $end]);
+                })->exists();
+
+            if ($exists) {
+                throw new RuntimeException('Target slot is not available');
+            }
+
+            $oldData = $appointment->toArray();
+
+            $appointment->update([
+                'master_id' => $newMasterId,
+                'starts_at' => $start,
+                'ends_at' => $end,
+            ]);
+
+            $this->audit->log(
+                'appointment_moved',
+                Appointment::class,
+                $appointment->id,
+                $oldData,
+                $appointment->toArray(),
+                $correlationId
+            );
+
+            return $appointment->fresh();
+        });
+    }
+
+    public function cancelAppointment(int $appointmentId, string $reason, string $correlationId): Appointment
+    {
+        $this->fraud->check(new OperationDto(
+            userId: auth()->id(),
+            operationType: 'cancel_beauty_appointment',
+            amount: 0.0,
+            correlationId: $correlationId,
+            isB2B: false
+        ));
+
+        return $this->db->transaction(function () use ($appointmentId, $reason, $correlationId) {
+            $appointment = Appointment::findOrFail($appointmentId);
+
+            if ($appointment->status === 'cancelled') {
+                throw new RuntimeException('Appointment is already cancelled');
+            }
+
+            $oldData = $appointment->toArray();
+
+            $appointment->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $reason,
+            ]);
+
+            $this->audit->log(
+                'appointment_cancelled',
+                Appointment::class,
+                $appointment->id,
+                $oldData,
+                $appointment->toArray(),
+                $correlationId
+            );
+
+            return $appointment->fresh();
+        });
+    }
+
+    public function updateStatus(int $appointmentId, string $status, string $correlationId): Appointment
+    {
+        $this->fraud->check(new OperationDto(
+            userId: auth()->id(),
+            operationType: 'update_appointment_status',
+            amount: 0.0,
+            correlationId: $correlationId,
+            isB2B: false
+        ));
+
+        return $this->db->transaction(function () use ($appointmentId, $status, $correlationId) {
+            $appointment = Appointment::findOrFail($appointmentId);
+
+            $oldData = $appointment->toArray();
+
+            $appointment->update(['status' => $status]);
+
+            $this->audit->log(
+                'appointment_status_updated',
+                Appointment::class,
+                $appointment->id,
+                $oldData,
+                $appointment->toArray(),
+                $correlationId
+            );
+
+            return $appointment->fresh();
         });
     }
 }

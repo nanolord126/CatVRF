@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\MedicalRecordResource\Pages;
 
@@ -6,18 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 
 final class CreateMedicalRecord extends CreateRecord
 {
-
-    protected static string $resource = MedicalRecordResource::class;
-
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['uuid'] = (string)Str::uuid();
-            $data['tenant_id'] = tenant()->id;
-            $data['correlation_id'] = (string)Str::uuid();
-
-            return $data;
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -33,6 +23,18 @@ final class CreateMedicalRecord extends CreateRecord
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = MedicalRecordResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['uuid'] = (string) Str::uuid();
+        $data['tenant_id'] = tenant()->id;
+        $data['correlation_id'] = (string) Str::uuid();
+
+        return $data;
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -40,15 +42,15 @@ final class CreateMedicalRecord extends CreateRecord
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Handle graceful error recovery for the component.
      * Logs the error and determines if retry is possible.
      *
-     * @param \Throwable $exception The caught exception
-     * @param int $attempt Current attempt number
+     * @param  \Throwable  $exception  The caught exception
+     * @param  int  $attempt  Current attempt number
      * @return bool Whether the operation should be retried
      */
     private function handleError(\Throwable $exception, int $attempt = 1): bool
@@ -59,5 +61,4 @@ final class CreateMedicalRecord extends CreateRecord
 
         return true;
     }
-
 }

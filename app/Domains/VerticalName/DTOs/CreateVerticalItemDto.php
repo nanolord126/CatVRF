@@ -16,8 +16,6 @@ use Illuminate\Support\Str;
  * toArray() для передачи в Eloquent::create().
  *
  * Определение B2B: $request->has('inn') && $request->has('business_card_id').
- *
- * @package App\Domains\VerticalName\DTOs
  */
 final readonly class CreateVerticalItemDto
 {
@@ -38,8 +36,7 @@ final readonly class CreateVerticalItemDto
         public ?array $metadata,
         public ?string $idempotencyKey = null,
         public bool $isB2B = false,
-    ) {
-    }
+    ) {}
 
     /**
      * Гидрация из HTTP-запроса.

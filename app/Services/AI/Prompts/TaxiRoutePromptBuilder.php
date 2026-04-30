@@ -6,10 +6,10 @@ namespace App\Services\AI\Prompts;
 
 /**
  * Prompt builder for Taxi Route Optimization AI
- * 
+ *
  * Vertical: taxi
  * Type: route_optimization
- * 
+ *
  * Generates prompts for:
  * - Route optimization
  * - Dynamic pricing
@@ -17,8 +17,9 @@ namespace App\Services\AI\Prompts;
  */
 final class TaxiRoutePromptBuilder extends AbstractPromptBuilder
 {
-    protected string $version = '1.0.0';
-    protected array $metadata = [
+    protected readonly string $version = '1.0.0';
+
+    protected readonly array $metadata = [
         'vertical' => 'taxi',
         'type' => 'route_optimization',
         'description' => 'Optimizes taxi routes, calculates dynamic pricing, and matches drivers',
@@ -27,7 +28,7 @@ final class TaxiRoutePromptBuilder extends AbstractPromptBuilder
 
     public function getSystemPrompt(array $context = []): string
     {
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Ты — эксперт по логистике и динамическому ценообразованию в такси. 
 Твоя задача — анализировать данные о поездке и предоставлять оптимизированный маршрут, рекомендованный тариф и подходящего водителя.
 
@@ -56,7 +57,7 @@ PROMPT;
         $rideType = $context['ride_type'] ?? 'economy';
         $passengers = $context['passengers'] ?? 1;
 
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Проанализируй следующие данные о поездке:
 
 **Пункт отправления:** {{pickup_location}}

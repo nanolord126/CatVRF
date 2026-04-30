@@ -12,14 +12,15 @@ use Illuminate\Support\Collection;
 final class TaxiFleet extends Entity
 {
     /** @var Collection<int, DriverId> */
-    private Collection $drivers;
+    private readonly Collection $drivers;
 
     public function __construct(
         private readonly TaxiFleetId $id,
         private readonly int $tenantId,
-        private string $name,
+        private readonly string $name,
         private readonly \DateTimeImmutable $createdAt,
-        private \DateTimeImmutable $updatedAt) {
+        private readonly \DateTimeImmutable $updatedAt
+    ) {
         $this->drivers = new Collection();
     }
 
@@ -29,6 +30,7 @@ final class TaxiFleet extends Entity
         string $name
     ): self {
         $now = new \DateTimeImmutable();
+
         return new self(
             $id,
             $tenantId,
@@ -48,7 +50,7 @@ final class TaxiFleet extends Entity
 
     public function removeDriver(DriverId $driverId): void
     {
-        $this->drivers = $this->drivers->filter(fn (DriverId $id) => !$id->equals($driverId));
+        $this->drivers = $this->drivers->filter(fn (DriverId $id) => ! $id->equals($driverId));
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -81,7 +83,7 @@ final class TaxiFleet extends Entity
             'id' => $this->id->toString(),
             'tenant_id' => $this->tenantId,
             'name' => $this->name,
-            'drivers' => $this->drivers->map(fn(DriverId $id) => $id->toString())->all(),
+            'drivers' => $this->drivers->map(fn (DriverId $id) => $id->toString())->all(),
             'created_at' => $this->createdAt->format('Y-m-d H:i:s'),
             'updated_at' => $this->updatedAt->format('Y-m-d H:i:s'),
         ];

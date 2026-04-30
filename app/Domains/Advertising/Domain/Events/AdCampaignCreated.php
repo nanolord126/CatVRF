@@ -4,20 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
 /**
  * Domain event dispatched when a new ad campaign is created.
  *
  * Carries campaign ID and correlation_id for full traceability.
  * Listeners handle side effects asynchronously (audit, notifications).
- *
- * @package App\Domains\Advertising\Domain\Events
  */
 final class AdCampaignCreated
 {
-
     /**
      * Create a new event instance.
      */
@@ -47,9 +41,9 @@ final class AdCampaignCreated
      */
     public function __toString(): string
     {
-        return static::class
-            . '::campaign=' . $this->campaignId
-            . ':cid=' . $this->correlationId;
+        return self::class
+            .'::campaign='.$this->campaignId
+            .':cid='.$this->correlationId;
     }
 
     /**

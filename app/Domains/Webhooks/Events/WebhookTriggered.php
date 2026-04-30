@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Webhooks\Events;
 
@@ -8,7 +10,8 @@ use Illuminate\Queue\SerializesModels;
 
 final class WebhookTriggered
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
+    use SerializesModels;
 
     public function __construct(
         public readonly Webhook $webhook,

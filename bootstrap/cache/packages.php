@@ -90,6 +90,43 @@
       0 => 'Kirschbaum\\PowerJoins\\PowerJoinsServiceProvider',
     ),
   ),
+  'knuckleswtf/scribe' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Knuckles\\Scribe\\ScribeServiceProvider',
+    ),
+  ),
+  'laravel/octane' => 
+  array (
+    'aliases' => 
+    array (
+      'Octane' => 'Laravel\\Octane\\Facades\\Octane',
+    ),
+    'providers' => 
+    array (
+      0 => 'Laravel\\Octane\\OctaneServiceProvider',
+    ),
+  ),
+  'laravel/pennant' => 
+  array (
+    'aliases' => 
+    array (
+      'Feature' => 'Laravel\\Pennant\\Feature',
+    ),
+    'providers' => 
+    array (
+      0 => 'Laravel\\Pennant\\PennantServiceProvider',
+    ),
+  ),
+  'laravel/reverb' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
+      1 => 'Laravel\\Reverb\\ReverbServiceProvider',
+    ),
+  ),
   'laravel/sail' => 
   array (
     'providers' => 
@@ -102,6 +139,13 @@
     'providers' => 
     array (
       0 => 'Laravel\\Sanctum\\SanctumServiceProvider',
+    ),
+  ),
+  'laravel/sentinel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Sentinel\\SentinelServiceProvider',
     ),
   ),
   'laravel/tinker' => 
@@ -120,6 +164,17 @@
     'providers' => 
     array (
       0 => 'Livewire\\LivewireServiceProvider',
+    ),
+  ),
+  'maatwebsite/excel' => 
+  array (
+    'aliases' => 
+    array (
+      'Excel' => 'Maatwebsite\\Excel\\Facades\\Excel',
+    ),
+    'providers' => 
+    array (
+      0 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
     ),
   ),
   'nesbot/carbon' => 

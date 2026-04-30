@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Controllers;
 
@@ -18,7 +20,7 @@ use Illuminate\Support\Str;
 
 /**
  * Tourism Booking Controller
- * 
+ *
  * API controller for tourism booking operations.
  * Handles B2C and B2B booking flows with AI personalization,
  * dynamic pricing, biometric verification, and CRM integration.
@@ -42,7 +44,7 @@ final class TourismBookingController
         try {
             $booking = $this->orchestrator->createBooking($dto);
 
-            $this->logger->info('Tourism booking created via API', [
+            $this->logger->$this->logger->info('Tourism booking created via API', [
                 'booking_uuid' => $booking->uuid,
                 'user_id' => $dto->userId,
                 'correlation_id' => $correlationId,
@@ -62,7 +64,7 @@ final class TourismBookingController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Booking creation failed',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -81,7 +83,7 @@ final class TourismBookingController
         try {
             $booking = $this->orchestrator->confirmBooking($bookingUuid, $correlationId);
 
-            $this->logger->info('Tourism booking confirmed via API', [
+            $this->logger->$this->logger->info('Tourism booking confirmed via API', [
                 'booking_uuid' => $booking->uuid,
                 'correlation_id' => $correlationId,
             ]);
@@ -100,7 +102,7 @@ final class TourismBookingController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Booking confirmation failed',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -120,7 +122,7 @@ final class TourismBookingController
         try {
             $booking = $this->orchestrator->cancelBooking($bookingUuid, $reason, $correlationId);
 
-            $this->logger->info('Tourism booking cancelled via API', [
+            $this->logger->$this->logger->info('Tourism booking cancelled via API', [
                 'booking_uuid' => $booking->uuid,
                 'fraud_score' => $booking->fraud_score,
                 'refund_amount' => $booking->refund_amount,
@@ -142,7 +144,7 @@ final class TourismBookingController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Booking cancellation failed',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -162,7 +164,7 @@ final class TourismBookingController
         try {
             $booking = $this->orchestrator->scheduleVideoCall($bookingUuid, $scheduledTime, $correlationId);
 
-            $this->logger->info('Tourism video call scheduled via API', [
+            $this->logger->$this->logger->info('Tourism video call scheduled via API', [
                 'booking_uuid' => $booking->uuid,
                 'scheduled_time' => $scheduledTime,
                 'correlation_id' => $correlationId,
@@ -181,7 +183,7 @@ final class TourismBookingController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Video call scheduling failed',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -199,7 +201,7 @@ final class TourismBookingController
         try {
             $booking = $this->orchestrator->markVirtualTourViewed($bookingUuid, $correlationId);
 
-            $this->logger->info('Tourism virtual tour marked as viewed', [
+            $this->logger->$this->logger->info('Tourism virtual tour marked as viewed', [
                 'booking_uuid' => $booking->uuid,
                 'correlation_id' => $correlationId,
             ]);
@@ -217,7 +219,7 @@ final class TourismBookingController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Virtual tour marking failed',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -241,7 +243,7 @@ final class TourismBookingController
                 ->additional(['correlation_id' => $correlationId])
                 ->response();
         } catch (\Throwable $e) {
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Booking not found',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -272,7 +274,7 @@ final class TourismBookingController
                 ->additional(['correlation_id' => $correlationId])
                 ->response();
         } catch (\Throwable $e) {
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to fetch bookings',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,

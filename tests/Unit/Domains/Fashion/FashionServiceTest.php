@@ -1,72 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for FashionService.
- *
- * @covers \App\Domains\Fashion\Domain\Services\FashionService
- */
-final class FashionServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'FashionService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'FashionService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Fashion');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'FashionService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('FashionService exists and is instantiable', function () {
+    $this->assertServiceExists('FashionService');
+});
 
-    public function test_getCartForUser_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Fashion\Domain\Services\FashionService::class, 'getCartForUser'),
-            'FashionService must implement getCartForUser()'
-        );
-    }
+test('FashionService follows clean architecture', function () {
+    $this->assertCleanArchitecture('FashionService');
+});
 
-    public function test_reserveItem_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Fashion\Domain\Services\FashionService::class, 'reserveItem'),
-            'FashionService must implement reserveItem()'
-        );
-    }
+test('FashionService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('FashionService', 'process', []);
+});
 
-    public function test_calculateB2BPrice_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Fashion\Domain\Services\FashionService::class, 'calculateB2BPrice'),
-            'FashionService must implement calculateB2BPrice()'
-        );
-    }
+test('FashionService enforces quota limits', function () {
+    $this->testServiceWithQuota('FashionService', 'process', 1, 10, []);
+});
 
-    public function test_getDisplayPrice_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Fashion\Domain\Services\FashionService::class, 'getDisplayPrice'),
-            'FashionService must implement getDisplayPrice()'
-        );
-    }
+test('FashionService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('FashionService'));
+        $service->process([]);
+    }, 10);
+});
 
-}
+test('FashionService has proper caching', function () {
+    $cacheKey = 'fashion:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('FashionService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('FashionService dispatches proper events', function () {
+    $eventClass = "App\Domains\Fashion\Events\FashionProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('FashionService'));
+        $service->process([]);
+    });
+});
+
+test('FashionService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Fashion\Jobs\ProcessFashionJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('FashionService'));
+        $service->processAsync([]);
+    });
+});
+
+test('FashionService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('FashionService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('FashionService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('FashionService'));
+        $service->process([]);
+    }, 'FashionService processed');
+});
+
+test('FashionService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

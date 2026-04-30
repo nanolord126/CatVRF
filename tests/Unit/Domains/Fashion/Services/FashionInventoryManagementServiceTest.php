@@ -14,12 +14,6 @@ final class FashionInventoryManagementServiceTest extends TestCase
 
     private FashionInventoryManagementService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionInventoryManagementService::class);
-    }
-
     public function test_reserve_stock(): void
     {
         $result = $this->service->reserveStock(1, 1, 5, 'order_123', 1);
@@ -78,5 +72,11 @@ final class FashionInventoryManagementServiceTest extends TestCase
         $result = $this->service->getInventoryReport(1);
 
         $this->assertArrayHasKey('low_stock_count', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionInventoryManagementService::class);
     }
 }

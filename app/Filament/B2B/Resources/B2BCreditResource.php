@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Resources;
-
-
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\BusinessGroup;
 
 /**
  * B2BCreditResource — управление кредитным лимитом B2B-клиента.
@@ -27,17 +28,22 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class B2BCreditResource extends Resource
 {
+    protected static ?string $model           = BusinessGroup::class;
+
+    protected static ?string $navigationIcon  = 'heroicon-o-credit-card';
+
+    protected static ?string $navigationLabel = 'Кредитный лимит';
+
+    protected static ?string $slug            = 'b2b-credit';
+
+    protected static ?int $navigationSort  = 4;
+
+    protected static ?string $navigationGroup = 'Финансы';
+
     public function __construct(
         private readonly Request $request,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model           = \App\Models\BusinessGroup::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-credit-card';
-    protected static ?string $navigationLabel = 'Кредитный лимит';
-    protected static ?string $slug            = 'b2b-credit';
-    protected static ?int    $navigationSort  = 4;
-    protected static ?string $navigationGroup = 'Финансы';
 
     public static function getEloquentQuery(): Builder
     {
@@ -116,17 +122,18 @@ final class B2BCreditResource extends Resource
 
                 Tables\Columns\TextColumn::make('credit_limit')
                     ->label('Лимит')
-                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 0, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 0, '.', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('credit_used')
                     ->label('Использовано')
-                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 0, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 0, '.', ' ').' ₽')
                     ->color(static function ($record) {
-                        if (!$record?->credit_limit) {
+                        if (! $record?->credit_limit) {
                             throw new \DomainException('Entity not found');
                         }
                         $pct = $record->credit_used / $record->credit_limit;
+
                         return $pct > 0.8 ? 'danger' : ($pct > 0.6 ? 'warning' : null);
                     }),
 
@@ -150,7 +157,7 @@ final class B2BCreditResource extends Resource
                     ->modalHeading('Запрос на увеличение кредитного лимита')
                     ->modalDescription('Заявка будет отправлена менеджеру платформы. Рассмотрение до 3 рабочих дней.')
                     ->action(static function ($record) {
-                        $this->logger->info('B2B credit limit increase requested', [
+                        $this->logger->$this->logger->info('B2B credit limit increase requested', [
                             'business_group_id' => $record->id,
                             'current_limit'     => $record->credit_limit,
                             'correlation_id'    => $this->request->header('X-Correlation-ID'),

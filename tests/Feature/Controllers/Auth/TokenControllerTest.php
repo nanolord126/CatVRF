@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Auth;
 
@@ -16,15 +18,6 @@ final class TokenControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create([
-            'email'    => 'token-test@example.com',
-            'password' => bcrypt('password123'),
-        ]);
-    }
 
     public function test_create_returns_201_with_valid_credentials(): void
     {
@@ -165,5 +158,14 @@ final class TokenControllerTest extends TestCase
         $response = $this->postJson('/auth/token/refresh');
 
         $response->assertStatus(401);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create([
+            'email'    => 'token-test@example.com',
+            'password' => bcrypt('password123'),
+        ]);
     }
 }

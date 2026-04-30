@@ -1,16 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Filament\Resources;
-
 
 use App\Domains\Furniture\Models\FurnitureItem;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\CreateFurnitureItem;
+use App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\EditFurnitureItem;
+use App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\ListFurnitureItems;
+use Illuminate\Support\Str;
 
-final class FurnitureItemResource extends Resource
+final class FurnitureItemResource extends BaseOptimizedResource
 {
     protected static ?string $model = FurnitureItem::class;
 
@@ -37,7 +42,7 @@ final class FurnitureItemResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,17 @@ final class FurnitureItemResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\ListFurnitureItems::route('/'),
-            'create' => \App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\CreateFurnitureItem::route('/create'),
-            'edit' => \App\Domains\Furniture\Filament\Resources\FurnitureItemResource\Pages\EditFurnitureItem::route('/{record}/edit'),
+            'index' => ListFurnitureItems::route('/'),
+            'create' => CreateFurnitureItem::route('/create'),
+            'edit' => EditFurnitureItem::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Furniture
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

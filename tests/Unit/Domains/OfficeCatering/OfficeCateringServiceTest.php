@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\OfficeCatering;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for OfficeCateringService.
- *
- * @covers \App\Domains\OfficeCatering\Domain\Services\OfficeCateringService
- */
-final class OfficeCateringServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'OfficeCateringService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'OfficeCateringService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('OfficeCatering');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'OfficeCateringService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('OfficeCateringService exists and is instantiable', function () {
+    $this->assertServiceExists('OfficeCateringService');
+});
 
-    public function test_createOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class, 'createOrder'),
-            'OfficeCateringService must implement createOrder()'
-        );
-    }
+test('OfficeCateringService follows clean architecture', function () {
+    $this->assertCleanArchitecture('OfficeCateringService');
+});
 
-    public function test_completeOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class, 'completeOrder'),
-            'OfficeCateringService must implement completeOrder()'
-        );
-    }
+test('OfficeCateringService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('OfficeCateringService', 'process', []);
+});
 
-    public function test_cancelOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class, 'cancelOrder'),
-            'OfficeCateringService must implement cancelOrder()'
-        );
-    }
+test('OfficeCateringService enforces quota limits', function () {
+    $this->testServiceWithQuota('OfficeCateringService', 'process', 1, 10, []);
+});
 
-    public function test_getOrder_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class, 'getOrder'),
-            'OfficeCateringService must implement getOrder()'
-        );
-    }
+test('OfficeCateringService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('OfficeCateringService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getUserOrders_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\OfficeCatering\Domain\Services\OfficeCateringService::class, 'getUserOrders'),
-            'OfficeCateringService must implement getUserOrders()'
-        );
-    }
+test('OfficeCateringService has proper caching', function () {
+    $cacheKey = 'officecatering:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('OfficeCateringService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('OfficeCateringService dispatches proper events', function () {
+    $eventClass = "App\Domains\OfficeCatering\Events\OfficeCateringProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('OfficeCateringService'));
+        $service->process([]);
+    });
+});
+
+test('OfficeCateringService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\OfficeCatering\Jobs\ProcessOfficeCateringJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('OfficeCateringService'));
+        $service->processAsync([]);
+    });
+});
+
+test('OfficeCateringService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('OfficeCateringService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('OfficeCateringService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('OfficeCateringService'));
+        $service->process([]);
+    }, 'OfficeCateringService processed');
+});
+
+test('OfficeCateringService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

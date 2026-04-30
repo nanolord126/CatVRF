@@ -1,24 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 /**
  * Tourism Wishlist Model
- * 
+ *
  * Model for user wishlist items with AI-powered recommendations.
  * When a user adds a tour to wishlist, the system automatically
  * generates personalized recommendations based on that tour.
- * 
- * @package App\Domains\Travel\Models
  */
 final class TourismWishlist extends Model
 {
     use HasFactory;
+    use TenantScoped;
 
     protected $table = 'tourism_wishlists';
 
@@ -44,20 +47,6 @@ final class TourismWishlist extends Model
         'metadata' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (TourismWishlist $model) {
-            if (!$model->uuid) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            $tenantId = function_exists('tenant') && tenant() ? tenant()->id : 1;
-            $query->where('tenant_id', $tenantId);
-        });
-    }
-
     public function tour(): BelongsTo
     {
         return $this->belongsTo(Tour::class);
@@ -65,7 +54,7 @@ final class TourismWishlist extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     /**
@@ -81,7 +70,7 @@ final class TourismWishlist extends Model
      */
     public function hasBudget(): bool
     {
-        return !empty($this->budget_range) && is_array($this->budget_range);
+        return ! empty($this->budget_range) && is_array($this->budget_range);
     }
 
     /**
@@ -89,6 +78,20 @@ final class TourismWishlist extends Model
      */
     public function hasPreferredDates(): bool
     {
-        return !empty($this->preferred_dates) && is_array($this->preferred_dates);
+        return ! empty($this->preferred_dates) && is_array($this->preferred_dates);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TourismWishlist $model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            $tenantId = function_exists('tenant') && tenant() ? tenant()->id : 1;
+            $query->where('tenant_id', $tenantId);
+        });
     }
 }

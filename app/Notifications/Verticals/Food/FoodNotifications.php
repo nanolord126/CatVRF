@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Food;
 
@@ -11,8 +13,9 @@ use App\Notifications\BaseSmsNotification;
  */
 final class OrderConfirmedNotification extends BaseSmsNotification
 {
-    private string $type = 'food.order.confirmed';
-    private string $template = 'sms.food.confirmed';
+    private readonly string $type = 'food.order.confirmed';
+
+    private readonly string $template = 'sms.food.confirmed';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -23,6 +26,7 @@ final class OrderConfirmedNotification extends BaseSmsNotification
     {
         $restaurantName = $this->data['restaurant_name'] ?? 'Ресторан';
         $estimatedTime = $this->data['estimated_time_minutes'] ?? 30;
+
         return "Заказ #{$this->data['order_id']} принят! Приготовление: ~$estimatedTime мин. $restaurantName";
     }
 }
@@ -32,17 +36,17 @@ final class OrderConfirmedNotification extends BaseSmsNotification
  */
 final class OrderReadyNotification extends BaseInAppNotification
 {
-    private string $type = 'food.order.ready';
+    private readonly string $type = 'food.order.ready';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['push', 'database']);
 
         $this->title('Ваш заказ готов!')
-             ->message("{$orderData['restaurant_name']}: Заказ #{$orderData['order_id']} готов к получению")
-             ->type('success')
-             ->autoClose(0) // Не закрывать автоматически
-             ->withAction('Перейти в ресторан', '/restaurant/' . ($orderData['restaurant_id'] ?? ''));
+            ->message("{$orderData['restaurant_name']}: Заказ #{$orderData['order_id']} готов к получению")
+            ->type('success')
+            ->autoClose(0) // Не закрывать автоматически
+            ->withAction('Перейти в ресторан', '/restaurant/'.($orderData['restaurant_id'] ?? ''));
     }
 }
 
@@ -51,16 +55,16 @@ final class OrderReadyNotification extends BaseInAppNotification
  */
 final class OrderDeliveringNotification extends BaseInAppNotification
 {
-    private string $type = 'food.order.delivering';
+    private readonly string $type = 'food.order.delivering';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['push', 'database']);
 
         $this->title('Курьер едет к вам')
-             ->message("Курьер #{$orderData['courier_id']} доставит ваш заказ")
-             ->type('info')
-             ->withAction('Отследить доставку', '/order/' . ($orderData['order_id'] ?? '') . '/tracking');
+            ->message("Курьер #{$orderData['courier_id']} доставит ваш заказ")
+            ->type('info')
+            ->withAction('Отследить доставку', '/order/'.($orderData['order_id'] ?? '').'/tracking');
     }
 }
 
@@ -69,8 +73,9 @@ final class OrderDeliveringNotification extends BaseInAppNotification
  */
 final class OrderDeliveredNotification extends BaseMailableNotification
 {
-    private string $type = 'food.order.delivered';
-    private string $template = 'emails.food.order_delivered';
+    private readonly string $type = 'food.order.delivered';
+
+    private readonly string $template = 'emails.food.order_delivered';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -94,8 +99,9 @@ final class OrderDeliveredNotification extends BaseMailableNotification
  */
 final class OrderCancelledNotification extends BaseMailableNotification
 {
-    private string $type = 'food.order.cancelled';
-    private string $template = 'emails.food.order_cancelled';
+    private readonly string $type = 'food.order.cancelled';
+
+    private readonly string $template = 'emails.food.order_cancelled';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
@@ -119,17 +125,17 @@ final class OrderCancelledNotification extends BaseMailableNotification
  */
 final class RatingRequestNotification extends BaseInAppNotification
 {
-    private string $type = 'food.rating_request';
+    private readonly string $type = 'food.rating_request';
 
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['database', 'push']);
 
         $this->title('Как вам заказ?')
-             ->message("Оцените блюда из {$orderData['restaurant_name']}")
-             ->type('info')
-             ->autoClose(8000)
-             ->withAction('Оставить отзыв', '/order/' . ($orderData['order_id'] ?? '') . '/rate');
+            ->message("Оцените блюда из {$orderData['restaurant_name']}")
+            ->type('info')
+            ->autoClose(8000)
+            ->withAction('Оставить отзыв', '/order/'.($orderData['order_id'] ?? '').'/rate');
     }
 }
 
@@ -138,8 +144,9 @@ final class RatingRequestNotification extends BaseInAppNotification
  */
 final class SpecialOfferNotification extends BaseMailableNotification
 {
-    private string $type = 'food.special_offer';
-    private string $template = 'emails.food.special_offer';
+    private readonly string $type = 'food.special_offer';
+
+    private readonly string $template = 'emails.food.special_offer';
 
     public function __construct(int $userId, int $tenantId, array $offerData)
     {

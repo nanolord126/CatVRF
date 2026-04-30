@@ -1,41 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\BeverageOrderResource\Pages;
 
-
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Pages\EditRecord;
 
 final class EditBeverageOrder extends EditRecord
 {
+    protected static string $resource = BeverageOrderResource::class;
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-
-
-    protected static string $resource = BeverageOrderResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-            ];
-        }
-
-        protected function afterSave(): void
-        {
-            $this->logger->info('Beverage Order Status Updated', [
-                'order_id' => $this->record->id,
-                'tenant_id' => $this->record->tenant_id,
-                'correlation_id' => $this->record->correlation_id,
-                'status' => $this->record->status,
-                'user_id' => auth()->id(),
-            ]);
-        }
 
     /**
      * Get the string representation of this instance.
@@ -44,7 +24,7 @@ final class EditBeverageOrder extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -55,8 +35,27 @@ final class EditBeverageOrder extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
+        ];
+    }
+
+    protected function afterSave(): void
+    {
+        $this->logger->$this->logger->info('Beverage Order Status Updated', [
+            'order_id' => $this->record->id,
+            'tenant_id' => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+            'status' => $this->record->status,
+            'user_id' => auth()->id(),
+        ]);
     }
 }

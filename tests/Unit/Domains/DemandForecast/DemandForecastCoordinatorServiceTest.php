@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\DemandForecast;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService;
 
 /**
  * Unit tests for DemandForecastCoordinatorService.
@@ -14,7 +17,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class
+            DemandForecastCoordinatorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'DemandForecastCoordinatorService must be final');
     }
@@ -22,7 +25,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class
+            DemandForecastCoordinatorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'DemandForecastCoordinatorService must be readonly');
     }
@@ -30,7 +33,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class
+            DemandForecastCoordinatorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'DemandForecastCoordinatorService must have __construct');
@@ -40,7 +43,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class, 'create'),
+            method_exists(DemandForecastCoordinatorService::class, 'create'),
             'DemandForecastCoordinatorService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_update_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class, 'update'),
+            method_exists(DemandForecastCoordinatorService::class, 'update'),
             'DemandForecastCoordinatorService must implement update()'
         );
     }
@@ -56,7 +59,7 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_delete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class, 'delete'),
+            method_exists(DemandForecastCoordinatorService::class, 'delete'),
             'DemandForecastCoordinatorService must implement delete()'
         );
     }
@@ -64,17 +67,16 @@ final class DemandForecastCoordinatorServiceTest extends TestCase
     public function test_list_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class, 'list'),
+            method_exists(DemandForecastCoordinatorService::class, 'list'),
             'DemandForecastCoordinatorService must implement list()'
         );
     }
 
-    public function test_getById_method_exists(): void
+    public function test_get_by_id_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\DemandForecast\Domain\Services\DemandForecastCoordinatorService::class, 'getById'),
+            method_exists(DemandForecastCoordinatorService::class, 'getById'),
             'DemandForecastCoordinatorService must implement getById()'
         );
     }
-
 }

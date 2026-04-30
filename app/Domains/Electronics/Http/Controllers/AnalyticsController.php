@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Http\Controllers;
 
-use App\Domains\Electronics\DTOs\AnalyticsDto;
 use App\Domains\Electronics\Services\ElectronicsAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,9 +11,8 @@ use Illuminate\Http\Request;
 final readonly class AnalyticsController
 {
     public function __construct(
-        private ElectronicsAnalyticsService $analyticsService,
-    ) {
-    }
+        private readonly ElectronicsAnalyticsService $analyticsService,
+    ) {}
 
     public function getAnalytics(Request $request): JsonResponse
     {
@@ -28,7 +26,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json($analytics->toArray());
+        return new JsonResponse($analytics->toArray());
     }
 
     public function getSalesData(Request $request): JsonResponse
@@ -43,7 +41,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'sales_data' => $analytics->salesData,
             'period' => $analytics->period,
         ]);
@@ -61,7 +59,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'traffic_data' => $analytics->trafficData,
             'period' => $analytics->period,
         ]);
@@ -79,7 +77,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'conversion_data' => $analytics->conversionData,
             'period' => $analytics->period,
         ]);
@@ -101,7 +99,7 @@ final readonly class AnalyticsController
 
         $topProducts = array_slice($analytics->topProducts, 0, $limit);
 
-        return response()->json([
+        return new JsonResponse([
             'top_products' => $topProducts,
             'period' => $analytics->period,
         ]);
@@ -119,7 +117,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'brand_stats' => $analytics->brandStats,
             'period' => $analytics->period,
         ]);
@@ -137,7 +135,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'category_stats' => $analytics->categoryStats,
             'period' => $analytics->period,
         ]);
@@ -155,7 +153,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'price_distribution' => $analytics->priceDistribution,
             'period' => $analytics->period,
         ]);
@@ -171,7 +169,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics('7d', $type);
 
-        return response()->json([
+        return new JsonResponse([
             'inventory_stats' => $analytics->inventoryStats,
         ]);
     }
@@ -188,7 +186,7 @@ final readonly class AnalyticsController
 
         $analytics = $this->analyticsService->getAnalytics($period, $type);
 
-        return response()->json([
+        return new JsonResponse([
             'customer_behavior' => $analytics->customerBehavior,
             'period' => $analytics->period,
         ]);
@@ -204,7 +202,7 @@ final readonly class AnalyticsController
 
         $this->analyticsService->clearCache($type);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Analytics cache cleared successfully',
             'type' => $type,
         ]);

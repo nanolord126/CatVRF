@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Filament\Resources;
 
@@ -6,6 +8,7 @@ use App\Domains\Travel\Filament\Resources\TourismBookingResource\Pages;
 use App\Domains\Travel\Models\TourBooking;
 use Filament\Forms;
 use Filament\Forms\Form;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -13,11 +16,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Tourism Booking Filament Resource
- * 
+ *
  * Admin panel resource for managing tourism bookings.
  * Follows CatVRF canonical rules for Filament resources.
  */
-final class TourismBookingResource extends Resource
+final class TourismBookingResource extends BaseOptimizedResource
 {
     protected static ?string $model = TourBooking::class;
 
@@ -298,5 +301,13 @@ final class TourismBookingResource extends Resource
             'view' => Pages\ViewTourismBooking::route('/{record}'),
             'edit' => Pages\EditTourismBooking::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Travel
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

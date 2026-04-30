@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Illuminate\Foundation\Events\Dispatchable;
 
 /**
  * Class ViewingConfirmed
@@ -12,17 +13,17 @@ declare(strict_types=1);
  * Events carry correlation_id for full traceability.
  * Listeners handle side effects asynchronously.
  *
- * @see \Illuminate\Foundation\Events\Dispatchable
- * @package App\Domains\RealEstate\Domain\Events
+ * @see Dispatchable
  */
 final class ViewingConfirmed
 {
     public function __construct(
-        public string            $viewingId,
-        public string            $propertyId,
-        public int               $clientId,
-        public string            $agentId,
+        public string $viewingId,
+        public string $propertyId,
+        public int $clientId,
+        public string $agentId,
         public DateTimeImmutable $scheduledAt,
-        public string            $correlationId,
-        private DateTimeImmutable $occurredAt = new DateTimeImmutable()) {}
+        public string $correlationId,
+        private readonly DateTimeImmutable $occurredAt = new DateTimeImmutable()
+    ) {}
 }

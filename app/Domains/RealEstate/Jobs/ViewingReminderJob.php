@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Jobs;
 
+use LoggerInterface;
 
 use App\Domains\RealEstate\Models\ViewingAppointment;
 use Illuminate\Bus\Queueable;
@@ -21,14 +24,16 @@ use Psr\Log\LoggerInterface;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Domains\RealEstate\Jobs
+ * @see ShouldQueue
  */
 final class ViewingReminderJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $loggerInterface,
         private readonly ViewingAppointment $appointment,
         private readonly string $correlationId) {
         $this->onQueue('notifications');
@@ -41,7 +46,7 @@ final class ViewingReminderJob implements ShouldQueue
      */
     public function handle(LoggerInterface $logger): void
     {
-        $logger->info('Sending viewing reminder', [
+        $logger->$this->logger->info('Sending viewing reminder', [
             'correlation_id' => $this->correlationId,
             'appointment_id' => $this->appointment->id,
         ]);
@@ -49,5 +54,11 @@ final class ViewingReminderJob implements ShouldQueue
         // Logic to send reminder notification
         // $this->appointment->client->notify(new ViewingReminderNotification($this->appointment));
     }
-}
 
+    public function failed(Exception $exception): void
+    {
+        $this->loggerInterface /* TODO: inject via constructor DI */ /* TODO: inject via DI */  // failed() no method injection->error('realestate job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

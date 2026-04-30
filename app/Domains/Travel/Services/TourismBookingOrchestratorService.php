@@ -2,6 +2,10 @@
 
 namespace App\Domains\Travel\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Wallet\WalletService;
@@ -44,20 +48,19 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class TourismBookingOrchestratorService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private WalletService Adapter$wallet,
-        private PaymentService $payment,
-        private FraudMLService $fraudML,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private CRMIntegrationService $crm,
-        private TravelConstructorService $aiConstructor,
-        private TourismWishlistService $wishlistService,
-        private LoggerInterface $logger,
-        private DatabaseManager $db,
-        private RedisConnection $redis,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly WalletService $wallet,
+        private readonly PaymentService $payment,
+        private readonly FraudMLService $fraudML,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly CRMIntegrationService $crm,
+        private readonly TravelConstructorService $aiConstructor,
+        private readonly TourismWishlistService $wishlistService,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly RedisConnection $redis,) {}
 
     /**
      * Create a new tourism booking with AI personalization and real-time hold.
@@ -114,7 +117,7 @@ final readonly class TourismBookingOrchestratorService
                 'status' => 'held',
                 'biometric_token' => $biometricToken,
                 'biometric_verified' => false,
-                'hold_expires_at' => now()->addMinutes($holdDurationMinutes),
+                'hold_expires_at' => CarbonImmutable::now()->addMinutes($holdDurationMinutes),
                 'virtual_tour_viewed' => false,
                 'video_call_scheduled' => false,
                 'video_call_time' => null,
@@ -147,7 +150,7 @@ final readonly class TourismBookingOrchestratorService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Tourism booking created with hold', [
+            $this->logger->$this->logger->info('Tourism booking created with hold', [
                 'booking_id' => $booking->id,
                 'booking_uuid' => $booking->uuid,
                 'tour_id' => $tour->id,
@@ -160,7 +163,7 @@ final readonly class TourismBookingOrchestratorService
                 'correlation_id' => $correlationId,
             ]);
 
-            event(new TourismBookingCreatedEvent($booking, $correlationId));
+            $this->eventDispatcher->dispatch(new TourismBookingCreatedEvent($booking, $correlationId));
 
             SendBiometricVerificationJob::dispatch($booking->id, $biometricToken, $correlationId)
                 ->onQueue('biometric');
@@ -237,7 +240,7 @@ final readonly class TourismBookingOrchestratorService
             $booking->update([
                 'status' => 'confirmed',
                 'cashback_amount' => $cashbackAmount,
-                'confirmed_at' => now(),
+                'confirmed_at' => CarbonImmutable::now(),
             ]);
 
             $availabilityKey = "tourism_availability:{$booking->tour->uuid}:{$booking->start_date}";
@@ -251,12 +254,12 @@ final readonly class TourismBookingOrchestratorService
                 newValues: [
                     'status' => 'confirmed',
                     'cashback_amount' => $cashbackAmount,
-                    'confirmed_at' => now()->toIso8601String(),
+                    'confirmed_at' => CarbonImmutable::now()->toIso8601String(),
                 ],
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Tourism booking confirmed', [
+            $this->logger->$this->logger->info('Tourism booking confirmed', [
                 'booking_id' => $booking->id,
                 'booking_uuid' => $booking->uuid,
                 'user_id' => $booking->user_id,
@@ -265,7 +268,7 @@ final readonly class TourismBookingOrchestratorService
                 'correlation_id' => $correlationId,
             ]);
 
-            event(new TourismBookingConfirmedEvent($booking, $correlationId));
+            $this->eventDispatcher->dispatch(new TourismBookingConfirmedEvent($booking, $correlationId));
 
             UpdateCRMContactJob::dispatch($booking->id, 'booking_confirmed', $correlationId)
                 ->onQueue('crm');
@@ -338,7 +341,7 @@ final readonly class TourismBookingOrchestratorService
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,
                 'refund_amount' => $refundAmount,
-                'cancelled_at' => now(),
+                'cancelled_at' => CarbonImmutable::now(),
                 'fraud_score' => $fraudScore,
             ]);
 
@@ -355,12 +358,12 @@ final readonly class TourismBookingOrchestratorService
                     'cancellation_reason' => $reason,
                     'refund_amount' => $refundAmount,
                     'fraud_score' => $fraudScore,
-                    'cancelled_at' => now()->toIso8601String(),
+                    'cancelled_at' => CarbonImmutable::now()->toIso8601String(),
                 ],
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Tourism booking cancelled', [
+            $this->logger->$this->logger->info('Tourism booking cancelled', [
                 'booking_id' => $booking->id,
                 'booking_uuid' => $booking->uuid,
                 'user_id' => $booking->user_id,
@@ -370,7 +373,7 @@ final readonly class TourismBookingOrchestratorService
                 'correlation_id' => $correlationId,
             ]);
 
-            event(new TourismBookingCancelledEvent($booking, $reason, $fraudScore, $correlationId));
+            $this->eventDispatcher->dispatch(new TourismBookingCancelledEvent($booking, $reason, $fraudScore, $correlationId));
 
             UpdateCRMContactJob::dispatch($booking->id, 'booking_cancelled', $correlationId)
                 ->onQueue('crm');
@@ -420,7 +423,7 @@ final readonly class TourismBookingOrchestratorService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Tourism video call scheduled', [
+            $this->logger->$this->logger->info('Tourism video call scheduled', [
                 'booking_id' => $booking->id,
                 'booking_uuid' => $booking->uuid,
                 'scheduled_time' => $scheduledTime,
@@ -444,7 +447,7 @@ final readonly class TourismBookingOrchestratorService
 
             $booking->update([
                 'virtual_tour_viewed' => true,
-                'virtual_tour_viewed_at' => now(),
+                'virtual_tour_viewed_at' => CarbonImmutable::now(),
             ]);
 
             $this->audit->record(
@@ -454,7 +457,7 @@ final readonly class TourismBookingOrchestratorService
                 oldValues: ['virtual_tour_viewed' => false],
                 newValues: [
                     'virtual_tour_viewed' => true,
-                    'virtual_tour_viewed_at' => now()->toIso8601String(),
+                    'virtual_tour_viewed_at' => CarbonImmutable::now()->toIso8601String(),
                 ],
                 correlationId: $correlationId,
             );
@@ -493,7 +496,7 @@ final readonly class TourismBookingOrchestratorService
             return (float) $cached;
         }
 
-        $daysUntilDeparture = now()->diffInDays($startDate);
+        $daysUntilDeparture = CarbonImmutable::now()->diffInDays($startDate);
         
         if ($daysUntilDeparture <= 3) {
             $multiplier = 1.3;
@@ -524,7 +527,7 @@ final readonly class TourismBookingOrchestratorService
 
         $flash = json_decode($flashData, true);
         
-        if (now()->isBetween(
+        if (CarbonImmutable::now()->isBetween(
             \Carbon\Carbon::parse($flash['start_time']),
             \Carbon\Carbon::parse($flash['end_time'])
         )) {
@@ -547,7 +550,7 @@ final readonly class TourismBookingOrchestratorService
      */
     private function generateBiometricToken(int $userId, string $correlationId): string
     {
-        return hash('sha256', $userId . $correlationId . now()->timestamp . config('app.key'));
+        return hash('sha256', $userId . $correlationId . CarbonImmutable::now()->timestamp . config('app.key'));
     }
 
     /**
@@ -644,7 +647,7 @@ final readonly class TourismBookingOrchestratorService
      */
     private function calculateRefundAmount(TourBooking $booking, string $reason): float
     {
-        $hoursUntilDeparture = now()->diffInHours($booking->start_date);
+        $hoursUntilDeparture = CarbonImmutable::now()->diffInHours($booking->start_date);
         
         if ($hoursUntilDeparture > 168) {
             return $booking->total_amount * 0.9;
@@ -662,7 +665,7 @@ final readonly class TourismBookingOrchestratorService
      */
     private function generateVideoCallLink(string $bookingUuid): string
     {
-        $token = hash('sha256', $bookingUuid . now()->timestamp . config('app.key'));
+        $token = hash('sha256', $bookingUuid . CarbonImmutable::now()->timestamp . config('app.key'));
         
         return url("/tourism/video-call/{$bookingUuid}?token={$token}");
     }

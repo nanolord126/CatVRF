@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Inventory\Listeners;
 
-use App\Domains\Inventory\Events\InventoryCheckCreated;
-use App\Domains\Inventory\Events\InventoryCheckUpdated;
-use App\Domains\Inventory\Events\StockReleased;
-use App\Domains\Inventory\Events\StockReserved;
-use App\Domains\Inventory\Events\StockUpdated;
 use App\Domains\Inventory\Listeners\LogInventoryCheckCreated;
 use App\Domains\Inventory\Listeners\LogInventoryCheckUpdated;
 use App\Domains\Inventory\Listeners\LogStockReleased;
@@ -48,7 +43,7 @@ final class InventoryListenersTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Structural checks                                                  */
+    /*  Structural checks */
     /* ================================================================== */
 
     #[Test]
@@ -109,7 +104,7 @@ final class InventoryListenersTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Behavioral: LogStockReserved                                       */
+    /*  Behavioral: LogStockReserved */
     /* ================================================================== */
 
     #[Test]
@@ -143,7 +138,7 @@ final class InventoryListenersTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Source code asserts: logger->info + audit->record                   */
+    /*  Source code asserts: logger->info + audit->record */
     /* ================================================================== */
 
     #[Test]
@@ -165,7 +160,7 @@ final class InventoryListenersTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Helper: verify handle() body references audit->record              */
+    /*  Helper: verify handle() body references audit->record */
     /* ================================================================== */
 
     private function assertListenerHandleCallsAuditRecord(string $class): void

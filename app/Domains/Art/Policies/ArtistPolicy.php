@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Art\Models\Artist;
+
 final class ArtistPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class ArtistPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Artist $artist): bool
+    public function $this->viewFactory->make(User $user, Artist $artist): bool
     {
         return $user->tenant_id === $artist->tenant_id;
     }

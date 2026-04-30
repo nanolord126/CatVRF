@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auto\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Class CreateCarDto
@@ -19,18 +20,18 @@ use Illuminate\Http\Request;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Auto\DTOs
  */
 final readonly class CreateCarDto
 {
     public function __construct(
-        private readonly int     $tenantId,
-        private readonly ?int    $businessGroupId,
-        private readonly int     $userId,
-        private readonly string  $correlationId,
-        private readonly array   $data,
-        private ?string $idempotencyKey = null,
-        private bool $isB2B = false) {}
+        private readonly int $tenantId,
+        private readonly ?int $businessGroupId,
+        private readonly int $userId,
+        private readonly string $correlationId,
+        private readonly array $data,
+        private readonly ?string $idempotencyKey = null,
+        private readonly bool $isB2B = false
+    ) {}
 
     public static function from(Request $request): self
     {
@@ -38,7 +39,7 @@ final readonly class CreateCarDto
             tenantId:        (int) tenant()?->id,
             businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
             userId:          (int) $request->user()?->id,
-            correlationId:   $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId:   $request->header('X-Correlation-ID', Str::uuid()->toString()),
             data:            $request->validated(),
             idempotencyKey:  $request->header('Idempotency-Key'),
             isB2B:           $request->has('inn') && $request->has('business_card_id'),

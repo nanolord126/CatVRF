@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Babysitting\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\HomeServices\Babysitting\Models\BabysittingSession;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
@@ -13,33 +15,33 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * BabysittingService — управление сессиями бэбиситтинга.
  *
  * Бронирование нянь, расчёт стоимости по часам, завершение и отмена.
  *
- * @package CatVRF
  * @version 2026.1
  */
 final readonly class BabysittingService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private DatabaseManager     $db,
-        private LoggerInterface     $logger,
-        private Guard               $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Забронировать сессию бэбиситтинга.
      */
     public function createSession(
-        int    $sitterId,
+        int $sitterId,
         string $sessionDate,
-        int    $durationHours,
-        array  $kidsAges,
+        int $durationHours,
+        array $kidsAges,
         string $correlationId = '',
     ): BabysittingSession {
         $correlationId = $correlationId !== '' ? $correlationId : (string) Str::uuid();
@@ -71,7 +73,7 @@ final readonly class BabysittingService
                 'tags'           => ['babysitting' => true],
             ]);
 
-            $this->logger->info('Babysitting session booked', [
+            $this->logger->$this->logger->info('Babysitting session booked', [
                 'session_id'     => $session->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -107,7 +109,7 @@ final readonly class BabysittingService
                 metadata: ['session_id' => $session->id],
             );
 
-            $this->logger->info('Babysitting session completed', [
+            $this->logger->$this->logger->info('Babysitting session completed', [
                 'session_id'     => $session->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -148,7 +150,7 @@ final readonly class BabysittingService
                 );
             }
 
-            $this->logger->info('Babysitting session cancelled', [
+            $this->logger->$this->logger->info('Babysitting session cancelled', [
                 'session_id'     => $session->id,
                 'refunded'       => $wasPaid,
                 'correlation_id' => $correlationId,
@@ -169,9 +171,9 @@ final readonly class BabysittingService
     /**
      * Получить последние сессии родителя.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, BabysittingSession>
+     * @return Collection<int, BabysittingSession>
      */
-    public function getUserSessions(int $parentId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserSessions(int $parentId, int $limit = 10): Collection
     {
         return BabysittingSession::where('parent_id', $parentId)
             ->orderByDesc('created_at')
@@ -181,15 +183,15 @@ final readonly class BabysittingService
 
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /** @return array<string, mixed> */
     public function toDebugArray(): array
     {
         return [
-            'class'     => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class'     => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

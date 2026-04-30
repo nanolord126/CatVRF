@@ -14,12 +14,6 @@ final class WalletPolicyTest extends TestCase
 {
     private WalletPolicy $policy;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->policy = new WalletPolicy();
-    }
-
     // ─── viewAny ─────────────────────────────────────────────────────
 
     public function test_view_any_returns_true_when_user_has_tenant(): void
@@ -110,6 +104,12 @@ final class WalletPolicyTest extends TestCase
         $wallet = $this->createWalletStub(tenantId: 10, businessGroupId: null);
 
         $this->assertFalse($this->policy->forceDelete($user, $wallet));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->policy = new WalletPolicy();
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────

@@ -1,14 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Security;
-
-
-
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 final readonly class WishlistAntiFraudService
 {
@@ -18,145 +18,149 @@ final readonly class WishlistAntiFraudService
         private readonly DatabaseManager $db,
     ) {}
 
-
     /**
-         * Detect and prevent wishlist manipulation
-         * Returns true if operation is safe, false if fraudulent
-         */
-        public function checkWishlistPayment(int $userId, array $items): bool
-        {
-            $correlationId = $this->request->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid()->toString();
+     * Detect and prevent wishlist manipulation
+     * Returns true if operation is safe, false if fraudulent
+     */
+    public function checkWishlistPayment(int $userId, array $items): bool
+    {
+        $correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
 
-            // Check 1: Unusual time pattern
-            if ($this->isUnusualTimePattern($userId)) {
-                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
-                    'user_id' => $userId,
-                    'correlation_id' => $correlationId,
-                ]);
-                return false;
-            }
+        // Check 1: Unusual time pattern
+        if ($this->isUnusualTimePattern($userId)) {
+            $this->logger->channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
 
-            // Check 2: Rapid add-to-cart and pay
-            if ($this->isRapidAddAndPay($userId)) {
-                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
-                    'user_id' => $userId,
-                    'correlation_id' => $correlationId,
-                ]);
-                return false;
-            }
+            return false;
+        }
 
-            // Check 3: Item price manipulation
-            if ($this->isPriceManipulation($items)) {
-                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
-                    'items' => count($items),
-                    'correlation_id' => $correlationId,
-                ]);
-                return false;
-            }
+        // Check 2: Rapid add-to-cart and pay
+        if ($this->isRapidAddAndPay($userId)) {
+            $this->logger->channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
 
-            // Check 4: High-value items from unknown sellers
-            if ($this->isHighValueFromUnknownSellers($items, $userId)) {
-                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
-                    'user_id' => $userId,
-                    'correlation_id' => $correlationId,
-                ]);
-                return false;
-            }
+            return false;
+        }
 
-            // Check 5: Bulk wishlist payment (>50 items at once)
-            if (count($items) > 50) {
-                $this->logger->channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
-                    'user_id' => $userId,
-                    'item_count' => count($items),
-                    'correlation_id' => $correlationId,
-                ]);
-                return false;
-            }
+        // Check 3: Item price manipulation
+        if ($this->isPriceManipulation($items)) {
+            $this->logger->channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
+                'items' => count($items),
+                'correlation_id' => $correlationId,
+            ]);
 
+            return false;
+        }
+
+        // Check 4: High-value items from unknown sellers
+        if ($this->isHighValueFromUnknownSellers($items, $userId)) {
+            $this->logger->channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
+                'user_id' => $userId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return false;
+        }
+
+        // Check 5: Bulk wishlist payment (>50 items at once)
+        if (count($items) > 50) {
+            $this->logger->channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
+                'user_id' => $userId,
+                'item_count' => count($items),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isUnusualTimePattern(int $userId): bool
+    {
+        // User typically shops 9-20h, but now shopping at 3am
+        $hour = CarbonImmutable::now()->hour;
+
+        if ($hour >= 0 && $hour <= 6) {
+            // Check if user ever shops at night
+            $nightPurchases = $this->db->table('orders')
+                ->where('user_id', $userId)
+                ->whereRaw('HOUR(created_at) BETWEEN 0 AND 6')
+                ->count();
+
+            return $nightPurchases === 0;
+        }
+
+        return false;
+    }
+
+    private function isRapidAddAndPay(int $userId): bool
+    {
+        // Get wishlist items added in last 5 minutes
+        $recentWishlist = $this->db->table('wishlist_items')
+            ->where('user_id', $userId)
+            ->where('created_at', '>', CarbonImmutable::now()->subMinutes(5))
+            ->count();
+
+        // If >30 items added in 5 minutes, suspicious
+        if ($recentWishlist > 30) {
             return true;
         }
 
-        private function isUnusualTimePattern(int $userId): bool
-        {
-            // User typically shops 9-20h, but now shopping at 3am
-            $hour = now()->hour;
+        // Check if user is trying to buy those items immediately
+        $recentOrders = $this->db->table('orders')
+            ->where('user_id', $userId)
+            ->where('created_at', '>', CarbonImmutable::now()->subMinutes(10))
+            ->count();
 
-            if ($hour >= 0 && $hour <= 6) {
-                // Check if user ever shops at night
-                $nightPurchases = $this->db->table('orders')
-                    ->where('user_id', $userId)
-                    ->whereRaw('HOUR(created_at) BETWEEN 0 AND 6')
-                    ->count();
+        return $recentWishlist > 0 && $recentOrders > 0;
+    }
 
-                return $nightPurchases === 0;
+    private function isPriceManipulation(array $items): bool
+    {
+        foreach ($items as $item) {
+            $product = $this->db->table('products')
+                ->where('id', $item['product_id'] ?? null)
+                ->first();
+
+            if (! $product) {
+                continue;
             }
 
-            return false;
-        }
-
-        private function isRapidAddAndPay(int $userId): bool
-        {
-            // Get wishlist items added in last 5 minutes
-            $recentWishlist = $this->db->table('wishlist_items')
-                ->where('user_id', $userId)
-                ->where('created_at', '>', now()->subMinutes(5))
-                ->count();
-
-            // If >30 items added in 5 minutes, suspicious
-            if ($recentWishlist > 30) {
+            // If price in order is <50% of actual price, suspicious
+            if (($item['price'] ?? 0) < ($product->price * 0.5)) {
                 return true;
             }
+        }
 
-            // Check if user is trying to buy those items immediately
-            $recentOrders = $this->db->table('orders')
+        return false;
+    }
+
+    private function isHighValueFromUnknownSellers(array $items, int $userId): bool
+    {
+        $totalValue = 0;
+        $unknownSellers = 0;
+
+        foreach ($items as $item) {
+            $totalValue += $item['price'] ?? 0;
+
+            // Check if user has purchased from this seller before
+            $sellerId = $item['seller_id'] ?? null;
+            $previousPurchases = $this->db->table('orders')
                 ->where('user_id', $userId)
-                ->where('created_at', '>', now()->subMinutes(10))
+                ->where('seller_id', $sellerId)
                 ->count();
 
-            return $recentWishlist > 0 && $recentOrders > 0;
-        }
-
-        private function isPriceManipulation(array $items): bool
-        {
-            foreach ($items as $item) {
-                $product = $this->db->table('products')
-                    ->where('id', $item['product_id'] ?? null)
-                    ->first();
-
-                if (!$product) {
-                    continue;
-                }
-
-                // If price in order is <50% of actual price, suspicious
-                if (($item['price'] ?? 0) < ($product->price * 0.5)) {
-                    return true;
-                }
+            if ($previousPurchases === 0) {
+                $unknownSellers++;
             }
-
-            return false;
         }
 
-        private function isHighValueFromUnknownSellers(array $items, int $userId): bool
-        {
-            $totalValue = 0;
-            $unknownSellers = 0;
-
-            foreach ($items as $item) {
-                $totalValue += $item['price'] ?? 0;
-
-                // Check if user has purchased from this seller before
-                $sellerId = $item['seller_id'] ?? null;
-                $previousPurchases = $this->db->table('orders')
-                    ->where('user_id', $userId)
-                    ->where('seller_id', $sellerId)
-                    ->count();
-
-                if ($previousPurchases === 0) {
-                    $unknownSellers++;
-                }
-            }
-
-            // If >5000 rubles from unknown sellers, suspicious
-            return $totalValue > 500000 && $unknownSellers > 3;
-        }
+        // If >5000 rubles from unknown sellers, suspicious
+        return $totalValue > 500000 && $unknownSellers > 3;
+    }
 }

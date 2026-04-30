@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
@@ -6,7 +8,6 @@ use App\Services\FraudControlService;
 use App\Services\Payment\WalletService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 
 final readonly class OrderService
@@ -23,19 +24,20 @@ final readonly class OrderService
     {
         // Travel vertical: 10% for B2C, 8% for B2B
         $rate = $isB2B ? 0.08 : 0.10;
+
         return (int) ($total * $rate);
     }
 
     public function validateOrder(array $data, string $correlationId): array
     {
         $fraudScore = $this->fraudService->check($data, $correlationId);
-        
+
         if ($fraudScore > 85) {
             $this->logger->warning('Travel order rejected due to high fraud score', [
                 'fraud_score' => $fraudScore,
                 'correlation_id' => $correlationId,
             ]);
-            
+
             return ['valid' => false, 'reason' => 'high_fraud_risk', 'fraud_score' => $fraudScore];
         }
 

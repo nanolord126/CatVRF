@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Analytics\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -16,10 +18,10 @@ use Illuminate\Support\Str;
 final readonly class AnalyticsConstructorService
 {
     public function __construct(
-        private FraudControlService   $fraud,
-        private RecommendationService  $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache                  $cache,
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard,
     ) {}
@@ -34,9 +36,9 @@ final readonly class AnalyticsConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'analytics_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:Analytics:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:Analytics:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 
@@ -46,7 +48,7 @@ final readonly class AnalyticsConstructorService
             // Получаем рекомендации
             $recommendations = $this->recommendation->getForVertical('Analytics', $fullProfile, $userId);
 
-            $this->logger->info('Analytics AI constructor used', [
+            $this->logger->$this->logger->info('Analytics AI constructor used', [
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
                 'vertical'       => 'Analytics',

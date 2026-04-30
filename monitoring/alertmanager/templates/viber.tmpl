@@ -1,0 +1,33 @@
+{{ define "viber.default.json" }}
+{
+  "min_api_version": 7,
+  "type": "text",
+  "text": "{{ range $i, $alert := .Alerts }}{{ if $i }}, {{ end }}{{ $alert.Status | toUpper }}: {{ $alert.Labels.alertname }} ({{ $alert.Labels.severity | toUpper }})\n{{ end }}"
+}
+{{ end }}
+
+{{ define "viber.critical.json" }}
+{
+  "min_api_version": 7,
+  "type": "picture",
+  "text": "🚨 CRITICAL ALERT 🚨\n\n{{ range $alert := .Alerts }}Alert: {{ $alert.Labels.alertname }}\nSummary: {{ $alert.Annotations.summary }}\nDescription: {{ $alert.Annotations.description }}\n\n{{ end }}",
+  "media": "https://catvrf.ru/assets/critical-alert.png",
+  "thumbnail": "https://catvrf.ru/assets/critical-alert-thumb.png"
+}
+{{ end }}
+
+{{ define "viber.supermarket.json" }}
+{
+  "min_api_version": 7,
+  "type": "text",
+  "text": "🛒 Supermarket Alert\n\n{{ range $alert := .Alerts }}Alert: {{ $alert.Labels.alertname }}\nSeverity: {{ $alert.Labels.severity | toUpper }}\nSummary: {{ $alert.Annotations.summary }}\nQueue: {{ $alert.Labels.queue }}\n\n{{ end }}"
+}
+{{ end }}
+
+{{ define "viber.crm.json" }}
+{
+  "min_api_version": 7,
+  "type": "text",
+  "text": "🔄 CRM Alert\n\n{{ range $alert := .Alerts }}Alert: {{ $alert.Labels.alertname }}\nSeverity: {{ $alert.Labels.severity | toUpper }}\nSummary: {{ $alert.Annotations.summary }}\nService: {{ $alert.Labels.service }}\n\n{{ end }}"
+}
+{{ end }}

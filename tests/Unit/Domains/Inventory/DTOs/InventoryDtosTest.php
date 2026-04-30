@@ -28,7 +28,7 @@ use ReflectionClass;
 final class InventoryDtosTest extends TestCase
 {
     /* ================================================================== */
-    /*  Helpers                                                            */
+    /*  Helpers */
     /* ================================================================== */
 
     /** @return list<array{class-string}> */
@@ -44,7 +44,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  1. Structural: final readonly                                      */
+    /*  1. Structural: final readonly */
     /* ================================================================== */
 
     #[Test]
@@ -75,7 +75,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  2. CreateReservationDto                                            */
+    /*  2. CreateReservationDto */
     /* ================================================================== */
 
     #[Test]
@@ -149,7 +149,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  3. CreateStockMovementDto                                          */
+    /*  3. CreateStockMovementDto */
     /* ================================================================== */
 
     #[Test]
@@ -215,7 +215,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  4. CreateAdjustmentDto                                             */
+    /*  4. CreateAdjustmentDto */
     /* ================================================================== */
 
     #[Test]
@@ -273,7 +273,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  5. SearchInventoryDto                                              */
+    /*  5. SearchInventoryDto */
     /* ================================================================== */
 
     #[Test]
@@ -319,7 +319,7 @@ final class InventoryDtosTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  6. ImportResultDto                                                 */
+    /*  6. ImportResultDto */
     /* ================================================================== */
 
     #[Test]

@@ -1,22 +1,39 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Jewelry;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 use Livewire\Component;
 
 final class Jewelry3DViewer extends Component
 {
-    private int $modelId;
-    private string $modelUrl = '';
-    private string $textureUrl = '';
-    private float $rotationX = 0;
-    private float $rotationY = 0;
-    private float $rotationZ = 0;
-    private float $zoom = 1.0;
-    private string $materialType = 'gold';
-    private bool $arMode = false;
-    private bool $vrMode = false;
+    private readonly int $modelId;
+
+    private readonly string $modelUrl = '';
+
+    private readonly string $textureUrl = '';
+
+    private readonly float $rotationX = 0;
+
+    private readonly float $rotationY = 0;
+
+    private readonly float $rotationZ = 0;
+
+    private readonly float $zoom = 1.0;
+
+    private readonly string $materialType = 'gold';
+
+    private readonly bool $arMode = false;
+
+    private readonly bool $vrMode = false;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $modelId): void
     {
@@ -85,6 +102,6 @@ final class Jewelry3DViewer extends Component
 
     public function render(): View
     {
-        return view('livewire.jewelry.jewelry-3d-viewer');
+        return $this->viewFactory->make('livewire.jewelry.jewelry-3d-viewer');
     }
 }

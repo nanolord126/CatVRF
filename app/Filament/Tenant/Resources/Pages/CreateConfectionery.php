@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateConfectionery — CatVRF 2026 Component.
@@ -7,15 +9,15 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createconfectionery
  * @see https://catvrf.ru/docs/createconfectionery
  */
-
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -23,14 +25,6 @@ use Filament\Resources\Pages\CreateRecord;
 
 final class CreateConfectionery extends CreateRecord
 {
-
-    protected static string $resource = ConfectioneryResource::class;
-
-        public function getTitle(): string
-        {
-            return 'Create Confectionery';
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -46,6 +40,14 @@ final class CreateConfectionery extends CreateRecord
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = ConfectioneryResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Create Confectionery';
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -53,15 +55,15 @@ final class CreateConfectionery extends CreateRecord
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -70,5 +72,4 @@ final class CreateConfectionery extends CreateRecord
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

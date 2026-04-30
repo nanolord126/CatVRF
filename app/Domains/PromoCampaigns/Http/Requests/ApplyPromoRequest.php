@@ -15,8 +15,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Domains\PromoCampaigns\Http\Requests
  */
 final class ApplyPromoRequest extends FormRequest
 {

@@ -1,12 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Tourism Booking Data Transfer Object
- * 
+ *
  * Encapsulates all data required for creating a tourism booking.
  * Follows CatVRF 2026 canonical rules for DTOs.
  */
@@ -34,9 +37,9 @@ final readonly class TourismBookingDto
     public static function fromRequest(Request $request): self
     {
         $isB2B = $request->has('inn') && $request->has('business_card_id');
-        
+
         $tenantId = (int) $request->input('tenant_id', 1);
-        
+
         return new self(
             tenantId: $tenantId,
             businessGroupId: $isB2B ? (int) $request->input('business_group_id') : null,
@@ -48,7 +51,7 @@ final readonly class TourismBookingDto
             totalAmount: (float) $request->input('total_amount'),
             paymentMethod: (string) $request->input('payment_method', 'card'),
             splitPaymentEnabled: (bool) $request->input('split_payment_enabled', false),
-            correlationId: (string) $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: (string) $request->header('X-Correlation-ID', Str::uuid()->toString()),
             tags: $request->input('tags'),
             metadata: $request->input('metadata'),
         );

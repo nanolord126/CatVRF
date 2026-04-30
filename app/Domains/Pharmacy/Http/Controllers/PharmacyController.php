@@ -1,125 +1,134 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Http\Controllers;
 
-
 use Psr\Log\LoggerInterface;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Validation\ValidationException;
 
 final class PharmacyController extends Controller
 {
-
-    public function __construct(private readonly PharmacyService $pharmacyService,
-            private readonly FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+    public function __construct(
+        private readonly PharmacyService $pharmacyService,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
-        public function index(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            try {
-                $tenantId = $request->user()?->tenant_id ?? 0;
+    public function index(Request $request): JsonResponse
+    {
+        $correlationId = Str::uuid()->toString();
+        try {
+            $tenantId = $request->user()?->tenant_id ?? 0;
 
-                $medicines = Medicine::where('tenant_id', $tenantId)
-                    ->when($request->input('prescription'), fn ($q, $v) => $q->where('requires_prescription', (bool) $v))
-                    ->when($request->input('category'),     fn ($q, $v) => $q->where('category', $v))
-                    ->when($request->input('search'),       fn ($q, $v) => $q->where(function ($q2) use ($v) {
-                        $q2->where('name', 'like', "%{$v}%")->orWhere('active_substance', 'like', "%{$v}%");
-                    }))
-                    ->orderBy('name')
-                    ->paginate(20);
+            $medicines = Medicine::where('tenant_id', $tenantId)
+                ->when($request->input('prescription'), fn ($q, $v) => $q->where('requires_prescription', (bool) $v))
+                ->when($request->input('category'), fn ($q, $v) => $q->where('category', $v))
+                ->when($request->input('search'), fn ($q, $v) => $q->where(function ($q2) use ($v) {
+                    $q2->where('name', 'like', "%{$v}%")->orWhere('active_substance', 'like', "%{$v}%");
+                }))
+                ->orderBy('name')
+                ->paginate(20);
 
-                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $medicines, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                $this->logger->error('Pharmacy: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
-            }
+            return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $medicines, 'correlation_id' => $correlationId]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Pharmacy: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
+    }
 
-        public function show(int $id): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            try {
-                $medicine = Medicine::findOrFail($id);
-                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $medicine, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Препарат не найден', 'correlation_id' => $correlationId], 404);
-            }
+    public function show(int $id): JsonResponse
+    {
+        $correlationId = Str::uuid()->toString();
+        try {
+            $medicine = Medicine::findOrFail($id);
+
+            return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $medicine, 'correlation_id' => $correlationId]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Препарат не найден', 'correlation_id' => $correlationId], 404);
         }
+    }
 
-        public function order(Request $request): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            try {
-                $userId = $request->user()?->id;
+    public function order(Request $request): JsonResponse
+    {
+        $correlationId = Str::uuid()->toString();
+        try {
+            $userId = $request->user()?->id;
 
-                $fraudResult = $this->fraud->check(
-                    userId: $userId,
-                    operationType: 'pharmacy_order',
-                    amount: (int) $request->input('total_kopecks', 0),
-                    correlationId: $correlationId,
-                );
-                if ($fraudResult['decision'] === 'block') {
-                    return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+            $fraudResult = $this->fraud->check(
+                userId: $userId,
+                operationType: 'pharmacy_order',
+                amount: (int) $request->input('total_kopecks', 0),
+                correlationId: $correlationId,
+            );
+            if ($fraudResult['decision'] === 'block') {
+                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+            }
+
+            $validated = $request->validate([
+                'items'             => 'required|array|min:1',
+                'items.*.medicine_id' => 'required|integer|exists:medicines,id',
+                'items.*.quantity'  => 'required|integer|min:1',
+                'prescription_url'  => 'nullable|url',
+                'delivery_address'  => 'required|string',
+            ]);
+
+            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): PharmacyOrder {
+                $totalKopecks = 0;
+                foreach ($validated['items'] as $item) {
+                    $med = Medicine::findOrFail($item['medicine_id']);
+                    if ($med->requires_prescription && empty($validated['prescription_url'])) {
+                        throw new \RuntimeException("Требуется рецепт для препарата: {$med->name}");
+                    }
+                    $totalKopecks += $med->price * $item['quantity'];
                 }
 
-                $validated = $request->validate([
-                    'items'             => 'required|array|min:1',
-                    'items.*.medicine_id' => 'required|integer|exists:medicines,id',
-                    'items.*.quantity'  => 'required|integer|min:1',
-                    'prescription_url'  => 'nullable|url',
-                    'delivery_address'  => 'required|string',
+                $order = PharmacyOrder::create([
+                    'uuid'             => Str::uuid(),
+                    'tenant_id'        => $request->user()?->tenant_id ?? 0,
+                    'client_id'        => $userId,
+                    'items_json'       => $validated['items'],
+                    'prescription_url' => $validated['prescription_url'] ?? null,
+                    'delivery_address' => $validated['delivery_address'],
+                    'total_kopecks'    => $totalKopecks,
+                    'status'           => 'pending',
+                    'correlation_id'   => $correlationId,
                 ]);
 
-                $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): PharmacyOrder {
-                    $totalKopecks = 0;
-                    foreach ($validated['items'] as $item) {
-                        $med = Medicine::findOrFail($item['medicine_id']);
-                        if ($med->requires_prescription && empty($validated['prescription_url'])) {
-                            throw new \RuntimeException("Требуется рецепт для препарата: {$med->name}");
-                        }
-                        $totalKopecks += $med->price * $item['quantity'];
-                    }
+                $this->logger->$this->logger->info('Pharmacy: Order created', [
+                    'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
+                ]);
 
-                    $order = PharmacyOrder::create([
-                        'uuid'             => Str::uuid(),
-                        'tenant_id'        => $request->user()?->tenant_id ?? 0,
-                        'client_id'        => $userId,
-                        'items_json'       => $validated['items'],
-                        'prescription_url' => $validated['prescription_url'] ?? null,
-                        'delivery_address' => $validated['delivery_address'],
-                        'total_kopecks'    => $totalKopecks,
-                        'status'           => 'pending',
-                        'correlation_id'   => $correlationId,
-                    ]);
+                return $order;
+            });
 
-                    $this->logger->info('Pharmacy: Order created', [
-                        'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
-                    ]);
+            return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+        } catch (ValidationException $e) {
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+        } catch (\RuntimeException $e) {
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 422);
+        } catch (\Throwable $e) {
+            $this->logger->error('Pharmacy: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
 
-                    return $order;
-                });
-
-                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
-            } catch (\RuntimeException $e) {
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 422);
-            } catch (\Throwable $e) {
-                $this->logger->error('Pharmacy: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
-            }
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
+    }
 
-        public function myOrders(): JsonResponse
-        {
-            $correlationId = Str::uuid()->toString();
-            try {
-                $orders = PharmacyOrder::where('client_id', $request->user()?->id)
-                    ->orderByDesc('created_at')
-                    ->paginate(20);
-                return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
-            }
+    public function myOrders(): JsonResponse
+    {
+        $correlationId = Str::uuid()->toString();
+        try {
+            $orders = PharmacyOrder::where('client_id', $request->user()?->id)
+                ->orderByDesc('created_at')
+                ->paginate(20);
+
+            return new \Illuminate\Http\JsonResponse(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
         }
+    }
 }

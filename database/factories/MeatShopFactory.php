@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class MeatShopFactory extends Factory
                 'Стейк Рибай',
                 'Грудка куриная филе',
             ]),
-            'sku' => 'MSH-' . strtoupper($this->faker->lexify('???')),
+            'sku' => 'MSH-'.strtoupper($this->faker->lexify('???')),
             'meat_type' => $this->faker->randomElement(['beef', 'pork', 'chicken', 'lamb', 'mixed']),
             'cut' => $this->faker->randomElement(['steak', 'fillet', 'ground', 'ribs', 'shoulder']),
             'weight_g' => $this->faker->randomElement([250, 500, 750, 1000]),

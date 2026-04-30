@@ -1,15 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
 use Illuminate\Contracts\Cache\Repository;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class SuspiciousBehaviorDetector
 {
     private const CACHE_PREFIX = 'suspicious_behavior:';
+
     private const BLOCK_DURATION_MINUTES = 60;
+
     private const RATE_LIMIT_WINDOW_MINUTES = 5;
+
     private const MAX_REQUESTS_PER_WINDOW = 10;
 
     public function __construct(
@@ -47,7 +53,7 @@ final class SuspiciousBehaviorDetector
             ]);
 
             $this->recordSuspiciousActivity($userId, 'gender_mismatch', $correlationId);
-            
+
             return [
                 'allowed' => false,
                 'reason' => 'gender_restriction',
@@ -63,7 +69,7 @@ final class SuspiciousBehaviorDetector
             ]);
 
             $this->recordSuspiciousActivity($userId, 'rate_limit_exceeded', $correlationId);
-            
+
             return [
                 'allowed' => false,
                 'reason' => 'rate_limit',
@@ -73,10 +79,10 @@ final class SuspiciousBehaviorDetector
 
         // Проверка на подозрительные паттерны поведения
         $suspicionScore = $this->calculateSuspicionScore($userId);
-        
+
         if ($suspicionScore >= 80) {
             $this->blockUser($userId, 'high_suspicion_score', $correlationId);
-            
+
             $this->logger->channel('security')->critical('User blocked due to high suspicion score', [
                 'user_id' => $userId,
                 'suspicion_score' => $suspicionScore,
@@ -118,11 +124,11 @@ final class SuspiciousBehaviorDetector
      */
     public function recordSuspiciousActivity(int $userId, string $reason, string $correlationId = ''): void
     {
-        $key = self::CACHE_PREFIX . "suspicious:{$userId}";
+        $key = self::CACHE_PREFIX."suspicious:{$userId}";
         $activities = $this->cache->get($key, []);
-        
+
         $activities[] = [
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'reason' => $reason,
             'correlation_id' => $correlationId,
         ];
@@ -132,13 +138,48 @@ final class SuspiciousBehaviorDetector
             $activities = array_slice($activities, -50);
         }
 
-        $this->cache->put($key, $activities, now()->addDays(30));
+        $this->cache->put($key, $activities, CarbonImmutable::now()->addDays(30));
 
-        $this->logger->channel('security')->info('Suspicious activity recorded', [
+        $this->logger->channel('security')->$this->logger->info('Suspicious activity recorded', [
             'user_id' => $userId,
             'reason' => $reason,
             'correlation_id' => $correlationId,
         ]);
+    }
+
+    /**
+     * Разблокирует пользователя (для админа)
+     */
+    public function unblockUser(int $userId, string $adminReason): bool
+    {
+        $key = self::CACHE_PREFIX."blocked:{$userId}";
+
+        if (! $this->cache->has($key)) {
+            return false;
+        }
+
+        $this->cache->forget($key);
+
+        $this->logger->channel('security')->$this->logger->info('User unblocked by admin', [
+            'user_id' => $userId,
+            'admin_reason' => $adminReason,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Получает статистику подозрительной активности пользователя
+     */
+    public function getUserSuspicionStats(int $userId): array
+    {
+        return [
+            'is_blocked' => $this->isUserBlocked($userId),
+            'block_expires_at' => $this->getBlockExpiration($userId),
+            'suspicious_activities' => $this->getSuspiciousActivities($userId),
+            'suspicion_score' => $this->calculateSuspicionScore($userId),
+            'recent_requests' => $this->getRecentRequests($userId, 60),
+        ];
     }
 
     /**
@@ -147,7 +188,7 @@ final class SuspiciousBehaviorDetector
     private function calculateSuspicionScore(int $userId): int
     {
         $score = 0;
-        
+
         // Проверка частоты запросов
         $recentRequests = $this->getRecentRequests($userId, 60); // за последний час
         if ($recentRequests > 30) {
@@ -161,7 +202,7 @@ final class SuspiciousBehaviorDetector
         // Проверка подозрительной активности
         $suspiciousActivities = $this->getSuspiciousActivities($userId);
         $recentSuspicious = array_filter($suspiciousActivities, function ($activity) {
-            return now()->subMinutes(60)->lte($activity['timestamp']);
+            return CarbonImmutable::now()->subMinutes(60)->lte($activity['timestamp']);
         });
 
         $score += count($recentSuspicious) * 15;
@@ -186,8 +227,9 @@ final class SuspiciousBehaviorDetector
      */
     private function isUserBlocked(int $userId): bool
     {
-        $key = self::CACHE_PREFIX . "blocked:{$userId}";
-        return Cache::has($key);
+        $key = self::CACHE_PREFIX."blocked:{$userId}";
+
+        return $this->cache->has($key);
     }
 
     /**
@@ -195,11 +237,11 @@ final class SuspiciousBehaviorDetector
      */
     private function blockUser(int $userId, string $reason, string $correlationId = ''): void
     {
-        $key = self::CACHE_PREFIX . "blocked:{$userId}";
-        $expiration = now()->addMinutes(self::BLOCK_DURATION_MINUTES);
-        
+        $key = self::CACHE_PREFIX."blocked:{$userId}";
+        $expiration = CarbonImmutable::now()->addMinutes(self::BLOCK_DURATION_MINUTES);
+
         $this->cache->put($key, [
-            'blocked_at' => now()->toIso8601String(),
+            'blocked_at' => CarbonImmutable::now()->toIso8601String(),
             'reason' => $reason,
             'correlation_id' => $correlationId,
         ], $expiration);
@@ -217,10 +259,10 @@ final class SuspiciousBehaviorDetector
      */
     private function getBlockExpiration(int $userId): ?string
     {
-        $key = self::CACHE_PREFIX . "blocked:{$userId}";
-        $blockData = Cache::get($key);
-        
-        return $blockData ? now()->addMinutes(self::BLOCK_DURATION_MINUTES)->toIso8601String() : null;
+        $key = self::CACHE_PREFIX."blocked:{$userId}";
+        $blockData = $this->cache->get($key);
+
+        return $blockData ? CarbonImmutable::now()->addMinutes(self::BLOCK_DURATION_MINUTES)->toIso8601String() : null;
     }
 
     /**
@@ -228,9 +270,9 @@ final class SuspiciousBehaviorDetector
      */
     private function exceedsRateLimit(int $userId): bool
     {
-        $key = self::CACHE_PREFIX . "ratelimit:{$userId}";
-        $requests = Cet($::y, 0);
-        
+        $key = self::CACHE_PREFIX."ratelimit:{$userId}";
+        $requests = $this->cache->get($key, 0);
+
         return $requests >= self::MAX_REQUESTS_PER_WINDOW;
     }
 
@@ -239,9 +281,9 @@ final class SuspiciousBehaviorDetector
      */
     private function recordSuccessfulAccess(int $userId): void
     {
-        $key = self::CACHE_PREFIX . "ratelimit:{$userId}";
+        $key = self::CACHE_PREFIX."ratelimit:{$userId}";
         $requests = $this->cache->get($key, 0);
-        $this->cache->put($key, $requests + 1, now()->addMinutes(self::RATE_LIMIT_WINDOW_MINUTES));
+        $this->cache->put($key, $requests + 1, CarbonImmutable::now()->addMinutes(self::RATE_LIMIT_WINDOW_MINUTES));
     }
 
     /**
@@ -249,15 +291,15 @@ final class SuspiciousBehaviorDetector
      */
     private function getRecentRequests(int $userId, int $minutes): int
     {
-        $key = self::CACHE_PREFIX . "requests:{$userId}";
+        $key = self::CACHE_PREFIX."requests:{$userId}";
         $requests = $this->cache->get($key, []);
-        
-        $cutoff = now()->subMinutes($minutes);
+
+        $cutoff = CarbonImmutable::now()->subMinutes($minutes);
         $recent = array_filter($requests, function ($request) use ($cutoff) {
             return $cutoff->lte($request['timestamp']);
         });
 
-        $this->cache->put($key, $recent, now()->addHours(1));
+        $this->cache->put($key, $recent, CarbonImmutable::now()->addHours(1));
 
         return count($recent);
     }
@@ -267,7 +309,8 @@ final class SuspiciousBehaviorDetector
      */
     private function getSuspiciousActivities(int $userId): array
     {
-        $key = self::CACHE_PREFIX . "suspicious:{$userId}";
+        $key = self::CACHE_PREFIX."suspicious:{$userId}";
+
         return $this->cache->get($key, []);
     }
 
@@ -276,18 +319,18 @@ final class SuspiciousBehaviorDetector
      */
     private function checkNightActivity(int $userId): bool
     {
-        $hour = now()->hour;
-        
+        $hour = CarbonImmutable::now()->hour;
+
         // Ночная активность с 00:00 до 05:00
         if ($hour >= 0 && $hour < 5) {
-            $key = self::CACHE_PREFIX . "night_activity:{$userId}:" . now()->format('Y-m-d');
+            $key = self::CACHE_PREFIX."night_activity:{$userId}:".CarbonImmutable::now()->format('Y-m-d');
             $count = $this->cache->get($key, 0);
-            
+
             if ($count > 5) {
                 return true;
             }
-            
-            $this->cache->put($key, $count + 1, now()->endOfDay());
+
+            $this->cache->put($key, $count + 1, CarbonImmutable::now()->endOfDay());
         }
 
         return false;
@@ -299,49 +342,14 @@ final class SuspiciousBehaviorDetector
     private function checkMultipleSessions(int $userId): bool
     {
         // Упрощенная проверка - в реальном проекте нужно использовать session management
-        $key = self::CACHE_PREFIX . "sessions:{$userId}";
-        $sessions = Cache::get($key, []);
-        
+        $key = self::CACHE_PREFIX."sessions:{$userId}";
+        $sessions = $this->cache->get($key, []);
+
         // Если более 3 активных сессий за последние 10 минут
         $recentSessions = array_filter($sessions, function ($session) {
-            return now()->subMinutes(10)->lte($session['timestamp']);
+            return CarbonImmutable::now()->subMinutes(10)->lte($session['timestamp']);
         });
 
         return count($recentSessions) > 3;
-    }
-
-    /**
-     * Разблокирует пользователя (для админа)
-     */
-    public function unblockUser(int $userId, string $adminReason): bool
-    {
-        $key = self::CACHE_PREFIX . "blocked:{$userId}";
-        
-        if (!$this->cache->has($key)) {
-            return false;
-        }
-
-        $this->cache->forget($key);
-
-        $this->logger->channel('security')->info('User unblocked by admin', [
-            'user_id' => $userId,
-            'admin_reason' => $adminReason,
-        ]);
-
-        return true;
-    }
-
-    /**
-     * Получает статистику подозрительной активности пользователя
-     */
-    public function getUserSuspicionStats(int $userId): array
-    {
-        return [
-            'is_blocked' => $this->isUserBlocked($userId),
-            'block_expires_at' => $this->getBlockExpiration($userId),
-            'suspicious_activities' => $this->getSuspiciousActivities($userId),
-            'suspicion_score' => $this->calculateSuspicionScore($userId),
-            'recent_requests' => $this->getRecentRequests($userId, 60),
-        ];
     }
 }

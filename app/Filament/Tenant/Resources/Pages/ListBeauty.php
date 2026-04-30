@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListBeauty extends ListRecords
     public function getTitle(): string
     {
         return 'Салоны красоты';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить салон')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -88,5 +81,14 @@ final class ListBeauty extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить салон')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

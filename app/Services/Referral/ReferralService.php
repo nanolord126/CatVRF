@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Referral;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -13,7 +15,9 @@ use DomainException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 use Throwable;
+use Illuminate\Pagination\Paginator;
 
 /**
  * Сервис управления рефералами (Referral Service)
@@ -38,23 +42,19 @@ use Throwable;
  */
 final readonly class ReferralService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly ConnectionInterface $db,
         private readonly LogManager $logger,
         private readonly FraudControlService $fraud,
-        private readonly BonusService $bonus,
-    ) {}
+        private readonly BonusService $bonus,) {}
 
     /**
      * Сгенерировать реферальную ссылку
      *
      * Один пользователь может иметь только одну активную ссылку
      *
-     * @param int $referrerId
-     * @param int $tenantId
-     * @param ?string $correlationId
      * @return array ['code' => string, 'url' => string]
      *
      * @throws Throwable
@@ -75,14 +75,14 @@ final readonly class ReferralService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Referral: Link generation initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Link generation initiated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
             ]);
 
             // 2. CREATE or UPDATE referral code
             $code = Str::random(12);
-            $url = $this->config->get('app.url') . "/join?ref={$code}";
+            $url = $this->config->get('app.url')."/join?ref={$code}";
 
             $referral = $this->db->transaction(function () use (
                 $referrerId,
@@ -106,7 +106,7 @@ final readonly class ReferralService
             });
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Referral: Link generated', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Link generated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
                 'referral_id' => $referral->id,
@@ -139,11 +139,6 @@ final readonly class ReferralService
     /**
      * Зарегистрировать нового пользователя по реферальной ссылке
      *
-     * @param string $referralCode
-     * @param int $newUserId
-     * @param int $newUserTenantId
-     * @param ?string $correlationId
-     * @return Referral
      *
      * @throws DomainException
      * @throws Throwable
@@ -174,7 +169,7 @@ final readonly class ReferralService
                 throw new DomainException('Cannot use own referral code');
             }
 
-            $this->logger->channel('audit')->info('Referral: Registration initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Registration initiated', [
                 'correlation_id' => $correlationId,
                 'referral_code' => $referralCode,
                 'referee_id' => $newUserId,
@@ -184,13 +179,12 @@ final readonly class ReferralService
             $referral = $this->db->transaction(function () use (
                 $referral,
                 $newUserId,
-                $newUserTenantId,
                 $correlationId,
             ) {
                 $referral->update([
                     'referee_id' => $newUserId,
                     'status' => 'registered',
-                    'registered_at' => now(),
+                    'registered_at' => CarbonImmutable::now(),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -198,7 +192,7 @@ final readonly class ReferralService
             });
 
             // 4. SUCCESS LOG
-            $this->logger->channel('audit')->info('Referral: Registration succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Registration succeeded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referral->id,
                 'referrer_id' => $referral->referrer_id,
@@ -229,9 +223,7 @@ final readonly class ReferralService
     /**
      * Проверить квалификацию реферала (достаточно ли траты для бонуса)
      *
-     * @param int $referralId
-     * @param int $totalSpent (копейки за все время)
-     * @param ?string $correlationId
+     * @param  int  $totalSpent  (копейки за все время)
      * @return array ['qualified' => bool, 'bonus_amount' => int]
      */
     public function checkQualification(
@@ -248,7 +240,7 @@ final readonly class ReferralService
             $qualified = $totalSpent >= 1000000;  // 10 000 ₽ = 1 000 000 копеек
             $bonusAmount = $qualified ? 100000 : 0;  // 1000 ₽ = 100 000 копеек
 
-            $this->logger->channel('audit')->info('Referral: Qualification checked', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Qualification checked', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'total_spent' => $totalSpent,
@@ -283,10 +275,6 @@ final readonly class ReferralService
     /**
      * Начислить реферальный бонус (когда достигнута квота)
      *
-     * @param int $referralId
-     * @param int $bonusAmount
-     * @param ?string $correlationId
-     * @return void
      *
      * @throws Throwable
      */
@@ -304,7 +292,7 @@ final readonly class ReferralService
                 throw new DomainException('Referral not in registered status');
             }
 
-            $this->logger->channel('audit')->info('Referral: Bonus award initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Bonus award initiated', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'referrer_id' => $referral->referrer_id,
@@ -334,14 +322,14 @@ final readonly class ReferralService
                 // Update referral status
                 $referral->update([
                     'status' => 'rewarded',
-                    'rewarded_at' => now(),
+                    'rewarded_at' => CarbonImmutable::now(),
                     'bonus_amount' => $bonusAmount,
                     'correlation_id' => $correlationId,
                 ]);
             });
 
             // SUCCESS LOG
-            $this->logger->channel('audit')->info('Referral: Bonus awarded', [
+            $this->logger->channel('audit')->$this->logger->info('Referral: Bonus awarded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'referrer_id' => $referral->referrer_id,
@@ -369,10 +357,6 @@ final readonly class ReferralService
 
     /**
      * Получить статистику рефереров
-     *
-     * @param int $referrerId
-     * @param int $tenantId
-     * @return array
      */
     public function getReferrerStats(int $referrerId, int $tenantId): array
     {
@@ -399,12 +383,8 @@ final readonly class ReferralService
 
     /**
      * Получить историю рефералов
-     *
-     * @param int $tenantId
-     * @param int $perPage
-     * @return \Illuminate\Pagination\Paginator
      */
-    public function getHistory(int $tenantId, int $perPage = 20): \Illuminate\Pagination\Paginator
+    public function getHistory(int $tenantId, int $perPage = 20): Paginator
     {
         return Referral::where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')

@@ -6,6 +6,7 @@ namespace Database\Factories\SportingGoods;
 
 use App\Domains\Sports\SportingGoods\Models\SportProduct;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class SportProductFactory extends Factory
 {
@@ -24,7 +25,7 @@ final class SportProductFactory extends Factory
             'rating' => $this->faker->randomFloat(1, 3.5, 5),
             'review_count' => $this->faker->numberBetween(20, 300),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['sport', $this->faker->word()],
             'meta' => [],
         ];

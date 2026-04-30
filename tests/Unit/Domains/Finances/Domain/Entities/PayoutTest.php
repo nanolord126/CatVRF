@@ -19,30 +19,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class PayoutTest extends TestCase
 {
-    private function makePayout(
-        int $id = 1,
-        int $tenantId = 100,
-        ?int $businessGroupId = null,
-        int $amount = 500000,
-        PayoutStatus $status = PayoutStatus::DRAFT,
-        ?CarbonImmutable $periodStart = null,
-        ?CarbonImmutable $periodEnd = null,
-        ?CarbonImmutable $processedAt = null,
-        string $correlationId = 'payout-corr-123',
-    ): Payout {
-        return new Payout(
-            id: $id,
-            tenantId: $tenantId,
-            businessGroupId: $businessGroupId,
-            amount: $amount,
-            status: $status,
-            periodStart: $periodStart ?? CarbonImmutable::parse('2026-03-01'),
-            periodEnd: $periodEnd ?? CarbonImmutable::parse('2026-03-31'),
-            processedAt: $processedAt,
-            correlationId: $correlationId,
-        );
-    }
-
     #[Test]
     public function it_exposes_all_getters_correctly(): void
     {
@@ -82,7 +58,7 @@ final class PayoutTest extends TestCase
     }
 
     #[Test]
-    public function processedAt_is_null_for_non_completed(): void
+    public function processed_at_is_null_for_non_completed(): void
     {
         $payout = $this->makePayout(status: PayoutStatus::DRAFT);
         self::assertNull($payout->getProcessedAt());
@@ -109,7 +85,7 @@ final class PayoutTest extends TestCase
     }
 
     #[Test]
-    public function transition_processing_to_completed_sets_processedAt(): void
+    public function transition_processing_to_completed_sets_processed_at(): void
     {
         $payout = $this->makePayout(status: PayoutStatus::PROCESSING);
 
@@ -179,7 +155,7 @@ final class PayoutTest extends TestCase
 
     #[Test]
     #[DataProvider('terminalPayoutProvider')]
-    public function isTerminal_reflects_current_status(PayoutStatus $status, bool $expected): void
+    public function is_terminal_reflects_current_status(PayoutStatus $status, bool $expected): void
     {
         $payout = $this->makePayout(status: $status);
         self::assertSame($expected, $payout->isTerminal());
@@ -198,7 +174,7 @@ final class PayoutTest extends TestCase
     // --- toArray ---
 
     #[Test]
-    public function toArray_returns_complete_structure(): void
+    public function to_array_returns_complete_structure(): void
     {
         $start = CarbonImmutable::parse('2026-03-01');
         $end = CarbonImmutable::parse('2026-03-31');
@@ -229,7 +205,7 @@ final class PayoutTest extends TestCase
     }
 
     #[Test]
-    public function toArray_includes_processedAt_when_completed(): void
+    public function to_array_includes_processed_at_when_completed(): void
     {
         $payout = $this->makePayout(status: PayoutStatus::PROCESSING);
         $payout->transitionTo(PayoutStatus::COMPLETED);
@@ -260,11 +236,35 @@ final class PayoutTest extends TestCase
     }
 
     #[Test]
-    public function getAmountInRubles_converts_correctly(): void
+    public function get_amount_in_rubles_converts_correctly(): void
     {
         self::assertSame(50.0, $this->makePayout(amount: 5000)->getAmountInRubles());
         self::assertSame(0.01, $this->makePayout(amount: 1)->getAmountInRubles());
         self::assertSame(0.0, $this->makePayout(amount: 0)->getAmountInRubles());
         self::assertSame(123456.78, $this->makePayout(amount: 12345678)->getAmountInRubles());
+    }
+
+    private function makePayout(
+        int $id = 1,
+        int $tenantId = 100,
+        ?int $businessGroupId = null,
+        int $amount = 500000,
+        PayoutStatus $status = PayoutStatus::DRAFT,
+        ?CarbonImmutable $periodStart = null,
+        ?CarbonImmutable $periodEnd = null,
+        ?CarbonImmutable $processedAt = null,
+        string $correlationId = 'payout-corr-123',
+    ): Payout {
+        return new Payout(
+            id: $id,
+            tenantId: $tenantId,
+            businessGroupId: $businessGroupId,
+            amount: $amount,
+            status: $status,
+            periodStart: $periodStart ?? CarbonImmutable::parse('2026-03-01'),
+            periodEnd: $periodEnd ?? CarbonImmutable::parse('2026-03-31'),
+            processedAt: $processedAt,
+            correlationId: $correlationId,
+        );
     }
 }

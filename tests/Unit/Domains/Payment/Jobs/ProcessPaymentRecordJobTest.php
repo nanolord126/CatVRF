@@ -26,7 +26,7 @@ final class ProcessPaymentRecordJobTest extends TestCase
     {
         $this->assertTrue(
             is_subclass_of(ProcessPaymentRecordJob::class, ShouldQueue::class)
-            || in_array(ShouldQueue::class, class_implements(ProcessPaymentRecordJob::class)),
+            || in_array(ShouldQueue::class, class_implements(ProcessPaymentRecordJob::class), true),
         );
     }
 
@@ -80,13 +80,13 @@ final class ProcessPaymentRecordJobTest extends TestCase
 
         $handleParams = $ref->getMethod('handle')->getParameters();
         $handleParamTypes = array_map(
-            fn(\ReflectionParameter $p) => $p->getType()?->getName(),
+            fn (\ReflectionParameter $p) => $p->getType()?->getName(),
             $handleParams,
         );
 
         // handle() должен принимать LoggerInterface и/или AuditService
         $this->assertTrue(
-            in_array(LoggerInterface::class, $handleParamTypes) || in_array(AuditService::class, $handleParamTypes),
+            in_array(LoggerInterface::class, $handleParamTypes, true) || in_array(AuditService::class, $handleParamTypes, true),
             'handle() must accept deps via method injection',
         );
 
@@ -94,7 +94,7 @@ final class ProcessPaymentRecordJobTest extends TestCase
         $ctor = $ref->getConstructor();
         if ($ctor !== null) {
             $ctorParamTypes = array_map(
-                fn(\ReflectionParameter $p) => $p->getType()?->getName(),
+                fn (\ReflectionParameter $p) => $p->getType()?->getName(),
                 $ctor->getParameters(),
             );
             $this->assertNotContains(
@@ -136,7 +136,7 @@ final class ProcessPaymentRecordJobTest extends TestCase
 
     public function test_job_no_facade_imports(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Jobs/ProcessPaymentRecordJob.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Jobs/ProcessPaymentRecordJob.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
         $this->assertStringNotContainsString('Log::', $src);
@@ -144,7 +144,7 @@ final class ProcessPaymentRecordJobTest extends TestCase
 
     public function test_job_has_strict_types(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Jobs/ProcessPaymentRecordJob.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Jobs/ProcessPaymentRecordJob.php');
         $this->assertStringContainsString('declare(strict_types=1);', $src);
     }
 }

@@ -1,20 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
 use App\Filament\Tenant\Resources\BeverageItemResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-
 
 /**
  * Class ListBeverageItem
@@ -22,8 +19,6 @@ use Filament\Tables\Table;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListBeverageItem extends ListRecords
 {
@@ -39,13 +34,6 @@ final class ListBeverageItem extends ListRecords
         return 'List BeverageItem';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -56,5 +44,12 @@ final class ListBeverageItem extends ListRecords
             ->filters([])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->bulkActions([DeleteBulkAction::make()]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Fraud;
 
@@ -6,13 +8,14 @@ use Illuminate\Log\LogManager;
 
 /**
  * Fraud Data Anonymizer for PII Protection
- * 
+ *
  * Anonymizes sensitive data (especially medical) before fraud logging
  * Compliance with 152-ФЗ, ФЗ-323
  */
 final readonly class FraudDataAnonymizer
 {
     private const MASK_PATTERN = '***';
+
     private const MIN_PRESERVE_LENGTH = 2;
 
     public function __construct(
@@ -36,6 +39,39 @@ final readonly class FraudDataAnonymizer
         $anonymized = $this->anonymizeCommonPII($anonymized);
 
         return $anonymized;
+    }
+
+    /**
+     * Validate that data is properly anonymized
+     */
+    public function validateAnonymization(array $original, array $anonymized): bool
+    {
+        $sensitiveKeywords = [
+            'symptom', 'diagnosis', 'lab', 'medical', 'prescription',
+            'allergy', 'chronic', 'vital', 'patient', 'doctor',
+            'email', 'phone', 'name', 'address', 'passport', 'snils',
+        ];
+
+        $flattened = $this->flattenArray($anonymized);
+
+        foreach ($flattened as $key => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+
+            foreach ($sensitiveKeywords as $keyword) {
+                if (stripos($key, $keyword) !== false && ! str_contains($value, self::MASK_PATTERN)) {
+                    $this->logger->channel('fraud_alert')->warning('Potential PII leak in anonymized data', [
+                        'key' => $key,
+                        'value_length' => strlen($value),
+                    ]);
+
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -132,7 +168,7 @@ final readonly class FraudDataAnonymizer
             return self::MASK_PATTERN;
         }
 
-        return null;
+        return self::MASK_PATTERN;
     }
 
     /**
@@ -140,12 +176,12 @@ final readonly class FraudDataAnonymizer
      */
     private function maskPIIValue(mixed $value, string $fieldType): mixed
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return self::MASK_PATTERN;
         }
 
         $length = strlen($value);
-        
+
         if ($length <= self::MIN_PRESERVE_LENGTH) {
             return self::MASK_PATTERN;
         }
@@ -171,11 +207,11 @@ final readonly class FraudDataAnonymizer
         $local = $parts[0];
         $domain = $parts[1];
 
-        $maskedLocal = strlen($local) > 2 
-            ? substr($local, 0, 1) . str_repeat('*', strlen($local) - 2) . substr($local, -1)
+        $maskedLocal = strlen($local) > 2
+            ? substr($local, 0, 1).str_repeat('*', strlen($local) - 2).substr($local, -1)
             : str_repeat('*', strlen($local));
 
-        return $maskedLocal . '@' . $domain;
+        return $maskedLocal.'@'.$domain;
     }
 
     /**
@@ -193,7 +229,7 @@ final readonly class FraudDataAnonymizer
         $visible = substr($digits, -4);
         $masked = str_repeat('*', $length - 4);
 
-        return $masked . $visible;
+        return $masked.$visible;
     }
 
     /**
@@ -220,44 +256,12 @@ final readonly class FraudDataAnonymizer
     private function maskGeneric(string $value): string
     {
         $length = strlen($value);
-        
+
         if ($length <= 2) {
             return str_repeat('*', $length);
         }
 
-        return substr($value, 0, 1) . str_repeat('*', $length - 2) . substr($value, -1);
-    }
-
-    /**
-     * Validate that data is properly anonymized
-     */
-    public function validateAnonymization(array $original, array $anonymized): bool
-    {
-        $sensitiveKeywords = [
-            'symptom', 'diagnosis', 'lab', 'medical', 'prescription',
-            'allergy', 'chronic', 'vital', 'patient', 'doctor',
-            'email', 'phone', 'name', 'address', 'passport', 'snils',
-        ];
-
-        $flattened = $this->flattenArray($anonymized);
-
-        foreach ($flattened as $key => $value) {
-            if (!is_string($value)) {
-                continue;
-            }
-
-            foreach ($sensitiveKeywords as $keyword) {
-                if (stripos($key, $keyword) !== false && !str_contains($value, self::MASK_PATTERN)) {
-                    $this->logger->channel('fraud_alert')->warning('Potential PII leak in anonymized data', [
-                        'key' => $key,
-                        'value_length' => strlen($value),
-                    ]);
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return substr($value, 0, 1).str_repeat('*', $length - 2).substr($value, -1);
     }
 
     /**
@@ -268,7 +272,7 @@ final readonly class FraudDataAnonymizer
         $result = [];
 
         foreach ($array as $key => $value) {
-            $newKey = $prefix ? $prefix . '.' . $key : $key;
+            $newKey = $prefix ? $prefix.'.'.$key : $key;
 
             if (is_array($value)) {
                 $result = array_merge($result, $this->flattenArray($value, $newKey));

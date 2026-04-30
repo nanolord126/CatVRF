@@ -1,17 +1,45 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\ApplyVerticalMiddleware;
+use App\Http\Middleware\B2BApiMiddleware;
+use App\Http\Middleware\CheckTokenAbility;
+use App\Http\Middleware\EnsureUserBelongsToTenant;
+use App\Http\Middleware\FilamentAdminIpWhitelist;
+use App\Http\Middleware\FilamentMetricsMiddleware;
+use App\Http\Middleware\FilamentTenantScope;
+use App\Http\Middleware\MedicalComplianceMiddleware;
+use App\Http\Middleware\OrderMiddleware;
+use App\Http\Middleware\PiiGuardMiddleware;
+use App\Http\Middleware\SecurityHeadersMiddleware;
+use App\Http\Middleware\TenantQuotaMiddleware;
+use App\Providers\AppServiceProvider;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Str;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        apiPrefix: '/api',
-        then: function (): void {
+        then: function () {
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
+            
+            Route::middleware('web')
+                ->prefix('monitoring')
+                ->group(base_path('routes/monitoring.php'));
+            
             /**
              * ══════════════════════════════════════════════════════════
              * ROADMAP МАРШРУТОВ — ОЧЕРЕДИ РЕАЛИЗАЦИИ
@@ -28,6 +56,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             // ОЧЕРЕДЬ 1 — Технические инфраструктурные маршруты (Q1)
             // ──────────────────────────────────────────────────────────
             $q1Routes = [
+                'ai.api.php',             // AI vertical
                 'api-analytics-v2.php',   // Analytics
                 'api-3d.php',             // AI / 3D-конструктор
                 'api_b2b.php',            // B2B ключевая авторизация (инфраструктура)
@@ -142,48 +171,173 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
             $verticalRoutes = array_merge($q1Routes, $q2Routes);
             foreach ($verticalRoutes as $file) {
-                $path = __DIR__ . '/../routes/' . $file;
+                $path = __DIR__.'/../routes/'.$file;
                 if (file_exists($path)) {
                     require $path;
                 }
             }
 
             // ML metrics routes (for drift detection monitoring)
-            require __DIR__ . '/../routes/ml-metrics.php';
+            require __DIR__.'/../routes/ml-metrics.php';
+
+            // Telegram webhook routes
+            require __DIR__.'/../routes/telegram.php';
+
+            // WhatsApp webhook routes
+            require __DIR__.'/../routes/api/notifications.php';
+
+            // Behavioral biometrics API routes
+            require __DIR__.'/../routes/api/behavioral.php';
+
+            // Compliance API routes (152-ФЗ, ФЗ-115, ФЗ-161, 54-ФЗ)
+            require __DIR__.'/../routes/api/compliance.php';
+
+            // Payment compliance API routes (ФЗ-161, ФЗ-115, 54-ФЗ)
+            require __DIR__.'/../routes/api/payment_compliance.php';
+
+            // Media upload API routes
+            require __DIR__.'/../routes/api/media.php';
+
+            // Video calling API routes
+            require __DIR__.'/../routes/api/video.php';
+
+            // Marketplace API routes (main marketplace storefront)
+            require __DIR__.'/../modules/Marketplace/Presentation/Routes/marketplace.php';
+
+            // Cart module routes
+            if (file_exists(__DIR__.'/../modules/Cart/Presentation/Routes/cart.php')) {
+                require __DIR__.'/../modules/Cart/Presentation/Routes/cart.php';
+            }
+
+            // Payment module routes
+            if (file_exists(__DIR__.'/../modules/Payment/Presentation/Routes/payment.php')) {
+                require __DIR__.'/../modules/Payment/Presentation/Routes/payment.php';
+            }
+
+            // Wallet module routes
+            if (file_exists(__DIR__.'/../modules/Wallet/Presentation/Routes/wallet.php')) {
+                require __DIR__.'/../modules/Wallet/Presentation/Routes/wallet.php';
+            }
+
+            // Auto module routes
+            if (file_exists(__DIR__.'/../modules/Auto/Presentation/Routes/auto.php')) {
+                require __DIR__.'/../modules/Auto/Presentation/Routes/auto.php';
+            }
+
+            // Fashion module routes
+            if (file_exists(__DIR__.'/../modules/Fashion/Presentation/Routes/fashion.php')) {
+                require __DIR__.'/../modules/Fashion/Presentation/Routes/fashion.php';
+            }
+
+            // Beauty module routes
+            if (file_exists(__DIR__.'/../modules/BeautyMasters/Presentation/Routes/beauty.php')) {
+                require __DIR__.'/../modules/BeautyMasters/Presentation/Routes/beauty.php';
+            }
+
+            // Dental module routes
+            if (file_exists(__DIR__.'/../modules/Dental/Presentation/Routes/dental.php')) {
+                require __DIR__.'/../modules/Dental/Presentation/Routes/dental.php';
+            }
+
+            // Flowers module routes
+            if (file_exists(__DIR__.'/../modules/Flowers/Presentation/Routes/flowers.php')) {
+                require __DIR__.'/../modules/Flowers/Presentation/Routes/flowers.php';
+            }
+
+            // Inventory module routes
+            if (file_exists(__DIR__.'/../modules/Inventory/Presentation/Routes/inventory.php')) {
+                require __DIR__.'/../modules/Inventory/Presentation/Routes/inventory.php';
+            }
+
+            // Loyalty module routes
+            if (file_exists(__DIR__.'/../modules/Loyalty/Presentation/Routes/loyalty.php')) {
+                require __DIR__.'/../modules/Loyalty/Presentation/Routes/loyalty.php';
+            }
+
+            // Fitness module routes
+            if (file_exists(__DIR__.'/../modules/Fitness/Presentation/Routes/fitness.php')) {
+                require __DIR__.'/../modules/Fitness/Presentation/Routes/fitness.php';
+            }
+
+            // Veterinary module routes
+            if (file_exists(__DIR__.'/../modules/Veterinary/Presentation/Routes/veterinary.php')) {
+                require __DIR__.'/../modules/Veterinary/Presentation/Routes/veterinary.php';
+            }
+
+            // Logistics API - direct inclusion for dev testing (without middleware)
+            Route::prefix('logistics-test')->withoutMiddleware([SubstituteBindings::class])->group(function () {
+                Route::get('/test', function () {
+                    return response()->json(['message' => 'Logistics API works!', 'status' => 'ok']);
+                });
+                Route::get('/pickup-points', function () {
+                    $pickupPoints = \Illuminate\Support\Facades\DB::table('pickup_points')
+                        ->where('tenant_id', 1)
+                        ->where('status', 'active')
+                        ->get();
+
+                    return response()->json([
+                        'data' => $pickupPoints,
+                        'meta' => ['total' => $pickupPoints->count()],
+                    ]);
+                });
+            });
+
+            // API v2 routes (for breaking changes)
+            Route::prefix('api/v2')
+                ->middleware(['api', 'throttle:api'])
+                ->group(function () {
+                    require __DIR__.'/../routes/api-v2.php';
+                });
+
+            // Horizon metrics routes (for queue monitoring) - only if Horizon is installed
+            if (class_exists('Laravel\Horizon\Horizon')) {
+                require __DIR__.'/../routes/horizon-metrics.php';
+            }
+
+            // Prometheus monitoring routes
+            require __DIR__.'/../routes/monitoring.php';
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             // \App\Http\Middleware\HandleInertiaRequests::class, // Temporarily disabled for stress testing
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            ShareErrorsFromSession::class,
+            VerifyCsrfToken::class,
+            SubstituteBindings::class,
         ]);
 
         $middleware->api(append: [
             'throttle:api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\TenantQuotaMiddleware::class,
+            SubstituteBindings::class,
+            TenantQuotaMiddleware::class,
         ]);
 
         $middleware->alias([
-            'tenant'  => \App\Http\Middleware\EnsureUserBelongsToTenant::class,
-            'b2b.api' => \App\Http\Middleware\B2BApiMiddleware::class,
-            'order' => \App\Http\Middleware\OrderMiddleware::class,
+            'tenant'  => EnsureUserBelongsToTenant::class,
+            'b2b.api' => B2BApiMiddleware::class,
+            'order' => OrderMiddleware::class,
+            'filament.admin.ip' => FilamentAdminIpWhitelist::class,
+            'filament.tenant.scope' => FilamentTenantScope::class,
+            'medical.compliance' => MedicalComplianceMiddleware::class,
+            'filament.metrics' => FilamentMetricsMiddleware::class,
+            'ability' => CheckTokenAbility::class,
+            'pii.guard' => PiiGuardMiddleware::class,
+            'security.headers' => SecurityHeadersMiddleware::class,
+            'vertical.middleware' => ApplyVerticalMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Custom exception handling
-        $exceptions->render(function (\Throwable $e) {
+        $exceptions->render(function (Throwable $e) {
             // Log with correlation_id
-            \Illuminate\Support\Facades\Log::channel('audit')->error(
+            logger()->channel('audit')->error(
                 'Unhandled exception',
                 [
                     'exception' => get_class($e),
                     'message' => $e->getMessage(),
-                    'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => request()->header('X-Correlation-ID') ?? Str::uuid(),
                     'url' => request()->fullUrl(),
                     'trace' => $e->getTraceAsString(),
                 ]
@@ -191,7 +345,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withProviders([
-        \App\Providers\AppServiceProvider::class,
+        AppServiceProvider::class,
+        \App\Domains\Bonuses\BonusesServiceProvider::class,
+        \Modules\Marketplace\MarketplaceServiceProvider::class,
     ])
     ->create();
 

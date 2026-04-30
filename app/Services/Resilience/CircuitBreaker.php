@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Resilience;
 
@@ -9,7 +11,9 @@ use Throwable;
 final class CircuitBreaker
 {
     private const STATE_CLOSED = 'closed';
+
     private const STATE_OPEN = 'open';
+
     private const STATE_HALF_OPEN = 'half_open';
 
     public function __construct(
@@ -34,7 +38,7 @@ final class CircuitBreaker
         if ($state === self::STATE_OPEN) {
             if ($this->shouldAttemptReset()) {
                 $this->setState(self::STATE_HALF_OPEN);
-                $this->logger->info("Circuit breaker transitioning to HALF_OPEN for {$this->service}");
+                $this->logger->$this->logger->info("Circuit breaker transitioning to HALF_OPEN for {$this->service}");
             } else {
                 $this->logger->warning("Circuit breaker OPEN for {$this->service}, rejecting call");
                 throw new \RuntimeException("Circuit breaker is open for {$this->service}");
@@ -44,6 +48,7 @@ final class CircuitBreaker
         try {
             $result = $callback();
             $this->onSuccess();
+
             return $result;
         } catch (Throwable $e) {
             $this->onFailure();
@@ -89,7 +94,7 @@ final class CircuitBreaker
                 $this->setState(self::STATE_CLOSED);
                 $this->resetFailureCount();
                 $this->resetHalfOpenCalls();
-                $this->logger->info("Circuit breaker CLOSED for {$this->service}");
+                $this->logger->$this->logger->info("Circuit breaker CLOSED for {$this->service}");
             } else {
                 $this->setHalfOpenCalls($halfOpenCalls);
             }

@@ -13,8 +13,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * CANON 2026 — Layer 7: Requests.
  * Валидация данных для B2B-операций в Tenant Panel.
  * Авторизация проверяет принадлежность к tenant.
- *
- * @package App\Domains\VerticalName\Requests\B2B
  */
 final class CreateVerticalItemRequest extends FormRequest
 {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\ShopRentals\Services;
 
-
 use Illuminate\Contracts\Auth\Guard;
 use App\Domains\RealEstate\ShopRentals\Models\Storefront;
 use App\Domains\RealEstate\ShopRentals\Models\StorefrontRental;
@@ -13,6 +12,8 @@ use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
 
 /**
  * Сервис аренды торговых площадей (магазинов/шоурумов).
@@ -26,15 +27,21 @@ use Ramsey\Uuid\Uuid;
 final readonly class ShopRentalsService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'shop:rental';
+
     private const RATE_LIMIT_MAX = 6;
+
     private const RATE_LIMIT_TTL = 3600;
 
-    public function __construct(private readonly FraudControlService  $fraud,
-        private readonly WalletService        $wallet,
-        private readonly RateLimiter          $rateLimiter,
-        private readonly LoggerInterface      $logger,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Создать аренду торговой площади.
@@ -42,15 +49,15 @@ final readonly class ShopRentalsService
      * @throws \RuntimeException если rate limit превышен или fraud-блок
      */
     public function createRental(
-        int    $storefrontId,
+        int $storefrontId,
         string $leaseStart,
         string $leaseEnd,
-        int    $monthCount,
+        int $monthCount,
         string $correlationId = '',
     ): StorefrontRental {
         $correlationId = $correlationId ?: Uuid::uuid4()->toString();
 
-        $key = self::RATE_LIMIT_KEY . ':' . tenant()->id;
+        $key = self::RATE_LIMIT_KEY.':'.tenant()->id;
         if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
             throw new \RuntimeException('Too many shop rental requests', 429);
         }
@@ -85,7 +92,7 @@ final readonly class ShopRentalsService
                 'tags'                => ['shop' => true],
             ]);
 
-            $this->logger->info('Storefront rental created', [
+            $this->logger->$this->logger->info('Storefront rental created', [
                 'rental_id'      => $rental->id,
                 'storefront_id'  => $storefrontId,
                 'total_kopecks'  => $total,
@@ -160,7 +167,7 @@ final readonly class ShopRentalsService
     /**
      * Получить список аренд по ID бизнеса.
      */
-    public function getMyRentals(int $tenantBusinessId): \Illuminate\Support\Collection
+    public function getMyRentals(int $tenantBusinessId): Collection
     {
         return StorefrontRental::where('tenant_business_id', $tenantBusinessId)
             ->orderByDesc('created_at')

@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\PromoCampaigns\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\AI\OpenAIClientService;
 use Illuminate\Support\Str;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Промо-механика + креативы + прогноз метрик + A/B план
@@ -27,11 +28,11 @@ use Illuminate\Support\Str;
 final readonly class PromoCampaignConstructorService
 {
     public function __construct(
-        private OpenAIClientService $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly OpenAIClientService $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
         private readonly Request $request,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard
@@ -41,7 +42,7 @@ final readonly class PromoCampaignConstructorService
      * Главный метод — анализ и генерация рекомендаций.
      * Промо-механика + креативы + прогноз метрик + A/B план
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(array $promoData, int $userId): array
     {
@@ -51,7 +52,7 @@ final readonly class PromoCampaignConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_promo', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_promo:promo_campaign_design:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_promo:promo_campaign_design:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -104,14 +105,14 @@ final readonly class PromoCampaignConstructorService
             'success'        => true,
             'promo_profile' => $promo_profile,
             'recommendations' => $recommendations,
-            'ar_link'        => url('promo/campaign-preview/' . $userId),
+            'ar_link'        => url('promo/campaign-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
         // Кэш на 1 час
         cache()->put($cacheKey, $result, 3600);
 
-        $this->logger->info('PromoCampaignConstructorService used', [
+        $this->logger->$this->logger->info('PromoCampaignConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'promo',
             'type'           => 'promo_campaign_design',
@@ -135,7 +136,7 @@ final readonly class PromoCampaignConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -153,8 +154,8 @@ final readonly class PromoCampaignConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => now(),
-                'created_at'     => now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Application\UseCases;
 
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Domains\Advertising\Domain\Entities\AdCampaign;
@@ -14,15 +12,17 @@ use App\Domains\Advertising\Domain\Interfaces\AdCampaignRepositoryInterface;
 use App\Services\FraudControlService;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class CreateAdCampaignUseCase
 {
-    public function __construct(private AdCampaignRepositoryInterface $repository,
-        private FraudControlService $fraud,
-        private EventDispatcher $events,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+    public function __construct(
+        private readonly AdCampaignRepositoryInterface $repository,
+        private readonly FraudControlService $fraud,
+        private readonly EventDispatcher $events,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     public function execute(

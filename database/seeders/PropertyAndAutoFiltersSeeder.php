@@ -42,10 +42,9 @@ final class PropertyAndAutoFiltersSeeder extends Seeder
     private function seedShoes()
     {
         $f = Filter::create(['vertical' => 'Shoes', 'name' => 'Gender', 'type' => 'select']);
-        foreach (['Unisex', 'Female', 'Male', 'Kids'] as $v) FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        foreach (['Unisex', 'Female', 'Male', 'Kids'] as $v) {
+            FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        }
         Filter::create(['vertical' => 'Shoes', 'name' => 'Anti-Microbial Sole', 'type' => 'boolean']);
     }
 }
-// Shoes seeder end
-
-

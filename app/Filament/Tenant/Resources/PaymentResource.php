@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
@@ -76,7 +78,7 @@ final class PaymentResource extends Resource
                         ->label('Сумма')
                         ->content(fn (?PaymentTransaction $record): string => $record === null
                             ? '—'
-                            : number_format(((int) $record->amount) / 100, 2, '.', ' ') . ' ' . ($record->currency ?? 'RUB')),
+                            : number_format(((int) $record->amount) / 100, 2, '.', ' ').' '.($record->currency ?? 'RUB')),
                     Forms\Components\TextInput::make('currency')->label('Валюта')->disabled()->dehydrated(false),
                     Forms\Components\TextInput::make('wallet_id')->label('Wallet ID')->disabled()->dehydrated(false),
                     Forms\Components\TextInput::make('user_id')->label('User ID')->disabled()->dehydrated(false),

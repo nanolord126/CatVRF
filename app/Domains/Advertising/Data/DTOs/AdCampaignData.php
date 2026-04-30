@@ -20,7 +20,6 @@ use Spatie\LaravelData\Data;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Advertising\Data\DTOs
  */
 final class AdCampaignData extends Data
 {

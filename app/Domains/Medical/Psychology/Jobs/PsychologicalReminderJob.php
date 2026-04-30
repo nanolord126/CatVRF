@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * PsychologicalReminderJob — CatVRF 2026 Component.
@@ -7,52 +9,54 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/psychologicalreminderjob
  */
 
-
 namespace App\Domains\Medical\Psychology\Jobs;
+
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
-
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-
-
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
+
 final class PsychologicalReminderJob
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
+    public function __construct(
+        public int $bookingId,
+        public string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {}
 
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    public function handle(): void
+    {
+        $booking = PsychologicalBooking::with(['client', 'psychologist'])->find($this->bookingId);
 
-        public function __construct(
-            public int $bookingId,
-            public string $correlationId, private readonly LoggerInterface $logger
-        ) {}
-
-        public function handle(): void
-        {
-            $booking = PsychologicalBooking::with(['client', 'psychologist'])->find($this->bookingId);
-
-            if (!$booking) {
-                return;
-            }
-
-            $this->logger->info('Sending therapy session reminder', [
-                'booking_id' => $this->bookingId,
-                'client_email' => $booking->client->email,
-                'correlation_id' => $this->correlationId,
-            ]);
-
-            // В 2026 тут идет интеграция с Telegram/WhatsApp API
-            // \App\Services\NotificationService::send(...)
+        if (! $booking) {
+            return;
         }
+
+        $this->logger->$this->logger->info('Sending therapy session reminder', [
+            'booking_id' => $this->bookingId,
+            'client_email' => $booking->client->email,
+            'correlation_id' => $this->correlationId,
+        ]);
+
+        // В 2026 тут идет интеграция с Telegram/WhatsApp API
+        // \App\Services\NotificationService::send(...)
+    }
 
     /**
      * Get the string representation of this instance.
@@ -61,7 +65,7 @@ final class PsychologicalReminderJob
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -72,9 +76,8 @@ final class PsychologicalReminderJob
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }
-

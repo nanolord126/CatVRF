@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Redis;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
  * IdempotencyService Unit Tests
@@ -22,31 +23,8 @@ final class IdempotencyServiceTest extends TestCase
     use RefreshDatabase;
 
     private IdempotencyService $idempotencyService;
+
     private RedisFactory $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->redis = app(RedisFactory::class);
-        $cache = app(CacheRepository::class);
-        $logger = app(\Psr\Log\LoggerInterface::class);
-
-        $this->idempotencyService = new IdempotencyService(
-            $this->redis,
-            $cache,
-            $logger,
-        );
-
-        // Clear Redis before each test
-        Redis::connection()->flushdb();
-    }
-
-    protected function tearDown(): void
-    {
-        Redis::connection()->flushdb();
-        parent::tearDown();
-    }
 
     #[Test]
     public function it_returns_null_for_new_operation(): void
@@ -211,7 +189,31 @@ final class IdempotencyServiceTest extends TestCase
         }
 
         // Only first should return null, rest should be idempotent hits
-        $nullCount = count(array_filter($results, fn($r) => $r === null));
+        $nullCount = count(array_filter($results, fn ($r) => $r === null));
         $this->assertEquals(1, $nullCount);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->redis = app(RedisFactory::class);
+        $cache = app(CacheRepository::class);
+        $logger = app(LoggerInterface::class);
+
+        $this->idempotencyService = new IdempotencyService(
+            $this->redis,
+            $cache,
+            $logger,
+        );
+
+        // Clear Redis before each test
+        Redis::connection()->flushdb();
+    }
+
+    protected function tearDown(): void
+    {
+        Redis::connection()->flushdb();
+        parent::tearDown();
     }
 }

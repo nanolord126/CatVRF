@@ -14,15 +14,16 @@ use Illuminate\Support\Str;
  */
 final class CrmInteractionFactory extends Factory
 {
-    protected $model = CrmInteraction::class;
-
     private const TYPES = [
         'call', 'email', 'sms', 'chat', 'visit', 'purchase',
         'complaint', 'feedback', 'meeting', 'callback', 'push', 'social',
     ];
 
     private const CHANNELS = ['phone', 'email', 'website', 'app', 'social', 'in_person'];
+
     private const DIRECTIONS = ['inbound', 'outbound'];
+
+    protected $model = CrmInteraction::class;
 
     /**
      * @return array<string, mixed>

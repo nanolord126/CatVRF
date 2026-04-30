@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Models\Advertising;
 
 use App\Models\Tenant;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
 
 /**
  * Class AdCampaign
@@ -24,13 +24,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Advertising
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class AdCampaign extends Model
 {
-
     protected $table = 'ad_campaigns';
 
     protected $fillable = [

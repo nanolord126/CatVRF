@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Communication\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Communication\DTOs\SendChatMessageDto;
 
 /**
  * Unit tests for SendChatMessageDto.
@@ -14,7 +17,7 @@ final class SendChatMessageDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Communication\DTOs\SendChatMessageDto::class
+            SendChatMessageDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'SendChatMessageDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'SendChatMessageDto must be readonly');
@@ -23,11 +26,11 @@ final class SendChatMessageDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Communication\DTOs\SendChatMessageDto::class
+            SendChatMessageDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('roomId', $params, 'Constructor must have roomId');
         $this->assertContains('senderId', $params, 'Constructor must have senderId');
@@ -37,7 +40,7 @@ final class SendChatMessageDtoTest extends TestCase
         $this->assertContains('metadata', $params, 'Constructor must have metadata');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -47,6 +50,6 @@ final class SendChatMessageDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Communication\DTOs\SendChatMessageDto::class;
+        return SendChatMessageDto::class;
     }
 }

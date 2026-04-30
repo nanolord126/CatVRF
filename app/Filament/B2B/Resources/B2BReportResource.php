@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Resources;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -13,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Order;
 
 /**
  * B2BReportResource — отчёты по обороту B2B-клиента.
@@ -29,17 +32,22 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class B2BReportResource extends Resource
 {
+    protected static ?string $model           = Order::class;
+
+    protected static ?string $navigationIcon  = 'heroicon-o-chart-bar';
+
+    protected static ?string $navigationLabel = 'Отчёты';
+
+    protected static ?string $slug            = 'b2b-reports';
+
+    protected static ?int $navigationSort  = 5;
+
+    protected static ?string $navigationGroup = 'Финансы';
+
     public function __construct(
         private readonly Request $request,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model           = \App\Models\Order::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-chart-bar';
-    protected static ?string $navigationLabel = 'Отчёты';
-    protected static ?string $slug            = 'b2b-reports';
-    protected static ?int    $navigationSort  = 5;
-    protected static ?string $navigationGroup = 'Финансы';
 
     public static function getEloquentQuery(): Builder
     {
@@ -60,7 +68,7 @@ final class B2BReportResource extends Resource
                     Forms\Components\TextInput::make('status')->label('Статус')->disabled(),
                     Forms\Components\TextInput::make('total_amount')
                         ->label('Сумма')
-                        ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                        ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                         ->disabled(),
                     Forms\Components\TextInput::make('vertical')->label('Вертикаль')->disabled(),
                     Forms\Components\DateTimePicker::make('created_at')->label('Дата')->disabled(),
@@ -91,12 +99,12 @@ final class B2BReportResource extends Resource
 
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->summarize([
                         Tables\Columns\Summarizers\Sum::make()
                             ->label('Итого')
-                            ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽'),
+                            ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽'),
                     ]),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -119,11 +127,11 @@ final class B2BReportResource extends Resource
 
                 Tables\Filters\Filter::make('period_month')
                     ->label('Текущий месяц')
-                    ->query(static fn (Builder $query) => $query->whereMonth('created_at', now()->month)),
+                    ->query(static fn (Builder $query) => $query->whereMonth('created_at', CarbonImmutable::now()->month)),
 
                 Tables\Filters\Filter::make('period_quarter')
                     ->label('Текущий квартал')
-                    ->query(static fn (Builder $query) => $query->where('created_at', '>=', now()->startOfQuarter())),
+                    ->query(static fn (Builder $query) => $query->where('created_at', '>=', CarbonImmutable::now()->startOfQuarter())),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -133,7 +141,7 @@ final class B2BReportResource extends Resource
                     ->label('Экспорт CSV')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(static function ($records) {
-                        $this->logger->info('B2B report exported', [
+                        $this->logger->$this->logger->info('B2B report exported', [
                             'count'          => $records->count(),
                             'business_group' => session('active_business_group_id'),
                             'correlation_id' => $this->request->header('X-Correlation-ID'),

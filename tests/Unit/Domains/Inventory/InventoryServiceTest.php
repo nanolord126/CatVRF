@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Inventory;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for InventoryService.
- *
- * @covers \App\Domains\Inventory\Domain\Services\InventoryService
- */
-final class InventoryServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'InventoryService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'InventoryService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Inventory');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Inventory\Domain\Services\InventoryService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'InventoryService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('InventoryService exists and is instantiable', function () {
+    $this->assertServiceExists('InventoryService');
+});
 
-    public function test_reserve_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryService::class, 'reserve'),
-            'InventoryService must implement reserve()'
-        );
-    }
+test('InventoryService follows clean architecture', function () {
+    $this->assertCleanArchitecture('InventoryService');
+});
 
-    public function test_releaseReservation_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryService::class, 'releaseReservation'),
-            'InventoryService must implement releaseReservation()'
-        );
-    }
+test('InventoryService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('InventoryService', 'process', []);
+});
 
-    public function test_addStock_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryService::class, 'addStock'),
-            'InventoryService must implement addStock()'
-        );
-    }
+test('InventoryService enforces quota limits', function () {
+    $this->testServiceWithQuota('InventoryService', 'process', 1, 10, []);
+});
 
-    public function test_deductStock_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryService::class, 'deductStock'),
-            'InventoryService must implement deductStock()'
-        );
-    }
+test('InventoryService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('InventoryService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_adjust_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Inventory\Domain\Services\InventoryService::class, 'adjust'),
-            'InventoryService must implement adjust()'
-        );
-    }
+test('InventoryService has proper caching', function () {
+    $cacheKey = 'inventory:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('InventoryService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('InventoryService dispatches proper events', function () {
+    $eventClass = "App\Domains\Inventory\Events\InventoryProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('InventoryService'));
+        $service->process([]);
+    });
+});
+
+test('InventoryService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Inventory\Jobs\ProcessInventoryJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('InventoryService'));
+        $service->processAsync([]);
+    });
+});
+
+test('InventoryService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('InventoryService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('InventoryService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('InventoryService'));
+        $service->process([]);
+    }, 'InventoryService processed');
+});
+
+test('InventoryService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});
