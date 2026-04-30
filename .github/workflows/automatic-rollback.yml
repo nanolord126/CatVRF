@@ -63,7 +63,7 @@ jobs:
       url: https://catvrf.ru
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Execute rollback
         run: |
