@@ -4,27 +4,41 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
+use App\Domains\RealEstate\Exceptions\RealEstateValidationException;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\Models\ViewingAppointment;
 use App\Domains\RealEstate\Models\PropertyTransaction;
-use App\Domains\RealEstate\Domain\Enums\ViewingStatusEnum;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Str;
 use Exception;
+use App\Broadcasting\RealEstateNotificationEvent;
+use App\Jobs\SendEmailNotificationJob;
+use App\Jobs\SendPushNotificationJob;
+use App\Jobs\SendSMSNotificationJob;
 
 final readonly class RealEstateNotificationService
 {
     private const NOTIFICATION_CHANNELS = ['email', 'sms', 'push', 'websocket'];
+
     private const MAX_NOTIFICATIONS_PER_HOUR = 20;
+
     private const NOTIFICATION_COOLDOWN_MINUTES = 5;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly QueueManager $queue,) {}
 
     public function sendViewingConfirmationNotification(ViewingAppointment $viewing, string $correlationId): array
     {
@@ -56,12 +70,12 @@ final readonly class RealEstateNotificationService
                 'map_link' => $this->generateMapLink($viewing->property),
             ],
             'priority' => 'high',
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $results = $this->sendNotification($notificationData, $correlationId);
 
-        Log::channel('audit')->info('Viewing confirmation notification sent', [
+        $this->log->channel('audit')->$this->logger->info('Viewing confirmation notification sent', [
             'viewing_id' => $viewing->id,
             'viewing_uuid' => $viewing->uuid,
             'buyer_id' => $viewing->buyer_id,
@@ -101,12 +115,12 @@ final readonly class RealEstateNotificationService
                 'cancel_link' => $this->generateCancelLink($viewing),
             ],
             'priority' => 'high',
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $results = $this->sendNotification($notificationData, $correlationId);
 
-        Log::channel('audit')->info('Viewing reminder notification sent', [
+        $this->log->channel('audit')->$this->logger->info('Viewing reminder notification sent', [
             'viewing_id' => $viewing->id,
             'viewing_uuid' => $viewing->uuid,
             'buyer_id' => $viewing->buyer_id,
@@ -150,13 +164,13 @@ final readonly class RealEstateNotificationService
                     'property_link' => $this->generatePropertyLink($property),
                 ],
                 'priority' => $newPrice < $oldPrice ? 'high' : 'normal',
-                'created_at' => now()->toIso8601String(),
+                'created_at' => CarbonImmutable::now()->toIso8601String(),
             ];
 
             $results[$watcher['user_id']] = $this->sendNotification($notificationData, $correlationId);
         }
 
-        Log::channel('audit')->info('Price change notifications sent', [
+        $this->log->channel('audit')->$this->logger->info('Price change notifications sent', [
             'property_id' => $property->id,
             'property_uuid' => $property->uuid,
             'old_price' => $oldPrice,
@@ -200,13 +214,13 @@ final readonly class RealEstateNotificationService
                     'match_score' => $this->calculateMatchScore($property, $userId),
                 ],
                 'priority' => 'normal',
-                'created_at' => now()->toIso8601String(),
+                'created_at' => CarbonImmutable::now()->toIso8601String(),
             ];
 
             $results[$userId] = $this->sendNotification($notificationData, $correlationId);
         }
 
-        Log::channel('audit')->info('New property notifications sent', [
+        $this->log->channel('audit')->$this->logger->info('New property notifications sent', [
             'property_id' => $property->id,
             'property_uuid' => $property->uuid,
             'matched_users_count' => count($matchedUserIds),
@@ -245,12 +259,12 @@ final readonly class RealEstateNotificationService
                 'support_link' => $this->generateSupportLink($transaction),
             ],
             'priority' => in_array($status, ['escrow_released', 'escrow_refunded'], true) ? 'high' : 'normal',
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $results = $this->sendNotification($notificationData, $correlationId);
 
-        Log::channel('audit')->info('Transaction status notification sent', [
+        $this->log->channel('audit')->$this->logger->info('Transaction status notification sent', [
             'transaction_id' => $transaction->id,
             'transaction_uuid' => $transaction->uuid,
             'status' => $status,
@@ -283,12 +297,12 @@ final readonly class RealEstateNotificationService
                 'dashboard_link' => $this->generateAgentDashboardLink($agentId),
             ],
             'priority' => 'normal',
-            'created_at' => now()->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $results = $this->sendNotification($notificationData, $correlationId);
 
-        Log::channel('audit')->info('Agent activity notification sent', [
+        $this->log->channel('audit')->$this->logger->info('Agent activity notification sent', [
             'agent_id' => $agentId,
             'activity_type' => $activityType,
             'correlation_id' => $correlationId,
@@ -297,7 +311,7 @@ final readonly class RealEstateNotificationService
         return $results;
     }
 
-    public function sendBulkNotification(array $userIds, string $type, array $data, string $priority = 'normal', string $correlationId): array
+    public function sendBulkNotification(array $userIds, string $type, array $data, string $priority, string $correlationId): array
     {
         $results = [];
         $batchSize = 100;
@@ -314,12 +328,12 @@ final readonly class RealEstateNotificationService
                         'channels' => ['push'],
                         'data' => $data,
                         'priority' => $priority,
-                        'created_at' => now()->toIso8601String(),
+                        'created_at' => CarbonImmutable::now()->toIso8601String(),
                     ];
 
                     $results[$userId] = $this->sendNotification($notificationData, $correlationId);
                 } catch (Exception $e) {
-                    Log::error('Bulk notification failed for user', [
+                    $this->log->error('Bulk notification failed for user', [
                         'user_id' => $userId,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -329,10 +343,10 @@ final readonly class RealEstateNotificationService
             }
         }
 
-        Log::channel('audit')->info('Bulk notifications sent', [
+        $this->log->channel('audit')->$this->logger->info('Bulk notifications sent', [
             'total_users' => count($userIds),
-            'successful' => count(array_filter($results, fn($r) => $r['success'] ?? false)),
-            'failed' => count(array_filter($results, fn($r) => !($r['success'] ?? false))),
+            'successful' => count(array_filter($results, fn ($r) => $r['success'] ?? false)),
+            'failed' => count(array_filter($results, fn ($r) => ! ($r['success'] ?? false))),
             'type' => $type,
             'correlation_id' => $correlationId,
         ]);
@@ -342,7 +356,7 @@ final readonly class RealEstateNotificationService
 
     public function getUserNotificationPreferences(int $userId, string $correlationId): array
     {
-        $preferences = DB::table('notification_preferences')
+        $preferences = $this->db->table('notification_preferences')
             ->where('user_id', $userId)
             ->first();
 
@@ -373,7 +387,7 @@ final readonly class RealEstateNotificationService
             correlationId: $correlationId,
         );
 
-        DB::table('notification_preferences')
+        $this->db->table('notification_preferences')
             ->updateOrInsert(
                 ['user_id' => $userId],
                 [
@@ -384,11 +398,11 @@ final readonly class RealEstateNotificationService
                     'categories' => json_encode($preferences['categories'] ?? []),
                     'quiet_hours_start' => $preferences['quiet_hours_start'] ?? '22:00',
                     'quiet_hours_end' => $preferences['quiet_hours_end'] ?? '08:00',
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]
             );
 
-        Log::channel('audit')->info('Notification preferences updated', [
+        $this->log->channel('audit')->$this->logger->info('Notification preferences updated', [
             'user_id' => $userId,
             'preferences' => $preferences,
             'correlation_id' => $correlationId,
@@ -417,7 +431,7 @@ final readonly class RealEstateNotificationService
             }
         }
 
-        DB::table('notifications')->insert([
+        $this->db->table('notifications')->insert([
             'notification_id' => $notificationData['notification_id'],
             'user_id' => $notificationData['user_id'],
             'type' => $notificationData['type'],
@@ -426,7 +440,7 @@ final readonly class RealEstateNotificationService
             'priority' => $notificationData['priority'],
             'results' => json_encode($results),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
+            'created_at' => CarbonImmutable::now(),
         ]);
 
         return $results;
@@ -434,58 +448,58 @@ final readonly class RealEstateNotificationService
 
     private function sendEmailNotification(array $notificationData, string $correlationId): array
     {
-        Queue::push(new \App\Jobs\SendEmailNotificationJob($notificationData, $correlationId));
+        $this->queue->push(new SendEmailNotificationJob($notificationData, $correlationId));
 
         return ['success' => true, 'queued' => true];
     }
 
     private function sendSMSNotification(array $notificationData, string $correlationId): array
     {
-        Queue::push(new \App\Jobs\SendSMSNotificationJob($notificationData, $correlationId));
+        $this->queue->push(new SendSMSNotificationJob($notificationData, $correlationId));
 
         return ['success' => true, 'queued' => true];
     }
 
     private function sendPushNotification(array $notificationData, string $correlationId): array
     {
-        Queue::push(new \App\Jobs\SendPushNotificationJob($notificationData, $correlationId));
+        $this->queue->push(new SendPushNotificationJob($notificationData, $correlationId));
 
         return ['success' => true, 'queued' => true];
     }
 
     private function sendWebSocketNotification(array $notificationData, string $correlationId): array
     {
-        broadcast(new \App\Broadcasting\RealEstateNotificationEvent($notificationData));
+        broadcast(new RealEstateNotificationEvent($notificationData));
 
         return ['success' => true, 'broadcasted' => true];
     }
 
     private function validateNotificationRate(int $userId): void
     {
-        $oneHourAgo = now()->subHour();
-        $count = DB::table('notifications')
+        $oneHourAgo = CarbonImmutable::now()->subHour();
+        $count = $this->db->table('notifications')
             ->where('user_id', $userId)
             ->where('created_at', '>=', $oneHourAgo)
             ->count();
 
         if ($count >= self::MAX_NOTIFICATIONS_PER_HOUR) {
-            throw new Exception('Notification rate limit exceeded');
+            throw new RealEstateValidationException('Notification rate limit exceeded');
         }
 
-        $fiveMinutesAgo = now()->subMinutes(self::NOTIFICATION_COOLDOWN_MINUTES);
-        $lastNotification = DB::table('notifications')
+        $fiveMinutesAgo = CarbonImmutable::now()->subMinutes(self::NOTIFICATION_COOLDOWN_MINUTES);
+        $lastNotification = $this->db->table('notifications')
             ->where('user_id', $userId)
             ->where('created_at', '>=', $fiveMinutesAgo)
             ->first();
 
         if ($lastNotification !== null) {
-            throw new Exception('Notification cooldown active');
+            throw new RealEstateValidationException('Notification cooldown active');
         }
     }
 
     private function getPropertyWatchers(int $propertyId): array
     {
-        return DB::table('property_watchers')
+        return $this->db->table('property_watchers')
             ->where('property_id', $propertyId)
             ->where('is_active', true)
             ->get()

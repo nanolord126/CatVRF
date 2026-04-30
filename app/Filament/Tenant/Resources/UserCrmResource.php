@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
@@ -70,5 +72,5 @@ final class UserCrmResource extends Resource
             'edit' => Pages\EditUserCrm::route('/{record}/edit'),
             'view' => Pages\ViewUserCrm::route('/{record}'),
         ];
-        }
+    }
 }

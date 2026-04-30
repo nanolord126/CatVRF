@@ -1,142 +1,144 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Legal;
 
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
+
 use App\Services\FraudControlService;
-use App\Services\Legal\PricingService;
 use App\Models\Lawyer;
 use App\Models\LegalService;
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 
 final readonly class AILegalAdvisorConstructor
 {
+    /**
+     * Constructor injection for required dependencies.
+     */
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly PricingService $pricing,
+        private readonly LogManager $logger,) {}
 
     /**
-         * Constructor injection for required dependencies.
-         */
-        public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly PricingService $pricing,
-            private readonly LogManager $logger,
-    ) {}
+     * Recommend lawyers and services based on user case details.
+     */
+    public function constructAdvisorRecommendation(
+        string $caseType,
+        int $budgetInCents,
+        bool $isUrgent = false,
+        string $region = 'Москва',
+        ?string $correlationId = null
+    ): array {
+        $correlationId = $correlationId ?? (string) Str::uuid();
 
-        /**
-         * Recommend lawyers and services based on user case details.
-         */
-        public function constructAdvisorRecommendation(
-            string $caseType,
-            int $budgetInCents,
-            bool $isUrgent = false,
-            string $region = 'Москва',
-            string $correlationId = null
-        ): array {
-            $correlationId = $correlationId ?? (string) Str::uuid();
+        $this->logger->channel('audit')->$this->logger->info('AI Advisor Constructor initiated', [
+            'case_type' => $caseType,
+            'budget' => $budgetInCents,
+            'urgent' => $isUrgent,
+            'region' => $region,
+            'correlation_id' => $correlationId,
+        ]);
 
-            $this->logger->channel('audit')->info('AI Advisor Constructor initiated', [
-                'case_type' => $caseType,
-                'budget' => $budgetInCents,
-                'urgent' => $isUrgent,
-                'region' => $region,
-                'correlation_id' => $correlationId,
-            ]);
+        // 1. Filter Lawyers by specialization and region
+        $recommendedLawyers = Lawyer::active()
+            ->whereJsonContains('categories', $caseType)
+            ->whereHas('firm', function ($query) use ($region) {
+                $query->where('city', $region);
+            })
+            ->where('consultation_price', '<=', $budgetInCents)
+            ->orderBy('experience_years', 'desc')
+            ->limit(3)
+            ->get();
 
-            // 1. Filter Lawyers by specialization and region
-            $recommendedLawyers = Lawyer::active()
-                ->whereJsonContains('categories', $caseType)
-                ->whereHas('firm', function ($query) use ($region) {
-                    $query->where('city', $region);
-                })
-                ->where('consultation_price', '<=', $budgetInCents)
-                ->orderBy('experience_years', 'desc')
-                ->limit(3)
-                ->get();
+        // 2. Filter Legal Services by type
+        $recommendedServices = LegalService::where('type', 'like', "%{$caseType}%")
+            ->where('base_price', '<=', $budgetInCents)
+            ->limit(2)
+            ->get();
 
-            // 2. Filter Legal Services by type
-            $recommendedServices = LegalService::where('type', 'like', "%{$caseType}%")
-                ->where('base_price', '<=', $budgetInCents)
-                ->limit(2)
-                ->get();
+        // 3. AI scoring and matching
+        $recommendations = [];
+        foreach ($recommendedLawyers as $lawyer) {
+            $score = $this->calculateMatchScore($lawyer, $caseType, $isUrgent);
 
-            // 3. AI scoring and matching
-            $recommendations = [];
-            foreach ($recommendedLawyers as $lawyer) {
-                $score = $this->calculateMatchScore($lawyer, $caseType, $isUrgent);
+            $recommendations[] = [
+                'lawyer' => [
+                    'uuid' => $lawyer->uuid,
+                    'full_name' => $lawyer->full_name,
+                    'firm' => $lawyer->firm?->name,
+                    'price' => $this->pricing->format($lawyer->consultation_price),
+                    'experience' => "{$lawyer->experience_years} лет",
+                ],
+                'match_score' => $score,
+                'urgent_ready' => $isUrgent && $lawyer->is_active,
+            ];
+        }
 
-                $recommendations[] = [
-                    'lawyer' => [
-                        'uuid' => $lawyer->uuid,
-                        'full_name' => $lawyer->full_name,
-                        'firm' => $lawyer->firm?->name,
-                        'price' => $this->pricing->format($lawyer->consultation_price),
-                        'experience' => "{$lawyer->experience_years} лет",
-                    ],
-                    'match_score' => $score,
-                    'urgent_ready' => $isUrgent && $lawyer->is_active,
+        // 4. Wrap with metadata
+        $result = [
+            'success' => true,
+            'correlation_id' => $correlationId,
+            'recommendations' => new Collection($recommendations)->sortByDesc('match_score')->values()->toArray(),
+            'suggested_services' => $recommendedServices->map(function ($service) {
+                return [
+                    'name' => $service->name,
+                    'price' => $this->pricing->format($service->base_price),
+                    'type' => $service->type,
                 ];
-            }
+            }),
+            'disclaimer' => 'AI рекомендации носят информационный характер и соответствуют ФЗ-152.',
+        ];
 
-            // 4. Wrap with metadata
-            $result = [
-                'success' => true,
-                'correlation_id' => $correlationId,
-                'recommendations' => collect($recommendations)->sortByDesc('match_score')->values()->toArray(),
-                'suggested_services' => $recommendedServices->map(function ($service) {
-                    return [
-                        'name' => $service->name,
-                        'price' => $this->pricing->format($service->base_price),
-                        'type' => $service->type,
-                    ];
-                }),
-                'disclaimer' => 'AI рекомендации носят информационный характер и соответствуют ФЗ-152.',
-            ];
+        $this->logger->channel('audit')->$this->logger->info('AI Advisor Constructor completed successfully', [
+            'matches_found' => count($recommendations),
+            'correlation_id' => $correlationId,
+        ]);
 
-            $this->logger->channel('audit')->info('AI Advisor Constructor completed successfully', [
-                'matches_found' => count($recommendations),
-                'correlation_id' => $correlationId,
-            ]);
+        return $result;
+    }
 
-            return $result;
+    /**
+     * Fetch list of available case categories.
+     */
+    public function getCategories(): array
+    {
+        return [
+            'civil' => 'Гражданское право',
+            'criminal' => 'Уголовное право',
+            'corporate' => 'Корпоративное право',
+            'notary' => 'Нотариальные услуги',
+            'arbitration' => 'Арбитраж',
+            'family' => 'Семейное право',
+            'real_estate' => 'Недвижимость',
+            'labor' => 'Трудовое право',
+        ];
+    }
+
+    /**
+     * Calculate internal match score (0.0 - 1.0) for lawyer.
+     */
+    private function calculateMatchScore(Lawyer $lawyer, string $caseType, bool $isUrgent): float
+    {
+        $score = 0.5; // Base score
+
+        // Specialization weight
+        if (in_array($caseType, $lawyer->categories ?? [], true)) {
+            $score += 0.3;
         }
 
-        /**
-         * Calculate internal match score (0.0 - 1.0) for lawyer.
-         */
-        private function calculateMatchScore(Lawyer $lawyer, string $caseType, bool $isUrgent): float
-        {
-            $score = 0.5; // Base score
+        // Experience weight
+        $score += min(0.2, ($lawyer->experience_years / 50));
 
-            // Specialization weight
-            if (in_array($caseType, $lawyer->categories ?? [])) {
-                $score += 0.3;
-            }
-
-            // Experience weight
-            $score += min(0.2, ($lawyer->experience_years / 50));
-
-            // Urgency weight
-            if ($isUrgent && $lawyer->is_active) {
-                $score += 0.1;
-            }
-
-            return round($score, 2);
+        // Urgency weight
+        if ($isUrgent && $lawyer->is_active) {
+            $score += 0.1;
         }
 
-        /**
-         * Fetch list of available case categories.
-         */
-        public function getCategories(): array
-        {
-            return [
-                'civil' => 'Гражданское право',
-                'criminal' => 'Уголовное право',
-                'corporate' => 'Корпоративное право',
-                'notary' => 'Нотариальные услуги',
-                'arbitration' => 'Арбитраж',
-                'family' => 'Семейное право',
-                'real_estate' => 'Недвижимость',
-                'labor' => 'Трудовое право',
-            ];
-        }
+        return round($score, 2);
+    }
 }

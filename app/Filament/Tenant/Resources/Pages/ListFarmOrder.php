@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -17,15 +19,6 @@ use Filament\Tables\Table;
 final class ListFarmOrder extends ListRecords
 {
     protected static string $resource = FarmOrderResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый заказ')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -75,5 +68,14 @@ final class ListFarmOrder extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый заказ')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

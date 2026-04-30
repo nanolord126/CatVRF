@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Services (сервисные компании)
- *
- * @package App\Models
  */
 final class Services extends Model
 {
-
     protected $table = 'services';
 
     protected $fillable = [

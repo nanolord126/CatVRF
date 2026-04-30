@@ -1,25 +1,26 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Events;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
 use App\Domains\Art\Models\Review;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+
 final class ReviewRecorded
 {
-
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly EventDispatcher $eventDispatcher,
         public readonly Review $review,
         public readonly string $correlationId,
-        public array $context = [],
-    ) {}
+        public array $context = [],) {}
 
-    public static function dispatch(Review $review, string $correlationId, array $context = []): void
+    public static function $this->bus->dispatch(Review $review, string $correlationId, array $context = []): void
     {
-        event(new self($review, $correlationId, $context));
+        $this->eventDispatcher->dispatch(new self($review, $correlationId, $context));
     }
 
     public function decisionPayload(): array

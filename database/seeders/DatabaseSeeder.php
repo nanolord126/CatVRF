@@ -50,6 +50,7 @@ final class DatabaseSeeder extends Seeder
         $this->call([
             RolePermissionSeeder::class,
             UserSeeder::class,
+            NotificationExperimentSeeder::class,
             // Verticals
             TaxiRideSeeder::class,
             FoodOrderSeeder::class,

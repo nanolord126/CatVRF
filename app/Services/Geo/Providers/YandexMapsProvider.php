@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Geo\Providers;
 
 use App\Services\Geo\GeoProviderInterface;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Log\LogManager;
 
 /**
@@ -14,16 +16,19 @@ use Illuminate\Log\LogManager;
 final readonly class YandexMapsProvider implements GeoProviderInterface
 {
     private const ROUTER_URL = 'https://api-maps.yandex.ru/services/route/v2';
+
     private const GEOCODE_URL = 'https://geocode-maps.yandex.ru/1.x';
 
     public function __construct(
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
+        private readonly HttpFactory $http,
     ) {}
 
     public function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
         $route = $this->calculateRoute($lat1, $lon1, $lat2, $lon2);
+
         return $route['distance_km'];
     }
 
@@ -36,7 +41,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
         }
 
         try {
-            $response = Http::timeout(5)
+            $response = $this->http->timeout(5)
                 ->retry(2, 200)
                 ->get(self::ROUTER_URL, [
                     'waypoints' => "{$lat1},{$lon1}|{$lat2},{$lon2}",
@@ -71,11 +76,11 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
         $apiKey = $this->config->get('geo.providers.yandex.api_key');
 
         if (empty($apiKey)) {
-            return null;
+            throw new \RuntimeException('Yandex Maps API key not configured');
         }
 
         try {
-            $response = Http::timeout(5)
+            $response = $this->http->timeout(5)
                 ->retry(2, 200)
                 ->get(self::GEOCODE_URL, [
                     'geocode' => $address,
@@ -89,7 +94,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
             );
 
             if (empty($pos)) {
-                return null;
+                throw new \RuntimeException('Invalid geocode response');
             }
 
             [$lon, $lat] = explode(' ', (string) $pos);
@@ -100,6 +105,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
                 'address' => $address,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -113,7 +119,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
         }
 
         try {
-            $response = Http::timeout(5)
+            $response = $this->http->timeout(5)
                 ->retry(2, 200)
                 ->get(self::GEOCODE_URL, [
                     'geocode' => "{$lon},{$lat}",
@@ -133,6 +139,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
                 'lon' => $lon,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -145,6 +152,7 @@ final readonly class YandexMapsProvider implements GeoProviderInterface
     public function isAvailable(): bool
     {
         $apiKey = $this->config->get('geo.providers.yandex.api_key');
-        return !empty($apiKey);
+
+        return ! empty($apiKey);
     }
 }

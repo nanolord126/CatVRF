@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class HealthyFoodFactory extends Factory
                 'Овощное ассорти Гриль',
                 'Рыба Лосось Стейк',
             ]),
-            'sku' => 'HF-' . strtoupper($this->faker->lexify('???')),
+            'sku' => 'HF-'.strtoupper($this->faker->lexify('???')),
             'diet_type' => $this->faker->randomElement(['vegan', 'keto', 'protein', 'balanced', 'lowcarb']),
             'calories' => $this->faker->numberBetween(400, 800),
             'protein_g' => $this->faker->numberBetween(15, 40),

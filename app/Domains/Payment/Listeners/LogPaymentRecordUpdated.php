@@ -23,7 +23,7 @@ final class LogPaymentRecordUpdated
      */
     public function handle(PaymentRecordUpdated $event): void
     {
-        $this->logger->info('Payment record updated', [
+        $this->logger->$this->logger->info('Payment record updated', [
             'payment_record_id' => $event->paymentRecord->id,
             'old_status' => $event->oldValues['status'] ?? 'unknown',
             'new_status' => $event->newValues['status'] ?? 'unknown',

@@ -7,11 +7,11 @@ namespace Database\Factories;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+use App\Models\Domains\Delivery\DeliveryOrder;
 
 final class DeliveryOrderFactory extends Factory
 {
-    protected $model = \App\Models\Domains\Delivery\DeliveryOrder::class;
+    protected $model = DeliveryOrder::class;
 
     public function definition(): array
     {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'api' => [
         'success' => 'Операция успешно завершена',

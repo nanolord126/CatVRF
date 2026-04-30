@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ClickEventsSyncedToClickHouse — CatVRF 2026 Component.
@@ -7,69 +9,69 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/clickeventssyncedtoclickhouse
  */
 
-
 namespace App\Events\Analytics;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
+use Carbon\CarbonImmutable;
 
 final class ClickEventsSyncedToClickHouse
 {
-
+    public \DateTime $syncedAt;
 
-        private int $tenantId;
-        private string $correlationId;
-        private array $metadata;
-        public \DateTime $syncedAt;
 
-        public function __construct(
-            int $tenantId,
-            string $correlationId = '',
-            array $metadata = []
-        ) {
-            $this->tenantId = $tenantId;
-            $this->correlationId = $correlationId ?: Str::uuid()->toString();
-            $this->metadata = $metadata;
-            $this->syncedAt = now();
-        }
+    private readonly int $tenantId;
 
-        /**
-         * Канал для трансляции
-         * Private канал: analytics.tenant.{tenantId}
-         */
-        public function broadcastOn(): PrivateChannel
-        {
-            return new PrivateChannel("analytics.tenant.{$this->tenantId}");
-        }
+    private readonly string $correlationId;
 
-        /**
-         * Имя события в клиенте
-         */
-        public function broadcastAs(): string
-        {
-            return 'click-events-synced';
-        }
+    private readonly array $metadata;
 
-        /**
-         * Данные для отправки
-         */
-        public function broadcastWith(): array
-        {
-            return [
-                'tenant_id' => $this->tenantId,
-                'correlation_id' => $this->correlationId,
-                'synced_at' => $this->syncedAt->toIso8601String(),
-                'metadata' => $this->metadata,
-                'message' => 'Новые данные по кликам доступны в аналитике',
-            ];
-        }
+    public function __construct(
+        int $tenantId,
+        string $correlationId = '',
+        array $metadata = []
+    ) {
+        $this->tenantId = $tenantId;
+        $this->correlationId = $correlationId ?: Str::uuid()->toString();
+        $this->metadata = $metadata;
+        $this->syncedAt = CarbonImmutable::now();
+    }
+
+    /**
+     * Канал для трансляции
+     * Private канал: analytics.tenant.{tenantId}
+     */
+    public function broadcastOn(): PrivateChannel
+    {
+        return new PrivateChannel("analytics.tenant.{$this->tenantId}");
+    }
+
+    /**
+     * Имя события в клиенте
+     */
+    public function broadcastAs(): string
+    {
+        return 'click-events-synced';
+    }
+
+    /**
+     * Данные для отправки
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+            'synced_at' => $this->syncedAt->toIso8601String(),
+            'metadata' => $this->metadata,
+            'message' => 'Новые данные по кликам доступны в аналитике',
+        ];
+    }
 }

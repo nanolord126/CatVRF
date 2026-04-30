@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Services\FraudControlService;
-use App\Services\AuditService;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Commission Service
@@ -19,25 +24,29 @@ use Illuminate\Database\DatabaseManager;
  * B2B (platinum): 8%
  *
  * Миграционные скидки (4 месяца после перехода с dikidi, booking, етц.)
+ *
  * @author CatVRF Team
+ *
  * @version 2026.04.13
  */
 final readonly class CommissionService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private LogManager $logger,
-        private DatabaseManager $db,
-        private FraudControlService $fraud,
-        private AuditService $audit,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
     ) {}
 
     /**
      * Рассчитать комиссию для транзакции.
      *
-     * @param int    $tenantId  ID тенанта
-     * @param string $vertical  Вертикаль (beauty, food, hotels, auto, ...)
-     * @param int    $amount    Сумма в копейках
-     * @param array  $context   Доп. контекст: b2b_tier, migration_source, has_fleet
+     * @param  int  $tenantId  ID тенанта
+     * @param  string  $vertical  Вертикаль (beauty, food, hotels, auto, ...)
+     * @param  int  $amount  Сумма в копейках
+     * @param  array  $context  Доп. контекст: b2b_tier, migration_source, has_fleet
      * @return int Сумма комиссии в копейках
      */
     public function calculateCommission(
@@ -49,14 +58,14 @@ final readonly class CommissionService
         $baseRate = $this->getBaseRate($vertical);
 
         // B2B-тир снижает комиссию (8–12% вместо 14%)
-        if (!empty($context['b2b_tier'])) {
+        if (! empty($context['b2b_tier'])) {
             $baseRate = $this->getB2BTierRate($vertical, $context['b2b_tier']);
         }
 
         $rate = $baseRate / 100;
 
         // Миграционная скидка (4 месяца)
-        if (!empty($context['migration_source'])) {
+        if (! empty($context['migration_source'])) {
             $migrationRate = $this->getMigrationDiscount($vertical, $context['migration_source']);
             if ($migrationRate > 0) {
                 $rate = $migrationRate / 100;
@@ -66,7 +75,7 @@ final readonly class CommissionService
         $commission = (int) ($amount * $rate);
 
         // +5% для auto флита
-        if ($vertical === 'auto' && !empty($context['has_fleet'])) {
+        if ($vertical === 'auto' && ! empty($context['has_fleet'])) {
             $commission += (int) ($amount * 0.05);
         }
 
@@ -76,15 +85,16 @@ final readonly class CommissionService
     /**
      * Record commission (idempotent)
      *
-     * @param int $tenantId Tenant ID
-     * @param string $vertical Vertical type
-     * @param int $amount Transaction amount
-     * @param int $commission Commission amount
-     * @param string $operationType Type of operation (payment, booking, order, etc.)
-     * @param int $operationId Operation ID (payment_id, booking_id, etc.)
-     * @param string $correlationId Tracing ID
-     * @param array $context Additional context
+     * @param  int  $tenantId  Tenant ID
+     * @param  string  $vertical  Vertical type
+     * @param  int  $amount  Transaction amount
+     * @param  int  $commission  Commission amount
+     * @param  string  $operationType  Type of operation (payment, booking, order, etc.)
+     * @param  int  $operationId  Operation ID (payment_id, booking_id, etc.)
+     * @param  string  $correlationId  Tracing ID
+     * @param  array  $context  Additional context
      * @return int Commission record ID
+     *
      * @throws \Exception If commission already recorded (duplicate operation_id)
      */
     public function recordCommission(
@@ -103,6 +113,7 @@ final readonly class CommissionService
             amount: $commission,
             correlationId: $correlationId,
         );
+
         return $this->db->transaction(function () use (
             $tenantId,
             $vertical,
@@ -142,8 +153,8 @@ final readonly class CommissionService
                 'payout_scheduled_for' => $payoutScheduledFor,
                 'context' => json_encode($context),
                 'correlation_id' => $correlationId,
-                'recorded_at' => now(),
-                'created_at' => now(),
+                'recorded_at' => CarbonImmutable::now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
             // Запись в audit
@@ -158,7 +169,7 @@ final readonly class CommissionService
                 'payout_scheduled_for' => $payoutScheduledFor,
             ], $correlationId);
 
-            $this->logger->channel('audit')->info('Commission recorded', [
+            $this->logger->channel('audit')->$this->logger->info('Commission recorded', [
                 'correlation_id' => $correlationId,
                 'commission_id' => $id,
                 'tenant_id' => $tenantId,
@@ -178,9 +189,9 @@ final readonly class CommissionService
     /**
      * Get commission stats for tenant
      *
-     * @param int $tenantId Tenant ID
-     * @param string|null $vertical Filter by vertical (optional)
-     * @param string $period Period: day, week, month, all
+     * @param  int  $tenantId  Tenant ID
+     * @param  string|null  $vertical  Filter by vertical (optional)
+     * @param  string  $period  Period: day, week, month, all
      * @return array Statistics
      */
     public function getCommissionStats(
@@ -197,8 +208,8 @@ final readonly class CommissionService
 
         // Filter by period
         match ($period) {
-            'week' => $query->where('recorded_at', '>=', now()->subWeek()),
-            'month' => $query->where('recorded_at', '>=', now()->subMonth()),
+            'week' => $query->where('recorded_at', '>=', CarbonImmutable::now()->subWeek()),
+            'month' => $query->where('recorded_at', '>=', CarbonImmutable::now()->subMonth()),
             default => null,
         };
 
@@ -218,6 +229,52 @@ final readonly class CommissionService
                 'count' => $group->count(),
             ])->toArray(),
         ];
+    }
+
+    /**
+     * Mark commission as paid
+     *
+     * @param  int  $commissionId  Commission record ID
+     * @param  string  $correlationId  Tracing ID
+     */
+    public function markAsPaid(int $commissionId, string $correlationId): bool
+    {
+        return $this->db->transaction(function () use ($commissionId, $correlationId) {
+            $this->db->table('commission_records')
+                ->where('id', $commissionId)
+                ->update([
+                    'status' => 'paid',
+                    'paid_at' => CarbonImmutable::now(),
+                ]);
+
+            $this->logger->channel('audit')->$this->logger->info('Commission marked as paid', [
+                'correlation_id' => $correlationId,
+                'commission_id' => $commissionId,
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Get pending commissions for payout
+     *
+     * @param  int  $tenantId  Tenant ID
+     * @param  string|null  $vertical  Filter by vertical (optional)
+     * @return array Pending commission records
+     */
+    public function getPendingCommissions(int $tenantId, ?string $vertical = null): array
+    {
+        $query = $this->db->table('commission_records')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'pending')
+            ->where('payout_scheduled_for', '<=', CarbonImmutable::now());
+
+        if ($vertical) {
+            $query->where('vertical', $vertical);
+        }
+
+        return $query->orderBy('payout_scheduled_for')->get()->toArray();
     }
 
     /**
@@ -280,64 +337,17 @@ final readonly class CommissionService
     /**
      * Get payout schedule based on vertical
      *
-     * @param string $vertical Vertical type
+     * @param  string  $vertical  Vertical type
      * @return \DateTime|null Payout date or null if immediate
      */
     private static function getPayoutSchedule(string $vertical): ?\DateTime
     {
         return match ($vertical) {
-            'tickets' => now()->addDays(7), // 7-day payout
-            'food' => now()->addDays(7), // 7-day payout
-            'beauty' => now()->addDays(7), // 7-day payout
-            'auto' => now()->addDays(1), // Daily payout for drivers
-            default => now()->addDays(7), // 7-day default
+            'tickets' => CarbonImmutable::now()->addDays(7), // 7-day payout
+            'food' => CarbonImmutable::now()->addDays(7), // 7-day payout
+            'beauty' => CarbonImmutable::now()->addDays(7), // 7-day payout
+            'auto' => CarbonImmutable::now()->addDays(1), // Daily payout for drivers
+            default => CarbonImmutable::now()->addDays(7), // 7-day default
         };
-    }
-
-    /**
-     * Mark commission as paid
-     *
-     * @param int $commissionId Commission record ID
-     * @param string $correlationId Tracing ID
-     * @return bool
-     */
-    public function markAsPaid(int $commissionId, string $correlationId): bool
-    {
-        return $this->db->transaction(function () use ($commissionId, $correlationId) {
-            $this->db->table('commission_records')
-                ->where('id', $commissionId)
-                ->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                ]);
-
-            $this->logger->channel('audit')->info('Commission marked as paid', [
-                'correlation_id' => $correlationId,
-                'commission_id' => $commissionId,
-            ]);
-
-            return true;
-        });
-    }
-
-    /**
-     * Get pending commissions for payout
-     *
-     * @param int $tenantId Tenant ID
-     * @param string|null $vertical Filter by vertical (optional)
-     * @return array Pending commission records
-     */
-    public function getPendingCommissions(int $tenantId, ?string $vertical = null): array
-    {
-        $query = $this->db->table('commission_records')
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'pending')
-            ->where('payout_scheduled_for', '<=', now());
-
-        if ($vertical) {
-            $query->where('vertical', $vertical);
-        }
-
-        return $query->orderBy('payout_scheduled_for')->get()->toArray();
     }
 }

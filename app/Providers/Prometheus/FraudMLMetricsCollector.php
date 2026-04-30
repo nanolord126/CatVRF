@@ -4,7 +4,7 @@ namespace App\Providers\Prometheus;
 
 use Spatie\Prometheus\CollectorInterface;
 use Spatie\Prometheus\Facades\Prometheus;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Cache\CacheManager;
 
 /**
  * FraudMLMetricsCollector — Fraud ML metrics collector for Prometheus
@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Cache;
  */
 final class FraudMLMetricsCollector implements CollectorInterface
 {
+    public function __construct(
+        private readonly CacheManager $cache,
+    ) {
+    }
     public function register(): void
     {
         Prometheus::addGauge()
@@ -51,7 +55,7 @@ final class FraudMLMetricsCollector implements CollectorInterface
         $modelVersion = $this->getActiveModelVersion();
 
         // Inference latency (sample from cache)
-        $latency = Cache::get('fraud_ml:avg_latency', 0.05);
+        $latency = $this->cache->get('fraud_ml:avg_latency', 0.05);
         
         Prometheus::addGauge()
             ->name('catvrf_fraud_ml_inference_latency_seconds')
@@ -60,7 +64,7 @@ final class FraudMLMetricsCollector implements CollectorInterface
 
         // Average fraud score per vertical
         foreach ($verticals as $vertical) {
-            $avgScore = Cache::get("fraud_ml:avg_score:{$vertical}", 0.1);
+            $avgScore = $this->cache->get("fraud_ml:avg_score:{$vertical}", 0.1);
             $verticalLabel = $this->sanitizeLabel($vertical);
 
             Prometheus::addGauge()
@@ -69,7 +73,7 @@ final class FraudMLMetricsCollector implements CollectorInterface
                 ->set($avgScore);
 
             // Blocked count
-            $blockedCount = Cache::get("fraud_ml:blocked:{$vertical}", 0);
+            $blockedCount = $this->cache->get("fraud_ml:blocked:{$vertical}", 0);
             
             Prometheus::addCounter()
                 ->name('catvrf_fraud_blocked_by_ml_total')
@@ -78,7 +82,7 @@ final class FraudMLMetricsCollector implements CollectorInterface
                 ->set($blockedCount);
 
             // Total inferences
-            $totalInferences = Cache::get("fraud_ml:inferences:{$vertical}", 0);
+            $totalInferences = $this->cache->get("fraud_ml:inferences:{$vertical}", 0);
             
             Prometheus::addCounter()
                 ->name('catvrf_fraud_inferences_total')
@@ -90,7 +94,7 @@ final class FraudMLMetricsCollector implements CollectorInterface
 
     private function getActiveModelVersion(): string
     {
-        return Cache::get('fraud_model_active_version', 'unknown');
+        return $this->cache->get('fraud_model_active_version', 'unknown');
     }
 
     private function sanitizeLabel(string $value): string

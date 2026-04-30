@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -14,49 +16,18 @@ class RbacE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private User $ownerUser;
+
     private User $managerUser;
+
     private User $employeeUser;
+
     private string $ownerToken;
+
     private string $managerToken;
+
     private string $employeeToken;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Create tenant
-        $this->tenant = Tenant::factory()->create();
-
-        // Create users with different roles
-        $this->ownerUser = User::factory()->create();
-        $this->managerUser = User::factory()->create();
-        $this->employeeUser = User::factory()->create();
-
-        // Assign roles
-        TenantUser::create([
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->ownerUser->id,
-            'role' => Role::ADMIN->value,
-        ]);
-
-        TenantUser::create([
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->managerUser->id,
-            'role' => Role::MANAGER->value,
-        ]);
-
-        TenantUser::create([
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->employeeUser->id,
-            'role' => Role::EMPLOYEE->value,
-        ]);
-
-        // Create tokens
-        $this->ownerToken = $this->ownerUser->createToken('owner')->plainTextToken;
-        $this->managerToken = $this->managerUser->createToken('manager')->plainTextToken;
-        $this->employeeToken = $this->employeeUser->createToken('employee')->plainTextToken;
-    }
 
     /**
      * Test: Owner can view CRM data
@@ -175,5 +146,42 @@ class RbacE2ETest extends TestCase
             ->getJson('/api/v1/crm/dashboard');
 
         $this->assertTrue($response->status() >= 400);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Create tenant
+        $this->tenant = Tenant::factory()->create();
+
+        // Create users with different roles
+        $this->ownerUser = User::factory()->create();
+        $this->managerUser = User::factory()->create();
+        $this->employeeUser = User::factory()->create();
+
+        // Assign roles
+        TenantUser::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->ownerUser->id,
+            'role' => Role::ADMIN->value,
+        ]);
+
+        TenantUser::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->managerUser->id,
+            'role' => Role::MANAGER->value,
+        ]);
+
+        TenantUser::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->employeeUser->id,
+            'role' => Role::EMPLOYEE->value,
+        ]);
+
+        // Create tokens
+        $this->ownerToken = $this->ownerUser->createToken('owner')->plainTextToken;
+        $this->managerToken = $this->managerUser->createToken('manager')->plainTextToken;
+        $this->employeeToken = $this->employeeUser->createToken('employee')->plainTextToken;
     }
 }

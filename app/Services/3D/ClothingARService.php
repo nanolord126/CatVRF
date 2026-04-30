@@ -1,8 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ThreeD;
 
+use Illuminate\Support\Collection;
+
 use Illuminate\Support\Str;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class ClothingARService
@@ -14,9 +20,8 @@ use Illuminate\Support\Str;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Services\ThreeD
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ClothingARService
 {
@@ -37,7 +42,8 @@ final class ClothingARService
     public function generateSizeVariants(array $clothingData): array
     {
         $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-        return collect($sizes)
+
+        return new Collection($sizes)
             ->map(fn ($size) => [
                 'size' => $size,
                 'scale' => match ($size) {

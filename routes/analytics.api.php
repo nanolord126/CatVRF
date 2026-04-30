@@ -10,16 +10,15 @@ use Illuminate\Support\Facades\Route;
 
 /**
  * Analytics API Routes
- * 
+ *
  * Prefix: /api/analytics
  * Middleware: auth:sanctum (tenant-aware)
  * Rate Limiting: Built-in per endpoint
  */
-
 Route::prefix('analytics')
     ->middleware('auth:sanctum')
     ->group(function () {
-        
+
         /**
          * SECTION: Time-Series Heatmaps
          * ────────────────────────────────────────
@@ -30,7 +29,7 @@ Route::prefix('analytics')
             // Параметры: vertical, from_date, to_date, aggregation, metric
             Route::get('geo', [TimeSeriesHeatmapController::class, 'geoTimeSeries'])
                 ->name('analytics.heatmaps.timeseries.geo');
-            
+
             // GET /api/analytics/heatmaps/timeseries/click
             // Параметры: vertical, page_url, from_date, to_date, aggregation
             Route::get('click', [TimeSeriesHeatmapController::class, 'clickTimeSeries'])
@@ -47,7 +46,7 @@ Route::prefix('analytics')
             // Параметры: vertical, period1_from, period1_to, period2_from, period2_to, metric
             Route::get('geo', [ComparisonHeatmapController::class, 'compareGeo'])
                 ->name('analytics.heatmaps.compare.geo');
-            
+
             // GET /api/analytics/heatmaps/compare/click
             // Параметры: vertical, page_url, period1_from, period1_to, period2_from, period2_to
             Route::get('click', [ComparisonHeatmapController::class, 'compareClick'])
@@ -58,14 +57,14 @@ Route::prefix('analytics')
          * SECTION: Custom Metrics
          * ────────────────────────────────────────
          * Производные метрики: интенсивность, вовлечённость, рост, концентрация и т.д.
-         * 
+         *
          * Geo metrics:
          * - event_intensity: События/день/геохэш
          * - engagement_score: Комбинированная оценка вовлечённости
          * - growth_rate: Темп роста
          * - hotspot_concentration: Концентрация горячих точек
          * - user_retention: Удержание пользователей
-         * 
+         *
          * Click metrics:
          * - click_density: Плотность кликов
          * - interaction_score: Оценка взаимодействия
@@ -77,7 +76,7 @@ Route::prefix('analytics')
             // Параметры: vertical, metric, from_date, to_date, aggregation
             Route::get('geo', [CustomMetricController::class, 'customGeo'])
                 ->name('analytics.heatmaps.custom.geo');
-            
+
             // GET /api/analytics/heatmaps/custom/click
             // Параметры: vertical, metric, page_url, from_date, to_date, aggregation
             Route::get('click', [CustomMetricController::class, 'customClick'])
@@ -94,12 +93,12 @@ Route::prefix('analytics')
             // Body: { chart_image: "data:image/png;base64,..." }
             Route::post('png', [ExportChartController::class, 'exportPng'])
                 ->name('analytics.export.png');
-            
+
             // POST /api/analytics/export/pdf
             // Body: { chart_data: {...}, title: "...", description: "..." }
             Route::post('pdf', [ExportChartController::class, 'exportPdf'])
                 ->name('analytics.export.pdf');
-            
+
             // POST /api/analytics/export/quick
             // Быстрый экспорт с сохранением в storage
             Route::post('quick', [ExportChartController::class, 'quickExport'])
@@ -110,5 +109,33 @@ Route::prefix('analytics')
             // Placeholder для будущих эндпоинтов
             // Route::get('generate', [ReportController::class, 'generate']);
             // Route::post('export', [ReportController::class, 'export']);
+        });
+
+        /**
+         * SECTION: Seller Analytics
+         * ────────────────────────────────────────
+         * Seller-specific analytics for dashboard
+         * Frontend: SellerAnalyticsDashboard.vue
+         */
+        Route::prefix('seller')->group(function () {
+            // GET /api/analytics/seller/dashboard?period=last_30_days
+            // Returns: KPI cards, trends, top products, insights
+            Route::get('dashboard', [Modules\Analytics\Infrastructure\Http\Controllers\AnalyticsApiController::class, 'getSellerDashboard'])
+                ->name('analytics.seller.dashboard');
+
+            // GET /api/analytics/seller/products?period=last_30_days&page=1&per_page=50
+            // Returns: Paginated product analytics table
+            Route::get('products', [Modules\Analytics\Infrastructure\Http\Controllers\AnalyticsApiController::class, 'getSellerProductAnalytics'])
+                ->name('analytics.seller.products');
+
+            // GET /api/analytics/seller/insights?period=last_30_days
+            // Returns: AI-powered insights
+            Route::get('insights', [Modules\Analytics\Infrastructure\Http\Controllers\AnalyticsApiController::class, 'getSellerInsights'])
+                ->name('analytics.seller.insights');
+
+            // GET /api/analytics/seller/export/products?period=last_30_days
+            // Returns: Excel file download
+            Route::get('export/products', [Modules\Analytics\Infrastructure\Http\Controllers\SellerAnalyticsExportController::class, 'exportProductMetrics'])
+                ->name('analytics.seller.export.products');
         });
     });

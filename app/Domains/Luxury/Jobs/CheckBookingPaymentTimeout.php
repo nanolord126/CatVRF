@@ -23,22 +23,30 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class CheckBookingPaymentTimeout
+
+final class CheckBookingPaymentTimeout implements ShouldQueue
 {
-
-
     use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
-        public function __construct(private string $bookingUuid,
-            private string $correlationId,
+        public function __construct(private readonly LoggerInterface $logger,
+        private readonly string $bookingUuid,
+            private readonly string $correlationId,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
         /**
          * Выполнение джобы
          */
-        public function handle(): void
+        public function tags(): array
+    {
+        return ['luxury', 'job'];
+    }
+
+    public function handle(): void
         {
             try {
                 $booking = VIPBooking::where('uuid', $this->bookingUuid)->first();
@@ -61,7 +69,7 @@ final class CheckBookingPaymentTimeout
                         $bookable->decrement('hold_stock');
                     }
 
-                    $this->logger->info('VIP Booking Expired and Cancelled', [
+                    $this->logger->$this->logger->info('VIP Booking Expired and Cancelled', [
                         'booking_uuid' => $booking->uuid,
                         'correlation_id' => $this->correlationId,
                     ]);
@@ -76,5 +84,13 @@ final class CheckBookingPaymentTimeout
                 throw $e; // Для retry
             }
         }
-}
+        $this->onQueue('default');
+    
 
+    public function failed(\Throwable $exception): void
+    {
+        \$this->logger->error('luxury job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

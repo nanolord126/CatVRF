@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Http\Requests;
 
@@ -14,8 +16,6 @@ use Illuminate\Support\Str;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Domains\Pharmacy\Http\Requests
  */
 final class UpdatePharmacyOrderRequest extends FormRequest
 {

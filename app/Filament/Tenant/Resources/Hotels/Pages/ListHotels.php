@@ -1,18 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Hotels\Pages;
 
 use App\Filament\Tenant\Resources\Hotels\HotelsResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\Action;
 
 /**
  * ListHotels — альтернативная страница списка отелей.
  *
  * Используется ресурсом HotelsResource для маршрута /.
  * Tenant-scoped через Resource::getEloquentQuery().
- *
- * @package App\Filament\Tenant\Resources\Hotels\Pages
  */
 final class ListHotels extends ListRecords
 {
@@ -21,7 +22,7 @@ final class ListHotels extends ListRecords
     /**
      * Действия в заголовке страницы списка.
      *
-     * @return array<\Filament\Actions\Action>
+     * @return array<Action>
      */
     protected function getHeaderActions(): array
     {

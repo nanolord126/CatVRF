@@ -1,30 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * CrmLead — лид CRM-системы (потенциальный клиент).
  * Канон CatVRF 2026 — PRODUCTION MANDATORY.
  *
- * @property int         $id
- * @property int|null    $tenant_id
- * @property int|null    $assigned_to
- * @property string      $name
- * @property string      $phone
+ * @property int $id
+ * @property int|null $tenant_id
+ * @property int|null $assigned_to
+ * @property string $name
+ * @property string $phone
  * @property string|null $email
  * @property string|null $source
  * @property string|null $vertical
- * @property string      $status        new|contacted|qualified|in_progress|won|lost
- * @property int|null    $expected_value  в рублях
+ * @property string $status new|contacted|qualified|in_progress|won|lost
+ * @property int|null $expected_value в рублях
  * @property string|null $notes
- * @property \Carbon\Carbon|null $follow_up_at
+ * @property Carbon|null $follow_up_at
  * @property string|null $correlation_id
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CrmLead extends Model
 {
@@ -52,15 +58,6 @@ final class CrmLead extends Model
         'follow_up_at'   => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (self $model): void {
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-        });
-    }
-
     // ── Relations ────────────────────────────────────────────
 
     public function tenant(): BelongsTo
@@ -75,13 +72,22 @@ final class CrmLead extends Model
 
     // ── Scopes ───────────────────────────────────────────────
 
-    public function scopeOpen($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeOpen($query): Builder
     {
         return $query->whereNotIn('status', ['won', 'lost']);
     }
 
-    public function scopeOverdue($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeOverdue($query): Builder
     {
-        return $query->open()->where('follow_up_at', '<', now());
+        return $query->open()->where('follow_up_at', '<', CarbonImmutable::now());
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model): void {
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+        });
     }
 }

@@ -1,0 +1,494 @@
+/**
+ * Supermarket Theme - Цветовая схема и стили для вертикали Супермаркет
+ * 
+ * Цветовая палитра:
+ * - Primary: Fresh Green (свежесть продуктов)
+ * - Secondary: Orange (аппетит/акцент)
+ * - Success: Green (завершено/доставлено)
+ * - Warning: Amber (в процессе/ожидание)
+ * - Error: Red (проблемы/отмена)
+ * - Info: Blue (информация)
+ */
+
+:root {
+  /* === Primary Colors === */
+  --supermarket-primary: #22c55e;
+  --supermarket-primary-light: #4ade80;
+  --supermarket-primary-dark: #16a34a;
+  --supermarket-primary-faded: rgba(34, 197, 94, 0.1);
+
+  /* === Secondary Colors === */
+  --supermarket-secondary: #f97316;
+  --supermarket-secondary-light: #fb923c;
+  --supermarket-secondary-dark: #ea580c;
+  --supermarket-secondary-faded: rgba(249, 115, 22, 0.1);
+
+  /* === Status Colors === */
+  --supermarket-status-pending: #fbbf24;
+  --supermarket-status-confirmed: #60a5fa;
+  --supermarket-status-processing: #818cf8;
+  --supermarket-status-ready: #34d399;
+  --supermarket-status-delivering: #38bdf8;
+  --supermarket-status-delivered: #22c55e;
+  --supermarket-status-picked-up: #22c55e;
+  --supermarket-status-cancelled: #ef4444;
+  --supermarket-status-failed: #dc2626;
+
+  /* === Delivery Type Colors === */
+  --supermarket-courier: #3b82f6;
+  --supermarket-pickup: #8b5cf6;
+
+  /* === Allergen Colors === */
+  --supermarket-allergen-high: #ef4444;
+  --supermarket-allergen-medium: #f97316;
+  --supermarket-allergen-low: #fbbf24;
+
+  /* === Dietary Colors === */
+  --supermarket-halal: #22c55e;
+  --supermarket-kosher: #3b82f6;
+  --supermarket-vegan: #10b981;
+  --supermarket-vegetarian: #14b8a6;
+  --supermarket-gluten-free: #f59e0b;
+  --supermarket-lactose-free: #8b5cf6;
+
+  /* === Cold Chain Colors === */
+  --supermarket-cold-chain: #06b6d4;
+  --supermarket-temperature-ok: #22c55e;
+  --supermarket-temperature-warning: #f97316;
+  --supermarket-temperature-critical: #ef4444;
+
+  /* === Background Colors === */
+  --supermarket-bg-primary: #ffffff;
+  --supermarket-bg-secondary: #f9fafb;
+  --supermarket-bg-tertiary: #f3f4f6;
+  --supermarket-bg-accent: #ecfdf5;
+
+  /* === Text Colors === */
+  --supermarket-text-primary: #111827;
+  --supermarket-text-secondary: #6b7280;
+  --supermarket-text-muted: #9ca3af;
+
+  /* === Border Colors === */
+  --supermarket-border-light: #e5e7eb;
+  --supermarket-border-medium: #d1d5db;
+  --supermarket-border-dark: #9ca3af;
+
+  /* === Shadows === */
+  --supermarket-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --supermarket-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --supermarket-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --supermarket-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
+  /* === Animation Durations === */
+  --supermarket-animation-fast: 150ms;
+  --supermarket-animation-normal: 300ms;
+  --supermarket-animation-slow: 500ms;
+}
+
+/* === Status Badge Styles === */
+.supermarket-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  transition: all var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-status-badge.pending {
+  background-color: var(--supermarket-status-pending);
+  color: #ffffff;
+}
+
+.supermarket-status-badge.confirmed {
+  background-color: var(--supermarket-status-confirmed);
+  color: #ffffff;
+}
+
+.supermarket-status-badge.processing {
+  background-color: var(--supermarket-status-processing);
+  color: #ffffff;
+  animation: pulse 2s infinite;
+}
+
+.supermarket-status-badge.ready {
+  background-color: var(--supermarket-status-ready);
+  color: #ffffff;
+}
+
+.supermarket-status-badge.delivering {
+  background-color: var(--supermarket-status-delivering);
+  color: #ffffff;
+  animation: pulse 2s infinite;
+}
+
+.supermarket-status-badge.delivered,
+.supermarket-status-badge.picked-up {
+  background-color: var(--supermarket-status-delivered);
+  color: #ffffff;
+}
+
+.supermarket-status-badge.cancelled,
+.supermarket-status-badge.failed {
+  background-color: var(--supermarket-status-cancelled);
+  color: #ffffff;
+}
+
+/* === Delivery Type Badge === */
+.supermarket-delivery-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.supermarket-delivery-type.courier {
+  background-color: var(--supermarket-courier);
+  color: #ffffff;
+}
+
+.supermarket-delivery-type.pickup {
+  background-color: var(--supermarket-pickup);
+  color: #ffffff;
+}
+
+/* === Allergen Warning === */
+.supermarket-allergen-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+  animation: slideInLeft var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-allergen-warning.high {
+  border-color: var(--supermarket-allergen-high);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.supermarket-allergen-warning.medium {
+  border-color: var(--supermarket-allergen-medium);
+  background-color: rgba(249, 115, 22, 0.1);
+}
+
+.supermarket-allergen-warning.low {
+  border-color: var(--supermarket-allergen-low);
+  background-color: rgba(251, 191, 36, 0.1);
+}
+
+/* === Dietary Badge === */
+.supermarket-dietary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.supermarket-dietary-badge.halal {
+  background-color: var(--supermarket-halal);
+  color: #ffffff;
+}
+
+.supermarket-dietary-badge.kosher {
+  background-color: var(--supermarket-kosher);
+  color: #ffffff;
+}
+
+.supermarket-dietary-badge.vegan {
+  background-color: var(--supermarket-vegan);
+  color: #ffffff;
+}
+
+.supermarket-dietary-badge.vegetarian {
+  background-color: var(--supermarket-vegetarian);
+  color: #ffffff;
+}
+
+.supermarket-dietary-badge.gluten-free {
+  background-color: var(--supermarket-gluten-free);
+  color: #ffffff;
+}
+
+.supermarket-dietary-badge.lactose-free {
+  background-color: var(--supermarket-lactose-free);
+  color: #ffffff;
+}
+
+/* === Cold Chain Indicator === */
+.supermarket-cold-chain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--supermarket-cold-chain);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.supermarket-temperature-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.supermarket-temperature-indicator.ok {
+  color: var(--supermarket-temperature-ok);
+}
+
+.supermarket-temperature-indicator.warning {
+  color: var(--supermarket-temperature-warning);
+  animation: blink 1s infinite;
+}
+
+.supermarket-temperature-indicator.critical {
+  color: var(--supermarket-temperature-critical);
+  animation: blink 0.5s infinite;
+}
+
+/* === Animations === */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* === Progress Bar === */
+.supermarket-progress-bar {
+  width: 100%;
+  height: 0.5rem;
+  background-color: var(--supermarket-bg-tertiary);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.supermarket-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--supermarket-primary), var(--supermarket-primary-light));
+  border-radius: 9999px;
+  transition: width var(--supermarket-animation-normal) ease;
+}
+
+/* === Card Styles === */
+.supermarket-card {
+  background-color: var(--supermarket-bg-primary);
+  border: 1px solid var(--supermarket-border-light);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: var(--supermarket-shadow-sm);
+  transition: all var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-card:hover {
+  box-shadow: var(--supermarket-shadow-md);
+  transform: translateY(-2px);
+}
+
+.supermarket-card.highlight {
+  border-color: var(--supermarket-primary);
+  background-color: var(--supermarket-bg-accent);
+}
+
+/* === Timeline === */
+.supermarket-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.supermarket-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--supermarket-border-light);
+}
+
+.supermarket-timeline-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+  animation: slideInLeft var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -1.75rem;
+  top: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background-color: var(--supermarket-border-light);
+  border: 2px solid var(--supermarket-bg-primary);
+  transition: all var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-timeline-item.completed::before {
+  background-color: var(--supermarket-primary);
+}
+
+.supermarket-timeline-item.current::before {
+  background-color: var(--supermarket-secondary);
+  animation: pulse 2s infinite;
+}
+
+.supermarket-timeline-item.pending::before {
+  background-color: var(--supermarket-border-medium);
+}
+
+/* === Notification Toast === */
+.supermarket-notification {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  max-width: 24rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--supermarket-bg-primary);
+  border-left: 4px solid;
+  box-shadow: var(--supermarket-shadow-lg);
+  animation: slideInRight var(--supermarket-animation-normal) ease;
+  z-index: 9999;
+}
+
+.supermarket-notification.success {
+  border-color: var(--supermarket-primary);
+}
+
+.supermarket-notification.warning {
+  border-color: var(--supermarket-secondary);
+}
+
+.supermarket-notification.error {
+  border-color: var(--supermarket-status-cancelled);
+}
+
+.supermarket-notification.info {
+  border-color: var(--supermarket-status-confirmed);
+}
+
+/* === Nutritional Chart === */
+.supermarket-nutritional-bar {
+  height: 1.5rem;
+  background-color: var(--supermarket-bg-tertiary);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  display: flex;
+}
+
+.supermarket-nutritional-segment {
+  height: 100%;
+  transition: width var(--supermarket-animation-normal) ease;
+}
+
+.supermarket-nutritional-segment.proteins {
+  background-color: #3b82f6;
+}
+
+.supermarket-nutritional-segment.fats {
+  background-color: #f97316;
+}
+
+.supermarket-nutritional-segment.carbs {
+  background-color: #22c55e;
+}

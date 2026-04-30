@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
@@ -12,12 +14,6 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
     use RefreshDatabase;
 
     private SuspiciousBehaviorDetector $detector;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->detector = new SuspiciousBehaviorDetector();
-    }
 
     public function test_female_user_can_access_lingerie_fitting(): void
     {
@@ -46,7 +42,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
     public function test_blocked_user_cannot_access_lingerie_fitting(): void
     {
         $userId = 1;
-        
+
         // Блокируем пользователя
         $this->detector->blockUser($userId, 'test_block', 'test-correlation');
 
@@ -57,7 +53,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         $this->assertArrayHasKey('block_expires_at', $result);
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:blocked:' . $userId);
+        Cache::forget('suspicious_behavior:blocked:'.$userId);
     }
 
     public function test_rate_limit_is_enforced(): void
@@ -75,7 +71,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         $this->assertEquals('rate_limit', $result['reason']);
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:ratelimit:' . $userId);
+        Cache::forget('suspicious_behavior:ratelimit:'.$userId);
     }
 
     public function test_suspicious_activity_is_recorded(): void
@@ -86,7 +82,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
 
         $this->detector->recordSuspiciousActivity($userId, $reason, $correlationId);
 
-        $key = 'suspicious_behavior:suspicious:' . $userId;
+        $key = 'suspicious_behavior:suspicious:'.$userId;
         $activities = Cache::get($key);
 
         $this->assertIsArray($activities);
@@ -113,7 +109,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         $this->assertGreaterThan(0, $stats['suspicion_score']);
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:suspicious:' . $userId);
+        Cache::forget('suspicious_behavior:suspicious:'.$userId);
     }
 
     public function test_high_suspicion_score_blocks_user(): void
@@ -131,14 +127,14 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         $this->assertEquals('suspicious_behavior', $result['reason']);
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:suspicious:' . $userId);
-        Cache::forget('suspicious_behavior:blocked:' . $userId);
+        Cache::forget('suspicious_behavior:suspicious:'.$userId);
+        Cache::forget('suspicious_behavior:blocked:'.$userId);
     }
 
     public function test_user_can_be_unblocked(): void
     {
         $userId = 1;
-        
+
         // Блокируем пользователя
         $this->detector->blockUser($userId, 'test_block', 'test-correlation');
 
@@ -190,7 +186,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
 
         $this->detector->recordSuspiciousActivity($userId, 'test_reason', $customCorrelationId);
 
-        $key = 'suspicious_behavior:suspicious:' . $userId;
+        $key = 'suspicious_behavior:suspicious:'.$userId;
         $activities = Cache::get($key);
 
         $this->assertEquals($customCorrelationId, $activities[0]['correlation_id']);
@@ -213,7 +209,7 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         $this->assertLessThanOrEqual(50, count($stats['suspicious_activities']));
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:suspicious:' . $userId);
+        Cache::forget('suspicious_behavior:suspicious:'.$userId);
     }
 
     public function test_warning_returned_for_elevated_suspicion(): void
@@ -232,8 +228,14 @@ final class SuspiciousBehaviorDetectorTest extends TestCase
         // Предупреждение может быть или не быть в зависимости от score
 
         // Очистка после теста
-        Cache::forget('suspicious_behavior:suspicious:' . $userId);
-        Cache::forget('suspicious_behavior:ratelimit:' . $userId);
+        Cache::forget('suspicious_behavior:suspicious:'.$userId);
+        Cache::forget('suspicious_behavior:ratelimit:'.$userId);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->detector = new SuspiciousBehaviorDetector();
     }
 
     protected function tearDown(): void

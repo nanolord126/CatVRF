@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Performance\Fraud;
 
@@ -11,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * FraudMLPerformanceTest
- * 
+ *
  * Inference speed, feature extraction, model loading untuk Fraud ML
  */
 final class FraudMLPerformanceTest extends TestCase
@@ -19,17 +21,10 @@ final class FraudMLPerformanceTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Tenant $tenant;
+
     protected FraudMLService $fraudService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->fraudService = app(FraudMLService::class);
-    }
 
     /** @test */
     public function it_scores_single_operation_under_50ms(): void
@@ -460,5 +455,14 @@ final class FraudMLPerformanceTest extends TestCase
         $elapsed = (microtime(true) - $startTime) * 1000;
 
         $this->assertLessThan(500, $elapsed, "Fallback rules took {$elapsed}ms");
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->fraudService = app(FraudMLService::class);
     }
 }

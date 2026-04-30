@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\ToysAndGames;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for ToysAndGamesService.
- *
- * @covers \App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService
- */
-final class ToysAndGamesServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'ToysAndGamesService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'ToysAndGamesService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('ToysAndGames');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'ToysAndGamesService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('ToysAndGamesService exists and is instantiable', function () {
+    $this->assertServiceExists('ToysAndGamesService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class, 'create'),
-            'ToysAndGamesService must implement create()'
-        );
-    }
+test('ToysAndGamesService follows clean architecture', function () {
+    $this->assertCleanArchitecture('ToysAndGamesService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class, 'update'),
-            'ToysAndGamesService must implement update()'
-        );
-    }
+test('ToysAndGamesService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('ToysAndGamesService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class, 'delete'),
-            'ToysAndGamesService must implement delete()'
-        );
-    }
+test('ToysAndGamesService enforces quota limits', function () {
+    $this->testServiceWithQuota('ToysAndGamesService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class, 'list'),
-            'ToysAndGamesService must implement list()'
-        );
-    }
+test('ToysAndGamesService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\ToysAndGames\Domain\Services\ToysAndGamesService::class, 'getById'),
-            'ToysAndGamesService must implement getById()'
-        );
-    }
+test('ToysAndGamesService has proper caching', function () {
+    $cacheKey = 'toysandgames:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('ToysAndGamesService dispatches proper events', function () {
+    $eventClass = "App\Domains\ToysAndGames\Events\ToysAndGamesProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+        $service->process([]);
+    });
+});
+
+test('ToysAndGamesService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\ToysAndGames\Jobs\ProcessToysAndGamesJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+        $service->processAsync([]);
+    });
+});
+
+test('ToysAndGamesService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('ToysAndGamesService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('ToysAndGamesService'));
+        $service->process([]);
+    }, 'ToysAndGamesService processed');
+});
+
+test('ToysAndGamesService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

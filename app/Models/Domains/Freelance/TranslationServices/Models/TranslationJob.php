@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * TranslationJob — CatVRF 2026 Component.
@@ -7,21 +9,21 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/translationjob
  * @see https://catvrf.ru/docs/translationjob
  * @see https://catvrf.ru/docs/translationjob
  */
 
-
 namespace App\Models\Domains\Freelance\TranslationServices\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 /**
  * Class TranslationJob
@@ -41,13 +43,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Freelance\TranslationServices\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class TranslationJob extends Model
 {
-
     protected $table = 'translation_jobs';
 
     protected $fillable = [

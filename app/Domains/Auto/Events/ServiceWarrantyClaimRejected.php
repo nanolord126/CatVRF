@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+
 /**
  * Class ServiceWarrantyClaimRejected
  *
@@ -21,19 +22,18 @@ use Illuminate\Queue\SerializesModels;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\Events
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ServiceWarrantyClaimRejected
 {
-    
     public function __construct(
         public readonly mixed $warranty, // Implemented per canon 2026
         public readonly string $rejectionReason,
-        public readonly string $correlationId, public readonly LoggerInterface $logger
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
     ) {
-        $this->logger->info('ServiceWarrantyClaimRejected event dispatched', [
+        $this->logger->$this->logger->info('ServiceWarrantyClaimRejected event dispatched', [
             'correlation_id' => $this->correlationId,
             // 'warranty_id' => $this->warranty->id,
             // 'warranty_number' => $this->warranty->warranty_number,

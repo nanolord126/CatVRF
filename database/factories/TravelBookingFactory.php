@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -17,7 +19,7 @@ final class TravelBookingFactory extends Factory
             'business_group_id' => null,
             'correlation_id' => $this->faker->uuid(),
             'tour_id' => 1,
-            'traveler_name' => $this->faker->firstName() . ' ' . $this->faker->lastName(),
+            'traveler_name' => $this->faker->firstName().' '.$this->faker->lastName(),
             'traveler_email' => $this->faker->email(),
             'traveler_phone' => $this->faker->phoneNumber(),
             'booking_date' => $this->faker->dateTime(),

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Performance\Payment;
 
@@ -11,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * PaymentPerformanceTest
- * 
+ *
  * Throughput, memory, и query optimization для Payment API
  */
 final class PaymentPerformanceTest extends TestCase
@@ -19,16 +21,8 @@ final class PaymentPerformanceTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->for($this->tenant)->create();
-        $this->actingAs($this->user);
-    }
 
     /** @test */
     public function it_creates_single_payment_under_50ms(): void
@@ -121,10 +115,12 @@ final class PaymentPerformanceTest extends TestCase
         $this->getJson('/api/v1/payments?page=1&per_page=10');
 
         $queries = DB::getQueryLog();
-        
+
         // Should be minimal queries: 1 for pagination + 1 for data + maybe 1 for count
-        $this->assertLessThan(5, count($queries), 
-            "Query count: " . count($queries) . " (N+1 detected: expected <5 queries)"
+        $this->assertLessThan(
+            5,
+            count($queries),
+            'Query count: '.count($queries).' (N+1 detected: expected <5 queries)'
         );
     }
 
@@ -141,10 +137,10 @@ final class PaymentPerformanceTest extends TestCase
         $response->assertSuccessful();
 
         $queries = DB::getQueryLog();
-        
+
         // Count queries that hit payments table
-        $paymentQueries = array_filter($queries, fn($q) => str_contains($q['query'], 'payments'));
-        
+        $paymentQueries = array_filter($queries, fn ($q) => str_contains($q['query'], 'payments'));
+
         // Should not have individual queries per payment (N+1)
         $this->assertLessThan(15, count($queries));
     }
@@ -369,5 +365,14 @@ final class PaymentPerformanceTest extends TestCase
         $elapsed = (microtime(true) - $startTime) * 1000;
 
         $this->assertLessThan(5000, $elapsed, "50 captures took {$elapsed}ms total");
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->for($this->tenant)->create();
+        $this->actingAs($this->user);
     }
 }

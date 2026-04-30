@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\DTOs;
 
@@ -24,7 +26,7 @@ final readonly class AIDiagnosticsDto
     public static function from(Request $request): self
     {
         $photo = $request->file('photo');
-        if ($photo === null || !$photo->isValid()) {
+        if ($photo === null || ! $photo->isValid()) {
             throw new \RuntimeException('Valid photo file is required');
         }
 

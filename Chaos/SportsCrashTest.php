@@ -21,38 +21,10 @@ final class SportsCrashTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $bookingService;
+
     private SportsDynamicPricingService $pricingService;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $fraud = $this->createMock(FraudControlService::class);
-        $fraud->method('check')->willReturn(null);
-        $audit = $this->createMock(AuditService::class);
-        $db = $this->app->make(DatabaseManager::class);
-        $cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->bookingService = new SportsRealTimeBookingService(
-            fraud: $fraud,
-            audit: $audit,
-            db: $db,
-            cache: $cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-
-        $this->pricingService = new SportsDynamicPricingService(
-            fraud: $fraud,
-            audit: $audit,
-            db: $db,
-            cache: $cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_service_survives_redis_crash(): void
     {
@@ -74,7 +46,7 @@ final class SportsCrashTest extends TestCase
         $this->assertTrue($holdResult['success']);
 
         $this->redis->disconnect();
-        
+
         try {
             $this->bookingService->releaseSlot(1, null, $dto->slotStart, 1, $dto->correlationId);
             $this->assertTrue(true, 'Service should handle Redis disconnect gracefully');
@@ -109,9 +81,9 @@ final class SportsCrashTest extends TestCase
             );
 
             $result = $this->bookingService->holdSlot($dto);
-            
+
             $this->assertIsArray($result);
-            if (!$result['success']) {
+            if (! $result['success']) {
                 $this->assertStringContainsString('timeout', strtolower($result['message'] ?? ''));
             }
         } finally {
@@ -176,8 +148,8 @@ final class SportsCrashTest extends TestCase
             try {
                 $dto = new RealTimeBookingDto(...$input);
                 $result = $this->bookingService->holdSlot($dto);
-                
-                if (!$result['success']) {
+
+                if (! $result['success']) {
                     $this->assertNotEmpty($result['message']);
                 }
             } catch (\Exception $e) {
@@ -434,5 +406,35 @@ final class SportsCrashTest extends TestCase
         }
 
         $this->assertTrue(true, 'Service should handle XSS attempts');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $fraud = $this->createMock(FraudControlService::class);
+        $fraud->method('check')->willReturn(null);
+        $audit = $this->createMock(AuditService::class);
+        $db = $this->app->make(DatabaseManager::class);
+        $cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->bookingService = new SportsRealTimeBookingService(
+            fraud: $fraud,
+            audit: $audit,
+            db: $db,
+            cache: $cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
+
+        $this->pricingService = new SportsDynamicPricingService(
+            fraud: $fraud,
+            audit: $audit,
+            db: $db,
+            cache: $cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

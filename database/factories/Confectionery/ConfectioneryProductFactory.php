@@ -6,6 +6,7 @@ namespace Database\Factories\Confectionery;
 
 use App\Domains\Confectionery\Models\ConfectioneryProduct;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class ConfectioneryProductFactory extends Factory
 {
@@ -22,7 +23,7 @@ final class ConfectioneryProductFactory extends Factory
             'current_stock' => $this->faker->numberBetween(30, 200),
             'shelf_life_days' => $this->faker->numberBetween(5, 60),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['confectionery', $this->faker->word()],
             'meta' => [],
         ];

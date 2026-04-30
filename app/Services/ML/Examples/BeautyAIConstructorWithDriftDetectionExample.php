@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\ML\Examples;
 
+use LogManager;
+
+use Psr\Log\LoggerInterface;
+
 use App\Services\ML\AbstractAIConstructorService;
-use App\Services\ML\FeatureDriftDetectorService;
-use App\Services\ML\FeatureDriftMetricsService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Example AI Constructor Service with Feature Drift Detection
- * 
+ *
  * This is a template showing how to integrate drift detection into any vertical's AI service.
  * Replace 'beauty' with your vertical code and customize monitored features.
- * 
+ *
  * To use this template:
  * 1. Copy this file to your vertical's Services/AI directory
  * 2. Rename class to match your vertical (e.g., FoodAIConstructorService)
@@ -24,14 +27,14 @@ use Illuminate\Support\Facades\Log;
  */
 final class BeautyAIConstructorWithDriftDetectionExample extends AbstractAIConstructorService
 {
-    protected string $verticalCode = 'beauty';
+    protected readonly string $verticalCode = 'beauty';
 
     /**
      * Example AI method with drift detection
-     * 
-     * @param string $userPrompt
-     * @return array
      */
+    public function __construct(private readonly LogManager $logManager,
+        private readonly LoggerInterface $logger,) {}
+
     public function generateBeautyRecommendation(string $userPrompt): array
     {
         // Check drift for key features before AI inference
@@ -47,9 +50,6 @@ final class BeautyAIConstructorWithDriftDetectionExample extends AbstractAIConst
     /**
      * Store reference distributions after model training
      * Call this from your ML retraining job
-     * 
-     * @param string $modelVersion
-     * @return void
      */
     public function storeTrainingDataDistributions(string $modelVersion): void
     {
@@ -62,8 +62,8 @@ final class BeautyAIConstructorWithDriftDetectionExample extends AbstractAIConst
         ];
 
         $this->storeReferenceDistributions($modelVersion, $features);
-        
-        Log::info('Reference distributions stored for Beauty vertical', [
+
+        $this->logger->info('Reference distributions stored for Beauty vertical', [
             'model_version' => $modelVersion,
             'features_count' => count($features),
         ]);
@@ -72,8 +72,6 @@ final class BeautyAIConstructorWithDriftDetectionExample extends AbstractAIConst
     /**
      * Batch drift check for multiple features
      * Call this periodically (e.g., daily) from a scheduled job
-     * 
-     * @return array
      */
     public function performScheduledDriftCheck(): array
     {
@@ -85,10 +83,10 @@ final class BeautyAIConstructorWithDriftDetectionExample extends AbstractAIConst
         ];
 
         $driftReport = $this->checkMultipleFeaturesDrift($currentFeatures);
-        
+
         // Cache for monitoring
-        cache(['beauty_drift_report' => $driftReport], now()->addHours(24));
-        
+        cache(['beauty_drift_report' => $driftReport], CarbonImmutable::now()->addHours(24));
+
         $this->logDriftResults($driftReport);
 
         return $driftReport;

@@ -9,16 +9,9 @@ use App\Shared\Domain\Events\DomainEvent;
 abstract class AggregateRoot extends Entity
 {
     /** @var array<int, DomainEvent> */
-    private array $domainEvents = [];
+    private readonly array $domainEvents = [];
 
-    public function __construct(mixed $id)
-    {
-    }
-
-    protected function record(DomainEvent $event): void
-    {
-        $this->domainEvents[] = $event;
-    }
+    public function __construct(mixed $id) {}
 
     /** @return array<int, DomainEvent> */
     public function releaseEvents(): array
@@ -33,5 +26,10 @@ abstract class AggregateRoot extends Entity
     public function pullDomainEvents(): array
     {
         return $this->releaseEvents();
+    }
+
+    protected function record(DomainEvent $event): void
+    {
+        $this->domainEvents[] = $event;
     }
 }

@@ -1,6 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Str;
+use App\Services\Infrastructure\DopplerService;
 
 return [
 
@@ -15,7 +18,7 @@ return [
     |
     */
 
-    'default' => App\Services\Infrastructure\DopplerService::get('CACHE_STORE', 'database'),
+    'default' => DopplerService::get('CACHE_STORE', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -41,10 +44,10 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => App\Services\Infrastructure\DopplerService::get('DB_CACHE_CONNECTION'),
-            'table' => App\Services\Infrastructure\DopplerService::get('DB_CACHE_TABLE', 'cache'),
-            'lock_connection' => App\Services\Infrastructure\DopplerService::get('DB_CACHE_LOCK_CONNECTION'),
-            'lock_table' => App\Services\Infrastructure\DopplerService::get('DB_CACHE_LOCK_TABLE'),
+            'connection' => DopplerService::get('DB_CACHE_CONNECTION'),
+            'table' => DopplerService::get('DB_CACHE_TABLE', 'cache'),
+            'lock_connection' => DopplerService::get('DB_CACHE_LOCK_CONNECTION'),
+            'lock_table' => DopplerService::get('DB_CACHE_LOCK_TABLE'),
         ],
 
         'file' => [
@@ -55,18 +58,18 @@ return [
 
         'memcached' => [
             'driver' => 'memcached',
-            'persistent_id' => App\Services\Infrastructure\DopplerService::get('MEMCACHED_PERSISTENT_ID'),
+            'persistent_id' => DopplerService::get('MEMCACHED_PERSISTENT_ID'),
             'sasl' => [
-                App\Services\Infrastructure\DopplerService::get('MEMCACHED_USERNAME'),
-                App\Services\Infrastructure\DopplerService::get('MEMCACHED_PASSWORD'),
+                DopplerService::get('MEMCACHED_USERNAME'),
+                DopplerService::get('MEMCACHED_PASSWORD'),
             ],
             'options' => [
                 // Memcached::OPT_CONNECT_TIMEOUT => 2000,
             ],
             'servers' => [
                 [
-                    'host' => App\Services\Infrastructure\DopplerService::get('MEMCACHED_HOST', '127.0.0.1'),
-                    'port' => App\Services\Infrastructure\DopplerService::get('MEMCACHED_PORT', 11211),
+                    'host' => DopplerService::get('MEMCACHED_HOST', '127.0.0.1'),
+                    'port' => DopplerService::get('MEMCACHED_PORT', 11211),
                     'weight' => 100,
                 ],
             ],
@@ -74,17 +77,17 @@ return [
 
         'redis' => [
             'driver' => 'redis',
-            'connection' => App\Services\Infrastructure\DopplerService::get('REDIS_CACHE_CONNECTION', 'cache'),
-            'lock_connection' => App\Services\Infrastructure\DopplerService::get('REDIS_CACHE_LOCK_CONNECTION', 'default'),
+            'connection' => DopplerService::get('REDIS_CACHE_CONNECTION', 'cache'),
+            'lock_connection' => DopplerService::get('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
         'dynamodb' => [
             'driver' => 'dynamodb',
-            'key' => App\Services\Infrastructure\DopplerService::get('AWS_ACCESS_KEY_ID'),
-            'secret' => App\Services\Infrastructure\DopplerService::get('AWS_SECRET_ACCESS_KEY'),
-            'region' => App\Services\Infrastructure\DopplerService::get('AWS_DEFAULT_REGION', 'us-east-1'),
-            'table' => App\Services\Infrastructure\DopplerService::get('DYNAMODB_CACHE_TABLE', 'cache'),
-            'endpoint' => App\Services\Infrastructure\DopplerService::get('DYNAMODB_ENDPOINT'),
+            'key' => DopplerService::get('AWS_ACCESS_KEY_ID'),
+            'secret' => DopplerService::get('AWS_SECRET_ACCESS_KEY'),
+            'region' => DopplerService::get('AWS_DEFAULT_REGION', 'us-east-1'),
+            'table' => DopplerService::get('DYNAMODB_CACHE_TABLE', 'cache'),
+            'endpoint' => DopplerService::get('DYNAMODB_ENDPOINT'),
         ],
 
         'octane' => [
@@ -112,6 +115,6 @@ return [
     |
     */
 
-    'prefix' => App\Services\Infrastructure\DopplerService::get('CACHE_PREFIX', Str::slug((string) App\Services\Infrastructure\DopplerService::get('APP_NAME', 'laravel')).'-cache-'),
+    'prefix' => DopplerService::get('CACHE_PREFIX', Str::slug((string) DopplerService::get('APP_NAME', 'laravel')).'-cache-'),
 
 ];

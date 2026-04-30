@@ -5,22 +5,18 @@ declare(strict_types=1);
 namespace App\Domains\Payment\Events;
 
 use App\Domains\Payment\Models\PaymentRecord;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Событие: платёжная запись обновлена (смена статуса).
  */
 final class PaymentRecordUpdated
 {
-
     /**
-     * @param PaymentRecord        $paymentRecord текущее состояние
-     * @param string               $correlationId correlation_id
-     * @param array<string, mixed> $oldValues     значения до изменения
-     * @param array<string, mixed> $newValues     значения после изменения
-     * @param int|null             $userId        кто инициировал
+     * @param  PaymentRecord  $paymentRecord  текущее состояние
+     * @param  string  $correlationId  correlation_id
+     * @param  array<string, mixed>  $oldValues  значения до изменения
+     * @param  array<string, mixed>  $newValues  значения после изменения
+     * @param  int|null  $userId  кто инициировал
      */
     public function __construct(
         public readonly PaymentRecord $paymentRecord,

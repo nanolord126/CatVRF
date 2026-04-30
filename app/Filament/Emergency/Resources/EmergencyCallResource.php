@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Emergency\Resources;
+
+use AuditService;
+
+use Illuminate\Notifications\ChannelManager;
 
 use App\Services\AuditService;
 use Filament\Forms\Components\Section;
@@ -17,6 +23,9 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Emergency\Resources\EmergencyCallResource\Pages\ListEmergencyCalls;
+use App\Filament\Emergency\Resources\EmergencyCallResource\Pages\ViewEmergencyCall;
+use App\Models\EmergencyCall;
 
 /**
  * Emergency Panel: управление вызовами экстренных служб.
@@ -27,12 +36,18 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class EmergencyCallResource extends Resource
 {
-    protected static ?string $model = \App\Models\EmergencyCall::class;
+    protected static ?string $model = EmergencyCall::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-phone-arrow-up-right';
+
     protected static ?string $navigationGroup = 'Диспетчеризация';
+
     protected static ?string $navigationLabel = 'Вызовы';
+
     protected static ?string $modelLabel = 'Вызов';
+
     protected static ?string $pluralModelLabel = 'Вызовы';
+
     protected static ?int $navigationSort = 10;
 
     public static function canCreate(): bool
@@ -173,7 +188,7 @@ final class EmergencyCallResource extends Resource
                             'assigned_unit' => $data['unit'],
                         ]);
 
-                        app(AuditService::class)->record(
+                        $this->auditService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->record(
                             'emergency_dispatched',
                             get_class($record),
                             $record->id,
@@ -181,8 +196,8 @@ final class EmergencyCallResource extends Resource
                             ['status' => 'dispatched', 'unit' => $data['unit']],
                         );
 
-                        Notification::make()
-                            ->title('Экипаж ' . $data['unit'] . ' направлен')
+                        $this->notificationManager->make()
+                            ->title('Экипаж '.$data['unit'].' направлен')
                             ->success()
                             ->send();
                     }),
@@ -191,11 +206,11 @@ final class EmergencyCallResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (Model $record): bool => in_array($record->status, ['dispatched', 'on_scene']))
+                    ->visible(fn (Model $record): bool => in_array($record->status, ['dispatched', 'on_scene'], true))
                     ->action(function (Model $record): void {
                         $record->update(['status' => 'resolved']);
 
-                        app(AuditService::class)->record(
+                        $this->auditService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->record(
                             'emergency_resolved',
                             get_class($record),
                             $record->id,
@@ -203,7 +218,7 @@ final class EmergencyCallResource extends Resource
                             ['status' => 'resolved'],
                         );
 
-                        Notification::make()
+                        $this->notificationManager->make()
                             ->title('Вызов завершён')
                             ->success()
                             ->send();
@@ -217,8 +232,8 @@ final class EmergencyCallResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Emergency\Resources\EmergencyCallResource\Pages\ListEmergencyCalls::route('/'),
-            'view'  => \App\Filament\Emergency\Resources\EmergencyCallResource\Pages\ViewEmergencyCall::route('/{record}'),
+            'index' => ListEmergencyCalls::route('/'),
+            'view'  => ViewEmergencyCall::route('/{record}'),
         ];
     }
 }

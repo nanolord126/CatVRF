@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -23,6 +25,7 @@ final class BeautyAppointmentSeeder extends Seeder
 
         if ($users->isEmpty()) {
             $this->command->warn('No users found. Skipping appointment seeder.');
+
             return;
         }
 
@@ -101,7 +104,7 @@ final class BeautyAppointmentSeeder extends Seeder
     {
         $wallet = DB::table('wallets')->where('user_id', $userId)->first();
 
-        if (!$wallet) {
+        if (! $wallet) {
             $walletId = DB::table('wallets')->insertGetId([
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -111,6 +114,7 @@ final class BeautyAppointmentSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
             return $walletId;
         }
 

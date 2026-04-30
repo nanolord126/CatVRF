@@ -6,6 +6,7 @@ namespace App\Domains\Wallet\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * API-ресурс для сериализации Wallet в JSON.
@@ -47,10 +48,9 @@ final class WalletResource extends JsonResource
     /**
      * Коллекция ресурсов.
      *
-     * @param mixed $resource
-     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     * @param  mixed  $resource
      */
-    public static function collection($resource): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    public static function collection($resource): AnonymousResourceCollection
     {
         return parent::collection($resource);
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Events;
 
@@ -12,21 +14,19 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Class OrderCreated
- *
- * @package App\Events
  */
 final class OrderCreated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithBroadcasting, SerializesModels;
+    use Dispatchable;
+    use InteractsWithBroadcasting;
+    use SerializesModels;
 
-    private Order $order;
-    private string $correlationId;
-    private int $tenantId;
+    private readonly Order $order;
 
-    /**
-     * @param Order $order
-     * @param string $correlationId
-     */
+    private readonly string $correlationId;
+
+    private readonly int $tenantId;
+
     public function __construct(Order $order, string $correlationId)
     {
         $this->order = $order;
@@ -36,7 +36,6 @@ final class OrderCreated implements ShouldBroadcast
 
     /**
      * Канал для broadcast
-     * @return Channel
      */
     public function broadcastOn(): Channel
     {
@@ -45,7 +44,6 @@ final class OrderCreated implements ShouldBroadcast
 
     /**
      * Имя события в фронтенде
-     * @return string
      */
     public function broadcastAs(): string
     {
@@ -54,7 +52,6 @@ final class OrderCreated implements ShouldBroadcast
 
     /**
      * Данные для broadcast
-     * @return array
      */
     public function broadcastWith(): array
     {

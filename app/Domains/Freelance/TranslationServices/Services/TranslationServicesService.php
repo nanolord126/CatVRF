@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\TranslationServices\Services;
 
@@ -9,24 +11,24 @@ use App\Services\WalletService;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * TranslationServicesService — управление заказами на перевод.
  *
  * Полный цикл: создание, завершение и отмена заказов
  * с fraud-check, wallet-интеграцией и audit-логированием.
- *
- * @package App\Domains\Freelance\TranslationServices\Services
  */
 final readonly class TranslationServicesService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final readonly class TranslationServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Translation job created', [
+            $this->logger->$this->logger->info('Translation job created', [
                 'job_id' => $job->id,
                 'translator_id' => $translatorId,
                 'correlation_id' => $correlationId,
@@ -124,7 +126,7 @@ final readonly class TranslationServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Translation job completed', [
+            $this->logger->$this->logger->info('Translation job completed', [
                 'job_id' => $job->id,
                 'payout' => $job->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -174,7 +176,7 @@ final readonly class TranslationServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Translation job cancelled', [
+            $this->logger->$this->logger->info('Translation job cancelled', [
                 'job_id' => $job->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -194,7 +196,7 @@ final readonly class TranslationServicesService
     /**
      * Получить список заказов клиента.
      */
-    public function getUserJobs(int $clientId): \Illuminate\Database\Eloquent\Collection
+    public function getUserJobs(int $clientId): Collection
     {
         return TranslationJob::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

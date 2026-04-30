@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Delivery;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Delivery;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -22,21 +20,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class DeliveryResource extends Resource
 {
+    protected static ?string $model = Delivery::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-truck';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 19;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Delivery::class;
-    protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 19;
 
     public static function form(Form $form): Form
     {
@@ -94,8 +93,8 @@ final class DeliveryResource extends Resource
                 TextInput::make('avg_delivery_time_min')->label('Средн. время (мин)')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -114,17 +113,18 @@ final class DeliveryResource extends Resource
         ])->defaultSort('company_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Delivery company action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Delivery company action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

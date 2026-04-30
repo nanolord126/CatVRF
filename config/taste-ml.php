@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * config/taste-ml.php
- * 
+ *
  * Конфигурация ML-анализа вкусов пользователя v2.0
  * CANON 2026: Production-ready
  */

@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/requestviewingdto
  */
-
 
 namespace App\Domains\RealEstate\Application\B2C\DTOs;
 
@@ -35,20 +35,20 @@ use DateTimeImmutable;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\RealEstate\Application\B2C\DTOs
  */
 final readonly class RequestViewingDTO
 {
     public function __construct(
-        public string            $propertyId,
-        public int               $clientId,
+        public string $propertyId,
+        public int $clientId,
         public DateTimeImmutable $scheduledAt,
-        public string            $clientName,
-        public string            $clientPhone,
-        public ?string           $notes,
-        public string            $correlationId,
-        private ?string $ipAddress = null,
-        private readonly ?string $deviceFingerprint = null) {}
+        public string $clientName,
+        public string $clientPhone,
+        public ?string $notes,
+        public string $correlationId,
+        private readonly ?string $ipAddress = null,
+        private readonly ?string $deviceFingerprint = null
+    ) {}
 
     public static function fromArray(
         array $data,

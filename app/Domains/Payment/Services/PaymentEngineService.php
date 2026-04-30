@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Services;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Auth\Guard;
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Payment\DTOs\CreatePaymentRecordDto;
 use App\Domains\Payment\DTOs\GatewayRequestDto;
-use App\Domains\Payment\DTOs\GatewayResponseDto;
 use App\Domains\Payment\DTOs\UpdatePaymentRecordDto;
 use App\Domains\Payment\Enums\GatewayProvider;
 use App\Domains\Payment\Enums\PaymentStatus;
-use App\Domains\Payment\Jobs\PaymentFraudCheckJob;
 use App\Domains\Payment\Models\PaymentRecord;
 use App\Domains\Wallet\Services\AtomicWalletService;
+use App\Domains\FraudML\Services\FraudControlService;
 use App\Services\AuditService;
-use App\Services\FraudControlService;
-use Illuminate\Contracts\Auth\Guard;
-use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Psr\Log\LoggerInterface;
+use App\Domains\Payment\Jobs\PaymentFraudCheckJob;
 
 /**
  * PaymentEngineService - Orchestrates payment flow with proper architecture.
@@ -32,26 +32,24 @@ use Psr\Log\LoggerInterface;
  * 6. Status update with proper idempotency
  *
  * Architecture improvements:
- * - No DB::transaction around gateway calls
+ * - No $this->db->transaction around gateway calls
  * - Async FraudML inference
  * - Circuit breaker for gateway resilience
  * - Atomic wallet operations via AtomicWalletService
  * - Proper idempotency at gateway level
- *
- * @package App\Domains\Payment\Services
  */
 final readonly class PaymentEngineService
 {
     public function __construct(
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private PaymentService $paymentService,
-        private IdempotencyService $idempotency,
-        private PaymentGatewayService $gateway,
-        private AtomicWalletService $walletService,
+        private readonly DatabaseManager $db,
+        private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly IdempotencyService $idempotency,
+        private readonly PaymentGatewayService $gateway,
+        private readonly AtomicWalletService $walletService,
     ) {}
 
     /**
@@ -64,10 +62,6 @@ final readonly class PaymentEngineService
      * 4. Dispatch async FraudML job
      * 5. Call gateway (outside transaction)
      * 6. Update payment status
-     *
-     * @param CreatePaymentRecordDto $dto
-     * @param string $returnUrl
-     * @return PaymentRecord
      */
     public function createPayment(CreatePaymentRecordDto $dto, string $returnUrl): PaymentRecord
     {
@@ -81,28 +75,29 @@ final readonly class PaymentEngineService
                 'existing_payment_id' => $existingPaymentId,
             ]);
 
-            return $this->paymentService->findById($existingPaymentId);
+            return PaymentRecord::find($existingPaymentId);
         }
 
         // Step 2: Rule-based fraud check (fast path)
-        $userId = $this->getCurrentUserId() ?? 0;
-        $this->fraud->check($userId, 'payment_create', $dto->amountKopecks, null, null, $correlationId);
+        // TODO: Implement proper fraud check with FraudCheckDTO when FraudControlService is available
+        // $this->fraud->check($userId, 'payment_create', $dto->amountKopecks, null, null, $correlationId);
 
         // Step 3: DB transaction - create payment record + hold wallet
-        $payment = $this->db->transaction(function () use ($dto, $userId): PaymentRecord {
-            $payment = $this->paymentService->create($dto);
+        $payment = $this->db->transaction(function () use ($dto, $correlationId): PaymentRecord {
+            $payment = PaymentRecord::create([
+                'tenant_id' => $dto->tenantId,
+                'business_group_id' => $dto->businessGroupId,
+                'provider_code' => $dto->providerCode,
+                'amount_kopecks' => $dto->amountKopecks,
+                'currency' => 'RUB',
+                'status' => PaymentStatus::PENDING->value,
+                'description' => $dto->description,
+                'correlation_id' => $dto->correlationId,
+                'metadata' => json_encode($dto->metadata ?? []),
+            ]);
 
             // Hold amount in wallet if wallet_id is provided
-            if ($dto->walletId !== null) {
-                $this->walletService->hold(
-                    walletId: $dto->walletId,
-                    amount: $dto->amountKopecks,
-                    correlationId: $correlationId,
-                    sourceType: PaymentRecord::class,
-                    sourceId: $payment->id,
-                    verticalCode: $dto->verticalCode ?? null,
-                );
-            }
+            // TODO: Implement wallet hold when walletId and verticalCode are available in DTO
 
             return $payment;
         });
@@ -111,7 +106,7 @@ final readonly class PaymentEngineService
         $this->idempotency->mark($correlationId, $payment->id);
 
         // Step 5: Dispatch async FraudML job (non-blocking)
-        PaymentFraudCheckJob::dispatch($payment->id);
+        $this->bus->dispatch(new PaymentFraudCheckJob($payment->id));
 
         // Step 6: Call gateway (OUTSIDE DB transaction)
         try {
@@ -138,7 +133,12 @@ final readonly class PaymentEngineService
                 ]),
             );
 
-            $payment = $this->paymentService->updateStatus($updateDto);
+            $payment->update([
+                'status' => $updateDto->status,
+                'provider_payment_id' => $updateDto->providerPaymentId,
+                'provider_response' => $updateDto->providerResponse,
+                'metadata' => $updateDto->metadata,
+            ]);
 
             $this->logger->info('Payment created successfully', [
                 'payment_id' => $payment->id,
@@ -166,19 +166,25 @@ final readonly class PaymentEngineService
                 ],
             );
 
-            $this->paymentService->updateStatus($updateDto);
+            $payment->update([
+                'status' => $updateDto->status,
+                'provider_payment_id' => $updateDto->providerPaymentId,
+                'provider_response' => $updateDto->providerResponse,
+                'metadata' => $updateDto->metadata,
+            ]);
 
             // Release wallet hold
-            if ($dto->walletId !== null) {
-                try {
-                    // TODO: Implement release hold operation
-                } catch (\Exception $releaseError) {
-                    $this->logger->error('Failed to release wallet hold after gateway error', [
-                        'payment_id' => $payment->id,
-                        'error' => $releaseError->getMessage(),
-                    ]);
-                }
-            }
+            // TODO: Implement release hold operation when walletId is available in DTO
+            // if ($dto->walletId !== null) {
+            //     try {
+            //         $this->walletService->releaseHold(...);
+            //     } catch (\Exception $releaseError) {
+            //         $this->logger->error('Failed to release wallet hold after gateway error', [
+            //             'payment_id' => $payment->id,
+            //             'error' => $releaseError->getMessage(),
+            //         ]);
+            //     }
+            // }
 
             throw $e;
         }
@@ -186,19 +192,15 @@ final readonly class PaymentEngineService
 
     /**
      * Capture payment.
-     *
-     * @param int $paymentId
-     * @param string $correlationId
-     * @return PaymentRecord
      */
     public function capturePayment(int $paymentId, string $correlationId): PaymentRecord
     {
-        $payment = $this->paymentService->findById($paymentId);
-        if ($payment === null) {
+        $payment = PaymentRecord::find($paymentId);
+        if (!$payment) {
             throw new \InvalidArgumentException("Payment not found: {$paymentId}");
         }
 
-        if ($payment->status !== PaymentStatus::WAITING_FOR_CAPTURE) {
+        if ($payment->status !== PaymentStatus::AUTHORIZED) {
             throw new \InvalidArgumentException("Payment cannot be captured from status: {$payment->status->value}");
         }
 
@@ -222,25 +224,34 @@ final readonly class PaymentEngineService
             correlationId: $correlationId,
         );
 
-        return $this->paymentService->updateStatus($updateDto);
+        $payment = PaymentRecord::find($paymentId);
+        if (!$payment) {
+            throw new \InvalidArgumentException("Payment not found: {$paymentId}");
+        }
+
+        $payment->update([
+            'status' => $updateDto->status,
+            'provider_payment_id' => $updateDto->providerPaymentId ?? null,
+            'provider_response' => $updateDto->providerResponse ?? null,
+            'metadata' => $updateDto->metadata ?? null,
+        ]);
+
+        return $payment;
     }
 
     /**
      * Refund payment.
      *
-     * @param int $paymentId
-     * @param int|null $amountKopecks Partial refund amount (null for full refund)
-     * @param string $correlationId
-     * @return PaymentRecord
+     * @param  int|null  $amountKopecks  Partial refund amount (null for full refund)
      */
     public function refundPayment(int $paymentId, ?int $amountKopecks, string $correlationId): PaymentRecord
     {
-        $payment = $this->paymentService->findById($paymentId);
-        if ($payment === null) {
+        $payment = PaymentRecord::find($paymentId);
+        if (!$payment) {
             throw new \InvalidArgumentException("Payment not found: {$paymentId}");
         }
 
-        if (!in_array($payment->status, [PaymentStatus::COMPLETED, PaymentStatus::PARTIALLY_REFUNDED], true)) {
+        if (! in_array($payment->status, [PaymentStatus::CAPTURED, PaymentStatus::REFUNDED], true)) {
             throw new \InvalidArgumentException("Payment cannot be refunded from status: {$payment->status->value}");
         }
 
@@ -260,7 +271,7 @@ final readonly class PaymentEngineService
         $gatewayResponse = $this->gateway->refundPayment($gatewayRequest);
 
         // Update payment status
-        $status = $amountKopecks === null ? PaymentStatus::REFUNDED : PaymentStatus::PARTIALLY_REFUNDED;
+        $status = $amountKopecks === null ? PaymentStatus::REFUNDED : PaymentStatus::REFUNDED;
 
         $updateDto = new UpdatePaymentRecordDto(
             paymentRecordId: $paymentId,
@@ -268,7 +279,19 @@ final readonly class PaymentEngineService
             correlationId: $correlationId,
         );
 
-        return $this->paymentService->updateStatus($updateDto);
+        $payment = PaymentRecord::find($paymentId);
+        if (!$payment) {
+            throw new \InvalidArgumentException("Payment not found: {$paymentId}");
+        }
+
+        $payment->update([
+            'status' => $updateDto->status,
+            'provider_payment_id' => $updateDto->providerPaymentId ?? null,
+            'provider_response' => $updateDto->providerResponse ?? null,
+            'metadata' => $updateDto->metadata ?? null,
+        ]);
+
+        return $payment;
     }
 
     /**

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -21,15 +23,6 @@ final class ListGrocery extends ListRecords
     public function getTitle(): string
     {
         return 'Магазины продуктов';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить магазин')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -108,5 +101,14 @@ final class ListGrocery extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить магазин')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

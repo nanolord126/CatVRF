@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\B2B;
 
@@ -6,25 +8,18 @@ use App\Services\B2B\B2BOrderService;
 use App\Services\B2B\B2BApiKeyService;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class B2BOrderFlowTest extends TestCase
 {
     private B2BOrderService $orderService;
+
     private B2BApiKeyService $apiKeyService;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->orderService = app(B2BOrderService::class);
-        $this->apiKeyService = app(B2BApiKeyService::class);
-        $this->fraud = app(FraudControlService::class);
-        $this->audit = app(AuditService::class);
-    }
 
     public function test_create_b2b_api_key(): void
     {
@@ -91,7 +86,7 @@ final class B2BOrderFlowTest extends TestCase
     {
         // Create business group with tier
         $this->db->table('business_groups')->insert([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'name' => 'Gold Tier Business',
             'tier' => 'gold',
@@ -225,6 +220,16 @@ final class B2BOrderFlowTest extends TestCase
         );
 
         $this->assertEmpty($orders);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->orderService = app(B2BOrderService::class);
+        $this->apiKeyService = app(B2BApiKeyService::class);
+        $this->fraud = app(FraudControlService::class);
+        $this->audit = app(AuditService::class);
     }
 
     protected function tearDown(): void

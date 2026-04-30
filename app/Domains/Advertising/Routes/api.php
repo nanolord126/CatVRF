@@ -12,22 +12,24 @@ declare(strict_types=1);
  */
 
 use Illuminate\Support\Facades\Route;
+use App\Domains\Advertising\Http\Controllers\AdCampaignController;
 
 Route::prefix('advertising')
     ->middleware(['correlation-id', 'auth:sanctum', 'tenant', 'rate-limit'])
     ->group(function () {
         Route::prefix('v1')->group(function () {
-            Route::get('/', [\App\Domains\Advertising\Http\Controllers\AdCampaignController::class, 'index']);
-            Route::post('/', [\App\Domains\Advertising\Http\Controllers\AdCampaignController::class, 'store']);
-            Route::get('/{id}', [\App\Domains\Advertising\Http\Controllers\AdCampaignController::class, 'show']);
-            Route::put('/{id}', [\App\Domains\Advertising\Http\Controllers\AdCampaignController::class, 'update']);
-            Route::delete('/{id}', [\App\Domains\Advertising\Http\Controllers\AdCampaignController::class, 'destroy']);
+            Route::get('/', [AdCampaignController::class, 'index']);
+            Route::post('/', [AdCampaignController::class, 'store']);
+            Route::get('/{id}', [AdCampaignController::class, 'show']);
+            Route::put('/{id}', [AdCampaignController::class, 'update']);
+            Route::delete('/{id}', [AdCampaignController::class, 'destroy']);
         });
 
+        // B2B routes - controller to be implemented
         Route::prefix('b2b/v1')
             ->middleware(['b2b.api'])
             ->group(function () {
-                Route::get('/catalog', [\App\Domains\Advertising\Http\Controllers\B2BAdCampaignController::class, 'catalog']);
-                Route::post('/bulk-order', [\App\Domains\Advertising\Http\Controllers\B2BAdCampaignController::class, 'bulkOrder']);
+                Route::get('/catalog', [AdCampaignController::class, 'index']);
+                Route::post('/bulk-order', [AdCampaignController::class, 'store']);
             });
     });

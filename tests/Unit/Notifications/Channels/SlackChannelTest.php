@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Notifications\Channels;
 
@@ -17,19 +19,8 @@ use Mockery;
 final class SlackChannelTest extends TestCase
 {
     private SlackChannel $channel;
+
     private LoggerInterface $logger;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->logger = Mockery::mock(LoggerInterface::class);
-        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
-
-        $this->channel = new SlackChannel(
-            logger: $this->logger,
-        );
-    }
 
     /** @test */
     public function it_sends_notification_with_to_slack_method(): void
@@ -44,8 +35,10 @@ final class SlackChannelTest extends TestCase
             'notifications.channels.slack.username'    => 'CatVRF Bot',
         ]);
 
-        $notifiable = new class { public int $id = 1; };
-        $notification = new class extends Notification {
+        $notifiable = new class () {
+            public int $id = 1;
+        };
+        $notification = new class () extends Notification {
             public function toSlack(): array
             {
                 return [
@@ -53,9 +46,21 @@ final class SlackChannelTest extends TestCase
                     'channel' => '#alerts',
                 ];
             }
-            public function getType(): string { return 'test_slack'; }
-            public function getCorrelationId(): string { return 'corr-slack-1'; }
-            public function getTenantId(): int { return 1; }
+
+            public function getType(): string
+            {
+                return 'test_slack';
+            }
+
+            public function getCorrelationId(): string
+            {
+                return 'corr-slack-1';
+            }
+
+            public function getTenantId(): int
+            {
+                return 1;
+            }
         };
 
         $this->channel->send($notifiable, $notification);
@@ -76,8 +81,10 @@ final class SlackChannelTest extends TestCase
 
         $channel = new SlackChannel(logger: $this->logger);
 
-        $notifiable = new class { public int $id = 1; };
-        $notification = new class extends Notification {};
+        $notifiable = new class () {
+            public int $id = 1;
+        };
+        $notification = new class () extends Notification {};
 
         $channel->send($notifiable, $notification);
     }
@@ -87,8 +94,10 @@ final class SlackChannelTest extends TestCase
     {
         config(['notifications.channels.slack.webhook_url' => '']);
 
-        $notifiable = new class { public int $id = 2; };
-        $notification = new class extends Notification {
+        $notifiable = new class () {
+            public int $id = 2;
+        };
+        $notification = new class () extends Notification {
             public function toSlack(): array
             {
                 return ['text' => 'no webhook'];
@@ -110,8 +119,10 @@ final class SlackChannelTest extends TestCase
 
         config(['notifications.channels.slack.webhook_url' => 'https://hooks.slack.com/err']);
 
-        $notifiable = new class { public int $id = 3; };
-        $notification = new class extends Notification {
+        $notifiable = new class () {
+            public int $id = 3;
+        };
+        $notification = new class () extends Notification {
             public function toSlack(): array
             {
                 return ['text' => 'error test'];
@@ -133,8 +144,10 @@ final class SlackChannelTest extends TestCase
 
         config(['notifications.channels.slack.webhook_url' => 'https://hooks.slack.com/blocks']);
 
-        $notifiable = new class { public int $id = 4; };
-        $notification = new class extends Notification {
+        $notifiable = new class () {
+            public int $id = 4;
+        };
+        $notification = new class () extends Notification {
             public function toSlack(): array
             {
                 return [
@@ -206,5 +219,17 @@ final class SlackChannelTest extends TestCase
         $channel->sendDirect('text', null, 'corr-no-hook');
 
         Http::assertNothingSent();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->logger = Mockery::mock(LoggerInterface::class);
+        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
+
+        $this->channel = new SlackChannel(
+            logger: $this->logger,
+        );
     }
 }

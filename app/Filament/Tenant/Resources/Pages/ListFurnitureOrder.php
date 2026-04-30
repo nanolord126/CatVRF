@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListFurnitureOrder extends ListRecords
     public function getTitle(): string
     {
         return 'Заказы мебели';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать заказ')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -54,7 +47,7 @@ final class ListFurnitureOrder extends ListRecords
                     ->toggleable(),
                 TextColumn::make('total_price')
                     ->label('Сумма')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('delivery_date')
                     ->label('Доставка')
@@ -102,5 +95,14 @@ final class ListFurnitureOrder extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать заказ')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

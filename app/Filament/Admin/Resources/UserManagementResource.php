@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources;
 
@@ -20,15 +22,24 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use App\Filament\Admin\Resources\UserManagementResource\Pages\ListUsers;
+use App\Filament\Admin\Resources\UserManagementResource\Pages\ViewUser;
+use Illuminate\Support\Str;
 
 final class UserManagementResource extends Resource
 {
     protected static ?string $model = User::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
     protected static ?string $navigationGroup = 'Управление';
+
     protected static ?string $navigationLabel = 'Пользователи';
+
     protected static ?string $modelLabel = 'Пользователь';
+
     protected static ?string $pluralModelLabel = 'Пользователи';
+
     protected static ?int $navigationSort = 20;
 
     public static function form(Form $form): Form
@@ -153,7 +164,7 @@ final class UserManagementResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (User $record): string => $record->is_active ? 'Заблокировать пользователя?' : 'Разблокировать пользователя?')
                     ->action(function (User $record): void {
-                        $record->update(['is_active' => !$record->is_active]);
+                        $record->update(['is_active' => ! $record->is_active]);
                     }),
                 Action::make('resetPassword')
                     ->label('Сбросить пароль')
@@ -162,7 +173,7 @@ final class UserManagementResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (User $record): void {
                         $record->update([
-                            'password' => bcrypt(\Illuminate\Support\Str::random(16)),
+                            'password' => bcrypt(Str::random(16)),
                         ]);
                     }),
             ])
@@ -193,8 +204,8 @@ final class UserManagementResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Admin\Resources\UserManagementResource\Pages\ListUsers::route('/'),
-            'view'  => \App\Filament\Admin\Resources\UserManagementResource\Pages\ViewUser::route('/{record}'),
+            'index' => ListUsers::route('/'),
+            'view'  => ViewUser::route('/{record}'),
         ];
     }
 }

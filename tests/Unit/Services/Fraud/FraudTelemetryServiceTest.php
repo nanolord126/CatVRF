@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Fraud;
 
@@ -12,13 +14,6 @@ final class FraudTelemetryServiceTest extends TestCase
     use RefreshDatabase;
 
     private FraudTelemetryService $telemetry;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->telemetry = app(FraudTelemetryService::class);
-        Redis::flushdb();
-    }
 
     public function test_record_check_increments_counters(): void
     {
@@ -90,7 +85,7 @@ final class FraudTelemetryServiceTest extends TestCase
         $this->telemetry->recordAtomicLock('slot_hold', false, 'slot_already_held');
 
         $counters = Redis::keys('fraud_atomic_lock_slot_hold_*');
-        
+
         $this->assertNotEmpty($counters);
     }
 
@@ -164,7 +159,7 @@ final class FraudTelemetryServiceTest extends TestCase
         $stats = $this->telemetry->getStatistics(24);
 
         $this->assertCount(24, $stats['hourly_trends']);
-        
+
         foreach ($stats['hourly_trends'] as $trend) {
             $this->assertArrayHasKey('hour', $trend);
             $this->assertArrayHasKey('allow', $trend);
@@ -192,10 +187,17 @@ final class FraudTelemetryServiceTest extends TestCase
             if (empty($line) || str_starts_with($line, '#')) {
                 continue;
             }
-            
+
             $parts = explode(' ', $line);
             $this->assertGreaterThanOrEqual(2, count($parts));
             $this->assertIsNumeric($parts[count($parts) - 1]);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->telemetry = app(FraudTelemetryService::class);
+        Redis::flushdb();
     }
 }

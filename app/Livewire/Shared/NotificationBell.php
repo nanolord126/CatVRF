@@ -1,12 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Str;
 
 /**
  * NotificationBell — колокольчик с непрочитанными уведомлениями.
@@ -16,18 +23,20 @@ use Illuminate\Notifications\DatabaseNotification;
  */
 final class NotificationBell extends Component
 {
-    public int    $unreadCount   = 0;
-    public array  $notifications = [];
-    public bool   $isOpen        = false;
+    public int $unreadCount   = 0;
+
+    public array $notifications = [];
+
+    public bool $isOpen        = false;
+
     public string $correlationId = '';
 
-    public function __construct(
-        private readonly AuthManager $auth,
-    ) {}
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly AuthManager $auth,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
         $this->refresh();
     }
 
@@ -35,9 +44,10 @@ final class NotificationBell extends Component
     public function refresh(): void
     {
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             $this->unreadCount   = 0;
             $this->notifications = [];
+
             return;
         }
 
@@ -46,9 +56,9 @@ final class NotificationBell extends Component
             ->latest()
             ->take(6)
             ->get()
-            ->map(fn(DatabaseNotification $n) => [
+            ->map(fn (DatabaseNotification $n) => [
                 'id'       => $n->id,
-                'read'     => !is_null($n->read_at),
+                'read'     => ! is_null($n->read_at),
                 'type'     => $n->data['type']    ?? 'info',
                 'message'  => $n->data['message'] ?? '',
                 'created'  => $n->created_at->diffForHumans(),
@@ -59,17 +69,17 @@ final class NotificationBell extends Component
     public function markAllRead(): void
     {
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
-        $user->unreadNotifications()->update(['read_at' => now()]);
+        $user->unreadNotifications()->update(['read_at' => CarbonImmutable::now()]);
         $this->refresh();
         $this->dispatch('notifications-updated');
     }
 
     public function render(): View
     {
-        return view('livewire.shared.notification-bell');
+        return $this->viewFactory->make('livewire.shared.notification-bell');
     }
 }

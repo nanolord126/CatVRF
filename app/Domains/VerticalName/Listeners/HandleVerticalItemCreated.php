@@ -18,16 +18,13 @@ use Psr\Log\LoggerInterface;
  * - Оповещение ML-сервисов об обновлении каталога
  *
  * Никаких фасадов — только constructor injection.
- *
- * @package App\Domains\VerticalName\Listeners
  */
 final readonly class HandleVerticalItemCreated
 {
     public function __construct(
-        private LoggerInterface $logger,
-        private CacheRepository $cache,
-    ) {
-    }
+        private readonly LoggerInterface $logger,
+        private readonly CacheRepository $cache,
+    ) {}
 
     /**
      * Обработка события создания товара.
@@ -40,7 +37,7 @@ final readonly class HandleVerticalItemCreated
     {
         $this->invalidateCatalogCache($event->tenantId);
 
-        $this->logger->info('VerticalName item created event handled', $event->toLogContext());
+        $this->logger->$this->logger->info('VerticalName item created event handled', $event->toLogContext());
 
         $this->notifyRecommendationService($event);
     }
@@ -52,8 +49,8 @@ final readonly class HandleVerticalItemCreated
      */
     private function invalidateCatalogCache(int $tenantId): void
     {
-        $this->cache->forget('vertical_name_catalog:' . $tenantId);
-        $this->cache->forget('vertical_name_b2b:' . $tenantId);
+        $this->cache->forget('vertical_name_catalog:'.$tenantId);
+        $this->cache->forget('vertical_name_b2b:'.$tenantId);
 
         $this->logger->debug('VerticalName catalog cache invalidated', [
             'tenant_id' => $tenantId,
@@ -67,7 +64,7 @@ final readonly class HandleVerticalItemCreated
      */
     private function notifyRecommendationService(VerticalItemCreatedEvent $event): void
     {
-        $this->logger->info('VerticalName recommendation recalculation triggered', [
+        $this->logger->$this->logger->info('VerticalName recommendation recalculation triggered', [
             'item_id' => $event->item->id,
             'tenant_id' => $event->tenantId,
             'is_b2b' => $event->isB2B,

@@ -5,10 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Tenant\Resources\CrmClientResource\Widgets;
 
 use App\Domains\CRM\Models\CrmClient;
-use Filament\Infolists\Components\Grid;
-use Filament\Infolists\Components\KeyValueEntry;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,11 +19,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class CrmVerticalProfileWidget extends Widget
 {
-    protected static string $view = 'filament.tenant.widgets.crm-vertical-profile';
-
     public ?CrmClient $record = null;
 
-    protected int|string|array $columnSpan = 'full';
+    protected static string $view = 'filament.tenant.widgets.crm-vertical-profile';
+
+    protected readonly int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 10;
 
@@ -141,7 +137,7 @@ final class CrmVerticalProfileWidget extends Widget
             'Любимые кухни' => $this->formatJson($profile->favorite_cuisines),
             'Любимые рестораны' => $this->formatJson($profile->favorite_restaurants),
             'Цель калорий/день' => (string) ($profile->calorie_goal ?? '–'),
-            'Бюджет/заказ' => $profile->budget_per_order ? number_format((float) $profile->budget_per_order, 0, ',', ' ') . ' ₽' : '–',
+            'Бюджет/заказ' => $profile->budget_per_order ? number_format((float) $profile->budget_per_order, 0, ',', ' ').' ₽' : '–',
         ];
     }
 

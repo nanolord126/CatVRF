@@ -1,45 +1,52 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class TravelService
 {
-
     private readonly string $correlationId;
 
-
-    public function __construct(private readonly FraudControlService $fraud,
-            string $correlationId = '',
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
-            $this->correlationId = $correlationId ?: Str::uuid()->toString();
-        }
 
-        public function bookTour(int $tourId, int $seats): array
-        {
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        string $correlationId,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {
+        $this->correlationId = $correlationId ?: Str::uuid()->toString();
+    }
 
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-    $this->db->transaction(function () use ($tourId, $seats) {
-                $tour = TravelTour::lockForUpdate()->find($tourId);
+    public function bookTour(int $tourId, int $seats): array
+    {
 
-                if (!$tour || ($tour->booked + $seats) > $tour->capacity) {
-                    throw new \DomainException('Tour is fully booked');
-                }
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+        $this->db->transaction(function () use ($tourId, $seats) {
+            $tour = TravelTour::lockForUpdate()->find($tourId);
 
-                $tour->update(['booked' => $tour->booked + $seats]);
+            if (! $tour || ($tour->booked + $seats) > $tour->capacity) {
+                throw new \DomainException('Tour is fully booked');
+            }
 
-                $this->logger->info('Tour booked', [
-                    'correlation_id' => $this->correlationId,
-                    'tour_id' => $tourId,
-                    'seats' => $seats,
-                ]);
+            $tour->update(['booked' => $tour->booked + $seats]);
 
-                return ['success' => true, 'tour' => $tour];
-            });
-        }
+            $this->logger->$this->logger->info('Tour booked', [
+                'correlation_id' => $this->correlationId,
+                'tour_id' => $tourId,
+                'seats' => $seats,
+            ]);
+
+            return ['success' => true, 'tour' => $tour];
+        });
+    }
 
     /**
      * Get the string representation of this instance.
@@ -48,7 +55,7 @@ final readonly class TravelService
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +66,8 @@ final readonly class TravelService
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

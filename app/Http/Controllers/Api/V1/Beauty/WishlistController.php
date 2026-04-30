@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -16,12 +22,11 @@ use Illuminate\Support\Str;
  */
 final class WishlistController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * POST /wishlist/add/{type}/{id} — добавить в избранное.
@@ -50,11 +55,11 @@ final class WishlistController extends Controller
                 'wishable_type' => $type,
                 'wishable_id' => $id,
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
-            $this->logger->channel('audit')->info('Added to beauty wishlist', [
+            $this->logger->channel('audit')->$this->logger->info('Added to beauty wishlist', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
                 'type' => $type,
@@ -102,7 +107,7 @@ final class WishlistController extends Controller
                 ], 404);
             }
 
-            $this->logger->channel('audit')->info('Removed from beauty wishlist', [
+            $this->logger->channel('audit')->$this->logger->info('Removed from beauty wishlist', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
                 'type' => $type,

@@ -45,7 +45,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Structural                                                         */
+    /*  Structural */
     /* ================================================================== */
 
     #[Test]
@@ -81,7 +81,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Constructor DI: mandatory dependencies                             */
+    /*  Constructor DI: mandatory dependencies */
     /* ================================================================== */
 
     #[Test]
@@ -122,7 +122,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  InventoryService — public API                                      */
+    /*  InventoryService — public API */
     /* ================================================================== */
 
     #[Test]
@@ -176,7 +176,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  WarehouseService — public API                                      */
+    /*  WarehouseService — public API */
     /* ================================================================== */
 
     #[Test]
@@ -204,7 +204,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  InventoryAuditService — public API                                 */
+    /*  InventoryAuditService — public API */
     /* ================================================================== */
 
     #[Test]
@@ -236,7 +236,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  AI/InventoryConstructorService — public API                        */
+    /*  AI/InventoryConstructorService — public API */
     /* ================================================================== */
 
     #[Test]
@@ -254,7 +254,7 @@ final class InventoryServicesTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  No static calls in services (DB::, Cache::, Log:: etc.)            */
+    /*  No static calls in services (DB::, Cache::, Log:: etc.) */
     /* ================================================================== */
 
     #[Test]

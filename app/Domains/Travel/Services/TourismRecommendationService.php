@@ -2,6 +2,8 @@
 
 namespace App\Domains\Travel\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Travel\Models\Tour;
 use App\Domains\Travel\Models\TourismWishlist;
 use App\Services\ML\UserTasteAnalyzerService;
@@ -19,11 +21,11 @@ use Psr\Log\LoggerInterface;
 final readonly class TourismRecommendationService
 {
     public function __construct(
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private LoggerInterface $logger,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly LoggerInterface $logger,
+        private readonly Cache $cache,
+        private readonly RedisConnection $redis,
     ) {}
-    private Cache $cache,
-        private RedisConnection $redis,
     
     /**
      * Get personalized tour recommendations for a user.
@@ -39,7 +41,7 @@ final readonly class TourismRecommendationService
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
-            $this->logger->info('Tourism recommendations returned from cache', [
+            $this->logger->$this->logger->info('Tourism recommendations returned from cache', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -124,7 +126,7 @@ final readonly class TourismRecommendationService
 
         $this->cache->put($cacheKey, $recommendations, 3600);
 
-        $this->logger->info('Tourism recommendations generated', [
+        $this->logger->$this->logger->info('Tourism recommendations generated', [
             'user_id' => $userId,
             'recommendations_count' => count($recommendations),
             'correlation_id' => $correlationId,
@@ -151,7 +153,7 @@ final readonly class TourismRecommendationService
 
         $flashSales = Tour::where('is_active', true)
             ->where('discount_enabled', true)
-            ->where('discount_ends_at', '>', now())
+            ->where('discount_ends_at', '>', CarbonImmutable::now())
             ->where('discount_percentage', '>', 0)
             ->with('destination')
             ->orderBy('discount_percentage', 'desc')
@@ -167,14 +169,14 @@ final readonly class TourismRecommendationService
                     'discount_percentage' => (float) $tour->discount_percentage,
                     'discounted_price' => (float) ($tour->base_price * (1 - $tour->discount_percentage / 100)),
                     'discount_ends_at' => $tour->discount_ends_at?->toIso8601String(),
-                    'time_remaining' => $tour->discount_ends_at ? now()->diffInSeconds($tour->discount_ends_at) : null,
+                    'time_remaining' => $tour->discount_ends_at ? CarbonImmutable::now()->diffInSeconds($tour->discount_ends_at) : null,
                 ];
             })
             ->toArray();
 
         $this->cache->put($cacheKey, $flashSales, 300);
 
-        $this->logger->info('Tourism flash sales retrieved', [
+        $this->logger->$this->logger->info('Tourism flash sales retrieved', [
             'flash_sales_count' => count($flashSales),
             'correlation_id' => $correlationId,
         ]);
@@ -222,7 +224,7 @@ final readonly class TourismRecommendationService
 
         $this->cache->put($cacheKey, $trendingTours, 1800);
 
-        $this->logger->info('Tourism trending tours retrieved', [
+        $this->logger->$this->logger->info('Tourism trending tours retrieved', [
             'trending_count' => count($trendingTours),
             'correlation_id' => $correlationId,
         ]);

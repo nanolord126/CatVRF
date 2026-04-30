@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Bonuses\Filament\Resources;
 
@@ -13,7 +15,9 @@ final class BonusTransactionResource extends Resource
     protected static ?string $model = BonusTransaction::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-gift';
+
     protected static ?string $navigationGroup = 'Finance';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

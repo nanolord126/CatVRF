@@ -1,18 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Коллаборативная фильтрация для Fashion рекомендаций.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * User-based: recommends items liked by similar users
  * Item-based: recommends items similar to items user liked
  * Matrix factorization: latent factor model for large datasets
@@ -20,14 +26,16 @@ use Illuminate\Support\Str;
 final readonly class FashionCollaborativeFilteringService
 {
     private const MIN_SIMILARITY_SCORE = 0.3;
+
     private const MAX_RECOMMENDATIONS = 50;
+
     private const SIMILARITY_WINDOW_DAYS = 90;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Получить рекомендации на основе коллаборативной фильтрации.
@@ -68,7 +76,7 @@ final readonly class FashionCollaborativeFilteringService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion collaborative filtering executed', [
+        $this->log->channel('audit')->$this->logger->info('Fashion collaborative filtering executed', [
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'algorithm' => $algorithm,
@@ -86,12 +94,44 @@ final readonly class FashionCollaborativeFilteringService
     }
 
     /**
+     * Update latent factors for user (background job).
+     */
+    public function updateUserLatentFactors(int $userId, int $tenantId): void
+    {
+        $factors = $this->computeUserFactors($userId, $tenantId);
+
+        $this->db->table('fashion_user_latent_factors')->updateOrInsert(
+            ['user_id' => $userId, 'tenant_id' => $tenantId],
+            [
+                'factors' => json_encode($factors),
+                'updated_at' => CarbonImmutable::now(),
+            ]
+        );
+    }
+
+    /**
+     * Update latent factors for item (background job).
+     */
+    public function updateItemLatentFactors(int $productId, int $tenantId): void
+    {
+        $factors = $this->computeItemFactors($productId, $tenantId);
+
+        $this->db->table('fashion_item_latent_factors')->updateOrInsert(
+            ['product_id' => $productId, 'tenant_id' => $tenantId],
+            [
+                'factors' => json_encode($factors),
+                'updated_at' => CarbonImmutable::now(),
+            ]
+        );
+    }
+
+    /**
      * User-based collaborative filtering.
      */
     private function getUserBasedRecommendations(int $userId, int $tenantId, int $limit, string $correlationId): array
     {
         $similarUsers = $this->findSimilarUsers($userId, $tenantId, $correlationId);
-        
+
         if (empty($similarUsers)) {
             return [];
         }
@@ -101,11 +141,11 @@ final readonly class FashionCollaborativeFilteringService
 
         foreach ($similarUsers as $similarUser) {
             $similarUserPurchases = $this->getUserPurchasedProducts($similarUser['user_id'], $tenantId);
-            
+
             foreach ($similarUserPurchases as $product) {
-                if (!in_array($product['product_id'], $userPurchasedProducts)) {
+                if (! in_array($product['product_id'], $userPurchasedProducts, true)) {
                     $productId = $product['product_id'];
-                    if (!isset($recommendations[$productId])) {
+                    if (! isset($recommendations[$productId])) {
                         $recommendations[$productId] = [
                             'product_id' => $productId,
                             'score' => 0,
@@ -119,7 +159,7 @@ final readonly class FashionCollaborativeFilteringService
             }
         }
 
-        uasort($recommendations, fn($a, $b) => $b['score'] <=> $a['score']);
+        uasort($recommendations, fn ($a, $b) => $b['score'] <=> $a['score']);
         $recommendations = array_slice(array_values($recommendations), 0, $limit, true);
 
         return $this->enrichRecommendations($recommendations, $userId, $tenantId);
@@ -131,7 +171,7 @@ final readonly class FashionCollaborativeFilteringService
     private function getItemBasedRecommendations(int $userId, int $tenantId, int $limit, string $correlationId): array
     {
         $userLikedProducts = $this->getUserPurchasedProducts($userId, $tenantId);
-        
+
         if (empty($userLikedProducts)) {
             return [];
         }
@@ -140,9 +180,9 @@ final readonly class FashionCollaborativeFilteringService
         foreach ($userLikedProducts as $productId) {
             $items = $this->findSimilarItems($productId, $tenantId, $correlationId);
             foreach ($items as $item) {
-                if (!in_array($item['product_id'], $userLikedProducts)) {
+                if (! in_array($item['product_id'], $userLikedProducts, true)) {
                     $similarItemId = $item['product_id'];
-                    if (!isset($similarItems[$similarItemId])) {
+                    if (! isset($similarItems[$similarItemId])) {
                         $similarItems[$similarItemId] = [
                             'product_id' => $similarItemId,
                             'score' => 0,
@@ -156,7 +196,7 @@ final readonly class FashionCollaborativeFilteringService
             }
         }
 
-        uasort($similarItems, fn($a, $b) => $b['score'] <=> $a['score']);
+        uasort($similarItems, fn ($a, $b) => $b['score'] <=> $a['score']);
         $similarItems = array_slice(array_values($similarItems), 0, $limit, true);
 
         return $this->enrichRecommendations($similarItems, $userId, $tenantId);
@@ -168,7 +208,7 @@ final readonly class FashionCollaborativeFilteringService
     private function getMatrixFactorizationRecommendations(int $userId, int $tenantId, int $limit, string $correlationId): array
     {
         $userFactors = $this->getUserLatentFactors($userId, $tenantId);
-        
+
         if (empty($userFactors)) {
             return $this->getUserBasedRecommendations($userId, $tenantId, $limit, $correlationId);
         }
@@ -185,7 +225,7 @@ final readonly class FashionCollaborativeFilteringService
         $recommendations = [];
 
         foreach ($allProducts as $productId) {
-            if (in_array($productId, $userPurchasedProducts)) {
+            if (in_array($productId, $userPurchasedProducts, true)) {
                 continue;
             }
 
@@ -195,7 +235,7 @@ final readonly class FashionCollaborativeFilteringService
             }
 
             $score = $this->calculateDotProduct($userFactors, $itemFactors);
-            
+
             if ($score > self::MIN_SIMILARITY_SCORE) {
                 $recommendations[] = [
                     'product_id' => $productId,
@@ -205,7 +245,7 @@ final readonly class FashionCollaborativeFilteringService
             }
         }
 
-        usort($recommendations, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($recommendations, fn ($a, $b) => $b['score'] <=> $a['score']);
         $recommendations = array_slice($recommendations, 0, $limit, true);
 
         return $this->enrichRecommendations($recommendations, $userId, $tenantId);
@@ -220,7 +260,7 @@ final readonly class FashionCollaborativeFilteringService
         $itemBased = $this->getItemBasedRecommendations($userId, $tenantId, $limit * 2, $correlationId);
 
         $combined = [];
-        
+
         foreach ($userBased as $item) {
             $productId = $item['product_id'];
             $combined[$productId] = [
@@ -233,7 +273,7 @@ final readonly class FashionCollaborativeFilteringService
 
         foreach ($itemBased as $item) {
             $productId = $item['product_id'];
-            if (!isset($combined[$productId])) {
+            if (! isset($combined[$productId])) {
                 $combined[$productId] = [
                     'product_id' => $productId,
                     'score' => $item['score'] * 0.5,
@@ -246,7 +286,7 @@ final readonly class FashionCollaborativeFilteringService
             }
         }
 
-        uasort($combined, fn($a, $b) => $b['score'] <=> $a['score']);
+        uasort($combined, fn ($a, $b) => $b['score'] <=> $a['score']);
         $combined = array_slice(array_values($combined), 0, $limit, true);
 
         return $this->enrichRecommendations($combined, $userId, $tenantId);
@@ -258,13 +298,13 @@ final readonly class FashionCollaborativeFilteringService
     private function findSimilarUsers(int $userId, int $tenantId, string $correlationId): array
     {
         $userPurchases = $this->getUserPurchasedProducts($userId, $tenantId);
-        
+
         if (empty($userPurchases)) {
             return [];
         }
 
-        $windowStart = Carbon::now()->subDays(self::SIMILARITY_WINDOW_DAYS);
-        
+        $windowStart = CarbonImmutable::now()->subDays(self::SIMILARITY_WINDOW_DAYS);
+
         $similarUsers = $this->db->table('order_items as oi')
             ->join('orders as o', 'oi.order_id', '=', 'o.id')
             ->join('fashion_products as fp', 'oi.product_id', '=', 'fp.id')
@@ -281,12 +321,12 @@ final readonly class FashionCollaborativeFilteringService
             ->toArray();
 
         $totalUserPurchases = count($userPurchases);
-        
+
         foreach ($similarUsers as &$user) {
             $user['similarity'] = $user['common_products'] / $totalUserPurchases;
         }
 
-        return array_filter($similarUsers, fn($u) => $u['similarity'] >= self::MIN_SIMILARITY_SCORE);
+        return array_filter($similarUsers, fn ($u) => $u['similarity'] >= self::MIN_SIMILARITY_SCORE);
     }
 
     /**
@@ -294,10 +334,10 @@ final readonly class FashionCollaborativeFilteringService
      */
     private function findSimilarItems(int $productId, int $tenantId, string $correlationId): array
     {
-        $windowStart = Carbon::now()->subDays(self::SIMILARITY_WINDOW_DAYS);
-        
+        $windowStart = CarbonImmutable::now()->subDays(self::SIMILARITY_WINDOW_DAYS);
+
         $similarItems = $this->db->table('order_items as oi1')
-            ->join('order_items as oi2', function($join) {
+            ->join('order_items as oi2', function ($join) {
                 $join->on('oi1.order_id', '=', 'oi2.order_id')
                     ->where('oi1.product_id', '!=', 'oi2.product_id');
             })
@@ -311,13 +351,13 @@ final readonly class FashionCollaborativeFilteringService
             ->get()
             ->toArray();
 
-        $maxCoPurchase = !empty($similarItems) ? max(array_column($similarItems, 'co_purchase_count')) : 1;
-        
+        $maxCoPurchase = ! empty($similarItems) ? max(array_column($similarItems, 'co_purchase_count')) : 1;
+
         foreach ($similarItems as &$item) {
             $item['similarity'] = $item['co_purchase_count'] / $maxCoPurchase;
         }
 
-        return array_filter($similarItems, fn($i) => $i['similarity'] >= self::MIN_SIMILARITY_SCORE);
+        return array_filter($similarItems, fn ($i) => $i['similarity'] >= self::MIN_SIMILARITY_SCORE);
     }
 
     /**
@@ -353,7 +393,7 @@ final readonly class FashionCollaborativeFilteringService
     {
         $dotProduct = 0;
         $minLength = min(count($vector1), count($vector2));
-        
+
         for ($i = 0; $i < $minLength; $i++) {
             $dotProduct += ($vector1[$i] ?? 0) * ($vector2[$i] ?? 0);
         }
@@ -408,38 +448,6 @@ final readonly class FashionCollaborativeFilteringService
         }
 
         return $enriched;
-    }
-
-    /**
-     * Update latent factors for user (background job).
-     */
-    public function updateUserLatentFactors(int $userId, int $tenantId): void
-    {
-        $factors = $this->computeUserFactors($userId, $tenantId);
-        
-        $this->db->table('fashion_user_latent_factors')->updateOrInsert(
-            ['user_id' => $userId, 'tenant_id' => $tenantId],
-            [
-                'factors' => json_encode($factors),
-                'updated_at' => Carbon::now(),
-            ]
-        );
-    }
-
-    /**
-     * Update latent factors for item (background job).
-     */
-    public function updateItemLatentFactors(int $productId, int $tenantId): void
-    {
-        $factors = $this->computeItemFactors($productId, $tenantId);
-        
-        $this->db->table('fashion_item_latent_factors')->updateOrInsert(
-            ['product_id' => $productId, 'tenant_id' => $tenantId],
-            [
-                'factors' => json_encode($factors),
-                'updated_at' => Carbon::now(),
-            ]
-        );
     }
 
     /**

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
@@ -11,9 +13,11 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 
 final class Product3DController extends Controller
 {
-    public function __construct(private readonly Product3DService $service,
+    public function __construct(
+        private readonly Product3DService $service,
         private readonly ResponseFactory $response,
     ) {}
+
     public function index(int $verticalId): JsonResponse
     {
         // Get all 3D models for vertical
@@ -22,23 +26,26 @@ final class Product3DController extends Controller
             'correlation_id' => Str::uuid(),
         ]);
     }
+
     public function show(int $productId): JsonResponse
     {
         $model = $this->service->getProduct3DModel($productId);
-        if (!$model) {
+        if (! $model) {
             return $this->response->json(['error' => 'Model not found'], 404);
         }
+
         return $this->response->json([
             'data' => $model,
             'correlation_id' => Str::uuid(),
         ]);
     }
+
     public function upload(Request $request, int $productId, string $vertical): JsonResponse
     {
         $validated = $request->validate([
             '3d_model' => 'required|file|mimes:glb,gltf,obj',
         ]);
-        if (!$this->service->validate3DModel($validated['3d_model']->getPathname())) {
+        if (! $this->service->validate3DModel($validated['3d_model']->getPathname())) {
             return $this->response->json(['error' => 'Invalid 3D format'], 422);
         }
         $result = $this->service->uploadProduct3DModel(
@@ -46,18 +53,21 @@ final class Product3DController extends Controller
             (string) $productId,
             $vertical
         );
+
         return $this->response->json([
             'data' => $result,
             'correlation_id' => Str::uuid(),
         ], 201);
     }
+
     public function getThumbnail(int $productId): JsonResponse
     {
         $model = $this->service->getProduct3DModel($productId);
-        if (!$model) {
+        if (! $model) {
             return $this->response->json(['error' => 'Model not found'], 404);
         }
         $thumbnail = $this->service->generate3DThumbbnail($model['path']);
+
         return $this->response->json([
             'thumbnail_url' => $thumbnail,
             'correlation_id' => Str::uuid(),

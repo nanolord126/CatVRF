@@ -10,7 +10,9 @@ use Illuminate\Queue\SerializesModels;
 
 final readonly class FraudDetectedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public int $userId,

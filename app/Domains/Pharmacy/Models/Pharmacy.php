@@ -1,16 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use App\Traits\TenantScoped;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class Pharmacy extends Model
 {
-
     protected $table = 'pharmacies';
 
     protected $fillable = [
@@ -57,7 +54,7 @@ final class Pharmacy extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             $query->where('pharmacies.tenant_id', tenant()->id);
         });
     }

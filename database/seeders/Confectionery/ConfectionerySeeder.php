@@ -30,7 +30,7 @@ final class ConfectionerySeeder extends Seeder
             ConfectioneryProduct::updateOrCreate(
                 ['tenant_id' => $tenantId, 'name' => $item['name']],
                 [
-                    'sku' => strtoupper('CONF-' . Str::random(8)),
+                    'sku' => strtoupper('CONF-'.Str::random(8)),
                     'category' => $item['category'],
                     'description' => 'Кондитерское изделие',
                     'price' => $item['price'],

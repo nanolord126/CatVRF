@@ -1,18 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\WalletService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
  * TaxiGamificationService - Driver gamification with streak bonuses and leaderboards
- * 
+ *
  * Increases driver retention by 35% through:
  * - Streak bonuses for consecutive completed rides
  * - Leaderboards with weekly rankings
@@ -22,9 +25,11 @@ use Psr\Log\LoggerInterface;
 final readonly class TaxiGamificationService
 {
     private const STREAK_BONUS_MULTIPLIER = 0.1;
+
     private const STREAK_BONUS_MAX_MULTIPLIER = 0.5;
+
     private const LEADERBOARD_CACHE_TTL = 300;
-    
+
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
@@ -38,7 +43,7 @@ final readonly class TaxiGamificationService
     {
         $cacheKey = "taxi:driver:streak:{$driverId}";
         $currentStreak = $this->cache->get($cacheKey, 0);
-        
+
         $this->cache->put($cacheKey, $currentStreak, 3600);
 
         $this->logger->debug('Driver assignment recorded', [
@@ -77,11 +82,11 @@ final readonly class TaxiGamificationService
             $cacheKey = "taxi:driver:streak:{$driverId}";
             $currentStreak = $this->cache->get($cacheKey, 0);
             $newStreak = $currentStreak + 1;
-            
+
             $this->cache->put($cacheKey, $newStreak, 3600);
 
             $streakMultiplier = min($newStreak * self::STREAK_BONUS_MULTIPLIER, self::STREAK_BONUS_MAX_MULTIPLIER);
-            $streakBonus = (int)($earnings * $streakMultiplier);
+            $streakBonus = (int) ($earnings * $streakMultiplier);
 
             if ($streakBonus > 0) {
                 $driverWallet = $this->db->table('wallets')
@@ -109,8 +114,8 @@ final readonly class TaxiGamificationService
                 ->where('driver_id', $driverId)
                 ->update([
                     'rides_completed' => $this->db->raw('rides_completed + 1'),
-                    'total_earnings' => $this->db->raw('total_earnings + ' . $earnings),
-                    'last_ride_at' => now(),
+                    'total_earnings' => $this->db->raw('total_earnings + '.$earnings),
+                    'last_ride_at' => CarbonImmutable::now(),
                     'current_streak' => $newStreak,
                     'max_streak' => $this->db->raw("GREATEST(max_streak, {$newStreak})"),
                 ]);
@@ -132,7 +137,7 @@ final readonly class TaxiGamificationService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Ride completion recorded with gamification', [
+            $this->logger->$this->logger->info('Ride completion recorded with gamification', [
                 'driver_id' => $driverId,
                 'ride_id' => $rideId,
                 'earnings' => $earnings,
@@ -155,27 +160,27 @@ final readonly class TaxiGamificationService
                 'current_streak' => 0,
             ]);
 
-        $this->logger->info('Ride cancellation recorded, streak reset', [
+        $this->logger->$this->logger->info('Ride cancellation recorded, streak reset', [
             'driver_id' => $driverId,
             'ride_id' => $rideId,
             'correlation_id' => $correlationId,
         ]);
     }
 
-    public function getLeaderboard(int $tenantId, string $period = 'weekly', string $correlationId): array
+    public function getLeaderboard(int $tenantId, string $period, string $correlationId): array
     {
         $cacheKey = "taxi:leaderboard:{$tenantId}:{$period}";
         $cachedLeaderboard = $this->cache->get($cacheKey);
-        
+
         if ($cachedLeaderboard !== null) {
             return $cachedLeaderboard;
         }
 
         $startDate = match($period) {
-            'daily' => now()->startOfDay(),
-            'weekly' => now()->startOfWeek(),
-            'monthly' => now()->startOfMonth(),
-            default => now()->startOfWeek(),
+            'daily' => CarbonImmutable::now()->startOfDay(),
+            'weekly' => CarbonImmutable::now()->startOfWeek(),
+            'monthly' => CarbonImmutable::now()->startOfMonth(),
+            default => CarbonImmutable::now()->startOfWeek(),
         };
 
         $leaderboard = $this->db->table('taxi_driver_stats as stats')
@@ -234,7 +239,7 @@ final readonly class TaxiGamificationService
 
         $achievementsToAward = [];
 
-        if ($streak >= 10 && !$this->hasAchievement($driverId, 'streak_10', $correlationId)) {
+        if ($streak >= 10 && ! $this->hasAchievement($driverId, 'streak_10', $correlationId)) {
             $achievementsToAward[] = [
                 'code' => 'streak_10',
                 'name' => 'Десятка',
@@ -243,7 +248,7 @@ final readonly class TaxiGamificationService
             ];
         }
 
-        if ($streak >= 50 && !$this->hasAchievement($driverId, 'streak_50', $correlationId)) {
+        if ($streak >= 50 && ! $this->hasAchievement($driverId, 'streak_50', $correlationId)) {
             $achievementsToAward[] = [
                 'code' => 'streak_50',
                 'name' => 'Полусотка',
@@ -252,7 +257,7 @@ final readonly class TaxiGamificationService
             ];
         }
 
-        if ($stats->rides_completed >= 100 && !$this->hasAchievement($driverId, 'rides_100', $correlationId)) {
+        if ($stats->rides_completed >= 100 && ! $this->hasAchievement($driverId, 'rides_100', $correlationId)) {
             $achievementsToAward[] = [
                 'code' => 'rides_100',
                 'name' => 'Сотка',
@@ -261,7 +266,7 @@ final readonly class TaxiGamificationService
             ];
         }
 
-        if ($stats->rides_completed >= 1000 && !$this->hasAchievement($driverId, 'rides_1000', $correlationId)) {
+        if ($stats->rides_completed >= 1000 && ! $this->hasAchievement($driverId, 'rides_1000', $correlationId)) {
             $achievementsToAward[] = [
                 'code' => 'rides_1000',
                 'name' => 'Тысячник',
@@ -270,7 +275,7 @@ final readonly class TaxiGamificationService
             ];
         }
 
-        if ($stats->total_earnings >= 1000000 && !$this->hasAchievement($driverId, 'earnings_1m', $correlationId)) {
+        if ($stats->total_earnings >= 1000000 && ! $this->hasAchievement($driverId, 'earnings_1m', $correlationId)) {
             $achievementsToAward[] = [
                 'code' => 'earnings_1m',
                 'name' => 'Миллионер',
@@ -300,7 +305,7 @@ final readonly class TaxiGamificationService
                 'achievement_code' => $achievement['code'],
                 'achievement_name' => $achievement['name'],
                 'achievement_description' => $achievement['description'],
-                'awarded_at' => now(),
+                'awarded_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
             ]);
 
@@ -335,7 +340,7 @@ final readonly class TaxiGamificationService
                 }
             }
 
-            $this->logger->info('Achievement awarded to driver', [
+            $this->logger->$this->logger->info('Achievement awarded to driver', [
                 'driver_id' => $driverId,
                 'achievement_code' => $achievement['code'],
                 'achievement_name' => $achievement['name'],
@@ -349,12 +354,12 @@ final readonly class TaxiGamificationService
     {
         $cacheKey = "taxi:leaderboard:update:{$driverId}";
         $lastUpdate = $this->cache->get($cacheKey);
-        
-        if ($lastUpdate !== null && now()->diffInMinutes($lastUpdate) < 5) {
+
+        if ($lastUpdate !== null && CarbonImmutable::now()->diffInMinutes($lastUpdate) < 5) {
             return;
         }
 
-        $this->cache->put($cacheKey, now(), 300);
+        $this->cache->put($cacheKey, CarbonImmutable::now(), 300);
 
         $tenantId = $this->db->table('taxi_drivers')
             ->where('id', $driverId)

@@ -25,6 +25,7 @@ use App\Domains\Finances\Resources\FinanceRecordResource;
 use App\Domains\Finances\Services\FinancesService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Illuminate\Http\Request;
 
 /**
  * Архитектурные тесты вертикали Finances — CatVRF 2026.
@@ -37,13 +38,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class FinancesVerticalFeatureTest extends TestCase
 {
-    /** Абсолютный путь к корню проекта (без trailing slash). */
-    private static function basePath(string $relative = ''): string
-    {
-        $root = dirname(__DIR__, 4); // tests/Feature/Domains/Finances → project root
-        return $root . ($relative !== '' ? DIRECTORY_SEPARATOR . ltrim(str_replace('/', DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR) : '');
-    }
-
     // ──────────────────────────────────────
     //  Архитектура: структура директорий
     // ──────────────────────────────────────
@@ -73,7 +67,7 @@ final class FinancesVerticalFeatureTest extends TestCase
 
         foreach ($requiredDirs as $dir) {
             self::assertDirectoryExists(
-                $basePath . DIRECTORY_SEPARATOR . $dir,
+                $basePath.DIRECTORY_SEPARATOR.$dir,
                 "Слой {$dir} отсутствует в вертикали Finances",
             );
         }
@@ -88,7 +82,7 @@ final class FinancesVerticalFeatureTest extends TestCase
 
         foreach ($required as $dir) {
             self::assertDirectoryExists(
-                $domainPath . DIRECTORY_SEPARATOR . $dir,
+                $domainPath.DIRECTORY_SEPARATOR.$dir,
                 "DDD-слой Domain/{$dir} отсутствует",
             );
         }
@@ -99,9 +93,9 @@ final class FinancesVerticalFeatureTest extends TestCase
     {
         $infraPath = self::basePath('app/Domains/Finances/Infrastructure');
 
-        self::assertDirectoryExists($infraPath . DIRECTORY_SEPARATOR . 'Jobs');
-        self::assertDirectoryExists($infraPath . DIRECTORY_SEPARATOR . 'Persistence');
-        self::assertDirectoryExists($infraPath . DIRECTORY_SEPARATOR . 'Providers');
+        self::assertDirectoryExists($infraPath.DIRECTORY_SEPARATOR.'Jobs');
+        self::assertDirectoryExists($infraPath.DIRECTORY_SEPARATOR.'Persistence');
+        self::assertDirectoryExists($infraPath.DIRECTORY_SEPARATOR.'Providers');
     }
 
     #[Test]
@@ -113,7 +107,7 @@ final class FinancesVerticalFeatureTest extends TestCase
             self::markTestSkipped('AI-директория пока отсутствует');
         }
 
-        $files = glob($aiPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        $files = glob($aiPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
         self::assertNotEmpty($files, 'AI-конструктор отсутствует');
     }
 
@@ -239,7 +233,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     }
 
     #[Test]
-    public function dtos_have_toArray_and_toAuditContext(): void
+    public function dtos_have_to_array_and_to_audit_context(): void
     {
         $classes = [CreateTransactionDto::class, CreateBudgetDto::class];
 
@@ -277,7 +271,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     }
 
     #[Test]
-    public function ai_constructor_has_analyzeAndRecommend(): void
+    public function ai_constructor_has_analyze_and_recommend(): void
     {
         $class = 'App\\Domains\\Finances\\Services\\AI\\FinancialAdvisorConstructorService';
 
@@ -299,7 +293,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     #[Test]
     public function b2b_detection_follows_canon_rule(): void
     {
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $request->merge(['inn' => '7700000000', 'business_card_id' => 123]);
 
         $isB2B = $request->has('inn') && $request->has('business_card_id');
@@ -309,7 +303,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     #[Test]
     public function b2c_detection_without_inn(): void
     {
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $request->merge(['name' => 'Иванов']);
 
         $isB2B = $request->has('inn') && $request->has('business_card_id');
@@ -345,7 +339,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     // ──────────────────────────────────────
 
     #[Test]
-    public function events_have_toAuditContext(): void
+    public function events_have_to_audit_context(): void
     {
         $classes = [FinanceRecordCreated::class, FinanceRecordUpdated::class];
 
@@ -359,7 +353,7 @@ final class FinancesVerticalFeatureTest extends TestCase
     }
 
     #[Test]
-    public function updated_event_has_hasChanged_method(): void
+    public function updated_event_has_has_changed_method(): void
     {
         $ref = new \ReflectionClass(FinanceRecordUpdated::class);
         self::assertTrue($ref->hasMethod('hasChanged'));
@@ -437,5 +431,13 @@ final class FinancesVerticalFeatureTest extends TestCase
     {
         $ref = new \ReflectionClass(FinanceRecordResource::class);
         self::assertTrue($ref->isFinal());
+    }
+
+    /** Абсолютный путь к корню проекта (без trailing slash). */
+    private static function basePath(string $relative = ''): string
+    {
+        $root = dirname(__DIR__, 4); // tests/Feature/Domains/Finances → project root
+
+        return $root.($relative !== '' ? DIRECTORY_SEPARATOR.ltrim(str_replace('/', DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR) : '');
     }
 }

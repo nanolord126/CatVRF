@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * EditRecordCollectibleItem — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/editrecordcollectibleitem
  * @see https://catvrf.ru/docs/editrecordcollectibleitem
  * @see https://catvrf.ru/docs/editrecordcollectibleitem
@@ -31,14 +34,14 @@
  * @see https://catvrf.ru/docs/editrecordcollectibleitem
  */
 
-
 namespace App\Filament\Tenant\Resources\CollectibleItem\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\EditRecord;
 
 final class EditRecordCollectibleItem extends EditRecord
 {
-
     protected static string $resource = CollectibleItemResource::class;
 
     /**
@@ -48,7 +51,7 @@ final class EditRecordCollectibleItem extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +62,8 @@ final class EditRecordCollectibleItem extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

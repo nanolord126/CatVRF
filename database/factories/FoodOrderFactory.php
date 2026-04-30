@@ -7,10 +7,10 @@ namespace Database\Factories;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+use App\Domains\Food\FoodOrder;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Food\FoodOrder>
+ * @extends Factory<FoodOrder>
  */
 final class FoodOrderFactory extends Factory
 {

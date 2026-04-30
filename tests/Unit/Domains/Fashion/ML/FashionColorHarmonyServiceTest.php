@@ -14,12 +14,6 @@ final class FashionColorHarmonyServiceTest extends TestCase
 
     private FashionColorHarmonyService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionColorHarmonyService::class);
-    }
-
     public function test_get_recommendations_from_beauty_history(): void
     {
         $result = $this->service->getRecommendationsFromBeautyHistory(1, 1);
@@ -81,5 +75,11 @@ final class FashionColorHarmonyServiceTest extends TestCase
         $this->assertIsArray($result);
         $this->assertContains('blue', $result);
         $this->assertContains('green', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionColorHarmonyService::class);
     }
 }

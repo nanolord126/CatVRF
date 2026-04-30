@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\DTOs\CarImportDto;
 use App\Domains\Auto\Models\AutoVehicle;
@@ -8,13 +12,12 @@ use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\ML\FraudMLService;
 use App\Services\WalletService;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Logger;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Carbon\CarbonImmutable;
 
 final readonly class CarImportService
 {
@@ -43,14 +46,14 @@ final readonly class CarImportService
         '15+' => 2.5,
     ];
 
-    public function __construct(
-        private FraudControlService $fraudControl,
-        private FraudMLService $fraudML,
-        private AuditService $auditService,
-        private WalletService $walletService,
-        private ConnectionInterface $db,
-        private Logger $logger,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly ConnectionInterface $db,
+        private readonly Logger $logger,
+        private readonly FraudControlService $fraudControl,
+        private readonly FraudMLService $fraudML,
+        private readonly AuditService $auditService,
+        private readonly WalletService $walletService,
+        private readonly CacheManager $cache,) {}
 
     public function calculateCustomsDuties(CarImportDto $dto): array
     {
@@ -67,8 +70,8 @@ final readonly class CarImportService
 
         $this->fraudML->checkVinFraud($dto->vin, $dto->userId, $correlationId);
 
-        $cacheKey = "car_import:calc:$dto->tenantId:$dto->userId:" . md5($dto->vin . $dto->declaredValue . $dto->currency);
-        $cached = Cache::get($cacheKey);
+        $cacheKey = "car_import:calc:$dto->tenantId:$dto->userId:".md5($dto->vin.$dto->declaredValue.$dto->currency);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -129,7 +132,7 @@ final readonly class CarImportService
 
             $this->saveImportCalculation($dto, $calculationResult, $correlationId);
 
-            Cache::put($cacheKey, $calculationResult, 3600);
+            $this->cache->put($cacheKey, $calculationResult, 3600);
 
             $this->auditService->record(
                 action: 'car_import_calculated',
@@ -144,7 +147,7 @@ final readonly class CarImportService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('car.import.calculation.completed', [
+            $this->logger->channel('audit')->$this->logger->info('car.import.calculation.completed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $dto->userId,
                 'vin' => $dto->vin,
@@ -173,7 +176,7 @@ final readonly class CarImportService
         return $this->db->transaction(function () use ($dto, $documents, $correlationId) {
             $vehicle = $this->getOrCreateVehicle($dto, $correlationId);
 
-            $importRecord = DB::table('car_imports')->insertGetId([
+            $importRecord = $this->db->table('car_imports')->insertGetId([
                 'tenant_id' => $dto->tenantId,
                 'business_group_id' => $dto->businessGroupId,
                 'user_id' => $dto->userId,
@@ -193,8 +196,8 @@ final readonly class CarImportService
                 'metadata' => [
                     'created_via_import_service' => true,
                 ],
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             $calculation = $this->calculateCustomsDuties($dto);
@@ -238,7 +241,7 @@ final readonly class CarImportService
         );
 
         return $this->db->transaction(function () use ($importId, $userId, $tenantId, $correlationId) {
-            $import = DB::table('car_imports')
+            $import = $this->db->table('car_imports')
                 ->where('id', $importId)
                 ->where('tenant_id', $tenantId)
                 ->where('user_id', $userId)
@@ -264,16 +267,16 @@ final readonly class CarImportService
                 correlationId: $correlationId,
             );
 
-            DB::table('car_imports')
+            $this->db->table('car_imports')
                 ->where('id', $importId)
                 ->update([
                     'status' => 'customs_processing',
-                    'paid_at' => now(),
+                    'paid_at' => CarbonImmutable::now(),
                     'metadata' => array_merge(json_decode($import->metadata ?? '{}', true), [
-                        'payment_completed_at' => now()->toIso8601String(),
+                        'payment_completed_at' => CarbonImmutable::now()->toIso8601String(),
                         'paid_amount' => $totalDuties,
                     ]),
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             $this->auditService->record(
@@ -398,14 +401,14 @@ final readonly class CarImportService
 
     private function saveImportCalculation(CarImportDto $dto, array $result, string $correlationId): void
     {
-        DB::table('car_import_calculations')->insert([
+        $this->db->table('car_import_calculations')->insert([
             'tenant_id' => $dto->tenantId,
             'user_id' => $dto->userId,
             'vin' => $dto->vin,
             'calculation_data' => json_encode($result),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -434,7 +437,7 @@ final readonly class CarImportService
 
     private function getUserWalletId(int $userId, int $tenantId): int
     {
-        $wallet = DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->first();
@@ -443,14 +446,14 @@ final readonly class CarImportService
             return $wallet->id;
         }
 
-        return DB::table('wallets')->insertGetId([
+        return $this->db->table('wallets')->insertGetId([
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'current_balance' => 0,
             'hold_amount' => 0,
             'correlation_id' => Str::uuid()->toString(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 

@@ -1,12 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies\Beauty;
 
+use FraudControlService;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\Http\Request;
 use App\Domains\Beauty\Models\BeautyService;
 use App\Models\User;
 use App\Services\FraudControlService;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
 /**
  * Class BeautyServicePolicy
  *
@@ -17,28 +25,28 @@ use App\Services\FraudControlService;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Policies\Beauty
+ * @see FraudControlService
+ * @see AuditService
  */
 final class BeautyServicePolicy
 {
-    public function __construct(
-        private readonly Request $request,
-    ) {}
-    public function view(User $user, BeautyService $service): bool
+    public function __construct(private readonly FraudControlService $fraudControlService,
+        private readonly ViewFactory $viewFactory,
+        private readonly Request $request,) {}
+
+    public function $this->viewFactory->make(User $user, BeautyService $service): bool
     {
         return true;
     }
 
     public function create(User $user): bool
     {
-        $fraud = app(FraudControlService::class);
+        $fraud = $this->fraudControlService /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
         $fraud->check(
             userId: $user->id,
             operationType: 'beauty_service_create',
             amount: 0,
-            correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
         );
 
         return $user->tenant_id !== null;

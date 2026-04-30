@@ -1,0 +1,29 @@
+# Terraform Variables Example for CatVRF
+# Copy this file to terraform.tfvars and fill in your values
+
+# Project Configuration
+project_name = "catvrf"
+environment  = "production"
+aws_region   = "eu-central-1"
+
+# Network Configuration
+vpc_cidr              = "10.0.0.0/16"
+availability_zones    = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+private_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+public_subnet_cidrs   = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+database_subnet_cidrs = ["10.0.201.0/24", "10.0.202.0/24", "10.0.203.0/24"]
+
+# ECS Configuration
+task_cpu      = 2048
+task_memory   = 4096
+desired_count = 3
+
+# Docker Configuration
+ecr_repository_url = "ghcr.io/nanolord126/catvrf"
+image_tag          = "latest"
+
+# SSL/TLS Configuration
+acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Redis Configuration
+redis_auth_token = "your-secure-redis-auth-token-here"

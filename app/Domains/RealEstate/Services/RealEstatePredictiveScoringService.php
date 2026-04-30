@@ -1,13 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\Services\AI\RealEstateAIConstructorService;
-use App\Domains\RealEstate\Services\RealEstateBlockchainVerificationService;
-use App\Domains\RealEstate\Services\RealEstateEscrowWalletService;
-use App\Domains\RealEstate\Services\RealEstateWebRTCService;
-use App\Domains\RealEstate\Services\RealEstateCRMIntegrationService;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\FraudMLService;
@@ -21,35 +23,47 @@ use Carbon\Carbon;
 final readonly class RealEstatePredictiveScoringService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const CREDIT_SCORE_WEIGHT = 0.40;
+
     private const LEGAL_SCORE_WEIGHT = 0.30;
+
     private const LIQUIDITY_SCORE_WEIGHT = 0.30;
+
     private const APPROVAL_THRESHOLD = 0.80;
+
     private const REVIEW_THRESHOLD = 0.60;
+
     private const DECLINE_THRESHOLD = 0.40;
+
     private const MORTGAGE_BASE_RATE = 12.0;
+
     private const MORTGAGE_MAX_DISCOUNT = 4.0;
+
     private const FLASH_DISCOUNT_THRESHOLD = 0.75;
+
     private const FLASH_DISCOUNT_MAX_PERCENT = 0.15;
+
     private const B2B_DISCOUNT_TIER_1 = 0.08;
+
     private const B2B_DISCOUNT_TIER_2 = 0.12;
+
     private const B2B_MIN_DEAL_AMOUNT = 5000000.00;
 
-    public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit,
-        private FraudMLService $fraudML,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private RecommendationService $recommendation,
-        private RealEstateAIConstructorService $aiConstructor,
-        private RealEstateBlockchainVerificationService $blockchain,
-        private RealEstateEscrowWalletService $escrowWallet,
-        private RealEstateWebRTCService $webrtc,
-        private RealEstateCRMIntegrationService $crm,
-        private Repository $cache,
-        private Connection $db,
-        private LogManager $logger
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly FraudMLService $fraudML,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly RecommendationService $recommendation,
+        private readonly RealEstateAIConstructorService $aiConstructor,
+        private readonly RealEstateBlockchainVerificationService $blockchain,
+        private readonly RealEstateEscrowWalletService $escrowWallet,
+        private readonly RealEstateWebRTCService $webrtc,
+        private readonly RealEstateCRMIntegrationService $crm,
+        private readonly Repository $cache,
+        private readonly Connection $db,
+        private readonly LogManager $logger) {}
 
     public function calculateDealScore(
         Property $property,
@@ -125,7 +139,7 @@ final readonly class RealEstatePredictiveScoringService
                 'webrtc_enabled' => $webrtcEnabled,
                 'crm_synced' => $crmSyncStatus['synced'],
                 'crm_details' => $crmSyncStatus,
-                'calculated_at' => now()->toIso8601String(),
+                'calculated_at' => CarbonImmutable::now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
@@ -144,7 +158,7 @@ final readonly class RealEstatePredictiveScoringService
                 $correlationId
             );
 
-            $this->logger->channel('audit')->info('RealEstate predictive scoring completed', [
+            $this->logger->channel('audit')->$this->logger->info('RealEstate predictive scoring completed', [
                 'property_id' => $property->id,
                 'user_id' => $userId,
                 'overall_score' => $overallScore,
@@ -209,7 +223,7 @@ final readonly class RealEstatePredictiveScoringService
         return [
             'property_scores' => $scoringResults,
             'total_properties' => count($scoringResults),
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
     }
@@ -261,7 +275,7 @@ final readonly class RealEstatePredictiveScoringService
             'user_behavior_type' => $userBehavior,
             'b2b_tier' => $b2bTier,
             'credit_limit' => $creditLimit,
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
@@ -412,11 +426,11 @@ final readonly class RealEstatePredictiveScoringService
             $riskFactors[] = 'affordability_concern';
         }
 
-        if (isset($legalScore['factors']['title_clear']) && !$legalScore['factors']['title_clear']) {
+        if (isset($legalScore['factors']['title_clear']) && ! $legalScore['factors']['title_clear']) {
             $riskFactors[] = 'title_unclear';
         }
 
-        if (isset($legalScore['factors']['no_liens']) && !$legalScore['factors']['no_liens']) {
+        if (isset($legalScore['factors']['no_liens']) && ! $legalScore['factors']['no_liens']) {
             $riskFactors[] = 'property_liens_detected';
         }
 
@@ -429,25 +443,46 @@ final readonly class RealEstatePredictiveScoringService
 
     private function getCreditRating(float $score): string
     {
-        if ($score >= 0.9) return 'excellent';
-        if ($score >= 0.8) return 'good';
-        if ($score >= 0.7) return 'fair';
-        if ($score >= 0.6) return 'poor';
+        if ($score >= 0.9) {
+            return 'excellent';
+        }
+        if ($score >= 0.8) {
+            return 'good';
+        }
+        if ($score >= 0.7) {
+            return 'fair';
+        }
+        if ($score >= 0.6) {
+            return 'poor';
+        }
+
         return 'very_poor';
     }
 
     private function getLegalRating(float $score): string
     {
-        if ($score >= 0.9) return 'compliant';
-        if ($score >= 0.7) return 'minor_issues';
-        if ($score >= 0.5) return 'moderate_issues';
+        if ($score >= 0.9) {
+            return 'compliant';
+        }
+        if ($score >= 0.7) {
+            return 'minor_issues';
+        }
+        if ($score >= 0.5) {
+            return 'moderate_issues';
+        }
+
         return 'significant_issues';
     }
 
     private function getLiquidityRating(float $score): string
     {
-        if ($score >= 0.8) return 'high_liquidity';
-        if ($score >= 0.6) return 'moderate_liquidity';
+        if ($score >= 0.8) {
+            return 'high_liquidity';
+        }
+        if ($score >= 0.6) {
+            return 'moderate_liquidity';
+        }
+
         return 'low_liquidity';
     }
 
@@ -478,7 +513,7 @@ final readonly class RealEstatePredictiveScoringService
     private function calculatePriceAffordability(int $userId, float $amount, bool $isB2B): float
     {
         $userIncome = $this->getUserEstimatedIncome($userId);
-        
+
         if ($userIncome === 0.0) {
             return $isB2B ? 0.6 : 0.5;
         }
@@ -494,7 +529,7 @@ final readonly class RealEstatePredictiveScoringService
     {
         $userIncome = $this->getUserEstimatedIncome($userId);
         $existingDebt = $this->getUserExistingDebt($userId);
-        
+
         if ($userIncome === 0.0) {
             return 0.5;
         }
@@ -509,7 +544,7 @@ final readonly class RealEstatePredictiveScoringService
     private function getDaysOnMarket(Property $property): float
     {
         $createdDate = Carbon::parse($property->created_at);
-        $daysOnMarket = now()->diffInDays($createdDate);
+        $daysOnMarket = CarbonImmutable::now()->diffInDays($createdDate);
 
         if ($daysOnMarket < 30) {
             return 1.0;
@@ -526,6 +561,7 @@ final readonly class RealEstatePredictiveScoringService
         if ($daysOnMarket < 180) {
             return 0.4;
         }
+
         return 0.2;
     }
 
@@ -563,6 +599,7 @@ final readonly class RealEstatePredictiveScoringService
         if ($pricePosition < 0.1) {
             return 0.55;
         }
+
         return 0.4;
     }
 
@@ -588,7 +625,7 @@ final readonly class RealEstatePredictiveScoringService
     private function getMarketTrend(Property $property): float
     {
         $propertyType = $property->type;
-        $thirtyDaysAgo = now()->subDays(30);
+        $thirtyDaysAgo = CarbonImmutable::now()->subDays(30);
 
         $recentSoldCount = Property::where('type', $propertyType)
             ->where('status', 'sold')
@@ -740,7 +777,7 @@ final readonly class RealEstatePredictiveScoringService
             'user_id' => $userId,
             'scoring_result' => $overallScore,
             'recommendation' => $recommendation,
-            'synced_at' => now()->toIso8601String(),
+            'synced_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $syncResult = $this->crm->syncPropertyScoring($crmData, $correlationId);
@@ -762,7 +799,7 @@ final readonly class RealEstatePredictiveScoringService
         $failedPayments = $this->db->table('payment_transactions')
             ->where('user_id', $userId)
             ->where('status', 'failed')
-            ->where('created_at', '>=', now()->subDays(90))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(90))
             ->count();
 
         $totalPayments = $completedPayments + $failedPayments;
@@ -772,13 +809,14 @@ final readonly class RealEstatePredictiveScoringService
         }
 
         $successRate = $completedPayments / max(1, $totalPayments);
+
         return $successRate;
     }
 
     private function calculateDealToIncomeRatio(int $userId, float $dealAmount): float
     {
         $userIncome = $this->getUserEstimatedIncome($userId);
-        
+
         if ($userIncome === 0.0) {
             return 0.5;
         }
@@ -791,7 +829,7 @@ final readonly class RealEstatePredictiveScoringService
 
     private function getSeasonalDemandScore(Property $property): float
     {
-        $currentMonth = now()->month;
+        $currentMonth = CarbonImmutable::now()->month;
         $seasonalFactors = [
             1 => 0.6, 2 => 0.65, 3 => 0.75, 4 => 0.85,
             5 => 0.9, 6 => 0.85, 7 => 0.8, 8 => 0.75,
@@ -836,7 +874,7 @@ final readonly class RealEstatePredictiveScoringService
         $fraudReports = $this->db->table('fraud_attempts')
             ->where('subject_type', 'App\\Domains\\RealEstate\\Models\\Property')
             ->where('subject_id', $propertyId)
-            ->where('created_at', '>=', now()->subDays(365))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(365))
             ->count();
 
         return max(0.0, 1.0 - ($fraudReports / 10));
@@ -850,7 +888,7 @@ final readonly class RealEstatePredictiveScoringService
 
         $fraudReports = $this->db->table('fraud_attempts')
             ->where('user_id', $ownerId)
-            ->where('created_at', '>=', now()->subDays(365))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(365))
             ->count();
 
         return max(0.0, 1.0 - ($fraudReports / 5));

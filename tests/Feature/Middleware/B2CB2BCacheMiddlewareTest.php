@@ -1,18 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Middleware;
 
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
+use App\Models\User;
 
 final class B2CB2BCacheMiddlewareTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Cache::flush();
-    }
-
     public function test_caches_b2b_mode_determination(): void
     {
         $response = $this->actingAs($this->getTestUser())
@@ -21,18 +18,18 @@ final class B2CB2BCacheMiddlewareTest extends TestCase
                 'business_card_id' => 123,
             ]);
 
-        $this->assertNotNull(Cache::get('user_b2b_mode_' . $this->getTestUser()->id));
+        $this->assertNotNull(Cache::get('user_b2b_mode_'.$this->getTestUser()->id));
     }
 
     public function test_respects_cache_ttl(): void
     {
         $user = $this->getTestUser();
-        
+
         $this->actingAs($user)->get('/api/v1/test', [
             'inn' => '7707083893',
         ]);
 
-        $cacheKey = 'user_b2b_mode_' . $user->id;
+        $cacheKey = 'user_b2b_mode_'.$user->id;
         $this->assertTrue(Cache::has($cacheKey));
     }
 
@@ -46,12 +43,18 @@ final class B2CB2BCacheMiddlewareTest extends TestCase
         ]);
 
         Cache::store('redis')->tags([$cacheTag])->flush();
-        
-        $this->assertFalse(Cache::has('user_b2b_mode_' . $user->id));
+
+        $this->assertFalse(Cache::has('user_b2b_mode_'.$user->id));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
     }
 
     private function getTestUser()
     {
-        return \App\Models\User::factory()->create();
+        return User::factory()->create();
     }
 }

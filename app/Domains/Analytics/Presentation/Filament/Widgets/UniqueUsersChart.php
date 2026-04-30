@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Analytics\Presentation\Filament\Widgets;
 
+use GetAnalyticsDashboardDataUseCase;
+
+use Carbon\CarbonImmutable;
+
 use App\Domains\Analytics\Application\UseCases\GetAnalyticsDashboardDataUseCase;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
@@ -17,8 +21,6 @@ use Filament\Widgets\ChartWidget;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Domains\Analytics\Presentation\Filament\Widgets
  */
 final class UniqueUsersChart extends ChartWidget
 {
@@ -26,12 +28,12 @@ final class UniqueUsersChart extends ChartWidget
 
     protected function getData(): array
     {
-        $useCase = app(GetAnalyticsDashboardDataUseCase::class);
+        $useCase = $this->getAnalyticsDashboardDataUseCase /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
         $data = $useCase->execute(
             filament()->getTenant()->id,
             'unique_users',
-            Carbon::now()->subDays(30),
-            Carbon::now(),
+            CarbonImmutable::now()->subDays(30),
+            CarbonImmutable::now(),
             'toStartOfDay(created_at)'
         );
 

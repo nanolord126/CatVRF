@@ -9,7 +9,6 @@ use App\Models\Attendance;
 use App\Models\LeaveRequest;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 /**
  * Кадровое обеспечение (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -28,7 +27,7 @@ final class HRSeeder extends Seeder
             // Seed User HR data
             $user->update([
                 'role_code' => collect(['MASTER', 'HOUSEKEEPER', 'ADMIN'])->random(),
-                'phone' => '+7911' . rand(1111111, 9999999),
+                'phone' => '+7911'.rand(1111111, 9999999),
                 'hired_at' => now()->subMonths(rand(1, 12)),
             ]);
 

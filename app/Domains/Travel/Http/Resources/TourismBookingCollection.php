@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Resources;
 
@@ -7,7 +9,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 
 /**
  * Tourism Booking Collection Resource
- * 
+ *
  * API resource collection for tourism booking list responses.
  */
 final class TourismBookingCollection extends ResourceCollection

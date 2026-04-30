@@ -1,9 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Beauty;
 
 use App\Domains\Beauty\Models\BookingSlot;
-use App\Domains\Beauty\Services\BookingSlotHoldService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -14,13 +15,6 @@ final class BookingSlotControllerTest extends TestCase
     use RefreshDatabase;
 
     private string $correlationId;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->correlationId = Str::uuid()->toString();
-    }
 
     public function test_hold_slot_endpoint_success(): void
     {
@@ -210,5 +204,12 @@ final class BookingSlotControllerTest extends TestCase
             ]);
 
         $response->assertStatus(201);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->correlationId = Str::uuid()->toString();
     }
 }

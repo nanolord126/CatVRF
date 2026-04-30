@@ -1,8 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Broadcasting;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Psr\Log\LoggerInterface;
@@ -11,11 +13,12 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 final class TeamPresenceChanged implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         private readonly ConfigRepository $config,
@@ -28,7 +31,7 @@ final class TeamPresenceChanged implements ShouldBroadcast
         private readonly int $affectedUserId,
         private readonly string $correlationId,
     ) {
-        $this->logger->info('TeamPresenceChanged event broadcasted', [
+        $this->logger->$this->logger->info('TeamPresenceChanged event broadcasted', [
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,
             'document_id' => $this->documentId,
@@ -60,7 +63,7 @@ final class TeamPresenceChanged implements ShouldBroadcast
             'affected_user_id' => $this->affectedUserId,
             'present_users_count' => count($this->presentUsers),
             'present_users' => $this->presentUsers,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $this->correlationId,
         ];
     }

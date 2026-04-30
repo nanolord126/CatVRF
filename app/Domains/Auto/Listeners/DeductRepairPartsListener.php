@@ -1,62 +1,69 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
 
-use Carbon\Carbon;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use App\Domains\Auto\Events\LowPartsStock;
+use App\Domains\Auto\Models\AutoPart;
+use Illuminate\Database\DatabaseManager;
+
 final class DeductRepairPartsListener
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard) {}
 
-
+
     public function handle(RepairWorkCompleted $event): void
-        {
-            try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-                $this->db->transaction(function () use ($event) {
-                    $order = $event->order;
-                    $service = $order->service;
-                    $correlationId = $event->correlationId;
+    {
+        try {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($event) {
+                $order = $event->order;
+                $service = $order->service;
+                $correlationId = $event->correlationId;
 
-                    if (!$service || !$service->required_parts) {
-                        return;
+                if (! $service || ! $service->required_parts) {
+                    return;
+                }
+
+                foreach ($service->required_parts as $part) {
+                    $partModel = AutoPart::query()
+                        ->where('id', $part['id'] ?? null)
+                        ->firstOrFail();
+
+                    $qty = (int) ($part['qty'] ?? 1);
+                    $partModel->decrement('current_stock', $qty);
+
+                    $this->logger->$this->logger->info('Auto part deducted', [
+                        'order_id' => $order->id,
+                        'part_id' => $partModel->id,
+                        'quantity' => $qty,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    if ($partModel->current_stock < $partModel->min_stock_threshold) {
+                        $this->eventDispatcher->dispatch(new LowPartsStock($partModel, $correlationId));
                     }
+                }
+            });
+        } catch (\Throwable $e) {
+            $this->logger->error('DeductRepairPartsListener failed', [
+                'order_id' => $event->order->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $event->correlationId,
+            ]);
 
-                    foreach ($service->required_parts as $part) {
-                        $partModel = \App\Domains\Auto\Models\AutoPart::query()
-                            ->where('id', $part['id'] ?? null)
-                            ->firstOrFail();
-
-                        $qty = (int) ($part['qty'] ?? 1);
-                        $partModel->decrement('current_stock', $qty);
-
-                        $this->logger->info('Auto part deducted', [
-                            'order_id' => $order->id,
-                            'part_id' => $partModel->id,
-                            'quantity' => $qty,
-                            'correlation_id' => $correlationId,
-                        ]);
-
-                        if ($partModel->current_stock < $partModel->min_stock_threshold) {
-                            event(new \App\Domains\Auto\Events\LowPartsStock($partModel, $correlationId));
-                        }
-                    }
-                });
-            } catch (\Throwable $e) {
-                $this->logger->error('DeductRepairPartsListener failed', [
-                    'order_id' => $event->order->id,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $event->correlationId,
-                ]);
-
-                throw $e;
-            }
+            throw $e;
         }
+    }
 
     /**
      * Get the string representation of this instance.
@@ -65,7 +72,7 @@ final class DeductRepairPartsListener
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -76,8 +83,8 @@ final class DeductRepairPartsListener
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

@@ -36,6 +36,6 @@ final class ChannelSubscriptionPlanSeeder extends Seeder
             );
         }
 
-        $this->command->info('ChannelSubscriptionPlanSeeder: ' . count($plans) . ' тарифных плана добавлено/обновлено.');
+        $this->command->info('ChannelSubscriptionPlanSeeder: '.count($plans).' тарифных плана добавлено/обновлено.');
     }
 }

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Http\Controllers;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Requests\AIDiagnosticsRequest;
 use App\Domains\Auto\Resources\AIDiagnosticsResource;
@@ -10,14 +14,16 @@ use App\Domains\Auto\Events\AIDiagnosticsCompletedEvent;
 use App\Domains\Auto\Events\VideoInspectionInitiatedEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Events\Dispatcher;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
 
 final class AIDiagnosticsController
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly AIDiagnosticsService $diagnosticsService,
-    ) {}
+        private readonly LogManager $log,
+        private readonly Dispatcher $dispatcher,) {}
 
     public function diagnose(AIDiagnosticsRequest $request): JsonResponse
     {
@@ -28,7 +34,7 @@ final class AIDiagnosticsController
             $vehicle = $this->diagnosticsService->getVehicleById($result['vehicle']['id']);
 
             if ($vehicle !== null) {
-                Event::dispatch(new AIDiagnosticsCompletedEvent(
+                $this->dispatcher->dispatch(new AIDiagnosticsCompletedEvent(
                     vehicle: $vehicle,
                     userId: $dto->userId,
                     tenantId: $dto->tenantId,
@@ -37,7 +43,7 @@ final class AIDiagnosticsController
                 ));
             }
 
-            Log::channel('audit')->info('auto.api.diagnostics.success', [
+            $this->log->channel('audit')->$this->logger->info('auto.api.diagnostics.success', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'tenant_id' => $dto->tenantId,
@@ -49,12 +55,12 @@ final class AIDiagnosticsController
                 ->setStatusCode(200);
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('auto.api.diagnostics.error', [
+            $this->log->channel('audit')->error('auto.api.diagnostics.error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -65,7 +71,7 @@ final class AIDiagnosticsController
     public function initiateVideoInspection(Request $request, int $vehicleId): JsonResponse
     {
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             $userId = (int) $request->user()->id;
             $tenantId = (int) tenant()->id;
 
@@ -79,7 +85,7 @@ final class AIDiagnosticsController
             $vehicle = $this->diagnosticsService->getVehicleById($vehicleId);
 
             if ($vehicle !== null) {
-                Event::dispatch(new VideoInspectionInitiatedEvent(
+                $this->dispatcher->dispatch(new VideoInspectionInitiatedEvent(
                     vehicle: $vehicle,
                     userId: $userId,
                     tenantId: $tenantId,
@@ -89,7 +95,7 @@ final class AIDiagnosticsController
                 ));
             }
 
-            Log::channel('audit')->info('auto.api.video_inspection.initiated', [
+            $this->log->channel('audit')->$this->logger->info('auto.api.video_inspection.initiated', [
                 'correlation_id' => $correlationId,
                 'vehicle_id' => $vehicleId,
                 'user_id' => $userId,
@@ -101,12 +107,12 @@ final class AIDiagnosticsController
                 ->setStatusCode(200);
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('auto.api.video_inspection.error', [
+            $this->log->channel('audit')->error('auto.api.video_inspection.error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -117,7 +123,7 @@ final class AIDiagnosticsController
     public function bookService(Request $request, int $vehicleId): JsonResponse
     {
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             $userId = (int) $request->user()->id;
             $tenantId = (int) tenant()->id;
 
@@ -146,14 +152,14 @@ final class AIDiagnosticsController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('auto.api.service_booking.success', [
+            $this->log->channel('audit')->$this->logger->info('auto.api.service_booking.success', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
                 'vehicle_id' => $vehicleId,
                 'user_id' => $userId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'order' => [
                     'id' => $order->id,
@@ -166,12 +172,12 @@ final class AIDiagnosticsController
             ], 201);
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('auto.api.service_booking.error', [
+            $this->log->channel('audit')->error('auto.api.service_booking.error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),

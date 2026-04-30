@@ -13,24 +13,24 @@ final readonly class AdTargetingService
     public function filterCampaignsForUser(Collection $campaigns, User $user): Collection
     {
         return $campaigns->filter(function (AdCampaign $campaign) use ($user) {
-            if (!$campaign->isActive() || !$campaign->hasBudget()) {
+            if (! $campaign->isActive() || ! $campaign->hasBudget()) {
                 return false;
             }
 
             $criteria = $campaign->targeting_criteria;
 
             // Vertical targeting
-            if (isset($criteria['verticals']) && !in_array($user->active_vertical, $criteria['verticals'])) {
+            if (isset($criteria['verticals']) && ! in_array($user->active_vertical, $criteria['verticals'], true)) {
                 return false;
             }
 
             // Geo targeting
-            if (isset($criteria['geo']) && !$this->isUserInGeo($user, $criteria['geo'])) {
+            if (isset($criteria['geo']) && ! $this->isUserInGeo($user, $criteria['geo'])) {
                 return false;
             }
-            
+
             // User taste profile targeting
-            if (isset($criteria['taste_profile']) && !$this->matchTasteProfile($user, $criteria['taste_profile'])) {
+            if (isset($criteria['taste_profile']) && ! $this->matchTasteProfile($user, $criteria['taste_profile'])) {
                 return false;
             }
 
@@ -52,7 +52,7 @@ final readonly class AdTargetingService
         }
 
         foreach ($tasteCriteria as $key => $value) {
-            if (!isset($userProfile[$key]) || $userProfile[$key] !== $value) {
+            if (! isset($userProfile[$key]) || $userProfile[$key] !== $value) {
                 return false;
             }
         }

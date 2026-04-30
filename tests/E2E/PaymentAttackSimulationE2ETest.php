@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -12,16 +14,10 @@ class PaymentAttackSimulationE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_card_stolen_attack(): void
     {
@@ -38,7 +34,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         // Should be blocked or flagged
         $this->assertTrue(
-            $response->status() === 422 || 
+            $response->status() === 422 ||
             $response->status() === 403 ||
             ($response->json('fraud_score') && $response->json('fraud_score') > 0.8)
         );
@@ -56,7 +52,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         if ($createResponse->status() === 201) {
             $paymentId = $createResponse->json('transaction_id');
-            
+
             // Attempt to modify amount (if endpoint exists)
             $modifyResponse = $this->withHeader('Authorization', "Bearer {$this->token}")
                 ->putJson("/api/v1/payments/{$paymentId}", [
@@ -65,7 +61,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
             // Should be blocked
             $this->assertTrue(
-                $modifyResponse->status() === 403 || 
+                $modifyResponse->status() === 403 ||
                 $modifyResponse->status() === 422 ||
                 $modifyResponse->status() === 404
             );
@@ -84,7 +80,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         if ($paymentResponse->status() === 201) {
             $paymentId = $paymentResponse->json('transaction_id');
-            
+
             // Attempt multiple refunds for same payment
             $refundResponses = [];
             for ($i = 0; $i < 3; $i++) {
@@ -97,7 +93,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
             // Only first should succeed, others should be blocked
             $this->assertTrue($refundResponses[0]->status() < 300);
             $this->assertTrue(
-                $refundResponses[1]->status() === 409 || 
+                $refundResponses[1]->status() === 409 ||
                 $refundResponses[1]->status() === 422
             );
         }
@@ -131,7 +127,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
         }
 
         // Should handle gracefully without double-charging
-        $successCount = count(array_filter($responses, fn($r) => $r->status() < 300));
+        $successCount = count(array_filter($responses, fn ($r) => $r->status() < 300));
         $this->assertLessThanOrEqual(3, $successCount, 'Should rate limit concurrent payments');
     }
 
@@ -147,7 +143,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         // Should be rejected due to invalid signature
         $this->assertTrue(
-            $response->status() === 401 || 
+            $response->status() === 401 ||
             $response->status() === 403 ||
             $response->status() === 422
         );
@@ -156,8 +152,8 @@ class PaymentAttackSimulationE2ETest extends TestCase
     public function test_idempotency_attack(): void
     {
         // Attempt to replay same payment request multiple times
-        $idempotencyKey = 'test_key_' . uniqid();
-        
+        $idempotencyKey = 'test_key_'.uniqid();
+
         $responses = [];
         for ($i = 0; $i < 3; $i++) {
             $responses[] = $this->withHeader('Authorization', "Bearer {$this->token}")
@@ -214,7 +210,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         // Should be blocked or require additional verification
         $this->assertTrue(
-            $response->status() === 422 || 
+            $response->status() === 422 ||
             $response->status() === 403 ||
             ($response->json('requires_verification') === true)
         );
@@ -251,7 +247,7 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         // Should be blocked
         $this->assertTrue(
-            $response->status() === 403 || 
+            $response->status() === 403 ||
             $response->status() === 404 ||
             $response->status() === 422
         );
@@ -269,5 +265,13 @@ class PaymentAttackSimulationE2ETest extends TestCase
 
         // Should be sanitized or blocked
         $this->assertTrue($response->status() < 500);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

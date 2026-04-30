@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\AI\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Services\FraudControlService;
 use App\Services\RecommendationService;
-use App\Services\UserTasteAnalyzerService;
+use App\Domains\AI\Services\UserTasteAnalyzerService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Str;
@@ -16,10 +18,10 @@ use Illuminate\Support\Str;
 final readonly class AIVerticalConstructorService
 {
     public function __construct(
-        private FraudControlService   $fraud,
-        private RecommendationService  $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache                  $cache,
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard,
     ) {}
@@ -34,17 +36,17 @@ final readonly class AIVerticalConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:AI:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:AI:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
-            $taste = $this->tasteAnalyzer->getProfile($userId);
+            $taste = $this->tasteAnalyzer->analyzeUserPreferences($userId);
 
             // Строим полный профиль: payload + вкусы
-            $fullProfile = array_merge($payload, (array) ($taste->preferences ?? []));
+            $fullProfile = array_merge($payload, (array) ($taste ?? []));
 
             // Получаем рекомендации
-            $recommendations = $this->recommendation->getForVertical('AI', $fullProfile, $userId);
+            $recommendations = $this->recommendation->getForUser($userId, 'AI', $fullProfile);
 
             $this->logger->info('AI AI constructor used', [
                 'user_id'        => $userId,

@@ -21,7 +21,7 @@ final class RestaurantFactory extends Factory
         return [
             'tenant_id' => 1,
             'business_group_id' => null,
-            'name' => $this->faker->company() . ' Restaurant',
+            'name' => $this->faker->company().' Restaurant',
             'description' => $this->faker->paragraph(3),
             'address' => $this->faker->address(),
             'phone' => $this->faker->phoneNumber(),

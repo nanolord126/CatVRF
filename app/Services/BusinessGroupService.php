@@ -1,14 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\BusinessGroup;
-use App\Services\FraudControlService;
-use App\Services\WalletService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
@@ -28,23 +29,26 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class BusinessGroupService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
+        private readonly AuditService $audit,
     ) {}
 
     /**
      * Создать новый филиал / юр.лицо для tenant.
      */
     public function create(
-        int     $tenantId,
-        string  $name,
-        string  $inn,
-        string  $correlationId,
+        int $tenantId,
+        string $name,
+        string $inn,
+        string $correlationId,
         ?string $legalName       = null,
         ?string $kpp             = null,
         ?string $legalAddress    = null,
@@ -62,8 +66,16 @@ final readonly class BusinessGroupService
         );
 
         return $this->db->transaction(function () use (
-            $tenantId, $name, $inn, $legalName, $kpp, $legalAddress,
-            $bankAccount, $bankName, $bic, $correlationId
+            $tenantId,
+            $name,
+            $inn,
+            $legalName,
+            $kpp,
+            $legalAddress,
+            $bankAccount,
+            $bankName,
+            $bic,
+            $correlationId
         ): BusinessGroup {
             $group = BusinessGroup::create([
                 'tenant_id'      => $tenantId,
@@ -87,7 +99,7 @@ final readonly class BusinessGroupService
                 userId:          null,
             );
 
-            $this->logger->channel('audit')->info('BusinessGroup created', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup created', [
                 'business_group_id' => $group->id,
                 'tenant_id'         => $tenantId,
                 'inn'               => $inn,
@@ -111,7 +123,7 @@ final readonly class BusinessGroupService
 
         session(['active_business_group_id' => $group->id]);
 
-        $this->logger->channel('audit')->info('BusinessGroup switched', [
+        $this->logger->channel('audit')->$this->logger->info('BusinessGroup switched', [
             'business_group_id' => $group->id,
             'tenant_id'         => $tenantId,
             'correlation_id'    => $correlationId,
@@ -126,7 +138,7 @@ final readonly class BusinessGroupService
     public function updateTier(BusinessGroup $group, string $tier, string $correlationId): void
     {
         $allowed = ['standard', 'silver', 'gold', 'platinum'];
-        if (!in_array($tier, $allowed, true)) {
+        if (! in_array($tier, $allowed, true)) {
             throw new \InvalidArgumentException("Invalid B2B tier: {$tier}");
         }
 
@@ -136,7 +148,7 @@ final readonly class BusinessGroupService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('BusinessGroup tier updated', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup tier updated', [
                 'business_group_id' => $group->id,
                 'new_tier'          => $tier,
                 'correlation_id'    => $correlationId,
@@ -164,7 +176,7 @@ final readonly class BusinessGroupService
                 'correlation_id'       => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('BusinessGroup credit limit set', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup credit limit set', [
                 'business_group_id'    => $group->id,
                 'credit_limit_kopecks' => $limitKopecks,
                 'correlation_id'       => $correlationId,
@@ -186,13 +198,13 @@ final readonly class BusinessGroupService
             if ($available < $amountKopecks) {
                 throw new \DomainException(
                     "Insufficient credit limit for BusinessGroup #{$group->id}: "
-                    . "available={$available}, required={$amountKopecks}"
+                    ."available={$available}, required={$amountKopecks}"
                 );
             }
 
             $fresh->increment('credit_used_kopecks', $amountKopecks);
 
-            $this->logger->channel('audit')->info('BusinessGroup credit consumed', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup credit consumed', [
                 'business_group_id' => $group->id,
                 'amount_kopecks'    => $amountKopecks,
                 'used_after'        => $fresh->credit_used_kopecks + $amountKopecks,
@@ -213,7 +225,7 @@ final readonly class BusinessGroupService
             $newUsed = max(0, $fresh->credit_used_kopecks - $amountKopecks);
             $fresh->update(['credit_used_kopecks' => $newUsed]);
 
-            $this->logger->channel('audit')->info('BusinessGroup credit released', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup credit released', [
                 'business_group_id' => $group->id,
                 'amount_kopecks'    => $amountKopecks,
                 'used_after'        => $newUsed,
@@ -233,7 +245,7 @@ final readonly class BusinessGroupService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('BusinessGroup deactivated', [
+            $this->logger->channel('audit')->$this->logger->info('BusinessGroup deactivated', [
                 'business_group_id' => $group->id,
                 'correlation_id'    => $correlationId,
             ]);

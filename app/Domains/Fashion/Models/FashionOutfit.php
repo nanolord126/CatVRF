@@ -1,17 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\User;
 
 final class FashionOutfit extends Model
 {
+    use TenantScoped;
+
     protected $table = 'fashion_outfits';
+
     protected $fillable = ['user_id', 'tenant_id', 'name', 'occasion', 'season', 'is_favorite', 'times_worn'];
+
     protected $casts = ['is_favorite' => 'boolean'];
 
-    public function user(): BelongsTo { return $this->belongsTo(\App\Models\User::class, 'user_id'); }
-    public function items(): HasMany { return $this->hasMany(FashionOutfitItem::class, 'outfit_id'); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(FashionOutfitItem::class, 'outfit_id');
+    }
 }

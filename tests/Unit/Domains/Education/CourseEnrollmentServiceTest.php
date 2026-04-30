@@ -1,45 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
 use Tests\TestCase;
 use App\Domains\Education\Services\CourseEnrollmentService;
-use App\Domains\Education\Models\Course;
-use App\Domains\Education\Models\Enrollment;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Security\IdempotencyService;
 use Illuminate\Support\Facades\DB;
 use Mockery;
+use App\Domains\Education\Services\EducationMilestonePaymentService;
 
 final class CourseEnrollmentServiceTest extends TestCase
 {
     private CourseEnrollmentService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private IdempotencyService $idempotency;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = Mockery::mock(FraudControlService::class);
-        $this->audit = Mockery::mock(AuditService::class);
-        $this->idempotency = Mockery::mock(IdempotencyService::class);
-
-        $this->service = new CourseEnrollmentService(
-            $this->audit,
-            $this->fraud,
-            $this->idempotency,
-            Mockery::mock(\App\Domains\Education\Services\EducationMilestonePaymentService::class),
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_enroll_with_split_payment_b2c(): void
     {
@@ -153,5 +135,27 @@ final class CourseEnrollmentServiceTest extends TestCase
         $enrollment = DB::table('enrollments')->where('id', 1)->first();
         $this->assertEquals('cancelled', $enrollment->status);
         $this->assertEquals('User request', $enrollment->cancellation_reason);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = Mockery::mock(FraudControlService::class);
+        $this->audit = Mockery::mock(AuditService::class);
+        $this->idempotency = Mockery::mock(IdempotencyService::class);
+
+        $this->service = new CourseEnrollmentService(
+            $this->audit,
+            $this->fraud,
+            $this->idempotency,
+            Mockery::mock(EducationMilestonePaymentService::class),
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

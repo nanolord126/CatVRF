@@ -8,7 +8,6 @@ use App\Models\Domains\Sports\SportsMembership;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 final class SportsMembershipFactory extends Factory

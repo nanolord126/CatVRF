@@ -1,12 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -16,7 +17,7 @@ return new class extends Migration
         $connection = DB::connection('central');
 
         // Create users table if not exists
-        if (!Schema::connection('central')->hasTable('users')) {
+        if (! Schema::connection('central')->hasTable('users')) {
             Schema::connection('central')->create('users', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('uuid')->unique()->nullable()->comment('UUID for public references');
@@ -45,7 +46,7 @@ return new class extends Migration
         }
 
         // Create tenants table
-        if (!Schema::connection('central')->hasTable('tenants')) {
+        if (! Schema::connection('central')->hasTable('tenants')) {
             Schema::connection('central')->create('tenants', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('uuid')->unique()->comment('UUID for public references');
@@ -77,7 +78,7 @@ return new class extends Migration
         }
 
         // Create tenant_user pivot table
-        if (!Schema::connection('central')->hasTable('tenant_user')) {
+        if (! Schema::connection('central')->hasTable('tenant_user')) {
             Schema::connection('central')->create('tenant_user', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -98,7 +99,7 @@ return new class extends Migration
         }
 
         // Create business_groups table (филиалы)
-        if (!Schema::connection('central')->hasTable('business_groups')) {
+        if (! Schema::connection('central')->hasTable('business_groups')) {
             Schema::connection('central')->create('business_groups', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('uuid')->unique()->comment('UUID for public references');

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Sports;
 
-use App\Domains\Sports\Http\Controllers\AdaptiveWorkoutController;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,14 +13,6 @@ final class AdaptiveWorkoutApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-    }
 
     public function test_generate_adaptive_workout(): void
     {
@@ -109,5 +100,13 @@ final class AdaptiveWorkoutApiTest extends TestCase
         ]);
 
         $response->assertStatus(403);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
     }
 }

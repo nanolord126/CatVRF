@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 
@@ -19,7 +21,7 @@ final class WalletTransactionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn(Builder $q) => $q->where('tenant_id', filament()->getTenant()?->id)
+            ->query(fn (Builder $q) => $q->where('tenant_id', filament()->getTenant()?->id)
                 ->orderByDesc('created_at'))
             ->columns([
                 Tables\Columns\TextColumn::make('id')
@@ -40,10 +42,12 @@ final class WalletTransactionsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Сумма')
                     ->formatStateUsing(function ($state, $record) {
-                        $sign = in_array($record->type, ['deposit', 'bonus', 'refund']) ? '+' : '−';
-                        return $sign . number_format(abs($state) / 100, 2, '.', ' ') . ' ₽';
+                        $sign = in_array($record->type, ['deposit', 'bonus', 'refund'], true) ? '+' : '−';
+
+                        return $sign.number_format(abs($state) / 100, 2, '.', ' ').' ₽';
                     })
-                    ->color(fn($record) => in_array($record->type ?? '', ['deposit', 'bonus', 'refund'])
+                    ->color(
+                        fn ($record) => in_array($record->type ?? '', ['deposit', 'bonus', 'refund'], true)
                         ? 'success'
                         : 'danger'
                     ),

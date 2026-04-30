@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -24,6 +25,7 @@ final class FinancesSeeder extends Seeder
 
         if ($users->isEmpty()) {
             $this->command->warn('No users found. Skipping FinancesSeeder.');
+
             return;
         }
 
@@ -47,7 +49,7 @@ final class FinancesSeeder extends Seeder
                 $walletCards[] = RecurringModels\WalletCard::create([
                     'user_id' => $user->id,
                     'tenant_id' => $user->current_tenant_id,
-                    'token' => 'tok_' . Str::random(20),
+                    'token' => 'tok_'.Str::random(20),
                     'card_last_four' => str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT),
                     'card_brand' => $this->getRandomCardBrand(),
                     'exp_month' => rand(1, 12),

@@ -15,9 +15,9 @@ final class InsurancePolicySeeder extends Seeder
     public function run(): void
     {
         $policies = [
-            ["number" => "POL-001", "type" => "health", "premium_amount" => 200],
-            ["number" => "POL-002", "type" => "auto", "premium_amount" => 150],
-            ["number" => "POL-003", "type" => "home", "premium_amount" => 250],
+            ['number' => 'POL-001', 'type' => 'health', 'premium_amount' => 200],
+            ['number' => 'POL-002', 'type' => 'auto', 'premium_amount' => 150],
+            ['number' => 'POL-003', 'type' => 'home', 'premium_amount' => 250],
         ];
 
         foreach ($policies as $policy) {
@@ -25,4 +25,3 @@ final class InsurancePolicySeeder extends Seeder
         }
     }
 }
-

@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Services\WalletService;
 use Illuminate\Auth\AuthManager;
+use Illuminate\Support\Str;
 
 /**
  * WalletBalance — текущий баланс кошелька + бонусы пользователя.
@@ -17,19 +22,21 @@ use Illuminate\Auth\AuthManager;
  */
 final class WalletBalance extends Component
 {
-    public int    $balanceKop      = 0;  // в копейках
-    public int    $bonusKop        = 0;  // в копейках
-    public bool   $isB2B           = false;
+    public int $balanceKop      = 0;  // в копейках
+
+    public int $bonusKop        = 0;  // в копейках
+
+    public bool $isB2B           = false;
+
     public string $correlationId   = '';
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly WalletService $walletService,
-        private readonly AuthManager  $auth,
-    ) {}
+        private readonly AuthManager $auth,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
         $this->isB2B         = request()->has('inn') && request()->has('business_card_id');
         $this->refreshBalance();
     }
@@ -38,9 +45,10 @@ final class WalletBalance extends Component
     public function refreshBalance(): void
     {
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             $this->balanceKop = 0;
             $this->bonusKop   = 0;
+
             return;
         }
 
@@ -52,6 +60,6 @@ final class WalletBalance extends Component
 
     public function render(): View
     {
-        return view('livewire.shared.wallet-balance');
+        return $this->viewFactory->make('livewire.shared.wallet-balance');
     }
 }

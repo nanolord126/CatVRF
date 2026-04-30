@@ -1,20 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Events\CarImportCalculatedEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
 
 final class SendImportCalculationNotificationListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly NotificationService $notificationService,
-    ) {}
+        private readonly LogManager $log,) {}
 
     public function handle(CarImportCalculatedEvent $event): void
     {
@@ -40,7 +44,7 @@ final class SendImportCalculationNotificationListener implements ShouldQueue
             ],
         );
 
-        Log::channel('audit')->info('car.import_calculation.notification.sent', [
+        $this->log->channel('audit')->$this->logger->info('car.import_calculation.notification.sent', [
             'correlation_id' => $event->correlationId,
             'user_id' => $event->userId,
             'vin' => $event->vin,

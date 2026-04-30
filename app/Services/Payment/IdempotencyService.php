@@ -7,18 +7,21 @@ namespace App\Services\Payment;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Psr\Log\LoggerInterface;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * IdempotencyService - Redis-based idempotency with Lua scripts for atomicity.
  *
  * Prevents double-charge and duplicate operations using atomic Redis operations.
  * Uses Lua scripts to ensure atomicity even under high concurrency.
- *
- * @package App\Services\Payment
  */
 final readonly class IdempotencyService
 {
+    use WithAuditLogging;
+
     private const DEFAULT_TTL_SECONDS = 86400; // 24 hours
+
     private const PREFIX = 'payment:idempotency:';
 
     /**
@@ -40,7 +43,7 @@ final readonly class IdempotencyService
 
     /**
      * Lua script for atomic idempotency check-and-set with payload comparison.
-     * Returns: 0 if key exists with same payload (idempotent hit), 
+     * Returns: 0 if key exists with same payload (idempotent hit),
      *          -1 if key exists with different payload (conflict),
      *          1 if key was set (new operation).
      */
@@ -63,19 +66,21 @@ final readonly class IdempotencyService
     LUA;
 
     public function __construct(
-        private RedisFactory $redis,
-        private CacheRepository $cache,
-        private LoggerInterface $logger,
+        private readonly RedisFactory $redis,
+        private readonly CacheRepository $cache,
+        private readonly LoggerInterface $logger,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Check idempotency and store if new operation.
      *
-     * @param string $operation Operation type (e.g., 'payment_init', 'wallet_debit')
-     * @param string $idempotencyKey Unique key for idempotency
-     * @param array $payload Operation payload for comparison
-     * @param int $ttlSeconds TTL for the idempotency record
+     * @param  string  $operation  Operation type (e.g., 'payment_init', 'wallet_debit')
+     * @param  string  $idempotencyKey  Unique key for idempotency
+     * @param  array  $payload  Operation payload for comparison
+     * @param  int  $ttlSeconds  TTL for the idempotency record
      * @return array|null Returns stored response data if idempotent hit, null if new operation
+     *
      * @throws \RuntimeException If idempotency key exists with different payload
      */
     public function check(
@@ -110,10 +115,10 @@ final readonly class IdempotencyService
     /**
      * Store response data for an idempotency key.
      *
-     * @param string $operation Operation type
-     * @param string $idempotencyKey Unique key for idempotency
-     * @param array $response Response data to store
-     * @param int $ttlSeconds TTL for the response record
+     * @param  string  $operation  Operation type
+     * @param  string  $idempotencyKey  Unique key for idempotency
+     * @param  array  $response  Response data to store
+     * @param  int  $ttlSeconds  TTL for the response record
      */
     public function storeResponse(
         string $operation,
@@ -122,7 +127,7 @@ final readonly class IdempotencyService
         int $ttlSeconds = self::DEFAULT_TTL_SECONDS,
     ): void {
         $key = $this->buildKey($operation, $idempotencyKey);
-        $responseKey = $key . ':response';
+        $responseKey = $key.':response';
 
         $this->redis->connection()->setex(
             $responseKey,
@@ -137,37 +142,15 @@ final readonly class IdempotencyService
     }
 
     /**
-     * Get stored response data for an idempotency key.
-     *
-     * @param string $key Full Redis key
-     * @return array|null Stored response data or null if not found
-     */
-    private function getStoredResponse(string $key): ?array
-    {
-        $responseKey = $key . ':response';
-        $data = $this->redis->connection()->get($responseKey);
-
-        if ($data === null) {
-            return null;
-        }
-
-        $this->logger->info('Idempotency hit detected', [
-            'key' => $key,
-        ]);
-
-        return json_decode($data, true, 512, JSON_THROW_ON_ERROR);
-    }
-
-    /**
      * Invalidate an idempotency key (for testing or manual cleanup).
      *
-     * @param string $operation Operation type
-     * @param string $idempotencyKey Unique key for idempotency
+     * @param  string  $operation  Operation type
+     * @param  string  $idempotencyKey  Unique key for idempotency
      */
     public function invalidate(string $operation, string $idempotencyKey): void
     {
         $key = $this->buildKey($operation, $idempotencyKey);
-        $responseKey = $key . ':response';
+        $responseKey = $key.':response';
 
         $this->redis->connection()->del($key, $responseKey);
 
@@ -178,22 +161,10 @@ final readonly class IdempotencyService
     }
 
     /**
-     * Build full Redis key for idempotency.
-     *
-     * @param string $operation Operation type
-     * @param string $idempotencyKey Unique key for idempotency
-     * @return string Full Redis key
-     */
-    private function buildKey(string $operation, string $idempotencyKey): string
-    {
-        return self::PREFIX . $operation . ':' . $idempotencyKey;
-    }
-
-    /**
      * Check if an idempotency key exists (for monitoring/debugging).
      *
-     * @param string $operation Operation type
-     * @param string $idempotencyKey Unique key for idempotency
+     * @param  string  $operation  Operation type
+     * @param  string  $idempotencyKey  Unique key for idempotency
      * @return bool True if key exists
      */
     public function exists(string $operation, string $idempotencyKey): bool
@@ -201,5 +172,39 @@ final readonly class IdempotencyService
         $key = $this->buildKey($operation, $idempotencyKey);
 
         return (bool) $this->redis->connection()->exists($key);
+    }
+
+    /**
+     * Get stored response data for an idempotency key.
+     *
+     * @param  string  $key  Full Redis key
+     * @return array|null Stored response data or null if not found
+     */
+    private function getStoredResponse(string $key): ?array
+    {
+        $responseKey = $key.':response';
+        $data = $this->redis->connection()->get($responseKey);
+
+        if ($data === null) {
+            return null;
+        }
+
+        $this->logger->$this->logger->info('Idempotency hit detected', [
+            'key' => $key,
+        ]);
+
+        return json_decode($data, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Build full Redis key for idempotency.
+     *
+     * @param  string  $operation  Operation type
+     * @param  string  $idempotencyKey  Unique key for idempotency
+     * @return string Full Redis key
+     */
+    private function buildKey(string $operation, string $idempotencyKey): string
+    {
+        return self::PREFIX.$operation.':'.$idempotencyKey;
     }
 }

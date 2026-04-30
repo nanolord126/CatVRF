@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\AI\Services;
-
-
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -11,11 +11,16 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class AICoordinatorService
 {
-    public function __construct(private FraudControlService $fraud,
-        private AuditService        $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -98,7 +103,7 @@ final readonly class AICoordinatorService
      */
     public function list(array $filters = []): Collection
     {
-        return AIModel::when(!empty($filters['status']), fn($q) => $q->where('status', $filters['status']))
+        return AIModel::when(! empty($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->latest()
             ->get();
     }

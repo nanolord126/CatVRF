@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -6,20 +8,15 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Models\Wallet;
 
 class RateLimitingE2ETest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private string $token;
 
     public function test_payment_rate_limit_per_minute(): void
     {
@@ -39,7 +36,7 @@ class RateLimitingE2ETest extends TestCase
         }
 
         // After ~10 requests, should hit rate limit (429)
-        $rateLimitedResponses = array_filter($responses, fn($status) => $status === 429);
+        $rateLimitedResponses = array_filter($responses, fn ($status) => $status === 429);
 
         // At least some should be rate limited (depends on config)
         if (count($responses) > 10) {
@@ -50,7 +47,7 @@ class RateLimitingE2ETest extends TestCase
     public function test_wallet_deposit_rate_limit(): void
     {
         $tenant = Tenant::factory()->create();
-        $wallet = \App\Models\Wallet::factory()->create(['tenant_id' => $tenant->id]);
+        $wallet = Wallet::factory()->create(['tenant_id' => $tenant->id]);
 
         $responses = [];
 
@@ -65,8 +62,8 @@ class RateLimitingE2ETest extends TestCase
         }
 
         // Should hit rate limit eventually
-        $successCount = count(array_filter($responses, fn($s) => $s === 200));
-        $limitedCount = count(array_filter($responses, fn($s) => $s === 429));
+        $successCount = count(array_filter($responses, fn ($s) => $s === 200));
+        $limitedCount = count(array_filter($responses, fn ($s) => $s === 429));
 
         // Expect both successes and rate limits
         $this->assertGreater(0, $successCount);
@@ -79,7 +76,7 @@ class RateLimitingE2ETest extends TestCase
         for ($i = 0; $i < 60; $i++) {
             $response = $this->withHeader('Authorization', "Bearer {$this->token}")
                 ->postJson('/api/v1/promo/apply', [
-                    'code' => 'TESTCODE' . $i,
+                    'code' => 'TESTCODE'.$i,
                 ]);
 
             $responses[] = $response->status();
@@ -189,7 +186,14 @@ class RateLimitingE2ETest extends TestCase
         }
 
         // Public should have mostly 200s, auth should have mix
-        $publicSuccess = count(array_filter($publicResponses, fn($s) => $s === 200));
+        $publicSuccess = count(array_filter($publicResponses, fn ($s) => $s === 200));
         $this->assertGreater(45, $publicSuccess);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

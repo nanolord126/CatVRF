@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Taxi\Domain\Services\SurgeService;
 
 /**
  * Unit tests for SurgeService.
@@ -14,7 +17,7 @@ final class SurgeServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Taxi\Domain\Services\SurgeService::class
+            SurgeService::class
         );
         $this->assertTrue($reflection->isFinal(), 'SurgeService must be final');
     }
@@ -22,7 +25,7 @@ final class SurgeServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Taxi\Domain\Services\SurgeService::class
+            SurgeService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'SurgeService must be readonly');
     }
@@ -30,27 +33,26 @@ final class SurgeServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Taxi\Domain\Services\SurgeService::class
+            SurgeService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'SurgeService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_getMultiplierAtPoint_method_exists(): void
+    public function test_get_multiplier_at_point_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Taxi\Domain\Services\SurgeService::class, 'getMultiplierAtPoint'),
+            method_exists(SurgeService::class, 'getMultiplierAtPoint'),
             'SurgeService must implement getMultiplierAtPoint()'
         );
     }
 
-    public function test_activateZone_method_exists(): void
+    public function test_activate_zone_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Taxi\Domain\Services\SurgeService::class, 'activateZone'),
+            method_exists(SurgeService::class, 'activateZone'),
             'SurgeService must implement activateZone()'
         );
     }
-
 }

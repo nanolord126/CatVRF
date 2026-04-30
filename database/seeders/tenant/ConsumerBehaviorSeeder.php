@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders\Tenant;
 
 use Illuminate\Database\Seeder;
@@ -31,7 +33,7 @@ class ConsumerBehaviorSeeder extends Seeder
                     'payload' => [
                         'amount' => $amount,
                         'source' => 'mobile_app',
-                        'location' => 'Moscow, RU'
+                        'location' => 'Moscow, RU',
                     ],
                     'correlation_id' => (string) Str::uuid(),
                     'created_at' => now()->subDays(rand(0, 365)),

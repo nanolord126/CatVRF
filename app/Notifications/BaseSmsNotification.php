@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 /**
  * Base class for SMS notifications (Twilio/Vonage)
@@ -12,43 +16,42 @@ abstract class BaseSmsNotification extends BaseNotification
     /**
      * Шаблон SMS сообщения
      */
-    private string $template = 'sms.generic';
+    private readonly string $template = 'sms.generic';
 
     /**
      * Текст сообщения (для простых SMS)
      */
-    private ?string $message = null;
+    private readonly ?string $message = null;
 
     /**
      * Телефон получателя (переопределять или брать из модели)
      */
-    private ?string $phone = null;
+    private readonly ?string $phone = null;
 
     /**
      * Переменные для подстановки в шаблон
      */
-    private array $variables = [];
+    private readonly array $variables = [];
 
     /**
      * Приоритет доставки (high, normal, low)
      */
-    private string $priority = 'normal';
+    private readonly string $priority = 'normal';
 
     /**
      * Максимальное количество символов (для услугового SMS)
      */
-    private int $maxChars = 160;
+    private readonly int $maxChars = 160;
 
     /**
      * Конструктор
      */
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         int $userId,
         int $tenantId,
         array $data = [],
         ?string $correlationId = null,
-        array $channels = ['sms']
-    ) {
+        array $channels = ['sms']) {
         parent::__construct($userId, $tenantId, $data, $correlationId, $channels);
     }
 
@@ -58,6 +61,7 @@ abstract class BaseSmsNotification extends BaseNotification
     public function message(string $text): self
     {
         $this->message = $text;
+
         return $this;
     }
 
@@ -67,6 +71,7 @@ abstract class BaseSmsNotification extends BaseNotification
     public function phone(string $number): self
     {
         $this->phone = $number;
+
         return $this;
     }
 
@@ -76,6 +81,7 @@ abstract class BaseSmsNotification extends BaseNotification
     public function template(string $template): self
     {
         $this->template = $template;
+
         return $this;
     }
 
@@ -85,6 +91,7 @@ abstract class BaseSmsNotification extends BaseNotification
     public function variables(array $vars): self
     {
         $this->variables = $vars;
+
         return $this;
     }
 
@@ -98,7 +105,7 @@ abstract class BaseSmsNotification extends BaseNotification
         }
 
         // Рендерить из шаблона (если нужно)
-        return view("sms/{$this->template}", array_merge($this->data, $this->variables))->render();
+        return $this->viewFactory->make("sms/{$this->template}", array_merge($this->data, $this->variables))->render();
     }
 
     /**

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 
@@ -19,7 +21,7 @@ final class OrderHistoryRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn(Builder $q) => $q->where('tenant_id', filament()->getTenant()?->id)
+            ->query(fn (Builder $q) => $q->where('tenant_id', filament()->getTenant()?->id)
                 ->orderByDesc('created_at'))
             ->columns([
                 Tables\Columns\TextColumn::make('id')
@@ -28,7 +30,7 @@ final class OrderHistoryRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')

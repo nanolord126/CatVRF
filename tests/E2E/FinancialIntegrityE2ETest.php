@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -14,16 +16,10 @@ class FinancialIntegrityE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_wallet_balance_integrity(): void
     {
@@ -126,7 +122,7 @@ class FinancialIntegrityE2ETest extends TestCase
 
         if ($response->status() === 201) {
             $transactionId = $response->json('transaction_id');
-            
+
             // Verify transaction exists in database
             $transaction = PaymentTransaction::where('transaction_id', $transactionId)->first();
             $this->assertNotNull($transaction);
@@ -226,7 +222,7 @@ class FinancialIntegrityE2ETest extends TestCase
 
         if ($response->status() === 201) {
             $transaction = PaymentTransaction::where(
-                'transaction_id', 
+                'transaction_id',
                 $response->json('transaction_id')
             )->first();
 
@@ -249,7 +245,7 @@ class FinancialIntegrityE2ETest extends TestCase
 
         if ($response->status() === 201) {
             $transaction = PaymentTransaction::where(
-                'transaction_id', 
+                'transaction_id',
                 $response->json('transaction_id')
             )->first();
 
@@ -296,7 +292,7 @@ class FinancialIntegrityE2ETest extends TestCase
 
         if ($paymentResponse->status() === 201) {
             $paymentId = $paymentResponse->json('transaction_id');
-            
+
             // Attempt concurrent refunds
             $responses = [];
             for ($i = 0; $i < 3; $i++) {
@@ -307,8 +303,16 @@ class FinancialIntegrityE2ETest extends TestCase
             }
 
             // Only one should succeed
-            $successCount = count(array_filter($responses, fn($r) => $r->status() < 300));
+            $successCount = count(array_filter($responses, fn ($r) => $r->status() < 300));
             $this->assertEquals(1, $successCount);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

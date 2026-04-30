@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Wallet\WalletController;
@@ -13,11 +15,11 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     // Get wallet balance
     Route::get('/', [WalletController::class, 'show'])
         ->name('api.wallet.show');
-    
+
     // Get transaction history
     Route::get('/transactions', [WalletController::class, 'getTransactions'])
         ->name('api.wallet.transactions');
-    
+
     // Get wallet statistics
     Route::get('/stats', [WalletController::class, 'getStats'])
         ->name('api.wallet.stats');

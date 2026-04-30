@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -36,28 +38,19 @@ final class Employee extends Model
         'termination_date'    => 'date',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class);
+        return $this->belongsTo(BusinessGroup::class);
     }
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function payrolls(): HasMany
@@ -69,5 +62,14 @@ final class Employee extends Model
     public function getBaseSalaryRublesAttribute(): float
     {
         return $this->base_salary_kopecks / 100;
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

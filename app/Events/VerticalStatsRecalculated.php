@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * VerticalStatsRecalculated — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/verticalstatsrecalculated
  * @see https://catvrf.ru/docs/verticalstatsrecalculated
  * @see https://catvrf.ru/docs/verticalstatsrecalculated
@@ -31,20 +34,17 @@
  * @see https://catvrf.ru/docs/verticalstatsrecalculated
  */
 
-
 namespace App\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
+use Carbon\CarbonImmutable;
 
 final class VerticalStatsRecalculated
 {
-
-
-        public function __construct(
-            private readonly string $vertical,
-            private readonly string $correlationId,
-            private array $stats = [],
-        ) {}
+    public function __construct(
+        private readonly string $vertical,
+        private readonly string $correlationId,
+        private readonly array $stats = [],
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -53,7 +53,7 @@ final class VerticalStatsRecalculated
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -64,8 +64,8 @@ final class VerticalStatsRecalculated
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

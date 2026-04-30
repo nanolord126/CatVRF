@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Notifications\Channels;
 
@@ -10,7 +12,6 @@ use App\Domains\Education\Channels\Models\ChannelSubscriber;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Str;
 use Mockery;
 use Psr\Log\LoggerInterface;
 
@@ -34,32 +35,18 @@ final class MarketplaceChannelTest extends TestCase
     use WithFaker;
 
     private MarketplaceChannel $channel;
+
     private LoggerInterface $logger;
+
     private DatabaseManager $db;
+
     private InAppChannel $inAppChannel;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->logger = Mockery::mock(LoggerInterface::class);
-        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
-
-        $this->db = Mockery::mock(DatabaseManager::class);
-        $this->inAppChannel = Mockery::mock(InAppChannel::class);
-
-        $this->channel = new MarketplaceChannel(
-            logger:      $this->logger,
-            db:          $this->db,
-            inAppChannel: $this->inAppChannel,
-        );
-    }
-
     /** @test */
-    public function it_warns_when_notification_has_no_toMarketplace(): void
+    public function it_warns_when_notification_has_no_to_marketplace(): void
     {
         $notifiable = $this->createNotifiable();
-        $notification = new class extends Notification {
+        $notification = new class () extends Notification {
             public function via($notifiable): array
             {
                 return ['marketplace'];
@@ -77,7 +64,7 @@ final class MarketplaceChannelTest extends TestCase
     public function it_throws_when_tenant_id_missing(): void
     {
         $notifiable = $this->createNotifiable();
-        $notification = new class extends Notification {
+        $notification = new class () extends Notification {
             public function via($notifiable): array
             {
                 return ['marketplace'];
@@ -319,20 +306,37 @@ final class MarketplaceChannelTest extends TestCase
         );
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->logger = Mockery::mock(LoggerInterface::class);
+        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
+
+        $this->db = Mockery::mock(DatabaseManager::class);
+        $this->inAppChannel = Mockery::mock(InAppChannel::class);
+
+        $this->channel = new MarketplaceChannel(
+            logger:      $this->logger,
+            db:          $this->db,
+            inAppChannel: $this->inAppChannel,
+        );
+    }
+
     // ══════════════════════════════════════════════
     //  Helpers
     // ══════════════════════════════════════════════
 
     private function createNotifiable(int $id = 1): object
     {
-        return new class($id) {
+        return new class ($id) {
             public function __construct(public readonly int $id) {}
         };
     }
 
     private function createMarketplaceNotification(int $tenantId = 1): Notification
     {
-        return new class($tenantId) extends Notification {
+        return new class ($tenantId) extends Notification {
             public function __construct(private readonly int $tenantId) {}
 
             public function via($notifiable): array
@@ -352,7 +356,7 @@ final class MarketplaceChannelTest extends TestCase
 
             public function getCorrelationId(): string
             {
-                return 'mkt-test-corr-' . $this->tenantId;
+                return 'mkt-test-corr-'.$this->tenantId;
             }
 
             public function getTenantId(): int
@@ -378,8 +382,7 @@ final class MarketplaceChannelTest extends TestCase
     }
 
     /**
-     * @param int                          $tenantId
-     * @param BusinessChannel|null $returnChannel
+     * @param  BusinessChannel|null  $returnChannel
      */
     private function mockBusinessChannelQuery(int $tenantId, ?object $returnChannel): void
     {
@@ -399,8 +402,7 @@ final class MarketplaceChannelTest extends TestCase
     }
 
     /**
-     * @param int        $channelId
-     * @param array<int> $userIds
+     * @param  array<int>  $userIds
      */
     private function mockSubscribersQuery(int $channelId, array $userIds): void
     {

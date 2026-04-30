@@ -1,18 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
 
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
-use OpenTelemetry\API\Metrics\Counter;
-use OpenTelemetry\API\Metrics\Gauge;
-use OpenTelemetry\API\Metrics\MeterInterface;
-use OpenTelemetry\API\Metrics\Histogram;
 
 /**
  * Tenant Metrics Exporter
- * 
+ *
  * Exports OpenTelemetry metrics for tenant observability:
  * - Active tenants count
  * - Queries per tenant
@@ -28,6 +26,7 @@ final readonly class TenantMetricsExporter
         private readonly RedisFactory $redis,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
+        private readonly TenantResourceLimiterService $resourceLimiter,
     ) {}
 
     /**
@@ -89,7 +88,7 @@ final readonly class TenantMetricsExporter
                 'AI tokens used by tenant',
                 ['tenant_id' => (string) $tenantId]
             );
-            
+
             $lines[] = $this->formatGauge(
                 'tenant_redis_ops',
                 $usage['redis_ops'] ?? 0,
@@ -98,7 +97,38 @@ final readonly class TenantMetricsExporter
             );
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
+    }
+
+    /**
+     * Record tenant metric
+     */
+    public function recordMetric(string $metricName, string $tenantId, float $value, array $labels = []): void
+    {
+        $key = self::METRICS_PREFIX.$metricName.':'.$tenantId;
+
+        if (! empty($labels)) {
+            $key .= ':'.md5(json_encode($labels));
+        }
+
+        $this->redis->connection()->incrbyfloat($key, $value);
+        $this->redis->connection()->expire($key, 86400); // 24 hours
+    }
+
+    /**
+     * Get tenant health status
+     */
+    public function getTenantHealth(string $tenantId): array
+    {
+        $quotaStats = $this->resourceLimiter->getQuotaStats((int) $tenantId);
+
+        return [
+            'tenant_id' => $tenantId,
+            'is_active' => $this->isTenantActive($tenantId),
+            'quotas' => $quotaStats,
+            'health_score' => $this->calculateHealthScore($quotaStats),
+            'alerts' => $this->generateAlerts($quotaStats),
+        ];
     }
 
     /**
@@ -135,7 +165,7 @@ final readonly class TenantMetricsExporter
     private function getAICostPerTenant(): array
     {
         $costs = [];
-        
+
         // Get from Redis cache
         $pattern = 'tenant:quota:ai_tokens:*';
         $keys = $this->redis->connection()->keys($pattern);
@@ -143,7 +173,7 @@ final readonly class TenantMetricsExporter
         foreach ($keys as $key) {
             $tenantId = str_replace('tenant:quota:ai_tokens:', '', $key);
             $tokensUsed = (int) $this->redis->connection()->get($key) ?: 0;
-            
+
             // Assume 0.1 ruble per 1000 tokens
             $costs[$tenantId] = ($tokensUsed / 1000) * 0.1;
         }
@@ -157,7 +187,7 @@ final readonly class TenantMetricsExporter
     private function getFraudRatePerTenant(): array
     {
         $rates = [];
-        
+
         $results = $this->db->table('fraud_attempts')
             ->selectRaw('tenant_id, COUNT(*) as total, SUM(CASE WHEN decision = "block" THEN 1 ELSE 0 END) as blocked')
             ->groupBy('tenant_id')
@@ -189,48 +219,16 @@ final readonly class TenantMetricsExporter
             if (count($parts) === 3) {
                 [$prefix, $resource, $tenantId] = $parts;
                 $value = (int) $this->redis->connection()->get($key) ?: 0;
-                
-                if (!isset($usage[$tenantId])) {
+
+                if (! isset($usage[$tenantId])) {
                     $usage[$tenantId] = [];
                 }
-                
+
                 $usage[$tenantId][$resource] = $value;
             }
         }
 
         return $usage;
-    }
-
-    /**
-     * Record tenant metric
-     */
-    public function recordMetric(string $metricName, string $tenantId, float $value, array $labels = []): void
-    {
-        $key = self::METRICS_PREFIX . $metricName . ':' . $tenantId;
-        
-        if (!empty($labels)) {
-            $key .= ':' . md5(json_encode($labels));
-        }
-
-        $this->redis->connection()->incrbyfloat($key, $value);
-        $this->redis->connection()->expire($key, 86400); // 24 hours
-    }
-
-    /**
-     * Get tenant health status
-     */
-    public function getTenantHealth(string $tenantId): array
-    {
-        $limiter = app(TenantResourceLimiterService::class);
-        $quotaStats = $limiter->getQuotaStats((int) $tenantId);
-
-        return [
-            'tenant_id' => $tenantId,
-            'is_active' => $this->isTenantActive($tenantId),
-            'quotas' => $quotaStats,
-            'health_score' => $this->calculateHealthScore($quotaStats),
-            'alerts' => $this->generateAlerts($quotaStats),
-        ];
     }
 
     /**
@@ -296,12 +294,14 @@ final readonly class TenantMetricsExporter
     private function formatGauge(string $name, float $value, string $help, array $labels = []): string
     {
         $labelStr = $this->formatLabels($labels);
+
         return "# HELP {$name} {$help}\n# TYPE {$name} gauge\n{$name}{$labelStr} {$value}";
     }
 
     private function formatCounter(string $name, float $value, string $help, array $labels = []): string
     {
         $labelStr = $this->formatLabels($labels);
+
         return "# HELP {$name} {$help}\n# TYPE {$name} counter\n{$name}{$labelStr} {$value}";
     }
 
@@ -316,6 +316,6 @@ final readonly class TenantMetricsExporter
             $parts[] = "{$key}=\"{$value}\"";
         }
 
-        return '{' . implode(',', $parts) . '}';
+        return '{'.implode(',', $parts).'}';
     }
 }

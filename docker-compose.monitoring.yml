@@ -135,7 +135,7 @@ services:
       - CLICKHOUSE_PORT=8123
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=
-      - CLICKHOUSE_DATABASE=catvrf_analytics
+      - CLICKHOUSE_DATABASE=catvrf_bigdata
     networks:
       - monitoring
     depends_on:
@@ -153,7 +153,7 @@ services:
       - clickhouse-data:/var/lib/clickhouse
       - ./database/clickhouse/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     environment:
-      - CLICKHOUSE_DB=catvrf_analytics
+      - CLICKHOUSE_DB=catvrf_bigdata
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1

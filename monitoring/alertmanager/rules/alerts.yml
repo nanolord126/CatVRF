@@ -1,0 +1,235 @@
+# Alert Rules for CatVRF - Horizon + Supermarket + CRM Sync
+
+groups:
+  # === Horizon Queue Alerts ===
+  - name: horizon_queue_alerts
+    interval: 30s
+    rules:
+      # High failed jobs count
+      - alert: HighFailedJobs
+        expr: sum(horizon_jobs_failed) > 8
+        for: 3m
+        labels:
+          severity: critical
+          service: horizon
+          vertical: supermarket
+        annotations:
+          summary: "Много упавших джобов в Horizon"
+          description: "{{ $value }} джобов упали за последние 3 минуты"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/horizon-failed-jobs"
+      
+      # Supermarket high queue overload
+      - alert: SupermarketQueueOverload
+        expr: horizon_jobs_pending{queue="supermarket-high"} > 250
+        for: 5m
+        labels:
+          severity: warning
+          service: horizon
+          vertical: supermarket
+          queue: supermarket-high
+        annotations:
+          summary: "Перегрузка очереди supermarket-high"
+          description: "{{ $value }} джобов в очереди supermarket-high"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+      
+      # CRM sync high failure rate
+      - alert: CRMSyncHighFailureRate
+        expr: rate(horizon_jobs_failed{queue="crm-sync"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: crm
+          vertical: supermarket
+          queue: crm-sync
+        annotations:
+          summary: "Высокий процент ошибок синхронизации с CRM"
+          description: "{{ $value | humanizePercentage }} джобов в секунду падают в crm-sync"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/crm-sync-failures"
+      
+      # Longest running job
+      - alert: LongRunningJob
+        expr: max(horizon_job_duration_seconds) > 30
+        for: 2m
+        labels:
+          severity: warning
+          service: horizon
+          vertical: supermarket
+        annotations:
+          summary: "Джоб выполняется слишком долго"
+          description: "Максимальное время выполнения: {{ $value }} секунд"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+      
+      # Queue backlog growing
+      - alert: QueueBacklogGrowing
+        expr: increase(horizon_jobs_pending[10m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: horizon
+          vertical: supermarket
+        annotations:
+          summary: "Бэклог очередей растёт"
+          description: "Очередь выросла на {{ $value }} джобов за 10 минут"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+
+  # === Supermarket Specific Alerts ===
+  - name: supermarket_alerts
+    interval: 30s
+    rules:
+      # Cold chain orders in queue too long
+      - alert: ColdChainOrdersDelayed
+        expr: (supermarket_cold_chain_jobs or 0) > 50
+        for: 5m
+        labels:
+          severity: critical
+          service: supermarket
+          vertical: supermarket
+        annotations:
+          summary: "Заказы с холодной цепью задержаны"
+          description: "{{ $value }} заказов с холодной цепью в очереди"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/cold-chain-delays"
+      
+      # B2B orders pending
+      - alert: B2BOrdersPending
+        expr: (supermarket_b2b_orders_pending or 0) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: supermarket
+          vertical: supermarket
+        annotations:
+          summary: "Много B2B заказов в ожидании"
+          description: "{{ $value }} B2B заказов в очереди"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+      
+      # Order creation rate drops
+      - alert: OrderCreationRateDrop
+        expr: rate(supermarket_orders_created_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: supermarket
+          vertical: supermarket
+        annotations:
+          summary: "Снижение темпа создания заказов"
+          description: "Темп создания заказов: {{ $value }} заказов/сек"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+
+  # === CRM Specific Alerts ===
+  - name: crm_alerts
+    interval: 30s
+    rules:
+      # CRM health check failed
+      - alert: CRMHealthCheckFailed
+        expr: up{job="crm-health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: crm
+          vertical: shared
+        annotations:
+          summary: "CRM недоступен (health check failed)"
+          description: "CRM не отвечает на health check"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/crm-health-check"
+      
+      # Failed CRM syncs in dead letter
+      - alert: FailedCRMSyncs
+        expr: (failed_crm_syncs_count or 0) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: crm
+          vertical: shared
+        annotations:
+          summary: "Много проваленных синхронизаций с CRM"
+          description: "{{ $value }} записей в таблице failed_crm_syncs"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/failed-crm-syncs"
+      
+      # CRM sync latency high
+      - alert: CRMSyncLatencyHigh
+        expr: histogram_quantile(0.95, rate(crm_sync_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: crm
+          vertical: shared
+        annotations:
+          summary: "Высокая задержка синхронизации с CRM"
+          description: "p95 задержка: {{ $value }} секунд"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+
+  # === Infrastructure Alerts ===
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+          vertical: infrastructure
+        annotations:
+          summary: "Redis недоступен"
+          description: "Redis exporter не отвечает"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/redis-down"
+      
+      # MySQL down
+      - alert: MySQLDown
+        expr: up{job="mysql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mysql
+          vertical: infrastructure
+        annotations:
+          summary: "MySQL недоступен"
+          description: "MySQL exporter не отвечает"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+          runbook: "https://wiki.catvrf.ru/runbooks/mysql-down"
+      
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: node
+          vertical: infrastructure
+        annotations:
+          summary: "Высокая нагрузка на CPU"
+          description: "{{ $value }}% CPU usage"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+      
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: node
+          vertical: infrastructure
+        annotations:
+          summary: "Высокое использование памяти"
+          description: "{{ $value }}% memory usage"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"
+      
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          service: node
+          vertical: infrastructure
+        annotations:
+          summary: "Мало свободного места на диске"
+          description: "{{ $value }}% свободного места на /"
+          grafana: "http://grafana:3000/d/catvrf-queues-v2"

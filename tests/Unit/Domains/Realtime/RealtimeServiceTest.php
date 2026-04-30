@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Realtime;
 
@@ -6,32 +8,18 @@ use App\Services\Realtime\RealtimeService;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
 use Tests\TestCase;
 
 final class RealtimeServiceTest extends TestCase
 {
     private RealtimeService $service;
+
     private DatabaseManager $db;
+
     private AuditService $audit;
+
     private FraudControlService $fraud;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->db = app(DatabaseManager::class);
-        $this->audit = app(AuditService::class);
-        $this->fraud = app(FraudControlService::class);
-        
-        $this->service = new RealtimeService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-            $this->fraud,
-        );
-    }
 
     public function test_broadcast_to_user(): void
     {
@@ -172,6 +160,22 @@ final class RealtimeServiceTest extends TestCase
 
         $this->assertIsArray($presence);
         $this->assertEquals('online', $presence['presence']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->db = app(DatabaseManager::class);
+        $this->audit = app(AuditService::class);
+        $this->fraud = app(FraudControlService::class);
+
+        $this->service = new RealtimeService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+            $this->fraud,
+        );
     }
 
     protected function tearDown(): void

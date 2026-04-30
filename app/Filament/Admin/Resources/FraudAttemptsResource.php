@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources;
+
+use Carbon\CarbonImmutable;
 
 use App\Models\FraudAttempt;
 use Filament\Forms\Components\KeyValue;
@@ -18,15 +22,23 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use App\Filament\Admin\Resources\FraudAttemptsResource\Pages\ListFraudAttempts;
+use App\Filament\Admin\Resources\FraudAttemptsResource\Pages\ViewFraudAttempt;
 
 final class FraudAttemptsResource extends Resource
 {
     protected static ?string $model = FraudAttempt::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-shield-exclamation';
+
     protected static ?string $navigationGroup = 'Безопасность';
+
     protected static ?string $navigationLabel = 'Попытки фрода';
+
     protected static ?string $modelLabel = 'Попытка фрода';
+
     protected static ?string $pluralModelLabel = 'Попытки фрода';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
@@ -160,7 +172,7 @@ final class FraudAttemptsResource extends Resource
                     ->requiresConfirmation()
                     ->action(fn (FraudAttempt $record) => $record->update([
                         'decision'   => 'block',
-                        'blocked_at' => now(),
+                        'blocked_at' => CarbonImmutable::now(),
                     ])),
                 Action::make('changeToAllow')
                     ->label('Разрешить')
@@ -179,7 +191,7 @@ final class FraudAttemptsResource extends Resource
                         ->requiresConfirmation()
                         ->action(fn (Collection $records) => $records->each->update([
                             'decision'   => 'block',
-                            'blocked_at' => now(),
+                            'blocked_at' => CarbonImmutable::now(),
                         ])),
                     BulkAction::make('bulkAllow')
                         ->label('Разрешить выбранные')
@@ -195,8 +207,8 @@ final class FraudAttemptsResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Admin\Resources\FraudAttemptsResource\Pages\ListFraudAttempts::route('/'),
-            'view'  => \App\Filament\Admin\Resources\FraudAttemptsResource\Pages\ViewFraudAttempt::route('/{record}'),
+            'index' => ListFraudAttempts::route('/'),
+            'view'  => ViewFraudAttempt::route('/{record}'),
         ];
     }
 }
