@@ -6,15 +6,23 @@ namespace Database\Factories;
 
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Hashing\HashManager;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 final class UserFactory extends Factory
 {
     protected static ?string $password;
+
+    public function __construct(
+        private readonly HashManager $hasher,
+        ...$args
+    ) {
+        parent::__construct(...$args);
+    }
 
     /**
      * Define the model's default state.
@@ -31,7 +39,7 @@ final class UserFactory extends Factory
             'email_verified_at' => now(),
             'phone' => fake()->phoneNumber(),
             'phone_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => self::$password ??= $this->hasher->make('password'),
             'correlation_id' => (string) Str::uuid(),
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
@@ -46,7 +54,6 @@ final class UserFactory extends Factory
             'is_active' => true,
             'is_admin' => false,
             'remember_token' => Str::random(10),
-            'category_preference' => null,
         ];
     }
 

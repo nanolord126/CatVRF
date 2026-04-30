@@ -1,87 +1,85 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
-use Illuminate\Http\Request;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 final class DeliveryOrder extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'delivery_orders';
+    protected $table = 'delivery_orders';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'sender_id',
-            'courier_id',
-            'status',
-            'package_type',
-            'weight_kg',
-            'recipient_name',
-            'recipient_phone',
-            'pickup_point',
-            'dropoff_point',
-            'price',
-            'correlation_id',
-            'metadata'
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'sender_id',
+        'courier_id',
+        'status',
+        'package_type',
+        'weight_kg',
+        'recipient_name',
+        'recipient_phone',
+        'pickup_point',
+        'dropoff_point',
+        'price',
+        'correlation_id',
+        'metadata',
+    ];
 
-        protected $casts = [
-            'metadata' => 'json',
-            'weight_kg' => 'float',
-            'price' => 'integer',
-            'tenant_id' => 'integer',
-            'sender_id' => 'integer',
-            'courier_id' => 'integer'
-        ];
+    protected $casts = [
+        'metadata' => 'json',
+        'weight_kg' => 'float',
+        'price' => 'integer',
+        'tenant_id' => 'integer',
+        'sender_id' => 'integer',
+        'courier_id' => 'integer',
+    ];
 
-        /**
-         * Глобальный скоупинг тенанта.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (DeliveryOrder $order) {
-                $order->uuid = $order->uuid ?? (string) Str::uuid();
-                $order->tenant_id = $order->tenant_id ?? (tenant()->id ?? 1);
-                $order->correlation_id = $order->correlation_id ?? $this->request->header('X-Correlation-ID');
-            });
+    /**
+     * Настройка логов активности.
+     */
 
-            static::addGlobalScope('tenant', function ($query) {
-                if (tenant()) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    /**
+     * Отношения.
+     */
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sender_id');
+    }
 
-        /**
-         * Настройка логов активности.
-         */
-        
+    public function courier(): BelongsTo
+    {
+        return $this->belongsTo(Driver::class, 'courier_id');
+    }
 
-        /**
-         * Отношения.
-         */
-        public function sender(): BelongsTo
-        {
-            return $this->belongsTo(User::class, 'sender_id');
-        }
+    /**
+     * Форматирование цены (копейки -> рубли).
+     */
+    public function getFormattedPriceAttribute(): string
+    {
+        return number_format($this->price / 100, 2, '.', ' ').' ₽';
+    }
 
-        public function courier(): BelongsTo
-        {
-            return $this->belongsTo(Driver::class, 'courier_id');
-        }
+    /**
+     * Глобальный скоупинг тенанта.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (DeliveryOrder $order) {
+            $order->uuid = $order->uuid ?? (string) Str::uuid();
+            $order->tenant_id = $order->tenant_id ?? (tenant()->id ?? 1);
+            $order->correlation_id = $order->correlation_id ?? $this->request->header('X-Correlation-ID');
+        });
 
-        /**
-         * Форматирование цены (копейки -> рубли).
-         */
-        public function getFormattedPriceAttribute(): string
-        {
-            return number_format($this->price / 100, 2, '.', ' ') . ' ₽';
-        }
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

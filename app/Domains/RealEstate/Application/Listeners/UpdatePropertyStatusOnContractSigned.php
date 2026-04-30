@@ -3,32 +3,28 @@
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\Listeners;
-use Illuminate\Bus\Queueable;
-use Illuminate\Foundation\Bus\Dispatchable;
 
 use App\Domains\RealEstate\Domain\Events\ContractSigned;
 use App\Domains\RealEstate\Domain\Repository\PropertyRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\PropertyId;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Psr\Log\LoggerInterface;
 
 final class UpdatePropertyStatusOnContractSigned implements ShouldQueue
 {
-
-
     public int $tries = 5;
 
     public int $backoff = 30;
 
     public function __construct(
-        private readonly PropertyRepositoryInterface $propertyRepository) {}
+        private readonly PropertyRepositoryInterface $propertyRepository
+    ) {}
 
     public function handle(ContractSigned $event, LoggerInterface $logger): void
     {
         $correlationId = $event->correlationId;
 
-        $logger->info('UpdatePropertyStatusOnContractSigned: handling event', [
+        $logger->$this->logger->info('UpdatePropertyStatusOnContractSigned: handling event', [
             'contract_id'    => $event->contractId->toString(),
             'property_id'    => $event->propertyId->toString(),
             'contract_type'  => $event->contractType->value,
@@ -58,7 +54,7 @@ final class UpdatePropertyStatusOnContractSigned implements ShouldQueue
 
             $this->propertyRepository->save($property);
 
-            $logger->info('UpdatePropertyStatusOnContractSigned: property status updated', [
+            $logger->$this->logger->info('UpdatePropertyStatusOnContractSigned: property status updated', [
                 'property_id'    => $event->propertyId->toString(),
                 'new_status'     => $targetStatus->value,
                 'correlation_id' => $correlationId,

@@ -1,0 +1,385 @@
+name: Residential Proxy Detection
+description: Multi-layered residential proxy detection endpoints
+version: 1.0.0
+endpoints:
+  - endpoint: GET /api/security/residential-proxy/detect
+    description: Detect residential proxy usage for a request
+    parameters:
+      - name: X-Real-IP
+        description: Real IP address (optional, forwarded from load balancer)
+        type: string
+        required: false
+      - name: X-Forwarded-For
+        description: Forwarded IP addresses (optional)
+        type: string
+        required: false
+    responses:
+      - code: 200
+        description: Detection result
+        schema:
+          type: object
+          properties:
+            is_residential_proxy:
+              type: boolean
+              description: Whether residential proxy was detected
+            proxy_type:
+              type: string
+              enum: [none, datacenter, residential, mobile, isp_backed, rotating_residential, ethical_residential, corporate_vpn, tor, unknown]
+              description: Type of proxy detected
+            proxy_provider:
+              type: string
+              enum: [unknown, oxylabs, bright_data, iproyal, decodo, smartproxy, luminati, storm_proxies, hydra_proxies, shifter, netnut, zenrow, soax, infatica, ipium, proxysell, astroproxy, blazingseo, geosurf, apify, scraperapi, zyte]
+              description: Detected proxy provider
+            risk_level:
+              type: string
+              enum: [low, medium, high, critical, permanent_block]
+              description: Risk level assessment
+            confidence_score:
+              type: integer
+              minimum: 0
+              maximum: 100
+              description: Confidence score (0-100)
+            ip_address:
+              type: string
+              description: IP address that was checked
+            country_code:
+              type: string
+              description: ISO country code
+            city:
+              type: string
+              description: City name
+            is_rotating:
+              type: boolean
+              description: Whether proxy is rotating
+            is_ethical:
+              type: boolean
+              description: Whether proxy claims to be ethical
+            is_isp_backed:
+              type: boolean
+              description: Whether proxy is ISP-backed
+            has_behavioral_anomaly:
+              type: boolean
+              description: Whether behavioral anomaly was detected
+            geo_mismatch:
+              type: boolean
+              description: Whether geo mismatch was detected
+            is_russian_territory_violation:
+              type: boolean
+              description: Whether Russian territory violation was detected
+            detection_sources:
+              type: array
+              items:
+                type: string
+              description: Sources that detected the proxy
+            metadata:
+              type: object
+              description: Additional detection metadata
+            is_whitelisted:
+              type: boolean
+              description: Whether IP is whitelisted
+            is_blacklisted:
+              type: boolean
+              description: Whether IP is blacklisted
+      - code: 403
+        description: Forbidden (if protection measures are applied)
+      - code: 429
+        description: Too Many Requests (rate limited)
+
+  - endpoint: POST /api/security/residential-proxy/check
+    description: Check a specific IP address for residential proxy usage
+    parameters:
+      - name: ip_address
+        description: IP address to check
+        type: string
+        required: true
+        in: body
+        schema:
+          type: object
+          properties:
+            ip_address:
+              type: string
+              format: ipv4
+              example: "192.0.2.1"
+    responses:
+      - code: 200
+        description: Detection result (same schema as GET /detect)
+      - code: 400
+        description: Bad request (invalid IP address)
+      - code: 422
+        description: Validation error
+
+  - endpoint: GET /api/security/residential-proxy/detections
+    description: List residential proxy detections (admin only)
+    parameters:
+      - name: user_id
+        description: Filter by user ID
+        type: integer
+        required: false
+        in: query
+      - name: tenant_id
+        description: Filter by tenant ID
+        type: integer
+        required: false
+        in: query
+      - name: risk_level
+        description: Filter by risk level
+        type: string
+        enum: [low, medium, high, critical, permanent_block]
+        required: false
+        in: query
+      - name: proxy_provider
+        description: Filter by proxy provider
+        type: string
+        required: false
+        in: query
+      - name: from_date
+        description: Filter by start date
+        type: string
+        format: date-time
+        required: false
+        in: query
+      - name: to_date
+        description: Filter by end date
+        type: string
+        format: date-time
+        required: false
+        in: query
+      - name: page
+        description: Page number
+        type: integer
+        default: 1
+        required: false
+        in: query
+      - name: per_page
+        description: Items per page
+        type: integer
+        default: 50
+        required: false
+        in: query
+    responses:
+      - code: 200
+        description: List of detections
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  user_id:
+                    type: integer
+                  tenant_id:
+                    type: integer
+                  ip_address:
+                    type: string
+                  country_code:
+                    type: string
+                  city:
+                    type: string
+                  proxy_type:
+                    type: string
+                  proxy_provider:
+                    type: string
+                  risk_level:
+                    type: string
+                  confidence_score:
+                    type: integer
+                  is_residential_proxy:
+                    type: boolean
+                  is_rotating:
+                    type: boolean
+                  is_ethical:
+                    type: boolean
+                  is_isp_backed:
+                    type: boolean
+                  has_behavioral_anomaly:
+                    type: boolean
+                  geo_mismatch:
+                    type: boolean
+                  is_russian_territory_violation:
+                    type: boolean
+                  detection_sources:
+                    type: array
+                    items:
+                      type: string
+                  metadata:
+                    type: object
+                  correlation_id:
+                    type: string
+                  detected_at:
+                    type: string
+                    format: date-time
+            meta:
+              type: object
+              properties:
+                current_page:
+                  type: integer
+                per_page:
+                  type: integer
+                total:
+                  type: integer
+                last_page:
+                  type: integer
+      - code: 403
+        description: Forbidden (admin only)
+
+  - endpoint: POST /api/security/residential-proxy/whitelist
+    description: Add IP to whitelist (admin only)
+    parameters:
+      - name: ip_address
+        description: IP address to whitelist
+        type: string
+        required: true
+        in: body
+      - name: ip_range
+        description: CIDR range to whitelist (optional)
+        type: string
+        required: false
+        in: body
+      - name: reason
+        description: Reason for whitelisting
+        type: string
+        required: true
+        in: body
+      - name: is_corporate_vpn
+        description: Whether this is a corporate VPN
+        type: boolean
+        default: false
+        in: body
+      - name: organization
+        description: Organization name
+        type: string
+        required: false
+        in: body
+    responses:
+      - code: 201
+        description: IP whitelisted successfully
+      - code: 400
+        description: Bad request
+      - code: 403
+        description: Forbidden (admin only)
+      - code: 409
+        description: Conflict (IP already whitelisted)
+
+  - endpoint: DELETE /api/security/residential-proxy/whitelist/{ip}
+    description: Remove IP from whitelist (admin only)
+    parameters:
+      - name: ip
+        description: IP address to remove
+        type: string
+        required: true
+        in: path
+    responses:
+      - code: 204
+        description: IP removed from whitelist
+      - code: 403
+        description: Forbidden (admin only)
+      - code: 404
+        description: Not found
+
+  - endpoint: POST /api/security/residential-proxy/blacklist
+    description: Add IP to blacklist (admin only)
+    parameters:
+      - name: ip_address
+        description: IP address to blacklist
+        type: string
+        required: true
+        in: body
+      - name: proxy_provider
+        description: Proxy provider (if known)
+        type: string
+        required: false
+        in: body
+      - name: reason
+        description: Reason for blacklisting
+        type: string
+        required: true
+        in: body
+      - name: expires_at
+        description: Expiration date (null for permanent)
+        type: string
+        format: date-time
+        required: false
+        in: body
+    responses:
+      - code: 201
+        description: IP blacklisted successfully
+      - code: 400
+        description: Bad request
+      - code: 403
+        description: Forbidden (admin only)
+      - code: 409
+        description: Conflict (IP already blacklisted)
+
+  - endpoint: DELETE /api/security/residential-proxy/blacklist/{ip}
+    description: Remove IP from blacklist (admin only)
+    parameters:
+      - name: ip
+        description: IP address to remove
+        type: string
+        required: true
+        in: path
+    responses:
+      - code: 204
+        description: IP removed from blacklist
+      - code: 403
+        description: Forbidden (admin only)
+      - code: 404
+        description: Not found
+
+  - endpoint: GET /api/security/residential-proxy/statistics
+    description: Get residential proxy detection statistics (admin only)
+    parameters:
+      - name: from_date
+        description: Start date for statistics
+        type: string
+        format: date-time
+        required: false
+        in: query
+      - name: to_date
+        description: End date for statistics
+        type: string
+        format: date-time
+        required: false
+        in: query
+    responses:
+      - code: 200
+        description: Statistics
+        schema:
+          type: object
+          properties:
+            total_detections:
+              type: integer
+            by_risk_level:
+              type: object
+              properties:
+                low:
+                  type: integer
+                medium:
+                  type: integer
+                high:
+                  type: integer
+                critical:
+                  type: integer
+                permanent_block:
+                  type: integer
+            by_proxy_provider:
+              type: object
+              additionalProperties:
+                type: integer
+            by_country:
+              type: object
+              additionalProperties:
+                type: integer
+            russian_territory_violations:
+              type: integer
+            average_confidence_score:
+              type: number
+              format: float
+            affected_users:
+              type: integer
+      - code: 403
+        description: Forbidden (admin only)

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
+
+use Carbon\CarbonImmutable;
 
 /**
  * Base class for push notifications (Firebase, OneSignal)
@@ -12,67 +16,67 @@ abstract class BasePushNotification extends BaseNotification
     /**
      * Заголовок push-уведомления
      */
-    private string $title = 'Notification';
+    private readonly string $title = 'Notification';
 
     /**
      * Тело push-уведомления
      */
-    private string $body = '';
+    private readonly string $body = '';
 
     /**
      * Иконка (URL или имя ресурса)
      */
-    private ?string $icon = null;
+    private readonly ?string $icon = null;
 
     /**
      * Картинка (большое изображение в push)
      */
-    private ?string $image = null;
+    private readonly ?string $image = null;
 
     /**
      * Звук уведомления
      */
-    private ?string $sound = 'default';
+    private readonly ?string $sound = 'default';
 
     /**
      * Цвет (для Android)
      */
-    private ?string $color = null;
+    private readonly ?string $color = null;
 
     /**
      * Deep link (экран приложения, который открыть)
      */
-    private ?string $deepLink = null;
+    private readonly ?string $deepLink = null;
 
     /**
      * Количество на бейдже (iOS)
      */
-    private ?int $badge = null;
+    private readonly ?int $badge = null;
 
     /**
      * Категория (для действий)
      */
-    private ?string $category = null;
+    private readonly ?string $category = null;
 
     /**
      * Данные payload (дополнительные данные для приложения)
      */
-    private array $payload = [];
+    private readonly array $payload = [];
 
     /**
      * TTL для push (сек)
      */
-    private int $ttl = 86400; // 1 день
+    private readonly int $ttl = 86400; // 1 день
 
     /**
      * Приоритет (high, normal)
      */
-    private string $priority = 'high';
+    private readonly string $priority = 'high';
 
     /**
      * Требует ли аутентификации
      */
-    private bool $requiresAuth = false;
+    private readonly bool $requiresAuth = false;
 
     /**
      * Конструктор
@@ -93,6 +97,7 @@ abstract class BasePushNotification extends BaseNotification
     public function title(string $title): self
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -102,6 +107,7 @@ abstract class BasePushNotification extends BaseNotification
     public function body(string $body): self
     {
         $this->body = $body;
+
         return $this;
     }
 
@@ -111,6 +117,7 @@ abstract class BasePushNotification extends BaseNotification
     public function icon(string $icon): self
     {
         $this->icon = $icon;
+
         return $this;
     }
 
@@ -120,6 +127,7 @@ abstract class BasePushNotification extends BaseNotification
     public function image(string $image): self
     {
         $this->image = $image;
+
         return $this;
     }
 
@@ -129,6 +137,7 @@ abstract class BasePushNotification extends BaseNotification
     public function sound(string $sound): self
     {
         $this->sound = $sound;
+
         return $this;
     }
 
@@ -138,6 +147,7 @@ abstract class BasePushNotification extends BaseNotification
     public function color(string $color): self
     {
         $this->color = $color;
+
         return $this;
     }
 
@@ -147,6 +157,7 @@ abstract class BasePushNotification extends BaseNotification
     public function deepLink(string $link): self
     {
         $this->deepLink = $link;
+
         return $this;
     }
 
@@ -156,6 +167,7 @@ abstract class BasePushNotification extends BaseNotification
     public function badge(int $count): self
     {
         $this->badge = $count;
+
         return $this;
     }
 
@@ -165,6 +177,7 @@ abstract class BasePushNotification extends BaseNotification
     public function category(string $category): self
     {
         $this->category = $category;
+
         return $this;
     }
 
@@ -174,6 +187,7 @@ abstract class BasePushNotification extends BaseNotification
     public function addPayload(string $key, mixed $value): self
     {
         $this->payload[$key] = $value;
+
         return $this;
     }
 
@@ -183,6 +197,7 @@ abstract class BasePushNotification extends BaseNotification
     public function setPayload(array $payload): self
     {
         $this->payload = $payload;
+
         return $this;
     }
 
@@ -192,6 +207,7 @@ abstract class BasePushNotification extends BaseNotification
     public function ttl(int $seconds): self
     {
         $this->ttl = $seconds;
+
         return $this;
     }
 
@@ -201,6 +217,7 @@ abstract class BasePushNotification extends BaseNotification
     public function priority(string $priority): self
     {
         $this->priority = $priority;
+
         return $this;
     }
 
@@ -210,6 +227,7 @@ abstract class BasePushNotification extends BaseNotification
     public function requireAuth(): self
     {
         $this->requiresAuth = true;
+
         return $this;
     }
 
@@ -234,12 +252,12 @@ abstract class BasePushNotification extends BaseNotification
             ]),
             'android' => [
                 'priority' => $this->priority === 'high' ? 'high' : 'normal',
-                'ttl' => $this->ttl . 's',
+                'ttl' => $this->ttl.'s',
             ],
             'apns' => [
                 'headers' => [
                     'apns-priority' => $this->priority === 'high' ? '10' : '1',
-                    'apns-expiration' => (now()->addSeconds($this->ttl))->timestamp,
+                    'apns-expiration' => (CarbonImmutable::now()->addSeconds($this->ttl))->timestamp,
                 ],
             ],
         ];

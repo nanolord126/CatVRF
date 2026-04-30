@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Models\B2BManufacturer;
 use App\Models\B2BProduct;
-use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -78,7 +77,7 @@ final class CrossVerticalB2BAIEcosystemSeeder extends Seeder
         foreach ($catalog as $vertical => $products) {
             foreach ($products as $p) {
                 B2BProduct::updateOrCreate([
-                    'sku' => strtoupper($vertical) . '-' . Str::random(6),
+                    'sku' => strtoupper($vertical).'-'.Str::random(6),
                 ], [
                     'manufacturer_id' => $mfg->id,
                     'name' => $p['name'],
@@ -87,7 +86,7 @@ final class CrossVerticalB2BAIEcosystemSeeder extends Seeder
                     'base_wholesale_price' => $p['price'],
                     'min_order_quantity' => rand(5, 50),
                     'stock_quantity' => rand(100, 1000),
-                    'tags' => $p['tags'] . ",$vertical",
+                    'tags' => $p['tags'].",$vertical",
                     'correlation_id' => Str::uuid(),
                 ]);
             }

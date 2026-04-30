@@ -2,9 +2,12 @@
 
 namespace App\Services\Pricing;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Collection;
+use Carbon\CarbonImmutable;
 
 /**
  * Unified Pricing Engine Service
@@ -24,10 +27,9 @@ final readonly class PricingEngineService
     private const string CACHE_PREFIX = 'pricing:';
     private const int CACHE_TTL_SECONDS = 300; // 5 minutes
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly CacheRepository $cache,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Calculate final price for a service/product
@@ -91,12 +93,12 @@ final readonly class PricingEngineService
             'base_price' => $basePrice,
             'discount_amount' => $totalDiscount,
             'applied_rules' => $appliedRules,
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
         $this->cache->put($cacheKey, $result, self::CACHE_TTL_SECONDS);
 
-        $this->logger->channel('audit')->info('Price calculated', [
+        $this->logger->channel('audit')->$this->logger->info('Price calculated', [
             'vertical' => $vertical,
             'base_price' => $basePrice,
             'final_price' => $result['final_price'],
@@ -181,7 +183,7 @@ final readonly class PricingEngineService
         $adjustment = 0;
         $rule = null;
 
-        $now = $context['timestamp'] ?? now();
+        $now = $context['timestamp'] ?? CarbonImmutable::now();
         $hour = $now instanceof \Carbon\Carbon ? $now->hour : (int) date('H', strtotime($now));
 
         // Peak hours pricing (e.g., 18:00-22:00 for food delivery)
@@ -271,7 +273,7 @@ final readonly class PricingEngineService
      */
     private function sanitizeContext(array $context): array
     {
-        return collect($context)
+        return new Collection($context)
             ->except(['user_id', 'business_group_id', 'ip_address'])
             ->all();
     }
@@ -282,7 +284,7 @@ final readonly class PricingEngineService
     public function invalidateCache(string $vertical): void
     {
         // In production, use cache tags for efficient invalidation
-        $this->logger->channel('audit')->info('Pricing cache invalidated', [
+        $this->logger->channel('audit')->$this->logger->info('Pricing cache invalidated', [
             'vertical' => $vertical,
         ]);
     }

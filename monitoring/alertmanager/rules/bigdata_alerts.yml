@@ -1,0 +1,327 @@
+# Big Data Alert Rules for CatVRF
+# Covers: Kafka pipeline, ClickHouse, CLV model, A/B tests, Spark, data freshness
+# Severity mapping: critical → PagerDuty + Telegram + Slack
+#                    warning → Slack + Telegram
+#                    info → Slack only
+
+groups:
+  # === Kafka Pipeline Alerts ===
+  - name: bigdata_kafka_alerts
+    interval: 30s
+    rules:
+      # Kafka consumer lag > 5 minutes (critical)
+      - alert: BigDataKafkaLagCritical
+        expr: catvrf_bigdata_pipeline_kafka_pending_messages{topic="bigdata_events"} > 10000
+        for: 5m
+        labels:
+          severity: critical
+          service: kafka
+          vertical: bigdata
+        annotations:
+          summary: "Kafka consumer lag критический"
+          description: "Lag в топике bigdata_events: {{ $value }} сообщений (>10K threshold). Pipeline Kafka→ClickHouse отстаёт."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-kafka-lag"
+
+      # Kafka lag warning (growing)
+      - alert: BigDataKafkaLagGrowing
+        expr: deriv(catvrf_bigdata_pipeline_kafka_pending_messages{topic="bigdata_events"}[10m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+          vertical: bigdata
+        annotations:
+          summary: "Kafka lag растёт"
+          description: "Lag растёт на {{ $value }} сообщений/10мин. Возможная деградация consumers."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-kafka-lag"
+
+      # DLQ size growing
+      - alert: BigDataDLQGrowing
+        expr: catvrf_bigdata_pipeline_dlq_messages{queue="events"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+          vertical: bigdata
+        annotations:
+          summary: "Dead Letter Queue растёт"
+          description: "DLQ содержит {{ $value }} сообщений. Проверьте ошибки в consumer."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-dlq"
+
+      # Kafka broker down
+      - alert: BigDataKafkaBrokerDown
+        expr: up{job="kafka"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: kafka
+          vertical: bigdata
+        annotations:
+          summary: "Kafka exporter недоступен"
+          description: "Kafka broker или exporter не отвечает. Весь pipeline под угрозой."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-kafka-down"
+
+  # === ClickHouse Alerts ===
+  - name: bigdata_clickhouse_alerts
+    interval: 30s
+    rules:
+      # ClickHouse merge queue > 1000
+      - alert: BigDataClickHouseMergeQueueHigh
+        expr: catvrf_bigdata_clickhouse_merge_queue_size > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse merge queue перегружен"
+          description: "{{ $value }} активных merge операций. Возможна деградация INSERT/SELECT."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-merge-queue"
+
+      # ClickHouse disk usage > 85%
+      - alert: BigDataClickHouseDiskUsageHigh
+        expr: catvrf_bigdata_clickhouse_disk_usage_bytes > 425000000000
+        for: 10m
+        labels:
+          severity: warning
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse disk usage > 85%"
+          description: "Использовано {{ $value | humanizeBytes }} из 500GB. Запустите OPTIMIZE и проверьте TTL."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-disk"
+
+      # ClickHouse disk critical > 95%
+      - alert: BigDataClickHouseDiskCritical
+        expr: catvrf_bigdata_clickhouse_disk_usage_bytes > 475000000000
+        for: 5m
+        labels:
+          severity: critical
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse disk CRITICAL > 95%"
+          description: "Диск почти полон! {{ $value | humanizeBytes }} из 500GB. Немедленный OPTIMIZE + DROP старых партиций."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-disk-critical"
+
+      # ClickHouse query latency p95 > 5s
+      - alert: BigDataClickHouseSlowQueries
+        expr: catvrf_bigdata_clickhouse_query_duration_p95_ms > 5000
+        for: 5m
+        labels:
+          severity: warning
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse запросы медленные (P95 > 5s)"
+          description: "P95 latency: {{ $value }}ms. Проверьте system.query_log для тяжёлых запросов."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-slow-queries"
+
+      # ClickHouse down
+      - alert: BigDataClickHouseDown
+        expr: up{job="clickhouse"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse недоступен"
+          description: "ClickHouse exporter не отвечает. Все BigData запросы будут падать."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-down"
+
+      # Mutation queue stuck
+      - alert: BigDataClickHouseMutationsStuck
+        expr: catvrf_bigdata_clickhouse_mutation_queue_size > 50
+        for: 15m
+        labels:
+          severity: warning
+          service: clickhouse
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse mutation queue застрял"
+          description: "{{ $value }} незавершённых мутаций. Проверьте system.mutations."
+          grafana: "http://grafana:3000/d/bigdata-clickhouse-deep"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ch-mutations"
+
+  # === Data Freshness Alerts ===
+  - name: bigdata_freshness_alerts
+    interval: 60s
+    rules:
+      # daily_metrics stale > 4h
+      - alert: BigDataDailyMetricsStale
+        expr: catvrf_bigdata_freshness_seconds{table="daily_metrics"} > 14400
+        for: 5m
+        labels:
+          severity: critical
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "daily_metrics данные устарели (>4ч)"
+          description: "Последняя запись {{ $value | humanizeDuration }} назад. Seller dashboards показывают устаревшие данные."
+          grafana: "http://grafana:3000/d/bigdata-seller-clv-abtest"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-freshness"
+
+      # seller_metrics stale > 4h
+      - alert: BigDataSellerMetricsStale
+        expr: catvrf_bigdata_freshness_seconds{table="seller_metrics"} > 14400
+        for: 5m
+        labels:
+          severity: critical
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "seller_metrics данные устарели (>4ч)"
+          description: "Seller dashboards не обновляются. Проверьте feature_store_job."
+          grafana: "http://grafana:3000/d/bigdata-seller-clv-abtest"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-freshness"
+
+      # raw_events stale > 1h
+      - alert: BigDataRawEventsStale
+        expr: catvrf_bigdata_freshness_seconds{table="raw_events"} > 3600
+        for: 5m
+        labels:
+          severity: critical
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "raw_events не поступают (>1ч)"
+          description: "Нет новых событий. Pipeline Kafka→ClickHouse может быть сломан."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-pipeline-down"
+
+  # === CLV Model Alerts ===
+  - name: bigdata_clv_alerts
+    interval: 60s
+    rules:
+      # CLV model accuracy drop > 8%
+      - alert: BigDataCLVModelDriftCritical
+        expr: catvrf_bigdata_clv_model_confidence_avg < 0.92
+        for: 15m
+        labels:
+          severity: critical
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "CLV модель деградировала (accuracy drop > 8%)"
+          description: "Средняя confidence: {{ $value }}. Требуется ретренинг модели."
+          grafana: "http://grafana:3000/d/bigdata-seller-clv-abtest"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-clv-drift"
+
+      # CLV model warning (5-8% drop)
+      - alert: BigDataCLVModelDriftWarning
+        expr: catvrf_bigdata_clv_model_confidence_avg < 0.95 and catvrf_bigdata_clv_model_confidence_avg >= 0.92
+        for: 30m
+        labels:
+          severity: warning
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "CLV модель показывает признаки drift"
+          description: "Средняя confidence: {{ $value }}. Запланируйте ретренинг."
+          grafana: "http://grafana:3000/d/bigdata-seller-clv-abtest"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-clv-drift"
+
+  # === A/B Test Alerts ===
+  - name: bigdata_abtest_alerts
+    interval: 60s
+    rules:
+      # A/B test p-value too high (no significance)
+      - alert: BigDataABTestNoSignificance
+        expr: catvrf_bigdata_abtest_avg_p_value > 0.1
+        for: 1h
+        labels:
+          severity: info
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "A/B тесты не достигают статистической значимости"
+          description: "Средний p-value: {{ $value }}. Увеличьте sample size или остановите тесты."
+          grafana: "http://grafana:3000/d/bigdata-seller-clv-abtest"
+
+  # === Spark Job Alerts ===
+  - name: bigdata_spark_alerts
+    interval: 30s
+    rules:
+      # Spark job failed
+      - alert: BigDataSparkJobFailed
+        expr: increase(spark_job_failed_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: spark
+          vertical: bigdata
+        annotations:
+          summary: "Spark job упал"
+          description: "{{ $value }} Spark jobs упали за последние 10 минут."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-spark-failed"
+
+      # Spark job duration > 2x baseline
+      - alert: BigDataSparkJobSlow
+        expr: spark_job_duration_seconds > spark_job_duration_baseline_seconds * 2
+        for: 10m
+        labels:
+          severity: warning
+          service: spark
+          vertical: bigdata
+        annotations:
+          summary: "Spark job выполняется дольше обычного (>2x baseline)"
+          description: "Текущая длительность: {{ $value }}s."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-spark-slow"
+
+      # Spark master down
+      - alert: BigDataSparkMasterDown
+        expr: up{job="spark"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: spark
+          vertical: bigdata
+        annotations:
+          summary: "Spark master недоступен"
+          description: "Spark UI/metrics не отвечают. Feature store и CLV jobs не запустятся."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-spark-down"
+
+  # === Event Volume Alerts ===
+  - name: bigdata_volume_alerts
+    interval: 60s
+    rules:
+      # Event volume drop (possible ingestion failure)
+      - alert: BigDataEventVolumeDrop
+        expr: catvrf_bigdata_events_ingested_hourly < 100
+        for: 15m
+        labels:
+          severity: warning
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "Объём событий резко упал"
+          description: "Всего {{ $value }} событий за последний час. Возможна проблема с ingestion."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ingestion-drop"
+
+      # Event volume spike (possible abuse/fraud)
+      - alert: BigDataEventVolumeSpike
+        expr: catvrf_bigdata_events_ingested_hourly > 5000000
+        for: 5m
+        labels:
+          severity: warning
+          service: bigdata
+          vertical: bigdata
+        annotations:
+          summary: "Необычный всплеск событий"
+          description: "{{ $value }} событий за час. Возможен flood или fraud."
+          grafana: "http://grafana:3000/d/bigdata-overview"
+          runbook: "https://wiki.catvrf.ru/runbooks/bigdata-ingestion-spike"

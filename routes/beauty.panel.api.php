@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Beauty Panel API Routes — маршруты для B2B-панели Beauty.

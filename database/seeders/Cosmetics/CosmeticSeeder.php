@@ -34,7 +34,7 @@ final class CosmeticSeeder extends Seeder
                     'name' => $product['name'],
                 ],
                 [
-                    'sku' => strtoupper('COSM-' . Str::random(8)),
+                    'sku' => strtoupper('COSM-'.Str::random(8)),
                     'brand' => $product['brand'],
                     'category' => $product['category'],
                     'description' => 'Премиум косметический продукт высокого качества',

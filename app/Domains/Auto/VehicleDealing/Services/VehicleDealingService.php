@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\VehicleDealing\Services;
 
-
 use Illuminate\Contracts\Auth\Guard;
 use App\Domains\Auto\VehicleDealing\Models\VehicleSale;
 use App\Services\FraudControlService;
@@ -12,29 +11,34 @@ use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
+use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Vehicle;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
 
 /**
  * Сервис управления продажами ТС.
  *
  * Комиссия платформы: 14%.
  * Все операции в $this->db->transaction(). FraudControlService перед каждой мутацией.
- *
- * @package App\Domains\Auto\VehicleDealing\Services
  */
 final readonly class VehicleDealingService
 {
     private const COMMISSION_RATE  = 0.14;
+
     private const RATE_LIMIT_KEY   = 'vehicle:sale';
+
     private const RATE_LIMIT_MAX   = 6;
+
     private const RATE_LIMIT_DECAY = 3600;
 
-    public function __construct(private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private RateLimiter         $rateLimiter,
-        private LoggerInterface     $auditLogger,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {
-
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $auditLogger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard) {}
 
     /**
      * Создать сделку продажи ТС.
@@ -42,20 +46,20 @@ final readonly class VehicleDealingService
      * @throws \RuntimeException если превышен лимит запросов или заблокирован fraud
      */
     public function createSale(
-        int    $vehicleId,
-        int    $buyerId,
+        int $vehicleId,
+        int $buyerId,
         string $correlationId = '',
     ): VehicleSale {
         $correlationId = $correlationId ?: Uuid::uuid4()->toString();
 
-        $key = self::RATE_LIMIT_KEY . ':' . $buyerId;
+        $key = self::RATE_LIMIT_KEY.':'.$buyerId;
         if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
             throw new \RuntimeException('Превышен лимит запросов.', 429);
         }
         $this->rateLimiter->hit($key, self::RATE_LIMIT_DECAY);
 
         return $this->db->transaction(function () use ($vehicleId, $buyerId, $correlationId): VehicleSale {
-            $vehicle = \App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Vehicle::findOrFail($vehicleId);
+            $vehicle = Vehicle::findOrFail($vehicleId);
 
             $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vehicle_sale', amount: 0, correlationId: $correlationId ?? '');
 
@@ -79,7 +83,7 @@ final readonly class VehicleDealingService
                 'tags'           => ['vehicle' => true],
             ]);
 
-            $this->auditLogger->info('Vehicle sale created', [
+            $this->auditLogger->$this->logger->info('Vehicle sale created', [
                 'sale_id'        => $sale->id,
                 'vehicle_id'     => $vehicleId,
                 'correlation_id' => $correlationId,
@@ -105,7 +109,7 @@ final readonly class VehicleDealingService
 
             $sale->update(['status' => 'completed', 'correlation_id' => $correlationId]);
 
-            $vehicle = \App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Vehicle::findOrFail($sale->vehicle_id);
+            $vehicle = Vehicle::findOrFail($sale->vehicle_id);
             $vehicle->update(['status' => 'sold']);
 
             $this->wallet->credit(
@@ -146,7 +150,7 @@ final readonly class VehicleDealingService
                 $this->wallet->credit(
                     tenantId: tenant()->id,
                     amount: $sale->total_kopecks,
-                    type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    type: BalanceTransactionType::REFUND,
                     meta: [
                         'sale_id'        => $sale->id,
                         'correlation_id' => $correlationId,
@@ -169,7 +173,7 @@ final readonly class VehicleDealingService
     /**
      * Получить сделки пользователя (10 последних).
      */
-    public function getUserSales(int $buyerId): \Illuminate\Support\Collection
+    public function getUserSales(int $buyerId): Collection
     {
         return VehicleSale::where('buyer_id', $buyerId)
             ->orderByDesc('created_at')

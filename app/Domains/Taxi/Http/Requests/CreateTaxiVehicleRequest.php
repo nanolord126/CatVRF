@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Requests;
 
@@ -18,7 +20,7 @@ final class CreateTaxiVehicleRequest extends FormRequest
             'plate_number' => ['required', 'string', 'max:20'],
             'brand' => ['required', 'string', 'max:100'],
             'model' => ['required', 'string', 'max:100'],
-            'year' => ['required', 'integer', 'min:1990', 'max:' . (date('Y') + 1)],
+            'year' => ['required', 'integer', 'min:1990', 'max:'.(date('Y') + 1)],
             'color' => ['required', 'string', 'max:50'],
             'color_hex' => ['nullable', 'string', 'max:7'],
             'vehicle_class' => ['required', 'string', 'in:economy,comfort,comfort_plus,business,premium,van,cargo'],

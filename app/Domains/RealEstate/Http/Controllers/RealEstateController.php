@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Http\Controllers;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +30,7 @@ final class RealEstateController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Недвижимость listed', [
+        $this->logger->$this->logger->info('Недвижимость listed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'count' => $items->total(),
@@ -57,14 +60,14 @@ final class RealEstateController extends Controller
                 'tenant_id' => $request->get('tenant_id'),
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             return $this->db->table('real_estate_properties')->insertGetId($data);
         });
 
-        $this->logger->info('Недвижимость created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Недвижимость created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Недвижимость создан(а)'], 201);
     }
@@ -94,7 +97,7 @@ final class RealEstateController extends Controller
         ]);
 
         $this->db->transaction(function () use ($validated, $id, $request) {
-            $data = array_merge($validated, ['updated_at' => now()]);
+            $data = array_merge($validated, ['updated_at' => CarbonImmutable::now()]);
 
             $this->db->table('real_estate_properties')
                 ->where('id', $id)
@@ -102,7 +105,7 @@ final class RealEstateController extends Controller
                 ->update($data);
         });
 
-        $this->logger->info('Недвижимость updated', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Недвижимость updated', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Недвижимость обновлён(а)']);
     }
@@ -118,7 +121,7 @@ final class RealEstateController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Недвижимость deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Недвижимость deleted', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Недвижимость удалён(а)']);
     }

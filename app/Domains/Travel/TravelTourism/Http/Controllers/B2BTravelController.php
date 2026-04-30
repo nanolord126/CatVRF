@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\TravelTourism\Http\Controllers;
 
@@ -8,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use App\Domains\Travel\TravelTourism\Models\B2BTravelOrder;
+use App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront;
 
 final class B2BTravelController extends Controller
 {
@@ -21,7 +25,7 @@ final class B2BTravelController extends Controller
      */
     public function storefronts(): JsonResponse
     {
-        $data = \App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront::query()
+        $data = B2BTravelStorefront::query()
             ->where('is_active', true)
             ->where('is_verified', true)
             ->paginate(20);
@@ -41,7 +45,7 @@ final class B2BTravelController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $this->authorize('createStorefront', \App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront::class);
+            $this->authorize('createStorefront', B2BTravelStorefront::class);
 
             $validated = $request->validate([
                 'company_name' => 'required',
@@ -53,7 +57,7 @@ final class B2BTravelController extends Controller
             ]);
 
             $this->db->transaction(function () use ($validated, $request, $correlationId): void {
-                \App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront::create(
+                B2BTravelStorefront::create(
                     array_merge(
                         [
                             'uuid' => Str::uuid()->toString(),
@@ -65,7 +69,7 @@ final class B2BTravelController extends Controller
                 );
             });
 
-            $this->logger->info('B2B Travel storefront created', [
+            $this->logger->$this->logger->info('B2B Travel storefront created', [
                 'correlation_id' => $correlationId,
             ]);
 
@@ -105,12 +109,12 @@ final class B2BTravelController extends Controller
             ]);
 
             $this->db->transaction(function () use ($validated, $request, $correlationId): void {
-                \App\Domains\Travel\TravelTourism\Models\B2BTravelOrder::create(
+                B2BTravelOrder::create(
                     array_merge(
                         [
                             'uuid' => Str::uuid()->toString(),
                             'tenant_id' => $request->user()->tenant_id,
-                            'order_number' => 'B2B-' . Str::random(8),
+                            'order_number' => 'B2B-'.Str::random(8),
                             'commission_amount' => (int) ($validated['total_amount'] * 0.14),
                             'status' => 'pending',
                             'correlation_id' => $correlationId,
@@ -120,7 +124,7 @@ final class B2BTravelController extends Controller
                 );
             });
 
-            $this->logger->info('B2B Travel order created', [
+            $this->logger->$this->logger->info('B2B Travel order created', [
                 'correlation_id' => $correlationId,
             ]);
 
@@ -148,7 +152,7 @@ final class B2BTravelController extends Controller
      */
     public function myB2BOrders(Request $request): JsonResponse
     {
-        $data = \App\Domains\Travel\TravelTourism\Models\B2BTravelOrder::query()
+        $data = B2BTravelOrder::query()
             ->where('tenant_id', $request->user()->tenant_id)
             ->latest()
             ->paginate(20);
@@ -168,14 +172,14 @@ final class B2BTravelController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $order = \App\Domains\Travel\TravelTourism\Models\B2BTravelOrder::findOrFail($id);
+            $order = B2BTravelOrder::findOrFail($id);
             $this->authorize('approveOrder', $order);
 
             $this->db->transaction(function () use ($order): void {
                 $order->update(['status' => 'approved']);
             });
 
-            $this->logger->info('B2B Travel order approved', [
+            $this->logger->$this->logger->info('B2B Travel order approved', [
                 'order_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -202,7 +206,7 @@ final class B2BTravelController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $order = \App\Domains\Travel\TravelTourism\Models\B2BTravelOrder::findOrFail($id);
+            $order = B2BTravelOrder::findOrFail($id);
             $this->authorize('rejectOrder', $order);
 
             $this->db->transaction(function () use ($order, $request): void {
@@ -212,7 +216,7 @@ final class B2BTravelController extends Controller
                 ]);
             });
 
-            $this->logger->info('B2B Travel order rejected', [
+            $this->logger->$this->logger->info('B2B Travel order rejected', [
                 'order_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -239,14 +243,14 @@ final class B2BTravelController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $this->authorize('verifyInn', \App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront::class);
+            $this->authorize('verifyInn', B2BTravelStorefront::class);
 
             $this->db->transaction(function () use ($id): void {
-                \App\Domains\Travel\TravelTourism\Models\B2BTravelStorefront::findOrFail($id)
+                B2BTravelStorefront::findOrFail($id)
                     ->update(['is_verified' => true]);
             });
 
-            $this->logger->info('B2B Travel INN verified', [
+            $this->logger->$this->logger->info('B2B Travel INN verified', [
                 'storefront_id' => $id,
                 'correlation_id' => $correlationId,
             ]);

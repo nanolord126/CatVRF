@@ -1,105 +1,107 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
-use Filament\Notifications\Notification;
-
+use Illuminate\Notifications\ChannelManager;
 
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Log\LogManager;
 
 final class EditEvent extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = EventResource::class;
 
-        /**
-         * Header Actions — Кнопки действий над событием.
-         */
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\DeleteAction::make()
-                    ->label('Удалить План')
-                    ->icon('heroicon-o-trash'),
+    public function __construct(private readonly ChannelManager $notificationManager,
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
-                Actions\Action::make('Отменить')
-                    ->label('Отменить Событие')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(function () {
-                        $this->record->update(['status' => 'cancelled']);
+    /**
+     * Header Actions — Кнопки действий над событием.
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make()
+                ->label('Удалить План')
+                ->icon('heroicon-o-trash'),
 
-                        $this->logger->warning('Filament: Event cancelled manual', [
-                            'event_uuid' => $this->record->uuid,
-                            'user_id' => auth()->id()
-                        ]);
+            Actions\Action::make('Отменить')
+                ->label('Отменить Событие')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->action(function () {
+                    $this->record->update(['status' => 'cancelled']);
 
-                        Notification::make()
-                            ->danger()
-                            ->title('Событие отменено')
-                            ->body('Статус события обновлен до: cancelled.')
-                            ->send();
-                    }),
+                    $this->logger->warning('Filament: Event cancelled manual', [
+                        'event_uuid' => $this->record->uuid,
+                        'user_id' => auth()->id(),
+                    ]);
 
-                Actions\Action::make('Подтвердить')
-                    ->label('Подтвердить План')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->action(function () {
-                        $this->record->update(['status' => 'confirmed']);
+                    $this->notificationManager->make()
+                        ->danger()
+                        ->title('Событие отменено')
+                        ->body('Статус события обновлен до: cancelled.')
+                        ->send();
+                }),
 
-                        \Illuminate\Support\Facades\Log::channel('audit')->info('Filament: Event confirmed manual', [
-                            'event_uuid' => $this->record->uuid,
-                            'user_id' => auth()->id()
-                        ]);
+            Actions\Action::make('Подтвердить')
+                ->label('Подтвердить План')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->action(function () {
+                    $this->record->update(['status' => 'confirmed']);
 
-                        Notification::make()
-                            ->success()
-                            ->title('Событие подтверждено')
-                            ->body('Праздник теперь в активной фазе планирования.')
-                            ->send();
-                    }),
-            ];
-        }
+                    $this->log->channel('audit')->$this->logger->info('Filament: Event confirmed manual', [
+                        'event_uuid' => $this->record->uuid,
+                        'user_id' => auth()->id(),
+                    ]);
 
-        /**
-         * Мутация данных перед сохранением.
-         */
-        protected function mutateFormDataBeforeSave(array $data): array
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Filament: Plan modified', [
-                'event_uuid' => $this->record->uuid,
-                'tenant_id' => tenant()->id,
-                'modified_by' => auth()->id(),
-            ]);
+                    $this->notificationManager->make()
+                        ->success()
+                        ->title('Событие подтверждено')
+                        ->body('Праздник теперь в активной фазе планирования.')
+                        ->send();
+                }),
+        ];
+    }
 
-            return $data;
-        }
+    /**
+     * Мутация данных перед сохранением.
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->log->channel('audit')->$this->logger->info('Filament: Plan modified', [
+            'event_uuid' => $this->record->uuid,
+            'tenant_id' => tenant()->id,
+            'modified_by' => auth()->id(),
+        ]);
 
-        /**
-         * Редирект после редактирования — к списку.
-         */
-        protected function getRedirectUrl(): string
-        {
-            return $this->getResource()::getUrl('index');
-        }
+        return $data;
+    }
 
-        /**
-         * Нотификация об успехе.
-         */
-        protected function getSavedNotification(): ?Notification
-        {
-            return Notification::make()
-                ->success()
-                ->title('Изменения сохранены')
-                ->body('План обновлен в реестре для всех вендоров.')
-                ->icon('heroicon-o-pencil-square');
-        }
+    /**
+     * Редирект после редактирования — к списку.
+     */
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    /**
+     * Нотификация об успехе.
+     */
+    protected function getSavedNotification(): ?Notification
+    {
+        return $this->notificationManager->make()
+            ->success()
+            ->title('Изменения сохранены')
+            ->body('План обновлен в реестре для всех вендоров.')
+            ->icon('heroicon-o-pencil-square');
+    }
 }

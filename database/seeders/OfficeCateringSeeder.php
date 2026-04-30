@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -30,7 +32,7 @@ final class OfficeCateringSeeder extends Seeder
                 'uuid' => Str::uuid()->toString(),
                 'tenant_id' => $tenantId,
                 'business_group_id' => null,
-                'sku' => $item['sku'] . '-' . Str::random(4),
+                'sku' => $item['sku'].'-'.Str::random(4),
                 'current_stock' => random_int(5, 50),
                 'min_order' => random_int(1, 5),
                 'rating' => random_int(42, 50) / 10,

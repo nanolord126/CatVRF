@@ -19,7 +19,7 @@ final class B2BAIAnalyticsSeeder extends Seeder
         $m = B2BManufacturer::first() ?? B2BManufacturer::create([
             'name' => 'EcoMed Systems 2026',
             'contact_email' => 'contact@ecomed.test',
-            'registration_number' => 'REG-' . Str::upper(Str::random(8)),
+            'registration_number' => 'REG-'.Str::upper(Str::random(8)),
             'contact_phone' => '+79001112233',
             'legal_address' => 'Moscow, Skolkovo',
             'category' => 'Medical',

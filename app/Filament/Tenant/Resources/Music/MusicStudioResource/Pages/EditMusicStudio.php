@@ -1,67 +1,66 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Music\MusicStudioResource\Pages;
 
-
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
 final class EditMusicStudio extends EditRecord
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = MusicStudioResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-            ];
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
-        /**
-         * Re-generate correlation_id for audit.
-         */
-        protected function mutateFormDataBeforeSave(array $data): array
-        {
-            $data['correlation_id'] = (string) Str::uuid();
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
+        ];
+    }
 
-            return $data;
-        }
+    /**
+     * Re-generate correlation_id for audit.
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['correlation_id'] = (string) Str::uuid();
 
-        /**
-         * Handle updates in a transaction.
-         */
-        protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
-        {
-            return $this->db->transaction(function () use ($record, $data) {
-                $record->update($data);
+        return $data;
+    }
 
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Music studio updated via UI', [
-                    'studio_id' => $record->id,
-                    'tenant_id' => $record->tenant_id,
-                    'correlation_id' => $record->correlation_id,
-                    'updated_by' => auth()->id(),
-                ]);
+    /**
+     * Handle updates in a transaction.
+     */
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        return $this->db->transaction(function () use ($record, $data) {
+            $record->update($data);
 
-                return $record;
-            });
-        }
+            $this->log->channel('audit')->$this->logger->info('Music studio updated via UI', [
+                'studio_id' => $record->id,
+                'tenant_id' => $record->tenant_id,
+                'correlation_id' => $record->correlation_id,
+                'updated_by' => auth()->id(),
+            ]);
 
-        /**
-         * Redirect to index page after save.
-         */
-        protected function getRedirectUrl(): string
-        {
-            return $this->getResource()::getUrl('index');
-        }
+            return $record;
+        });
+    }
+
+    /**
+     * Redirect to index page after save.
+     */
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

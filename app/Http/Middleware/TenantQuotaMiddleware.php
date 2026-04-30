@@ -6,7 +6,7 @@ use App\Exceptions\TenantQuotaExceededException;
 use App\Services\Tenancy\TenantResourceLimiterService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,6 +27,7 @@ final class TenantQuotaMiddleware
     private const QUOTA_CHECK_INTERVAL = 10; // Check every 10th request to reduce Redis load
 
     public function __construct(
+        private readonly LogManager $log,
         private readonly TenantResourceLimiterService $quotaService,
         private readonly LoggerInterface $logger,
     ) {}

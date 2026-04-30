@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * HandlePsychologicalBookingCreated — CatVRF 2026 Component.
@@ -7,38 +9,41 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/handlepsychologicalbookingcreated
  */
 
-
 namespace App\Domains\Medical\Psychology\Listeners;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
+
 final class HandlePsychologicalBookingCreated
 {
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
         private readonly LoggerInterface $logger) {}
 
-
-    public function handle(PsychologicalBookingCreated $event): void
-        {
-            $this->logger->info('Listener: PsychologicalBookingCreated triggered', [
-                'booking_id' => $event->booking->id,
-                'correlation_id' => $event->correlationId,
-            ]);
 
-            // Ставим джобу на напоминание за 2 часа до начала
-            PsychologicalReminderJob::dispatch(
-                $event->booking->id,
-                $event->correlationId
-            )->delay($event->booking->scheduled_at->subHours(2));
-        }
+    public function handle(PsychologicalBookingCreated $event): void
+    {
+        $this->logger->$this->logger->info('Listener: PsychologicalBookingCreated triggered', [
+            'booking_id' => $event->booking->id,
+            'correlation_id' => $event->correlationId,
+        ]);
+
+        // Ставим джобу на напоминание за 2 часа до начала
+        PsychologicalReminderJob::$this->bus->dispatch(
+            $event->booking->id,
+            $event->correlationId
+        )->delay($event->booking->scheduled_at->subHours(2));
+    }
 
     /**
      * Get the string representation of this instance.
@@ -47,7 +52,7 @@ final class HandlePsychologicalBookingCreated
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -58,8 +63,8 @@ final class HandlePsychologicalBookingCreated
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

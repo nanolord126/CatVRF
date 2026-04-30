@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\DTOs;
 
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Data;
+use Illuminate\Support\Str;
 
 final class HoldBookingSlotDto extends Data
 {
@@ -18,8 +21,7 @@ final class HoldBookingSlotDto extends Data
         public bool $isB2b,
         public string $correlationId,
         public ?string $idempotencyKey,
-    ) {
-    }
+    ) {}
 
     public static function fromArray(array $data): self
     {
@@ -29,7 +31,7 @@ final class HoldBookingSlotDto extends Data
             tenantId: $data['tenant_id'],
             businessGroupId: $data['business_group_id'] ?? null,
             isB2b: $data['is_b2b'] ?? false,
-            correlationId: $data['correlation_id'] ?? \Illuminate\Support\Str::uuid()->toString(),
+            correlationId: $data['correlation_id'] ?? Str::uuid()->toString(),
             idempotencyKey: $data['idempotency_key'] ?? null,
         );
     }

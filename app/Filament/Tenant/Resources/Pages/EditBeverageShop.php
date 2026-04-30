@@ -1,14 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
 use App\Filament\Tenant\Resources\BeverageShopResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
 
 /**
  * Class EditBeverageShop
@@ -16,16 +19,13 @@ use Illuminate\Support\Facades\Log;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class EditBeverageShop extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = BeverageShopResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected function getHeaderActions(): array
     {
@@ -41,14 +41,14 @@ final class EditBeverageShop extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
 
         return $data;
     }
 
     protected function afterSave(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('BeverageShop updated', [
+        $this->log->channel('audit')->$this->logger->info('BeverageShop updated', [
             'shop_id'        => $this->record->id,
             'name'           => $this->record->name,
             'is_active'      => $this->record->is_active,

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -15,6 +17,14 @@ abstract class BaseDomainModel extends Model
      * @var string[]
      */
     protected $guarded = ['id', 'uuid', 'tenant_id', 'business_group_id'];
+
+    /**
+     * Scope for Business Group (Sub-tenancy) if active
+     */
+    public function scopeInBusinessGroup(Builder $query, int $businessGroupId): Builder
+    {
+        return $query->where('business_group_id', $businessGroupId);
+    }
 
     /**
      * Boot the model.
@@ -41,13 +51,5 @@ abstract class BaseDomainModel extends Model
                 $model->uuid = (string) Str::uuid();
             }
         });
-    }
-
-    /**
-     * Scope for Business Group (Sub-tenancy) if active
-     */
-    public function scopeInBusinessGroup(Builder $query, int $businessGroupId): Builder
-    {
-        return $query->where('business_group_id', $businessGroupId);
     }
 }

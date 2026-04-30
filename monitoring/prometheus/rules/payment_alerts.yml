@@ -1,0 +1,181 @@
+groups:
+  - name: payment_alerts
+    interval: 30s
+    rules:
+      # High payment failure rate alert
+      - alert: HighPaymentFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "High payment failure rate detected"
+          description: "Payment failure rate is {{ $value | humanizePercentage }} over the last 5 minutes (threshold: 5%)"
+
+      # Critical payment failure rate alert
+      - alert: CriticalPaymentFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total[5m]))
+          ) > 0.15
+        for: 2m
+        labels:
+          severity: critical
+          team: payments
+        annotations:
+          summary: "Critical payment failure rate detected"
+          description: "Payment failure rate is {{ $value | humanizePercentage }} over the last 5 minutes (threshold: 15%)"
+
+      # Payment gateway latency alert
+      - alert: HighPaymentGatewayLatency
+        expr: |
+          histogram_quantile(0.95, rate(catvrf_payment_gateway_latency_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "High payment gateway latency detected"
+          description: "P95 payment gateway latency is {{ $value }}s (threshold: 5s)"
+
+      # Payment gateway error rate alert
+      - alert: HighPaymentGatewayErrorRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_gateway_errors_total[5m]))
+            /
+            sum(rate(catvrf_payment_gateway_requests_total[5m]))
+          ) > 0.02
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "High payment gateway error rate detected"
+          description: "Gateway error rate is {{ $value | humanizePercentage }} over the last 5 minutes (threshold: 2%)"
+
+      # Payment reconciliation discrepancies alert
+      - alert: PaymentReconciliationDiscrepancies
+        expr: catvrf_payment_reconciliation_discrepancies_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "Payment reconciliation discrepancies detected"
+          description: "{{ $value }} discrepancies found during payment reconciliation"
+
+      # Fraud detection high risk alert
+      - alert: HighFraudDetectionRisk
+        expr: |
+          (
+            sum(rate(catvrf_fraud_checks_total{decision="high_risk"}[5m]))
+            /
+            sum(rate(catvrf_fraud_checks_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: fraud
+        annotations:
+          summary: "High fraud detection rate detected"
+          description: "Fraud detection high risk rate is {{ $value | humanizePercentage }} over the last 5 minutes (threshold: 10%)"
+
+      # Payment queue backlog alert
+      - alert: PaymentQueueBacklog
+        expr: |
+          rabbitmq_queue_messages{queue=~"payment.*|fraud.*"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "Payment queue backlog detected"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages pending"
+
+      # Payment amount anomaly alert
+      - alert: PaymentAmountAnomaly
+        expr: |
+          abs(
+            catvrf_payment_amount_sum - avg_over_time(catvrf_payment_amount_sum[1h])
+          ) / avg_over_time(catvrf_payment_amount_sum[1h]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "Payment amount anomaly detected"
+          description: "Payment volume deviation of {{ $value | humanizePercentage }} from 1h average"
+
+      # Gateway-specific failure rate alerts
+      - alert: TinkoffHighFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{gateway="tinkoff",status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total{gateway="tinkoff"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+          gateway: tinkoff
+        annotations:
+          summary: "Tinkoff high failure rate detected"
+          description: "Tinkoff failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: TochkaHighFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{gateway="tochka",status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total{gateway="tochka"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+          gateway: tochka
+        annotations:
+          summary: "Tochka high failure rate detected"
+          description: "Tochka failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: SberbankHighFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{gateway="sberbank",status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total{gateway="sberbank"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+          gateway: sberbank
+        annotations:
+          summary: "Sberbank high failure rate detected"
+          description: "Sberbank failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: SBPHighFailureRate
+        expr: |
+          (
+            sum(rate(catvrf_payment_status_total{gateway="sbp",status="failed"}[5m]))
+            /
+            sum(rate(catvrf_payment_status_total{gateway="sbp"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: payments
+          gateway: sbp
+        annotations:
+          summary: "SBP high failure rate detected"
+          description: "SBP failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"

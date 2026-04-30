@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Domains\Communication;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\MessageFactory;
+use Carbon\Carbon;
 
 /**
  * Class Message
@@ -24,34 +26,33 @@ use Database\Factories\MessageFactory;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Communication
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Message extends Model
 {
-
     protected $fillable = [
         'uuid',
         'correlation_id',
         'tenant_id',
     ];
 
-        protected $table = "messages";
-        protected $casts = ["tags" => "json"];
+    protected $table = 'messages';
 
-        protected static function newFactory()
-        {
-            return MessageFactory::new();
-        }
+    protected $casts = ['tags' => 'json'];
 
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope("tenant_id", function ($query) {
-                if (function_exists("tenant") && tenant("id")) {
-                    $query->where("tenant_id", tenant("id"));
-                }
-            });
-        }
+    protected static function newFactory()
+    {
+        return MessageFactory::new();
+    }
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

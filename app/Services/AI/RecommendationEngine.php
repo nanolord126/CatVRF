@@ -1,101 +1,100 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\User;
 use App\Services\LogManager;
 use Illuminate\Support\Collection;
-
-
-
-use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Cache\CacheManager;
 
 final readonly class RecommendationEngine
 {
-    public function __construct(
-            private readonly LogManager $logManager,
-            private readonly DatabaseManager $db,
-            private readonly CacheManager $cache,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $logManager,
+        private readonly DatabaseManager $db,
+        private readonly CacheManager $cache,) {}
 
-        /**
-         * Возвращает персонализированные рекомендации для пользователя.
-         */
-        public function getPersonalizedSuggestions(User $user, string $type): Collection
-        {
-            $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
+    /**
+     * Возвращает персонализированные рекомендации для пользователя.
+     */
+    public function getPersonalizedSuggestions(User $user, string $type): Collection
+    {
+        $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
 
-            $cached = $this->cache->get($cacheKey);
-            if ($cached !== null) {
-                return collect($cached);
-            }
-
-            $this->logManager->info("Generating recommendations for user {$user->id}, type={$type}");
-
-            $recommendations = collect([]);
-
-            $this->cache->put($cacheKey, $recommendations->toArray(), 300);
-
-            return $recommendations;
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return new Collection($cached);
         }
 
-        /**
-         * Cosine similarity между двумя векторами.
-         */
-        private function cosineSimilarity(array $vec1, array $vec2): float
-        {
-            if (count($vec1) !== count($vec2) || count($vec1) === 0) {
-                return 0.0;
-            }
+        $this->logManager->$this->logger->info("Generating recommendations for user {$user->id}, type={$type}");
 
-            $dot  = 0.0;
-            $magA = 0.0;
-            $magB = 0.0;
+        $recommendations = new Collection([]);
 
-            foreach ($vec1 as $i => $v) {
-                $dot  += $v * $vec2[$i];
-                $magA += $v * $v;
-                $magB += $vec2[$i] * $vec2[$i];
-            }
+        $this->cache->put($cacheKey, $recommendations->toArray(), 300);
 
-            $denom = sqrt($magA) * sqrt($magB);
+        return $recommendations;
+    }
 
-            return $denom > 0 ? $dot / $denom : 0.0;
+    /**
+     * Cosine similarity между двумя векторами.
+     */
+    private function cosineSimilarity(array $vec1, array $vec2): float
+    {
+        if (count($vec1) !== count($vec2) || count($vec1) === 0) {
+            return 0.0;
         }
 
-        /**
-         * Находит похожих пользователей по preference.
-         *
-         * @return array<int>
-         */
-        private function findSimilarUsers(User $user, int $limit = 5): array
-        {
-            $preference = $user->category_preference ?? null;
+        $dot  = 0.0;
+        $magA = 0.0;
+        $magB = 0.0;
 
-            if (!$preference) {
-                return [];
-            }
-
-            return $this->db->table('users')
-                ->where('id', '!=', $user->id)
-                ->where('category_preference', $preference)
-                ->limit($limit)
-                ->pluck('id')
-                ->toArray();
+        foreach ($vec1 as $i => $v) {
+            $dot  += $v * $vec2[$i];
+            $magA += $v * $v;
+            $magB += $vec2[$i] * $vec2[$i];
         }
 
-        /**
-         * Возвращает курсы, на которые записан пользователь.
-         *
-         * @return array<int>
-         */
-        private function getUserEnrolledCourses(User $user): array
-        {
-            return $this->db->table('enrollments')
-                ->where('user_id', $user->id)
-                ->pluck('course_id')
-                ->toArray();
+        $denom = sqrt($magA) * sqrt($magB);
+
+        return $denom > 0 ? $dot / $denom : 0.0;
+    }
+
+    /**
+     * Находит похожих пользователей по preference.
+     *
+     * @return array<int>
+     */
+    private function findSimilarUsers(User $user, int $limit = 5): array
+    {
+        $preference = $user->category_preference ?? null;
+
+        if (! $preference) {
+            return [];
         }
+
+        return $this->db->table('users')
+            ->where('id', '!=', $user->id)
+            ->where('category_preference', $preference)
+            ->limit($limit)
+            ->pluck('id')
+            ->toArray();
+    }
+
+    /**
+     * Возвращает курсы, на которые записан пользователь.
+     *
+     * @return array<int>
+     */
+    private function getUserEnrolledCourses(User $user): array
+    {
+        return $this->db->table('enrollments')
+            ->where('user_id', $user->id)
+            ->pluck('course_id')
+            ->toArray();
+    }
 }

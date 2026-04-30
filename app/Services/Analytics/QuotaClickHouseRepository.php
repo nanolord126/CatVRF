@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Exceptions\EntityNotFoundException;
+
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Ramsey\Uuid\Uuid;
 use Throwable;
+use Carbon\CarbonImmutable;
 
 /**
  * ClickHouse Repository for Tenant Quota Analytics
@@ -25,13 +28,18 @@ final class QuotaClickHouseRepository
     private const int BATCH_SIZE = 1000;
     private const int RETRY_DELAY_MS = 100;
 
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+    ) {}
+
     /**
      * Insert quota usage event with idempotency
      */
     public function insertQuotaEvent(array $event): bool
     {
         return $this->withRetry(function () use ($event) {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
 
             $clickHouse->table('tenant_quota_usage_log')->insert([
                 'quota_event_id' => $event['quota_event_id'] ?? Uuid::uuid4()->toString(),
@@ -42,7 +50,7 @@ final class QuotaClickHouseRepository
                 'operation_type' => $event['operation_type'] ?? 'increment',
                 'amount_used' => $event['amount_used'],
                 'unit' => $event['unit'] ?? 'count',
-                'event_timestamp' => $event['event_timestamp'] ?? now(),
+                'event_timestamp' => $event['event_timestamp'] ?? CarbonImmutable::now(),
                 'user_id' => $event['user_id'] ?? 0,
                 'correlation_id' => $event['correlation_id'] ?? null,
                 'trace_id' => $event['trace_id'] ?? $this->getCurrentTraceId(),
@@ -66,7 +74,7 @@ final class QuotaClickHouseRepository
 
         foreach ($batches as $batch) {
             $success = $this->withRetry(function () use ($batch) {
-                $clickHouse = DB::connection('clickhouse');
+                $clickHouse = $this->db->connection('clickhouse');
 
                 $rows = array_map(function ($event) {
                     return [
@@ -78,7 +86,7 @@ final class QuotaClickHouseRepository
                         'operation_type' => $event['operation_type'] ?? 'increment',
                         'amount_used' => $event['amount_used'],
                         'unit' => $event['unit'] ?? 'count',
-                        'event_timestamp' => $event['event_timestamp'] ?? now()->toDateTimeString(),
+                        'event_timestamp' => $event['event_timestamp'] ?? CarbonImmutable::now()->toDateTimeString(),
                         'user_id' => $event['user_id'] ?? 0,
                         'correlation_id' => $event['correlation_id'] ?? null,
                         'trace_id' => $event['trace_id'] ?? $this->getCurrentTraceId(),
@@ -92,7 +100,7 @@ final class QuotaClickHouseRepository
             });
 
             if (!$success) {
-                Log::error('Failed to insert batch of quota events', ['batch_size' => count($batch)]);
+                $this->log->error('Failed to insert batch of quota events', ['batch_size' => count($batch)]);
                 return false;
             }
         }
@@ -106,7 +114,7 @@ final class QuotaClickHouseRepository
     public function getCurrentHourUsage(int $tenantId, string $resourceType): float
     {
         try {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
 
             $result = $clickHouse->table('tenant_quota_usage_current_hour_mv')
                 ->where('tenant_id', $tenantId)
@@ -115,7 +123,7 @@ final class QuotaClickHouseRepository
 
             return (float) ($result ?? 0);
         } catch (Throwable $e) {
-            Log::error('Failed to get current hour usage', [
+            $this->log->error('Failed to get current hour usage', [
                 'tenant_id' => $tenantId,
                 'resource_type' => $resourceType,
                 'error' => $e->getMessage(),
@@ -130,8 +138,8 @@ final class QuotaClickHouseRepository
     public function getDailyUsage(int $tenantId, string $resourceType, ?string $date = null): float
     {
         try {
-            $clickHouse = DB::connection('clickhouse');
-            $targetDate = $date ?? now()->toDateString();
+            $clickHouse = $this->db->connection('clickhouse');
+            $targetDate = $date ?? CarbonImmutable::now()->toDateString();
 
             $result = $clickHouse->table('tenant_quota_usage_daily_mv')
                 ->where('tenant_id', $tenantId)
@@ -141,7 +149,7 @@ final class QuotaClickHouseRepository
 
             return (float) ($result ?? 0);
         } catch (Throwable $e) {
-            Log::error('Failed to get daily usage', [
+            $this->log->error('Failed to get daily usage', [
                 'tenant_id' => $tenantId,
                 'resource_type' => $resourceType,
                 'date' => $date,
@@ -161,7 +169,7 @@ final class QuotaClickHouseRepository
         string $endDate
     ): float {
         try {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
 
             $result = $clickHouse->table('tenant_quota_usage_daily_mv')
                 ->where('tenant_id', $tenantId)
@@ -171,7 +179,7 @@ final class QuotaClickHouseRepository
 
             return (float) ($result ?? 0);
         } catch (Throwable $e) {
-            Log::error('Failed to get usage in range', [
+            $this->log->error('Failed to get usage in range', [
                 'tenant_id' => $tenantId,
                 'resource_type' => $resourceType,
                 'start_date' => $startDate,
@@ -188,13 +196,13 @@ final class QuotaClickHouseRepository
     public function getTenantsApproachingThreshold(float $thresholdPercent = 85.0): array
     {
         try {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
 
             // This would need quota_limits table or config
             // For now, return empty array - to be implemented with quota limits
             return [];
         } catch (Throwable $e) {
-            Log::error('Failed to get tenants approaching threshold', [
+            $this->log->error('Failed to get tenants approaching threshold', [
                 'threshold' => $thresholdPercent,
                 'error' => $e->getMessage(),
             ]);
@@ -208,7 +216,7 @@ final class QuotaClickHouseRepository
     public function eventExists(string $quotaEventId): bool
     {
         try {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
 
             $count = $clickHouse->table('tenant_quota_usage_log')
                 ->where('quota_event_id', $quotaEventId)
@@ -216,7 +224,7 @@ final class QuotaClickHouseRepository
 
             return $count > 0;
         } catch (Throwable $e) {
-            Log::error('Failed to check event existence', [
+            $this->log->error('Failed to check event existence', [
                 'quota_event_id' => $quotaEventId,
                 'error' => $e->getMessage(),
             ]);
@@ -237,7 +245,7 @@ final class QuotaClickHouseRepository
             } catch (Throwable $e) {
                 $lastException = $e;
                 
-                Log::warning('ClickHouse operation failed, retrying', [
+                $this->log->warning('ClickHouse operation failed, retrying', [
                     'attempt' => $attempt,
                     'max_retries' => self::MAX_RETRIES,
                     'error' => $e->getMessage(),
@@ -249,7 +257,7 @@ final class QuotaClickHouseRepository
             }
         }
 
-        Log::error('ClickHouse operation failed after all retries', [
+        $this->log->error('ClickHouse operation failed after all retries', [
             'max_retries' => self::MAX_RETRIES,
             'error' => $lastException?->getMessage(),
         ]);
@@ -277,7 +285,7 @@ final class QuotaClickHouseRepository
             // OpenTelemetry might not be configured
         }
 
-        return null;
+        throw EntityNotFoundException::forType(static::class);
     }
 
     /**
@@ -286,11 +294,11 @@ final class QuotaClickHouseRepository
     public function testConnection(): bool
     {
         try {
-            $clickHouse = DB::connection('clickhouse');
+            $clickHouse = $this->db->connection('clickhouse');
             $clickHouse->select('SELECT 1');
             return true;
         } catch (Throwable $e) {
-            Log::error('ClickHouse connection test failed', [
+            $this->log->error('ClickHouse connection test failed', [
                 'error' => $e->getMessage(),
             ]);
             return false;

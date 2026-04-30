@@ -1,227 +1,228 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Security;
 
+use Psr\Log\LoggerInterface;
 
-
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-
 use Illuminate\Support\Str;
-use App\Services\FraudControlService;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 final readonly class ApiKeyManagementService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
-
+        private readonly Hasher $hash,) {}
 
     /**
-         * Generate new API key for tenant
-         */
-        public function generateKey(
-            int $tenantId,
-            string $name,
-            ?array $permissions = null,
-            ?array $ipWhitelist = null,
-            ?\DateTime $expiresAt = null
-        ): array {
-            $rawKey = Str::random(64);
-            $keyHash = Hash::make($rawKey);
-            $keyId = (string) Str::uuid()->toString();
+     * Generate new API key for tenant
+     */
+    public function generateKey(
+        int $tenantId,
+        string $name,
+        ?array $permissions = null,
+        ?array $ipWhitelist = null,
+        ?\DateTime $expiresAt = null
+    ): array {
+        $rawKey = Str::random(64);
+        $keyHash = $this->hash->make($rawKey);
+        $keyId = (string) Str::uuid()->toString();
 
-            $this->fraud->check(new \stdClass());
+        $this->fraud->check(new \stdClass());
 
-            $this->db->transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
-                $this->createApiKey(
-                    tenantId: $tenantId,
-                    keyId: $keyId,
-                    name: $name,
-                    keyHash: $keyHash,
-                    permissions: $permissions,
-                    ipWhitelist: $ipWhitelist,
-                    expiresAt: $expiresAt
-                );
+        $this->db->transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
+            $this->createApiKey(
+                tenantId: $tenantId,
+                keyId: $keyId,
+                name: $name,
+                keyHash: $keyHash,
+                permissions: $permissions,
+                ipWhitelist: $ipWhitelist,
+                expiresAt: $expiresAt
+            );
 
-                $this->logger->channel('audit')->info('API Key generated', [
+            $this->logger->channel('audit')->$this->logger->info('API Key generated', [
+                'tenant_id' => $tenantId,
+                'key_id' => $keyId,
+                'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
+            ]);
+        });
+
+        return [
+            'key' => $rawKey,
+            'key_id' => $keyId,
+            'name' => $name,
+            'warning' => 'Save this key securely. You will not be able to see it again.',
+        ];
+    }
+
+    /**
+     * Validate API key
+     */
+    public function validateKey(string $rawKey, string $clientIp): bool|array
+    {
+        $keyHash = $this->hashKey($rawKey);
+
+        $apiKey = $this->db->table('api_keys')
+            ->where('key_hash', $keyHash)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $apiKey || ($apiKey->expires_at && CarbonImmutable::now() > $apiKey->expires_at)) {
+            return false;
+        }
+
+        // Check IP whitelist
+        if ($apiKey->ip_whitelist && ! $this->ipMatches($clientIp, json_decode($apiKey->ip_whitelist, true))) {
+            return false;
+        }
+
+        $this->db->transaction(function () use ($apiKey, $clientIp) {
+            $this->db->table('api_keys')
+                ->where('id', $apiKey->id)
+                ->update(['last_used_at' => CarbonImmutable::now()]);
+
+            $this->logAudit($apiKey->id, 'used', $clientIp);
+        });
+
+        return [
+            'tenant_id' => $apiKey->tenant_id,
+            'key_id' => $apiKey->key_id,
+            'permissions' => json_decode($apiKey->permissions, true) ?? [],
+        ];
+    }
+
+    /**
+     * Revoke API key
+     */
+    public function revokeKey(int $tenantId, string $keyId): bool
+    {
+        return $this->db->transaction(function () use ($tenantId, $keyId) {
+            $updated = $this->db->table('api_keys')
+                ->where('tenant_id', $tenantId)
+                ->where('key_id', $keyId)
+                ->update(['status' => 'revoked']);
+
+            if ($updated) {
+                $apiKey = $this->db->table('api_keys')
+                    ->where('key_id', $keyId)
+                    ->first();
+                $this->logAudit($apiKey->id, 'revoked', null);
+
+                $this->logger->channel('audit')->$this->logger->info('API Key revoked', [
                     'tenant_id' => $tenantId,
                     'key_id' => $keyId,
                     'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
                 ]);
-            });
+            }
 
-            return [
-                'key' => $rawKey,
-                'key_id' => $keyId,
-                'name' => $name,
-                'warning' => 'Save this key securely. You will not be able to see it again.',
-            ];
-        }
+            return $updated > 0;
+        });
+    }
 
-        /**
-         * Validate API key
-         */
-        public function validateKey(string $rawKey, string $clientIp): bool | array
-        {
-            $keyHash = $this->hashKey($rawKey);
-
-            $apiKey = $this->db->table('api_keys')
-                ->where('key_hash', $keyHash)
-                ->where('status', 'active')
+    /**
+     * Rotate API key (revoke old, create new)
+     */
+    public function rotateKey(int $tenantId, string $keyId): array
+    {
+        return $this->db->transaction(function () use ($tenantId, $keyId) {
+            $oldKey = $this->db->table('api_keys')
+                ->where('tenant_id', $tenantId)
+                ->where('key_id', $keyId)
                 ->first();
 
-            if (!$apiKey || ($apiKey->expires_at && now() > $apiKey->expires_at)) {
-                return false;
+            if (! $oldKey) {
+                throw new \InvalidArgumentException('API key not found');
             }
 
-            // Check IP whitelist
-            if ($apiKey->ip_whitelist && !$this->ipMatches($clientIp, json_decode($apiKey->ip_whitelist, true))) {
-                return false;
+            $this->revokeKey($tenantId, $keyId);
+
+            return $this->generateKey(
+                tenantId: $tenantId,
+                name: $oldKey->name.' (rotated)',
+                permissions: json_decode($oldKey->permissions, true),
+                ipWhitelist: json_decode($oldKey->ip_whitelist, true),
+                expiresAt: $oldKey->expires_at ? new \DateTime($oldKey->expires_at) : null
+            );
+        });
+    }
+
+    private function createApiKey(
+        int $tenantId,
+        string $keyId,
+        string $name,
+        string $keyHash,
+        ?array $permissions,
+        ?array $ipWhitelist,
+        ?\DateTime $expiresAt
+    ): void {
+        $this->db->table('api_keys')->insert([
+            'tenant_id' => $tenantId,
+            'key_id' => $keyId,
+            'name' => $name,
+            'key_hash' => $keyHash,
+            'key_preview' => substr($keyId, 0, 10),
+            'permissions' => $permissions ? json_encode($permissions) : null,
+            'ip_whitelist' => $ipWhitelist ? json_encode($ipWhitelist) : null,
+            'status' => 'active',
+            'expires_at' => $expiresAt,
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
+        ]);
+    }
+
+    private function hashKey(string $rawKey): string
+    {
+        return hash('sha256', $rawKey);
+    }
+
+    private function logAudit(int $apiKeyId, string $action, ?string $ipAddress): void
+    {
+        $this->db->table('api_key_audit_logs')->insert([
+            'api_key_id' => $apiKeyId,
+            'action' => $action,
+            'ip_address' => $ipAddress,
+            'user_agent' => $this->request->header('User-Agent'),
+            'metadata' => json_encode([
+                'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
+            ]),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
+        ]);
+    }
+
+    private function ipMatches(string $clientIp, array $whitelist): bool
+    {
+        foreach ($whitelist as $ip) {
+            if ($ip === $clientIp) {
+                return true;
             }
 
-            $this->db->transaction(function () use ($apiKey, $clientIp) {
-                $this->db->table('api_keys')
-                    ->where('id', $apiKey->id)
-                    ->update(['last_used_at' => now()]);
-
-                $this->logAudit($apiKey->id, 'used', $clientIp);
-            });
-
-            return [
-                'tenant_id' => $apiKey->tenant_id,
-                'key_id' => $apiKey->key_id,
-                'permissions' => json_decode($apiKey->permissions, true) ?? [],
-            ];
-        }
-
-        /**
-         * Revoke API key
-         */
-        public function revokeKey(int $tenantId, string $keyId): bool
-        {
-            return $this->db->transaction(function () use ($tenantId, $keyId) {
-                $updated = $this->db->table('api_keys')
-                    ->where('tenant_id', $tenantId)
-                    ->where('key_id', $keyId)
-                    ->update(['status' => 'revoked']);
-
-                if ($updated) {
-                    $apiKey = $this->db->table('api_keys')
-                        ->where('key_id', $keyId)
-                        ->first();
-                    $this->logAudit($apiKey->id, 'revoked', null);
-
-                    $this->logger->channel('audit')->info('API Key revoked', [
-                        'tenant_id' => $tenantId,
-                        'key_id' => $keyId,
-                        'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
-                    ]);
-                }
-
-                return $updated > 0;
-            });
-        }
-
-        /**
-         * Rotate API key (revoke old, create new)
-         */
-        public function rotateKey(int $tenantId, string $keyId): array
-        {
-            return $this->db->transaction(function () use ($tenantId, $keyId) {
-                $oldKey = $this->db->table('api_keys')
-                    ->where('tenant_id', $tenantId)
-                    ->where('key_id', $keyId)
-                    ->first();
-
-                if (!$oldKey) {
-                    throw new \InvalidArgumentException('API key not found');
-                }
-
-                $this->revokeKey($tenantId, $keyId);
-
-                return $this->generateKey(
-                    tenantId: $tenantId,
-                    name: $oldKey->name . ' (rotated)',
-                    permissions: json_decode($oldKey->permissions, true),
-                    ipWhitelist: json_decode($oldKey->ip_whitelist, true),
-                    expiresAt: $oldKey->expires_at ? new \DateTime($oldKey->expires_at) : null
-                );
-            });
-        }
-
-        private function createApiKey(
-            int $tenantId,
-            string $keyId,
-            string $name,
-            string $keyHash,
-            ?array $permissions,
-            ?array $ipWhitelist,
-            ?\DateTime $expiresAt
-        ): void {
-            $this->db->table('api_keys')->insert([
-                'tenant_id' => $tenantId,
-                'key_id' => $keyId,
-                'name' => $name,
-                'key_hash' => $keyHash,
-                'key_preview' => substr($keyId, 0, 10),
-                'permissions' => $permissions ? json_encode($permissions) : null,
-                'ip_whitelist' => $ipWhitelist ? json_encode($ipWhitelist) : null,
-                'status' => 'active',
-                'expires_at' => $expiresAt,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        private function hashKey(string $rawKey): string
-        {
-            return hash('sha256', $rawKey);
-        }
-
-        private function logAudit(int $apiKeyId, string $action, ?string $ipAddress): void
-        {
-            $this->db->table('api_key_audit_logs')->insert([
-                'api_key_id' => $apiKeyId,
-                'action' => $action,
-                'ip_address' => $ipAddress,
-                'user_agent' => $this->request->header('User-Agent'),
-                'metadata' => json_encode([
-                    'correlation_id' => $this->request->header('X-Correlation-ID', Str::uuid()->toString()),
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        private function ipMatches(string $clientIp, array $whitelist): bool
-        {
-            foreach ($whitelist as $ip) {
-                if ($ip === $clientIp) {
+            if (str_contains($ip, '/')) {
+                if ($this->ipInCidr($clientIp, $ip)) {
                     return true;
                 }
-
-                if (str_contains($ip, '/')) {
-                    if ($this->ipInCidr($clientIp, $ip)) {
-                        return true;
-                    }
-                }
             }
-
-            return false;
         }
 
-        private function ipInCidr(string $ip, string $cidr): bool
-        {
-            [$subnet, $bits] = explode('/', $cidr);
-            $ip = ip2long($ip);
-            $subnet = ip2long($subnet);
-            $mask = -1 << (32 - (int)$bits);
-            $subnet &= $mask;
-            return ($ip & $mask) === $subnet;
-        }
+        return false;
+    }
+
+    private function ipInCidr(string $ip, string $cidr): bool
+    {
+        [$subnet, $bits] = explode('/', $cidr);
+        $ip = ip2long($ip);
+        $subnet = ip2long($subnet);
+        $mask = -1 << (32 - (int) $bits);
+        $subnet &= $mask;
+
+        return ($ip & $mask) === $subnet;
+    }
 }

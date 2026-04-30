@@ -1,16 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Modules\AI\Services\RecommendationService;
 use Modules\Marketplace\Models\Order;
@@ -27,47 +28,51 @@ use Illuminate\Database\DatabaseManager;
  */
 final class RecommendationQualityJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 1800; // 30 минут
+
     public int $tries = 2;
 
     private readonly RecommendationService $recommendationService;
+
     private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    )
-    {
-        $this->recommendationService = app(RecommendationService::class);
+        private readonly RecommendationService $recommendationService,) {
         $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('Recommendation quality check started', [
+            $this->logger->channel('audit')->$this->logger->info('Recommendation quality check started', [
                 'correlation_id' => $this->correlationId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
 
             // 1. Получить рекомендации за вчера
-            $yesterday = Carbon::yesterday();
+            $yesterday = CarbonImmutable::now()->yesterday();
 
             $recommendations = $this->db->table('recommendation_logs')
                 ->whereDate('created_at', $yesterday)
                 ->get(['user_id', 'recommended_items', 'clicked_at', 'score']);
 
             if ($recommendations->isEmpty()) {
-                $this->logger->info('No recommendations to analyze');
+                $this->logger->$this->logger->info('No recommendations to analyze');
+
                 return;
             }
 
             // 2. Вычислить метрики
             $metrics = [
                 'total_recommendations' => $recommendations->count(),
-                'clicks' => $recommendations->filter(fn($r) => $r->clicked_at !== null)->count(),
+                'clicks' => $recommendations->filter(fn ($r) => $r->clicked_at !== null)->count(),
                 'ctr' => 0,
                 'avg_score' => 0,
                 'conversion_count' => 0,
@@ -107,8 +112,8 @@ final class RecommendationQualityJob implements ShouldQueue
                 ->where('created_at', '<=', $yesterday->endOfDay())
                 ->where('source', '!=', 'recommendation')
                 ->sum($this->db->raw('total_price - commission_amount')) / max(Order::query()
-                    ->where('created_at', '>=', $yesterday->startOfDay())
-                    ->count(), 1);
+                ->where('created_at', '>=', $yesterday->startOfDay())
+                ->count(), 1);
 
             $metrics['revenue_lift'] = $baselineRevenue > 0
                 ? (($recommendationRevenue - $baselineRevenue) / $baselineRevenue) * 100
@@ -123,11 +128,11 @@ final class RecommendationQualityJob implements ShouldQueue
             // 5. Пересчитать cosine similarity для embeddings
             $this->updateEmbeddingsSimilarity();
 
-            $this->logger->channel('audit')->info('Recommendation quality check completed', [
+            $this->logger->channel('audit')->$this->logger->info('Recommendation quality check completed', [
                 'correlation_id' => $this->correlationId,
-                'ctr' => round($metrics['ctr'], 2) . '%',
-                'conversion_rate' => round($metrics['conversion_rate'], 2) . '%',
-                'revenue_lift' => round($metrics['revenue_lift'], 2) . '%',
+                'ctr' => round($metrics['ctr'], 2).'%',
+                'conversion_rate' => round($metrics['conversion_rate'], 2).'%',
+                'revenue_lift' => round($metrics['revenue_lift'], 2).'%',
             ]);
 
         } catch (Exception $e) {
@@ -147,26 +152,35 @@ final class RecommendationQualityJob implements ShouldQueue
         }
     }
 
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('RecommendationQualityJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     /**
      * Логировать метрики качества
      */
     private function logQualityMetrics(array $metrics): void
-    { $this->db->transaction(function() use ($metrics) {
+    {
+        $this->db->transaction(function () use ($metrics) {
             $this->db->table('recommendation_quality_logs')->insert([
-            'date' => Carbon::yesterday(),
-            'total_recommendations' => $metrics['total_recommendations'],
-            'clicks' => $metrics['clicks'],
-            'ctr' => $metrics['ctr'],
-            'avg_score' => $metrics['avg_score'],
-            'conversion_count' => $metrics['conversion_count'],
-            'conversion_rate' => $metrics['conversion_rate'],
-            'revenue_lift' => $metrics['revenue_lift'],
-            'correlation_id' => $this->correlationId,
-            'created_at' => now(),
+                'date' => CarbonImmutable::now()->yesterday(),
+                'total_recommendations' => $metrics['total_recommendations'],
+                'clicks' => $metrics['clicks'],
+                'ctr' => $metrics['ctr'],
+                'avg_score' => $metrics['avg_score'],
+                'conversion_count' => $metrics['conversion_count'],
+                'conversion_rate' => $metrics['conversion_rate'],
+                'revenue_lift' => $metrics['revenue_lift'],
+                'correlation_id' => $this->correlationId,
+                'created_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('Quality metrics logged', [
+        $this->logger->$this->logger->info('Quality metrics logged', [
             'ctr' => $metrics['ctr'],
             'conversion_rate' => $metrics['conversion_rate'],
         ]);
@@ -194,7 +208,7 @@ final class RecommendationQualityJob implements ShouldQueue
             $alerts[] = "Conversion Rate низкая: {$metrics['conversion_rate']}% (норма > 5%)";
         }
 
-        if (!empty($alerts)) {
+        if (! empty($alerts)) {
             $this->logger->warning('Recommendation quality below threshold', [
                 'correlation_id' => $this->correlationId,
                 'alerts' => $alerts,
@@ -203,7 +217,7 @@ final class RecommendationQualityJob implements ShouldQueue
             // Отправить Sentry алерт
             if (function_exists('sentry_captureMessage')) {
                 sentry_captureMessage(
-                    'Recommendation quality degradation: ' . implode(', ', $alerts),
+                    'Recommendation quality degradation: '.implode(', ', $alerts),
                     'warning'
                 );
             }
@@ -218,16 +232,8 @@ final class RecommendationQualityJob implements ShouldQueue
         // В реальности: пересчитать vectors similarity через PostgreSQL pgvector
         // Для демо: просто логируем
 
-        $this->logger->info('Embeddings similarity recalculated', [
+        $this->logger->$this->logger->info('Embeddings similarity recalculated', [
             'correlation_id' => $this->correlationId,
-        ]);
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('RecommendationQualityJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'error' => $exception->getMessage(),
         ]);
     }
 }

@@ -1,20 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Events\AIDiagnosticsCompletedEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
 
 final class SendDiagnosticsNotificationListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly NotificationService $notificationService,
-    ) {}
+        private readonly LogManager $log,) {}
 
     public function handle(AIDiagnosticsCompletedEvent $event): void
     {
@@ -36,7 +40,7 @@ final class SendDiagnosticsNotificationListener implements ShouldQueue
             ],
         );
 
-        Log::channel('audit')->info('auto.diagnostics_notification.sent', [
+        $this->log->channel('audit')->$this->logger->info('auto.diagnostics_notification.sent', [
             'correlation_id' => $event->correlationId,
             'user_id' => $event->userId,
             'vehicle_id' => $event->vehicle->id,

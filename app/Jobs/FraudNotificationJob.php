@@ -1,21 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-
-
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Contracts\Mail\Mailer;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * Асинхронная отправка уведомлений о фроде.
@@ -26,18 +24,19 @@ use Illuminate\Database\DatabaseManager;
  */
 final class FraudNotificationJob implements ShouldQueue
 {
-
     public int $tries   = 3;
+
     public int $timeout = 60;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
-        private readonly int    $notificationId,
+        private readonly int $notificationId,
         private readonly string $severity,
         private readonly string $correlationId,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+        private readonly Mailer $mailer,
+        private readonly HttpFactory $http,) {}
 
     public function handle(): void
     {
@@ -45,7 +44,7 @@ final class FraudNotificationJob implements ShouldQueue
             ->where('id', $this->notificationId)
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return;
         }
 
@@ -59,11 +58,11 @@ final class FraudNotificationJob implements ShouldQueue
 
             $this->db->table('fraud_notifications')
                 ->where('id', $this->notificationId)
-                ->update(['status' => 'sent', 'updated_at' => now()]);
+                ->update(['status' => 'sent', 'updated_at' => CarbonImmutable::now()]);
         } catch (\Throwable $e) {
             $this->db->table('fraud_notifications')
                 ->where('id', $this->notificationId)
-                ->update(['status' => 'failed', 'updated_at' => now()]);
+                ->update(['status' => 'failed', 'updated_at' => CarbonImmutable::now()]);
 
             $this->logger->channel('fraud_alert')->error('FraudNotificationJob failed', [
                 'notification_id' => $this->notificationId,
@@ -89,12 +88,12 @@ final class FraudNotificationJob implements ShouldQueue
 
     private function sendInApp(object $notification, ?object $user): void
     {
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
         $this->db->table('notifications')->insert([
-            'id'              => (string) \Illuminate\Support\Str::uuid(),
+            'id'              => (string) Str::uuid(),
             'type'            => 'App\\Notifications\\FraudAlertNotification',
             'notifiable_type' => 'App\\Models\\User',
             'notifiable_id'   => $user->id,
@@ -104,18 +103,18 @@ final class FraudNotificationJob implements ShouldQueue
                 'severity'       => $this->severity,
                 'correlation_id' => $this->correlationId,
             ], JSON_UNESCAPED_UNICODE),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
     private function sendEmail(object $notification, ?object $user): void
     {
-        if (!$user?->email) {
+        if (! $user?->email) {
             return;
         }
 
-        Mail::raw(
+        $this->mailer->raw(
             "Заголовок: {$notification->title}\n\n{$notification->message}\n\nКод запроса: {$this->correlationId}",
             fn ($msg) => $msg
                 ->to($user->email)
@@ -127,7 +126,7 @@ final class FraudNotificationJob implements ShouldQueue
     {
         // FCM / APNS push через Firebase или другой провайдер
         // Реализация зависит от push-провайдера проекта
-        $this->logger->channel('fraud_alert')->info('Push notification sent', [
+        $this->logger->channel('fraud_alert')->$this->logger->info('Push notification sent', [
             'user_id'         => $user?->id,
             'severity'        => $this->severity,
             'correlation_id'  => $this->correlationId,
@@ -139,15 +138,15 @@ final class FraudNotificationJob implements ShouldQueue
         $token   = $this->config->get('services.telegram.bot_token');
         $chatId  = $this->config->get('services.telegram.security_chat_id');
 
-        if (!$token || !$chatId) {
+        if (! $token || ! $chatId) {
             return;
         }
 
         $text = "🚨 *[{$this->severity}]* {$notification->title}\n\n"
-            . "{$notification->message}\n\n"
-            . "`{$this->correlationId}`";
+            ."{$notification->message}\n\n"
+            ."`{$this->correlationId}`";
 
-        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+        $this->http->post("https://api.telegram.org/bot{$token}/sendMessage", [
             'chat_id'    => $chatId,
             'text'       => $text,
             'parse_mode' => 'Markdown',
@@ -158,7 +157,7 @@ final class FraudNotificationJob implements ShouldQueue
     {
         // SMS через Twilio / SMS.ru
         // Реализация зависит от SMS-провайдера проекта
-        $this->logger->channel('fraud_alert')->info('SMS notification dispatched', [
+        $this->logger->channel('fraud_alert')->$this->logger->info('SMS notification dispatched', [
             'user_id'        => $user?->id,
             'severity'       => $this->severity,
             'correlation_id' => $this->correlationId,
@@ -169,11 +168,11 @@ final class FraudNotificationJob implements ShouldQueue
     {
         $webhookUrl = $this->config->get('services.slack.fraud_webhook');
 
-        if (!$webhookUrl) {
+        if (! $webhookUrl) {
             return;
         }
 
-        \Illuminate\Support\Facades\Http::post($webhookUrl, [
+        $this->http->post($webhookUrl, [
             'text' => "*[{$this->severity}]* {$notification->title}: {$notification->message} | `{$this->correlationId}`",
         ]);
     }

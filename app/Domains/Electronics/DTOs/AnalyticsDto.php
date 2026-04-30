@@ -7,15 +7,15 @@ namespace App\Domains\Electronics\DTOs;
 final readonly class AnalyticsDto
 {
     /**
-     * @param array<string, mixed> $salesData
-     * @param array<string, mixed> $trafficData
-     * @param array<string, mixed> $conversionData
-     * @param array<string, mixed> $topProducts
-     * @param array<string, mixed> $brandStats
-     * @param array<string, mixed> $categoryStats
-     * @param array<string, mixed> $priceDistribution
-     * @param array<string, mixed> $inventoryStats
-     * @param array<string, mixed> $customerBehavior
+     * @param  array<string, mixed>  $salesData
+     * @param  array<string, mixed>  $trafficData
+     * @param  array<string, mixed>  $conversionData
+     * @param  array<string, mixed>  $topProducts
+     * @param  array<string, mixed>  $brandStats
+     * @param  array<string, mixed>  $categoryStats
+     * @param  array<string, mixed>  $priceDistribution
+     * @param  array<string, mixed>  $inventoryStats
+     * @param  array<string, mixed>  $customerBehavior
      */
     public function __construct(
         public array $salesData,
@@ -29,8 +29,7 @@ final readonly class AnalyticsDto
         public array $customerBehavior,
         public string $period,
         public string $correlationId,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

@@ -1,12 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Traits;
+
+use Carbon\CarbonImmutable;
 
 trait CanBeSuspended
 {
     public function suspend(): void
     {
-        $this->suspended_at = now();
+        $this->suspended_at = CarbonImmutable::now();
         $this->save();
     }
 
@@ -19,5 +23,12 @@ trait CanBeSuspended
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    public function getSuspendedAt(): ?CarbonImmutable
+    {
+        return $this->suspended_at
+            ? CarbonImmutable::parse($this->suspended_at)
+            : null;
     }
 }

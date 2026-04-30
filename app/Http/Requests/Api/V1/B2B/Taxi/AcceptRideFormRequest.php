@@ -9,18 +9,18 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/acceptrideformrequest
  * @see https://catvrf.ru/docs/acceptrideformrequest
  * @see https://catvrf.ru/docs/acceptrideformrequest
  * @see https://catvrf.ru/docs/acceptrideformrequest
  * @see https://catvrf.ru/docs/acceptrideformrequest
  */
-
 
 namespace App\Http\Requests\Api\V1\B2B\Taxi;
 
@@ -32,8 +32,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Http\Requests\Api\V1\B2B\Taxi
  */
 final class AcceptRideFormRequest extends FormRequest
 {

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Hotels;
 
@@ -10,8 +12,9 @@ use App\Notifications\BaseMailableNotification;
  */
 final class BookingConfirmedNotification extends BaseMailableNotification
 {
-    private string $type = 'hotels.booking.confirmed';
-    private string $template = 'emails.hotels.booking_confirmed';
+    private readonly string $type = 'hotels.booking.confirmed';
+
+    private readonly string $template = 'emails.hotels.booking_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
@@ -37,17 +40,17 @@ final class BookingConfirmedNotification extends BaseMailableNotification
  */
 final class CheckInReminderNotification extends BaseInAppNotification
 {
-    private string $type = 'hotels.check_in.reminder';
+    private readonly string $type = 'hotels.check_in.reminder';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
         parent::__construct($userId, $tenantId, $bookingData, channels: ['push', 'database']);
 
-        $this->title('Завтра вы приезжаете в ' . ($bookingData['hotel_name'] ?? 'отель'))
-             ->message('Не забудьте свой паспорт и бронь-номер ' . ($bookingData['booking_number'] ?? ''))
-             ->type('info')
-             ->autoClose(10000)
-             ->withAction('Показать детали', '/booking/' . ($bookingData['booking_id'] ?? ''));
+        $this->title('Завтра вы приезжаете в '.($bookingData['hotel_name'] ?? 'отель'))
+            ->message('Не забудьте свой паспорт и бронь-номер '.($bookingData['booking_number'] ?? ''))
+            ->type('info')
+            ->autoClose(10000)
+            ->withAction('Показать детали', '/booking/'.($bookingData['booking_id'] ?? ''));
     }
 }
 
@@ -56,8 +59,9 @@ final class CheckInReminderNotification extends BaseInAppNotification
  */
 final class PayoutProcessedNotification extends BaseMailableNotification
 {
-    private string $type = 'hotels.payout.processed';
-    private string $template = 'emails.hotels.payout_processed';
+    private readonly string $type = 'hotels.payout.processed';
+
+    private readonly string $template = 'emails.hotels.payout_processed';
 
     public function __construct(int $userId, int $tenantId, array $payoutData)
     {
@@ -71,16 +75,16 @@ final class PayoutProcessedNotification extends BaseMailableNotification
  */
 final class ReviewRequestNotification extends BaseInAppNotification
 {
-    private string $type = 'hotels.review_request';
+    private readonly string $type = 'hotels.review_request';
 
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
         parent::__construct($userId, $tenantId, $bookingData, channels: ['database', 'push']);
 
         $this->title('Спасибо за остановку!')
-             ->message('Поделитесь впечатлениями о ' . ($bookingData['hotel_name'] ?? 'отеле'))
-             ->type('success')
-             ->autoClose(8000)
-             ->withAction('Оставить отзыв', '/review/hotel/' . ($bookingData['hotel_id'] ?? ''));
+            ->message('Поделитесь впечатлениями о '.($bookingData['hotel_name'] ?? 'отеле'))
+            ->type('success')
+            ->autoClose(8000)
+            ->withAction('Оставить отзыв', '/review/hotel/'.($bookingData['hotel_id'] ?? ''));
     }
 }

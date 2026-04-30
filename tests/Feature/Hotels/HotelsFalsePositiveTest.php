@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Hotels;
 
@@ -24,7 +26,7 @@ final class HotelsFalsePositiveTest extends TestCase
     {
         $amount = 15000;
         $threshold = 50000;
-        
+
         $requiresVerification = $amount > $threshold;
         $this->assertFalse($requiresVerification);
     }

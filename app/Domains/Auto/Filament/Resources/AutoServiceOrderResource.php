@@ -1,65 +1,70 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\CreateAutoServiceOrder;
+use App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\EditAutoServiceOrder;
+use App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\ListAutoServiceOrders;
+use App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\ViewAutoServiceOrder;
 
-final class AutoServiceOrderResource extends Resource
+final class AutoServiceOrderResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = AutoServiceOrder::class;
 
-        protected static ?string $navigationLabel = 'Заказы СТО';
+    protected static ?string $navigationLabel = 'Заказы СТО';
 
-        protected static ?string $pluralModelLabel = 'Заказы СТО';
+    protected static ?string $pluralModelLabel = 'Заказы СТО';
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Section::make('Информация о заказе')
-                    ->schema([
-                        Forms\Components\TextInput::make('client_id')
-                            ->label('Клиент')
-                            ->required()
-                            ->numeric(),
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Информация о заказе')
+                ->schema([
+                    Forms\Components\TextInput::make('client_id')
+                        ->label('Клиент')
+                        ->required()
+                        ->numeric(),
 
-                        Forms\Components\TextInput::make('car_brand')
-                            ->label('Марка авто')
-                            ->required(),
+                    Forms\Components\TextInput::make('car_brand')
+                        ->label('Марка авто')
+                        ->required(),
 
-                        Forms\Components\TextInput::make('car_model')
-                            ->label('Модель авто')
-                            ->required(),
+                    Forms\Components\TextInput::make('car_model')
+                        ->label('Модель авто')
+                        ->required(),
 
-                        Forms\Components\Select::make('service_id')
-                            ->label('Услуга')
-                            ->relationship('service', 'name'),
+                    Forms\Components\Select::make('service_id')
+                        ->label('Услуга')
+                        ->relationship('service', 'name'),
 
-                        Forms\Components\DateTimePicker::make('appointment_datetime')
-                            ->label('Дата и время')
-                            ->required(),
+                    Forms\Components\DateTimePicker::make('appointment_datetime')
+                        ->label('Дата и время')
+                        ->required(),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options([
-                                'pending' => 'В ожидании',
-                                'in_progress' => 'В процессе',
-                                'completed' => 'Завершён',
-                                'cancelled' => 'Отменён',
-                            ])
-                            ->required(),
+                    Forms\Components\Select::make('status')
+                        ->label('Статус')
+                        ->options([
+                            'pending' => 'В ожидании',
+                            'in_progress' => 'В процессе',
+                            'completed' => 'Завершён',
+                            'cancelled' => 'Отменён',
+                        ])
+                        ->required(),
 
-                        Forms\Components\TextInput::make('total_price')
-                            ->label('Сумма (копейки)')
-                            ->numeric()
-                            ->required(),
-                    ]),
-            ]);
-        }
+                    Forms\Components\TextInput::make('total_price')
+                        ->label('Сумма (копейки)')
+                        ->numeric()
+                        ->required(),
+                ]),
+        ]);
+    }
 
     public static function table(Table $table): Table
     {
@@ -69,28 +74,28 @@ final class AutoServiceOrderResource extends Resource
                     ->label('Клиент')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('car_brand')
                     ->label('Марка'),
-                
+
                 Tables\Columns\TextColumn::make('car_model')
                     ->label('Модель'),
-                
+
                 Tables\Columns\TextColumn::make('service.name')
                     ->label('Услуга'),
-                
+
                 Tables\Columns\TextColumn::make('status')
                     ->label('Статус')
                     ->badge(),
-                
+
                 Tables\Columns\TextColumn::make('appointment_datetime')
                     ->label('Дата')
                     ->dateTime('d.m.Y H:i')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('total_price')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state) => ($state / 100) . ' ₽'),
+                    ->formatStateUsing(fn ($state) => ($state / 100).' ₽'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -116,10 +121,18 @@ final class AutoServiceOrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\ListAutoServiceOrders::route('/'),
-            'create' => \App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\CreateAutoServiceOrder::route('/create'),
-            'edit' => \App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\EditAutoServiceOrder::route('/{record}/edit'),
-            'view' => \App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages\ViewAutoServiceOrder::route('/{record}'),
+            'index' => ListAutoServiceOrders::route('/'),
+            'create' => CreateAutoServiceOrder::route('/create'),
+            'edit' => EditAutoServiceOrder::route('/{record}/edit'),
+            'view' => ViewAutoServiceOrder::route('/{record}'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

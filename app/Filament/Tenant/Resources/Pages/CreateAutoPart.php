@@ -1,23 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
 use App\Filament\Tenant\Resources\AutoPartResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-
 
 final class CreateAutoPart extends CreateRecord
 {
-
-protected static string $resource = AutoPartResource::class;
-
-    public function getTitle(): string
-    {
-        return 'Create AutoPart';
-    }
-
     /**
      * Version identifier for this component.
      */
@@ -33,6 +24,14 @@ protected static string $resource = AutoPartResource::class;
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = AutoPartResource::class;
+
+    public function getTitle(): string
+    {
+        return 'Create AutoPart';
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -40,15 +39,15 @@ protected static string $resource = AutoPartResource::class;
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Handle graceful error recovery for the component.
      * Logs the error and determines if retry is possible.
      *
-     * @param \Throwable $exception The caught exception
-     * @param int $attempt Current attempt number
+     * @param  \Throwable  $exception  The caught exception
+     * @param  int  $attempt  Current attempt number
      * @return bool Whether the operation should be retried
      */
     private function handleError(\Throwable $exception, int $attempt = 1): bool
@@ -59,5 +58,4 @@ protected static string $resource = AutoPartResource::class;
 
         return true;
     }
-
 }

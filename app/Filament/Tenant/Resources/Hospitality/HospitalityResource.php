@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Hospitality;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Hospitality;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -24,21 +22,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class HospitalityResource extends Resource
 {
+    protected static ?string $model = Hospitality::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 22;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Hospitality::class;
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 22;
 
     public static function form(Form $form): Form
     {
@@ -47,8 +46,8 @@ final class HospitalityResource extends Resource
                 TextInput::make('venue_code')->label('Код заведения')->required()->hidden(),
                 TextInput::make('venue_name')->label('Название')->required(),
                 Select::make('establishment_type')->label('Тип заведения')->options([
-                    'restaurant' => 'Ресторан','bar' => 'Бар','cafe' => 'Кафе','bistro' => 'Бистро',
-                    'pub' => 'Паб','club' => 'Ночной клуб','lounge' => 'Лаунж','brewery' => 'Пивоварня',
+                    'restaurant' => 'Ресторан', 'bar' => 'Бар', 'cafe' => 'Кафе', 'bistro' => 'Бистро',
+                    'pub' => 'Паб', 'club' => 'Ночной клуб', 'lounge' => 'Лаунж', 'brewery' => 'Пивоварня',
                 ])->required(),
                 TextInput::make('phone')->label('Телефон')->tel()->required(),
                 TextInput::make('email')->label('Email')->email()->required(),
@@ -102,8 +101,8 @@ final class HospitalityResource extends Resource
                 TextInput::make('avg_bill')->label('Средний чек')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -122,17 +121,18 @@ final class HospitalityResource extends Resource
         ])->defaultSort('venue_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Hospitality venue action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Hospitality venue action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

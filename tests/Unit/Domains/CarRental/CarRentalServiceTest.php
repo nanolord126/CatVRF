@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\CarRental;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for CarRentalService.
- *
- * @covers \App\Domains\CarRental\Domain\Services\CarRentalService
- */
-final class CarRentalServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CarRental\Domain\Services\CarRentalService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'CarRentalService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CarRental\Domain\Services\CarRentalService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'CarRentalService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('CarRental');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\CarRental\Domain\Services\CarRentalService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'CarRentalService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('CarRentalService exists and is instantiable', function () {
+    $this->assertServiceExists('CarRentalService');
+});
 
-    public function test_createBooking_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CarRental\Domain\Services\CarRentalService::class, 'createBooking'),
-            'CarRentalService must implement createBooking()'
-        );
-    }
+test('CarRentalService follows clean architecture', function () {
+    $this->assertCleanArchitecture('CarRentalService');
+});
 
-    public function test_completeBooking_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CarRental\Domain\Services\CarRentalService::class, 'completeBooking'),
-            'CarRentalService must implement completeBooking()'
-        );
-    }
+test('CarRentalService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('CarRentalService', 'process', []);
+});
 
-    public function test_cancelBooking_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CarRental\Domain\Services\CarRentalService::class, 'cancelBooking'),
-            'CarRentalService must implement cancelBooking()'
-        );
-    }
+test('CarRentalService enforces quota limits', function () {
+    $this->testServiceWithQuota('CarRentalService', 'process', 1, 10, []);
+});
 
-    public function test_getBooking_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CarRental\Domain\Services\CarRentalService::class, 'getBooking'),
-            'CarRentalService must implement getBooking()'
-        );
-    }
+test('CarRentalService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('CarRentalService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getUserBookings_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\CarRental\Domain\Services\CarRentalService::class, 'getUserBookings'),
-            'CarRentalService must implement getUserBookings()'
-        );
-    }
+test('CarRentalService has proper caching', function () {
+    $cacheKey = 'carrental:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('CarRentalService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('CarRentalService dispatches proper events', function () {
+    $eventClass = "App\Domains\CarRental\Events\CarRentalProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('CarRentalService'));
+        $service->process([]);
+    });
+});
+
+test('CarRentalService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\CarRental\Jobs\ProcessCarRentalJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('CarRentalService'));
+        $service->processAsync([]);
+    });
+});
+
+test('CarRentalService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('CarRentalService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('CarRentalService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('CarRentalService'));
+        $service->process([]);
+    }, 'CarRentalService processed');
+});
+
+test('CarRentalService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

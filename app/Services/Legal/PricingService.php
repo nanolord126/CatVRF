@@ -1,121 +1,131 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Legal;
 
+use Psr\Log\LoggerInterface;
 
 use App\Models\Lawyer;
 use App\Models\LegalService;
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
-final class PricingService
+final readonly class PricingService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private readonly LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
-         * Calculate consultation price based on lawyer, complexity, and urgency.
-         */
-        public function calculateConsultationPrice(
-            Lawyer $lawyer,
-            string $complexity = 'standard',
-            bool $isUrgent = false,
-            bool $isB2B = false,
-            string $correlationId = null
-        ): int {
-            $basePrice = $lawyer->consultation_price;
-            $multiplier = 1.0;
+     * Calculate consultation price based on lawyer, complexity, and urgency.
+     */
+    public function calculateConsultationPrice(
+        Lawyer $lawyer,
+        string $complexity = 'standard',
+        bool $isUrgent = false,
+        bool $isB2B = false,
+        ?string $correlationId = null
+    ): int {
+        $basePrice = $lawyer->consultation_price;
+        $multiplier = 1.0;
 
-            // Complexity Multiplier
-            $multiplier *= match ($complexity) {
-                'special' => 2.0,
-                default => 1.0,
-            };
+        // Complexity Multiplier
+        $multiplier *= match ($complexity) {
+            'special' => 2.0,
+            default => 1.0,
+        };
 
-            // Urgency Premium
-            if ($isUrgent) {
-                $multiplier += 0.3; // +30%
-            }
+        // Urgency Premium
+        if ($isUrgent) {
+            $multiplier += 0.3; // +30%
+        }
 
-            // B2B Discount (Corporate rate)
-            if ($isB2B) {
-                $multiplier -= 0.15; // -15%
-            }
+        // B2B Discount (Corporate rate)
+        if ($isB2B) {
+            $multiplier -= 0.15; // -15%
+        }
 
-            $finalPrice = (int) ($basePrice * $multiplier);
+        $finalPrice = (int) ($basePrice * $multiplier);
 
-            $this->logger->channel('audit')->info('Legal consultation price calculated', [
-                'lawyer_id' => $lawyer->id,
-                'base_price' => $basePrice,
-                'final_price' => $finalPrice,
-                'multipliers' => [
-                    'complexity' => $complexity,
-                    'urgent' => $isUrgent,
-                    'b2b' => $isB2B,
-                ],
-                'correlation_id' => $correlationId,
+        $this->logger->channel('audit')->$this->logger->info('Legal consultation price calculated', [
+            'lawyer_id' => $lawyer->id,
+            'base_price' => $basePrice,
+            'final_price' => $finalPrice,
+            'multipliers' => [
+                'complexity' => $complexity,
+                'urgent' => $isUrgent,
+                'b2b' => $isB2B,
+            ],
+            'correlation_id' => $correlationId,
+        ]);
+
+        return $finalPrice;
+    }
+
+    /**
+     * Calculate document preparation price.
+     */
+    public function calculateServicePrice(
+        LegalService $service,
+        int $pageCount = 1,
+        bool $isB2B = false,
+        ?string $correlationId = null
+    ): int {
+        $basePrice = $service->base_price;
+
+        // Volume pricing for multi-page documents
+        $volumeMultiplier = 1.0;
+        if ($pageCount > 5) {
+            $volumeMultiplier = 1.2;
+        } elseif ($pageCount > 15) {
+            $volumeMultiplier = 1.5;
+        }
+
+        $finalPrice = (int) ($basePrice * $volumeMultiplier);
+
+        if ($isB2B) {
+            $finalPrice = (int) ($finalPrice * 0.85); // 15% discount for legal entities
+        }
+
+        $this->logger->channel('audit')->$this->logger->info('Legal service price calculated', [
+            'service_id' => $service->id,
+            'page_count' => $pageCount,
+            'final_price' => $finalPrice,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return $finalPrice;
+    }
+
+    /**
+     * Check for suspicious pricing anomalies.
+     */
+    public function validatePriceForFraud(int $price, string $type): bool
+    {
+        // Simple heuristic: legal consultation shouldn't exceed 500,000 RUB or be less than 1 rub
+        if ($price > 50000000 || $price < 100) {
+            $this->logger->channel('fraud_alert')->warning('Suspicious legal price detected', [
+                'price' => $price,
+                'type' => $type,
             ]);
 
-            return $finalPrice;
+            return false;
         }
 
-        /**
-         * Calculate document preparation price.
-         */
-        public function calculateServicePrice(
-            LegalService $service,
-            int $pageCount = 1,
-            bool $isB2B = false,
-            string $correlationId = null
-        ): int {
-            $basePrice = $service->base_price;
+        return true;
+    }
 
-            // Volume pricing for multi-page documents
-            $volumeMultiplier = 1.0;
-            if ($pageCount > 5) {
-                $volumeMultiplier = 1.2;
-            } elseif ($pageCount > 15) {
-                $volumeMultiplier = 1.5;
-            }
-
-            $finalPrice = (int) ($basePrice * $volumeMultiplier);
-
-            if ($isB2B) {
-                $finalPrice = (int) ($finalPrice * 0.85); // 15% discount for legal entities
-            }
-
-            $this->logger->channel('audit')->info('Legal service price calculated', [
-                'service_id' => $service->id,
-                'page_count' => $pageCount,
-                'final_price' => $finalPrice,
-                'correlation_id' => $correlationId,
-            ]);
-
-            return $finalPrice;
-        }
-
-        /**
-         * Check for suspicious pricing anomalies.
-         */
-        public function validatePriceForFraud(int $price, string $type): bool
-        {
-            // Simple heuristic: legal consultation shouldn't exceed 500,000 RUB or be less than 1 rub
-            if ($price > 50000000 || $price < 100) {
-                $this->logger->channel('fraud_alert')->warning('Suspicious legal price detected', [
-                    'price' => $price,
-                    'type' => $type,
-                ]);
-                return false;
-            }
-
-            return true;
-        }
-
-        /**
-         * Format price for display in RUB.
-         */
-        public function format(int $cents): string
-        {
-            return number_format($cents / 100, 2, '.', ' ') . ' ₽';
-        }
+    /**
+     * Format price for display in RUB.
+     */
+    public function format(int $cents): string
+    {
+        return number_format($cents / 100, 2, '.', ' ').' ₽';
+    }
 }

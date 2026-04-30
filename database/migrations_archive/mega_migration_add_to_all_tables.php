@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -7,16 +9,19 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Mega-Migration: ALTER all existing tables to add correlation_id, soft_delete, indices
- * 
+ *
  * Более безопасный и быстрый способ добавить все нужные колонки
  * ко ВСЕМ существующим таблицам одной миграцией
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     private array $userTables = ['users', 'user_profiles'];
+
     private array $financialTables = ['wallets', 'wallet_transactions', 'transfers', 'transactions', 'platform_commissions'];
+
     private array $contentTables = ['bookings', 'orders', 'services', 'properties', 'hotels', 'beauty_salons', 'restaurants', 'products'];
+
     private array $auditTables = ['action_audits', 'ai_user_telemetry'];
+
     private array $geoTables = ['geo_zones', 'geo_events'];
 
     public function up(): void
@@ -34,7 +39,7 @@ return new class extends Migration
         );
 
         foreach ($allTables as $tableName) {
-            if (Schema::hasTable($tableName) && !Schema::hasColumn($tableName, 'correlation_id')) {
+            if (Schema::hasTable($tableName) && ! Schema::hasColumn($tableName, 'correlation_id')) {
                 Schema::table($tableName, function (Blueprint $t) use ($tableName) {
                     // Insert after id if id exists, else at start
                     if (Schema::hasColumn($tableName, 'id')) {
@@ -49,7 +54,7 @@ return new class extends Migration
         // Add soft_delete to tables that need it
         $softDeleteTables = array_merge($this->userTables, $this->financialTables, $this->contentTables);
         foreach ($softDeleteTables as $tableName) {
-            if (Schema::hasTable($tableName) && !Schema::hasColumn($tableName, 'deleted_at')) {
+            if (Schema::hasTable($tableName) && ! Schema::hasColumn($tableName, 'deleted_at')) {
                 Schema::table($tableName, function (Blueprint $t) {
                     $t->softDeletes();
                 });
@@ -62,7 +67,7 @@ return new class extends Migration
                 if (Schema::hasColumn('users', 'email')) {
                     try {
                         $t->index('email', 'idx_users_email');
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         // Index might already exist
                     }
                 }
@@ -74,12 +79,14 @@ return new class extends Migration
                 if (Schema::hasColumn('bookings', 'user_id')) {
                     try {
                         $t->index('user_id', 'idx_bookings_user_id');
-                    } catch (\Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
                 if (Schema::hasColumn('bookings', 'status')) {
                     try {
                         $t->index('status', 'idx_bookings_status');
-                    } catch (\Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
             });
         }
@@ -89,12 +96,14 @@ return new class extends Migration
                 if (Schema::hasColumn('orders', 'user_id')) {
                     try {
                         $t->index('user_id', 'idx_orders_user_id');
-                    } catch (\Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
                 if (Schema::hasColumn('orders', 'status')) {
                     try {
                         $t->index('status', 'idx_orders_status');
-                    } catch (\Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
             });
         }
@@ -103,7 +112,8 @@ return new class extends Migration
             Schema::table('permissions', function (Blueprint $t) {
                 try {
                     $t->index('name', 'idx_permissions_name');
-                } catch (\Exception $e) {}
+                } catch (Exception $e) {
+                }
             });
         }
 
@@ -111,7 +121,8 @@ return new class extends Migration
             Schema::table('roles', function (Blueprint $t) {
                 try {
                     $t->index('name', 'idx_roles_name');
-                } catch (\Exception $e) {}
+                } catch (Exception $e) {
+                }
             });
         }
 

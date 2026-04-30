@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\Controllers;
-
-
 
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Psr\Log\LoggerInterface;
@@ -14,18 +14,23 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+
 final class InsuranceCompanyController extends Controller
 {
     public function __construct(
-        private readonly ResponseFactory $responseFactory,private readonly FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+        private readonly ResponseFactory $responseFactory,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = InsuranceCompany::query();
 
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->input('search') . '%');
+            $query->where('name', 'like', '%'.$request->input('search').'%');
         }
 
         $items = $query->orderByDesc('created_at')
@@ -61,7 +66,7 @@ final class InsuranceCompanyController extends Controller
                 ]
             ));
 
-            $this->logger->info('InsuranceCompany created', [
+            $this->logger->$this->logger->info('InsuranceCompany created', [
                 'id' => $item->id,
                 'correlation_id' => $correlationId,
                 'tenant_id' => $request->user()->tenant_id,
@@ -91,7 +96,7 @@ final class InsuranceCompanyController extends Controller
         $this->db->transaction(function () use ($model, $request, $correlationId) {
             $model->update($request->validated());
 
-            $this->logger->info('InsuranceCompany updated', [
+            $this->logger->$this->logger->info('InsuranceCompany updated', [
                 'id' => $model->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -115,13 +120,13 @@ final class InsuranceCompanyController extends Controller
         $this->db->transaction(function () use ($model, $correlationId) {
             $model->delete();
 
-            $this->logger->info('InsuranceCompany deleted', [
+            $this->logger->$this->logger->info('InsuranceCompany deleted', [
                 'id' => $model->id,
                 'correlation_id' => $correlationId,
             ]);
         });
 
-        return (new \Illuminate\Http\JsonResponse(['message' => 'Deleted'], 200))
+        return (new JsonResponse(['message' => 'Deleted'], 200))
             ->header('X-Correlation-ID', $correlationId);
     }
 }

@@ -1,11 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\CarSales\Models;
-
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class CarDealerStorefront
@@ -25,42 +27,41 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\CarSales\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CarDealerStorefront extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
 
-    use HasFactory, SoftDeletes;
+    protected $table = 'b2b_auto_storefronts';
 
-    	protected $table = 'b2b_auto_storefronts';
+    protected $fillable = [
+        'uuid', 'tenant_id', 'company_name', 'inn', 'description',
+        'auto_brands', 'wholesale_discount', 'min_order_amount', 'is_verified',
+        'is_active', 'correlation_id', 'tags',
+    ];
 
-    	protected $fillable = [
-    		'uuid', 'tenant_id', 'company_name', 'inn', 'description',
-    		'auto_brands', 'wholesale_discount', 'min_order_amount', 'is_verified',
-    		'is_active', 'correlation_id', 'tags'
-    	];
+    protected $casts = [
+        'auto_brands' => 'json',
+        'tags' => 'json',
+        'is_verified' => 'boolean',
+        'is_active' => 'boolean',
+        'wholesale_discount' => 'decimal:2',
+    ];
 
-    	protected $casts = [
-    		'auto_brands' => 'json',
-    		'tags' => 'json',
-    		'is_verified' => 'boolean',
-    		'is_active' => 'boolean',
-    		'wholesale_discount' => 'decimal:2',
-    	];
+    public function b2bOrders(): HasMany
+    {
+        return $this->hasMany(B2BAutoOrder::class, 'b2b_auto_storefront_id');
+    }
 
-    	protected static function booted(): void
-    	{
-    		static::addGlobalScope('tenant', function ($query) {
-    			if (function_exists('tenant') && tenant() && tenant()->id) {
-    				$query->where('tenant_id', tenant()->id);
-    			}
-    		});
-    	}
-
-    	public function b2bOrders(): HasMany
-    	{
-    		return $this->hasMany(B2BAutoOrder::class, 'b2b_auto_storefront_id');
-    	}
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant() && tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

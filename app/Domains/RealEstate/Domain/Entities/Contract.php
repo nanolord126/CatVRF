@@ -15,26 +15,27 @@ use DomainException;
 
 final class Contract
 {
-    private string $status = 'pending';
+    private readonly string $status = 'pending';
 
-    private ?DateTimeImmutable $signedAt = null;
+    private readonly ?DateTimeImmutable $signedAt = null;
 
-    private ?DateTimeImmutable $terminatedAt = null;
+    private readonly ?DateTimeImmutable $terminatedAt = null;
 
     /** @var list<object> */
-    private array $domainEvents = [];
+    private readonly array $domainEvents = [];
 
     public function __construct(
-        private readonly ContractId      $id,
-        private readonly PropertyId      $propertyId,
-        private readonly AgentId         $agentId,
-        private readonly int             $clientId,
-        private readonly int             $tenantId,
+        private readonly ContractId $id,
+        private readonly PropertyId $propertyId,
+        private readonly AgentId $agentId,
+        private readonly int $clientId,
+        private readonly int $tenantId,
         private readonly ContractTypeEnum $type,
-        private readonly Price           $price,
-        private readonly string          $correlationId,
-        private ?string                  $documentUrl = null,
-        private ?int                     $leaseDurationMonths = null) {}
+        private readonly Price $price,
+        private readonly string $correlationId,
+        private readonly ?string $documentUrl = null,
+        private readonly ?int $leaseDurationMonths = null
+    ) {}
 
     /**
      * Sign the contract — transitions pending → signed, emits ContractSigned.
@@ -90,20 +91,75 @@ final class Contract
         return $this->price->percentage($this->type->commissionPercent());
     }
 
-    public function getId(): ContractId { return $this->id; }
-    public function getPropertyId(): PropertyId { return $this->propertyId; }
-    public function getAgentId(): AgentId { return $this->agentId; }
-    public function getClientId(): int { return $this->clientId; }
-    public function getTenantId(): int { return $this->tenantId; }
-    public function getType(): ContractTypeEnum { return $this->type; }
-    public function getPrice(): Price { return $this->price; }
-    public function getStatus(): string { return $this->status; }
-    public function getSignedAt(): ?DateTimeImmutable { return $this->signedAt; }
-    public function getTerminatedAt(): ?DateTimeImmutable { return $this->terminatedAt; }
-    public function getDocumentUrl(): ?string { return $this->documentUrl; }
-    public function getLeaseDurationMonths(): ?int { return $this->leaseDurationMonths; }
-    public function getCorrelationId(): string { return $this->correlationId; }
-    public function isSigned(): bool { return $this->status === 'signed'; }
+    public function getId(): ContractId
+    {
+        return $this->id;
+    }
+
+    public function getPropertyId(): PropertyId
+    {
+        return $this->propertyId;
+    }
+
+    public function getAgentId(): AgentId
+    {
+        return $this->agentId;
+    }
+
+    public function getClientId(): int
+    {
+        return $this->clientId;
+    }
+
+    public function getTenantId(): int
+    {
+        return $this->tenantId;
+    }
+
+    public function getType(): ContractTypeEnum
+    {
+        return $this->type;
+    }
+
+    public function getPrice(): Price
+    {
+        return $this->price;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getSignedAt(): ?DateTimeImmutable
+    {
+        return $this->signedAt;
+    }
+
+    public function getTerminatedAt(): ?DateTimeImmutable
+    {
+        return $this->terminatedAt;
+    }
+
+    public function getDocumentUrl(): ?string
+    {
+        return $this->documentUrl;
+    }
+
+    public function getLeaseDurationMonths(): ?int
+    {
+        return $this->leaseDurationMonths;
+    }
+
+    public function getCorrelationId(): string
+    {
+        return $this->correlationId;
+    }
+
+    public function isSigned(): bool
+    {
+        return $this->status === 'signed';
+    }
 
     /** @return list<object> */
     public function pullDomainEvents(): array

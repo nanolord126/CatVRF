@@ -1,17 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
-
 use Illuminate\Http\Request;
-use App\Services\AuditService;
-use App\Services\FraudControl\FraudControlService;
 use App\Services\ML\AnonymizationService;
 use App\Services\ML\UserBehaviorAnalyzerService;
-
-
-use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * TargetingCriteriaService — критерии таргетинга для рекламы и рассылок.
@@ -30,8 +27,8 @@ final readonly class TargetingCriteriaService
 {
     public function __construct(
         private readonly Request $request,
-        private UserBehaviorAnalyzerService $userBehaviorAnalyzer,
-        private AnonymizationService        $anonymizer,
+        private readonly UserBehaviorAnalyzerService $userBehaviorAnalyzer,
+        private readonly AnonymizationService $anonymizer,
         private readonly DatabaseManager $db,
     ) {}
 
@@ -82,8 +79,8 @@ final readonly class TargetingCriteriaService
             'days_since_last_activity' => $pattern['days_since_last_activity'] ?? 0,
             'is_churn_risk'          => $pattern['is_churn_risk'] ?? false,
             'ltv_segment'            => $this->getLtvSegment($userId),
-            'hour_of_day'            => (int) now()->format('H'),
-            'day_of_week'            => (int) now()->dayOfWeek,
+            'hour_of_day'            => (int) CarbonImmutable::now()->format('H'),
+            'day_of_week'            => (int) CarbonImmutable::now()->dayOfWeek,
         ];
     }
 

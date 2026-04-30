@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Education;
 
@@ -11,15 +13,8 @@ use App\Domains\Education\Events\PriceUpdatedEvent;
 final class DynamicPricingApiTest extends TestCase
 {
     private User $user;
+
     private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test-token')->plainTextToken;
-    }
 
     public function test_calculate_price_unauthorized(): void
     {
@@ -136,5 +131,13 @@ final class DynamicPricingApiTest extends TestCase
             ->assertJson([
                 'original_price_rub' => 800.0,
             ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 }

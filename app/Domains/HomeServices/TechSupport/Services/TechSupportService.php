@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\HomeServices\TechSupport\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\HomeServices\TechSupport\Models\SupportTicket;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Services\FraudControlService;
@@ -13,32 +15,32 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * TechSupportService — управление тикетами технической поддержки.
  *
  * Создание, завершение и отмена заявок на техподдержку.
  *
- * @package CatVRF
  * @version 2026.1
  */
 final readonly class TechSupportService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private DatabaseManager     $db,
-        private LoggerInterface     $logger,
-        private Guard               $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Создать тикет техподдержки.
      */
     public function createTicket(
-        int    $specialistId,
+        int $specialistId,
         string $issueType,
-        int    $supportHours,
+        int $supportHours,
         string $dueDate,
         string $correlationId = '',
     ): SupportTicket {
@@ -71,7 +73,7 @@ final readonly class TechSupportService
                 'tags'           => ['tech' => true],
             ]);
 
-            $this->logger->info('Support ticket created', [
+            $this->logger->$this->logger->info('Support ticket created', [
                 'ticket_id'      => $ticket->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -107,7 +109,7 @@ final readonly class TechSupportService
                 metadata: ['ticket_id' => $ticket->id],
             );
 
-            $this->logger->info('Support ticket completed', [
+            $this->logger->$this->logger->info('Support ticket completed', [
                 'ticket_id'      => $ticket->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -148,7 +150,7 @@ final readonly class TechSupportService
                 );
             }
 
-            $this->logger->info('Support ticket cancelled', [
+            $this->logger->$this->logger->info('Support ticket cancelled', [
                 'ticket_id'      => $ticket->id,
                 'refunded'       => $wasPaid,
                 'correlation_id' => $correlationId,
@@ -169,9 +171,9 @@ final readonly class TechSupportService
     /**
      * Получить последние тикеты клиента.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, SupportTicket>
+     * @return Collection<int, SupportTicket>
      */
-    public function getUserTickets(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserTickets(int $clientId, int $limit = 10): Collection
     {
         return SupportTicket::where('client_id', $clientId)
             ->orderByDesc('created_at')
@@ -181,15 +183,15 @@ final readonly class TechSupportService
 
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /** @return array<string, mixed> */
     public function toDebugArray(): array
     {
         return [
-            'class'     => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class'     => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

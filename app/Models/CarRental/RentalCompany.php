@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\CarRental;
-
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,104 +14,105 @@ use Illuminate\Support\Str;
 
 final class RentalCompany extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
+
+    protected $table = 'rental_companies';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'name',
+        'inn',
+        'is_verified',
+        'rating',
+        'settings',
+        'tags',
+        'correlation_id',
+    ];
+
+    /**
+     * Casting logic for nested JSON structures.
+     */
+    protected $casts = [
+        'is_verified' => 'boolean',
+        'rating' => 'float',
+        'settings' => 'json',
+        'tags' => 'json',
+        'uuid' => 'string',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
     public function __construct(
         private readonly ConfigRepository $config,
     ) {}
 
-    use HasFactory, SoftDeletes;
+    /**
+     * Relationship: Ownership of the vehicle fleet.
+     */
+    public function cars(): HasMany
+    {
+        return $this->hasMany(Car::class, 'rental_company_id');
+    }
 
-        protected $table = 'rental_companies';
+    /**
+     * Helper to retrieve verified status for logic branching.
+     */
+    public function isPremium(): bool
+    {
+        return $this->is_verified && $this->rating >= 4.5;
+    }
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'name',
-            'inn',
-            'is_verified',
-            'rating',
-            'settings',
-            'tags',
-            'correlation_id',
-        ];
+    /**
+     * Scope for searching by brand/legal name.
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        return $query->where('name', 'LIKE', "%{$term}%")
+            ->orWhere('inn', 'LIKE', "%{$term}%");
+    }
 
-        /**
-         * Casting logic for nested JSON structures.
-         */
-        protected $casts = [
-            'is_verified' => 'boolean',
-            'rating' => 'float',
-            'settings' => 'json',
-            'tags' => 'json',
-            'uuid' => 'string',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
+    /**
+     * Correlation Tracking implementation.
+     */
+    public function getActiveTraceId(): string
+    {
+        return (string) ($this->correlation_id ?? 'root-trace-id');
+    }
 
-        /**
-         * Boot logic: Ensuring standard tenant scoping and unique identifiers.
-         */
-        protected static function booted(): void
-        {
-            // 1. Force Tenant Scoping via global scope
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                $tenantId = tenant()->id ?? $this->config->get('multitenancy.default_tenant_id');
-                if ($tenantId) {
-                    $builder->where('tenant_id', $tenantId);
-                }
-            });
+    /**
+     * Retrieve standard commission percentage from settings.
+     */
+    public function getCommission(): int
+    {
+        return (int) ($this->settings['commission_percent'] ?? 14);
+    }
 
-            // 2. Automatic UUID generation and correlation assignment
-            static::creating(function (self $model) {
-                if (empty($model->uuid)) {
-                    $model->uuid = (string) Str::uuid();
-                }
-                if (empty($model->correlation_id)) {
-                    $model->correlation_id = (string) Str::uuid();
-                }
-                if (empty($model->tenant_id)) {
-                    $model->tenant_id = tenant()->id ?? 1;
-                }
-            });
-        }
+    /**
+     * Boot logic: Ensuring standard tenant scoping and unique identifiers.
+     */
+    protected static function booted(): void
+    {
+        // 1. Force Tenant Scoping via global scope
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            $tenantId = tenant()->id ?? $this->config->get('multitenancy.default_tenant_id');
+            if ($tenantId) {
+                $builder->where('tenant_id', $tenantId);
+            }
+        });
 
-        /**
-         * Relationship: Ownership of the vehicle fleet.
-         */
-        public function cars(): HasMany
-        {
-            return $this->hasMany(Car::class, 'rental_company_id');
-        }
-
-        /**
-         * Helper to retrieve verified status for logic branching.
-         */
-        public function isPremium(): bool
-        {
-            return $this->is_verified && $this->rating >= 4.5;
-        }
-
-        /**
-         * Scope for searching by brand/legal name.
-         */
-        public function scopeSearch(Builder $query, string $term): Builder
-        {
-            return $query->where('name', 'LIKE', "%{$term}%")
-                         ->orWhere('inn', 'LIKE', "%{$term}%");
-        }
-
-        /**
-         * Correlation Tracking implementation.
-         */
-        public function getActiveTraceId(): string
-        {
-            return (string) ($this->correlation_id ?? 'root-trace-id');
-        }
-
-        /**
-         * Retrieve standard commission percentage from settings.
-         */
-        public function getCommission(): int
-        {
-            return (int) ($this->settings['commission_percent'] ?? 14);
-        }
+        // 2. Automatic UUID generation and correlation assignment
+        self::creating(function (self $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+            if (empty($model->tenant_id)) {
+                $model->tenant_id = tenant()->id ?? 1;
+            }
+        });
+    }
 }

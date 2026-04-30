@@ -1,12 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
+
+use Carbon\CarbonImmutable;
 
 use App\Enums\Role;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 final class TenantUser extends Pivot
 {
+    public $timestamps = true;
+
     protected $table = 'tenant_user';
 
     protected $fillable = [
@@ -26,8 +32,6 @@ final class TenantUser extends Pivot
         'invited_at' => 'datetime',
         'accepted_at' => 'datetime',
     ];
-
-    public $timestamps = true;
 
     // ========================
     // RELATIONSHIPS
@@ -72,7 +76,7 @@ final class TenantUser extends Pivot
     public function accept(): bool
     {
         return $this->update([
-            'accepted_at' => now(),
+            'accepted_at' => CarbonImmutable::now(),
             'is_active' => true,
             'invitation_token' => null,
         ]);

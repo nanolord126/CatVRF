@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 /**
  * Class TaxiRideResource
@@ -14,8 +17,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * API Resource for response transformation.
  * Formats model data for API responses.
  * Always includes correlation_id in meta.
- *
- * @package App\Domains\Taxi\Http\Resources
  */
 final class TaxiRideResource extends JsonResource
 {
@@ -51,7 +52,7 @@ final class TaxiRideResource extends JsonResource
     {
         return [
             'meta' => [
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
                 'api_version' => 'v1',
             ],
         ];

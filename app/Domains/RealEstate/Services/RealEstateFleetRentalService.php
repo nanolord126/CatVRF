@@ -1,30 +1,43 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\Models\B2BDeal;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 final readonly class RealEstateFleetRentalService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const FLEET_DISCOUNT_RATE = 0.15;
+
     private const BULK_DISCOUNT_THRESHOLD = 5;
+
     private const BULK_DISCOUNT_RATE = 0.10;
+
     private const MAX_LEASE_TERM_MONTHS = 60;
+
     private const MIN_LEASE_TERM_MONTHS = 3;
+
     private const MIN_UNIT_COUNT = 2;
+
     private const APPROVAL_TIMEOUT_HOURS = 48;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function createFleetRentalDeal(
@@ -48,7 +61,7 @@ final readonly class RealEstateFleetRentalService
         );
 
         if ($idempotencyKey !== null) {
-            $cached = Cache::get("fleet:{$idempotencyKey}");
+            $cached = $this->cache->get("fleet:{$idempotencyKey}");
             if ($cached !== null) {
                 return B2BDeal::findOrFail(json_decode($cached, true)['deal_id']);
             }
@@ -58,7 +71,7 @@ final readonly class RealEstateFleetRentalService
 
         $this->validateFleetRentalParameters($unitCount, $leaseTermMonths, $basePricePerUnit);
 
-        $result = DB::transaction(function () use ($property, $propertyId, $businessGroupId, $unitCount, $leaseTermMonths, $basePricePerUnit, $tenantId, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $propertyId, $businessGroupId, $unitCount, $leaseTermMonths, $basePricePerUnit, $tenantId, $correlationId) {
             $discountRate = $this->calculateDiscountRate($unitCount);
             $discountedPricePerUnit = $basePricePerUnit * (1 - $discountRate);
             $totalMonthlyPrice = $discountedPricePerUnit * $unitCount;
@@ -79,7 +92,7 @@ final readonly class RealEstateFleetRentalService
                 'total_monthly_price' => $totalMonthlyPrice,
                 'total_contract_value' => $totalContractValue,
                 'status' => 'pending_approval',
-                'approval_deadline' => now()->addHours(self::APPROVAL_TIMEOUT_HOURS)->toIso8601String(),
+                'approval_deadline' => CarbonImmutable::now()->addHours(self::APPROVAL_TIMEOUT_HOURS)->toIso8601String(),
                 'tags' => json_encode(['fleet_rental', 'b2b', 'bulk_discount']),
             ]);
 
@@ -103,7 +116,7 @@ final readonly class RealEstateFleetRentalService
         });
 
         if ($idempotencyKey !== null) {
-            Cache::put("fleet:{$idempotencyKey}", json_encode(['deal_id' => $result->id]), self::CACHE_TTL_SECONDS);
+            $this->cache->put("fleet:{$idempotencyKey}", json_encode(['deal_id' => $result->id]), self::CACHE_TTL_SECONDS);
         }
 
         return $result;
@@ -129,17 +142,17 @@ final readonly class RealEstateFleetRentalService
             throw new \DomainException('Deal is not in pending approval status');
         }
 
-        if (now()->isAfter(Carbon::parse($deal->approval_deadline))) {
+        if (CarbonImmutable::now()->isAfter(Carbon::parse($deal->approval_deadline))) {
             throw new \DomainException('Approval deadline has passed');
         }
 
-        return DB::transaction(function () use ($deal, $approvedBy, $correlationId) {
+        return $this->db->transaction(function () use ($deal, $approvedBy, $correlationId) {
             $deal->update([
                 'status' => 'approved',
-                'approved_at' => now()->toIso8601String(),
+                'approved_at' => CarbonImmutable::now()->toIso8601String(),
                 'approved_by' => $approvedBy,
-                'contract_start_date' => now()->addDays(7)->toIso8601String(),
-                'contract_end_date' => now()->addDays(7)->addMonths($deal->lease_term_months)->toIso8601String(),
+                'contract_start_date' => CarbonImmutable::now()->addDays(7)->toIso8601String(),
+                'contract_end_date' => CarbonImmutable::now()->addDays(7)->addMonths($deal->lease_term_months)->toIso8601String(),
             ]);
 
             $property = Property::findOrFail($deal->property_id);
@@ -182,10 +195,10 @@ final readonly class RealEstateFleetRentalService
             throw new \DomainException('Deal is not in pending approval status');
         }
 
-        return DB::transaction(function () use ($deal, $rejectedBy, $rejectionReason, $correlationId) {
+        return $this->db->transaction(function () use ($deal, $rejectedBy, $rejectionReason, $correlationId) {
             $deal->update([
                 'status' => 'rejected',
-                'rejected_at' => now()->toIso8601String(),
+                'rejected_at' => CarbonImmutable::now()->toIso8601String(),
                 'rejected_by' => $rejectedBy,
                 'rejection_reason' => $rejectionReason,
             ]);
@@ -241,7 +254,7 @@ final readonly class RealEstateFleetRentalService
             'total_monthly_price' => $totalMonthlyPrice,
             'total_contract_value' => $totalContractValue,
             'total_savings' => ($basePricePerUnit * $unitCount * $leaseTermMonths) - $totalContractValue,
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -267,7 +280,7 @@ final readonly class RealEstateFleetRentalService
 
         return [
             'business_group_id' => $businessGroupId,
-            'deals' => $deals->map(fn($deal) => [
+            'deals' => $deals->map(fn ($deal) => [
                 'deal_id' => $deal->id,
                 'uuid' => $deal->uuid,
                 'property_id' => $deal->property_id,
@@ -308,7 +321,7 @@ final readonly class RealEstateFleetRentalService
             throw new \InvalidArgumentException('Extension must be between 1 and 24 months');
         }
 
-        return DB::transaction(function () use ($deal, $additionalMonths, $requestedBy, $correlationId) {
+        return $this->db->transaction(function () use ($deal, $additionalMonths, $requestedBy, $correlationId) {
             $newLeaseTerm = $deal->lease_term_months + $additionalMonths;
 
             if ($newLeaseTerm > self::MAX_LEASE_TERM_MONTHS) {
@@ -358,15 +371,15 @@ final readonly class RealEstateFleetRentalService
         float $basePricePerUnit
     ): void {
         if ($unitCount < self::MIN_UNIT_COUNT) {
-            throw new \InvalidArgumentException('Minimum unit count is ' . self::MIN_UNIT_COUNT);
+            throw new \InvalidArgumentException('Minimum unit count is '.self::MIN_UNIT_COUNT);
         }
 
         if ($leaseTermMonths < self::MIN_LEASE_TERM_MONTHS) {
-            throw new \InvalidArgumentException('Minimum lease term is ' . self::MIN_LEASE_TERM_MONTHS . ' months');
+            throw new \InvalidArgumentException('Minimum lease term is '.self::MIN_LEASE_TERM_MONTHS.' months');
         }
 
         if ($leaseTermMonths > self::MAX_LEASE_TERM_MONTHS) {
-            throw new \InvalidArgumentException('Maximum lease term is ' . self::MAX_LEASE_TERM_MONTHS . ' months');
+            throw new \InvalidArgumentException('Maximum lease term is '.self::MAX_LEASE_TERM_MONTHS.' months');
         }
 
         if ($basePricePerUnit <= 0) {

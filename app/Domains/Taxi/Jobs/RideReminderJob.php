@@ -1,31 +1,38 @@
 <?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Jobs;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-
-
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-final class RideReminderJob
+
+final class RideReminderJob implements ShouldQueue
 {
-
-
-        public function __construct(
-            private TaxiRide $ride,
-            private string $correlationId = '', private readonly Request $request, private readonly LoggerInterface $logger) {
+    public function __construct(
+        private readonly ChannelManager $notificationManager,
+        private readonly TaxiRide $ride,
+        private readonly string $correlationId = '', private readonly Request $request, private readonly LoggerInterface $logger) {
             $this->onQueue('notifications');
-
         }
 
-        public function handle(): void
+        public function tags(): array
+    {
+        return ['taxi', 'job'];
+    }
+
+    public function handle(): void
         {
             try {
-                $this->logger->info('Ride reminder job started', [
+                $this->logger->$this->logger->info('Ride reminder job started', [
                     'ride_id' => $this->ride->id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -41,14 +48,14 @@ final class RideReminderJob
 
                     return;
                 }
-                // Notification::send($ride->passenger, new RideReminderNotification($ride));
+                // $this->notificationManager->send($ride->passenger, new RideReminderNotification($ride));
 
-                $this->logger->info('Ride reminder sent', [
+                $this->logger->$this->logger->info('Ride reminder sent', [
                     'ride_id' => $ride->id,
                     'passenger_id' => $ride->passenger_id,
                     'correlation_id' => $this->correlationId,
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Exception $e) {
                 $this->logger->error('Ride reminder job failed', [
                     'ride_id' => $this->ride->id,
                     'error' => $e->getMessage(),
@@ -62,6 +69,14 @@ final class RideReminderJob
 
         public function retryUntil(): Carbon
         {
-            return now()->addHours(1);
+            return CarbonImmutable::now()->addHours(1);
         }
+
+
+    public function failed(Exception $exception): void
+    {
+        $this->logger->error('taxi job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

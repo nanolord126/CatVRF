@@ -6,7 +6,8 @@ namespace App\Domains\Medical\Psychology\Services;
 
 use App\Domains\Medical\Psychology\Models\PsychologicalBooking;
 use App\Domains\Medical\Psychology\Models\PsychologicalService;
-use App\Services\Pricing\PricingEngineService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\CarbonImmutable;
 
 /**
  * Сервис ценообразования для психологических консультаций.
@@ -20,7 +21,6 @@ use App\Services\Pricing\PricingEngineService;
  *
  * @see PsychologicalService  модель услуги
  * @see PsychologicalBooking  модель бронирования
- * @package App\Domains\Medical\Psychology\Services
  */
 final readonly class PsychologicalPricingService
 {
@@ -37,10 +37,10 @@ final readonly class PsychologicalPricingService
      * Рассчитать финальную стоимость услуги для клиента.
      *
      * @param  int  $serviceId  Идентификатор психологической услуги.
-     * @param  int  $clientId   Идентификатор клиента.
-     * @return int  Финальная цена в копейках.
+     * @param  int  $clientId  Идентификатор клиента.
+     * @return int Финальная цена в копейках.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Если услуга не найдена.
+     * @throws ModelNotFoundException Если услуга не найдена.
      */
     public function calculateFinalPrice(int $serviceId, int $clientId): int
     {
@@ -56,7 +56,7 @@ final readonly class PsychologicalPricingService
                 'client_id' => $clientId,
                 'is_first_visit' => $this->isFirstVisit($clientId),
                 'sessions_count' => $this->getTotalVisits($clientId),
-                'timestamp' => now(),
+                'timestamp' => CarbonImmutable::now(),
             ]
         );
 
@@ -64,36 +64,13 @@ final readonly class PsychologicalPricingService
     }
 
     /**
-     * Определить применимый процент скидки для клиента.
-     *
-     * Приоритет: пакетная скидка (если >= 5 визитов) → скидка первого визита → 0.
-     *
-     * @param  int  $clientId  Идентификатор клиента.
-     * @return int  Процент скидки (0–100).
-     */
-    private function resolveDiscountPercent(int $clientId): int
-    {
-        $totalVisits = PsychologicalBooking::where('client_id', $clientId)->count();
-
-        if ($totalVisits >= self::PACKAGE_THRESHOLD) {
-            return self::PACKAGE_DISCOUNT_PCT;
-        }
-
-        if ($totalVisits === 0) {
-            return self::FIRST_VISIT_DISCOUNT_PCT;
-        }
-
-        return 0;
-    }
-
-    /**
      * Рассчитать стоимость пакета сессий.
      *
-     * @param  int  $serviceId      Идентификатор услуги.
+     * @param  int  $serviceId  Идентификатор услуги.
      * @param  int  $sessionsCount  Количество сессий в пакете.
-     * @return int  Итоговая стоимость пакета в копейках.
+     * @return int Итоговая стоимость пакета в копейках.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Если услуга не найдена.
+     * @throws ModelNotFoundException Если услуга не найдена.
      * @throws \InvalidArgumentException Если количество сессий ≤ 0.
      */
     public function calculatePackagePrice(int $serviceId, int $sessionsCount): int
@@ -114,7 +91,31 @@ final readonly class PsychologicalPricingService
 
         return $totalBeforeDiscount;
     }
-}
+
+    /**
+     * Определить применимый процент скидки для клиента.
+     *
+     * Приоритет: пакетная скидка (если >= 5 визитов) → скидка первого визита → 0.
+     *
+     * @param  int  $clientId  Идентификатор клиента.
+     * @return int Процент скидки (0–100).
+     */
+    private function resolveDiscountPercent(int $clientId): int
+    {
+        $totalVisits = PsychologicalBooking::where('client_id', $clientId)->count();
+
+        if ($totalVisits >= self::PACKAGE_THRESHOLD) {
+            return self::PACKAGE_DISCOUNT_PCT;
+        }
+
+        if ($totalVisits === 0) {
+            return self::FIRST_VISIT_DISCOUNT_PCT;
+        }
+
+        return 0;
+    }
+
+    private function getClientBookingCount(int $clientId): int
     {
         return PsychologicalBooking::where('client_id', $clientId)->count();
     }

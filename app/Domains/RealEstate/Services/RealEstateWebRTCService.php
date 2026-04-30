@@ -1,24 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
 use App\Domains\RealEstate\Models\PropertyViewing;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Redis;
+use Carbon\CarbonImmutable;
+use Illuminate\Config\Repository;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 final readonly class RealEstateWebRTCService
 {
     private const ROOM_TTL_SECONDS = 7200;
+
     private const MAX_PARTICIPANTS = 5;
+
     private const CALL_DURATION_LIMIT_SECONDS = 3600;
+
     private const PARTICIPANT_JOIN_TTL = 300;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly RedisConnection $redis,
+        private readonly Repository $config,
     ) {}
 
     public function createVideoCallRoom(
@@ -39,10 +47,10 @@ final readonly class RealEstateWebRTCService
         $roomId = $this->generateRoomId($propertyId, $userId, $agentId);
         $roomKey = $this->getRoomKey($roomId);
 
-        $existingRoom = Redis::get($roomKey);
+        $existingRoom = $this->redis->get($roomKey);
         if ($existingRoom !== null) {
             $roomData = json_decode($existingRoom, true);
-            if ($roomData['status'] === 'active' && !$this->isRoomExpired($roomData)) {
+            if ($roomData['status'] === 'active' && ! $this->isRoomExpired($roomData)) {
                 return [
                     'room_id' => $roomId,
                     'status' => 'existing',
@@ -59,12 +67,12 @@ final readonly class RealEstateWebRTCService
             'agent_id' => $agentId,
             'status' => 'active',
             'participants' => [],
-            'created_at' => now()->toIso8601String(),
-            'expires_at' => now()->addSeconds(self::ROOM_TTL_SECONDS)->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::ROOM_TTL_SECONDS)->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Redis::setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
+        $this->redis->setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
 
         $this->audit->record(
             'webrtc_room_created',
@@ -83,8 +91,8 @@ final readonly class RealEstateWebRTCService
             'room_id' => $roomId,
             'status' => 'created',
             'expires_at' => $roomData['expires_at'],
-            'turn_server_url' => config('services.webrtc.turn_server_url'),
-            'stun_server_url' => config('services.webrtc.stun_server_url'),
+            'turn_server_url' => $this->config->get('services.webrtc.turn_server_url'),
+            'stun_server_url' => $this->config->get('services.webrtc.stun_server_url'),
             'max_participants' => self::MAX_PARTICIPANTS,
             'duration_limit_seconds' => self::CALL_DURATION_LIMIT_SECONDS,
         ];
@@ -106,7 +114,7 @@ final readonly class RealEstateWebRTCService
         );
 
         $roomKey = $this->getRoomKey($roomId);
-        $roomDataJson = Redis::get($roomKey);
+        $roomDataJson = $this->redis->get($roomKey);
 
         if ($roomDataJson === null) {
             throw new \DomainException('Video call room not found or expired');
@@ -119,7 +127,7 @@ final readonly class RealEstateWebRTCService
         }
 
         if ($this->isRoomExpired($roomData)) {
-            Redis::del($roomKey);
+            $this->redis->del($roomKey);
             throw new \DomainException('Video call room has expired');
         }
 
@@ -128,10 +136,11 @@ final readonly class RealEstateWebRTCService
         }
 
         $participantKey = $this->getParticipantKey($roomId, $participantId);
-        $existingParticipant = Redis::get($participantKey);
+        $existingParticipant = $this->redis->get($participantKey);
 
         if ($existingParticipant !== null) {
             $participant = json_decode($existingParticipant, true);
+
             return [
                 'room_id' => $roomId,
                 'participant_id' => $participantId,
@@ -144,15 +153,15 @@ final readonly class RealEstateWebRTCService
         $participant = [
             'participant_id' => $participantId,
             'role' => $participantRole,
-            'joined_at' => now()->toIso8601String(),
-            'expires_at' => now()->addSeconds(self::PARTICIPANT_JOIN_TTL)->toIso8601String(),
+            'joined_at' => CarbonImmutable::now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::PARTICIPANT_JOIN_TTL)->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Redis::setex($participantKey, self::PARTICIPANT_JOIN_TTL, json_encode($participant));
+        $this->redis->setex($participantKey, self::PARTICIPANT_JOIN_TTL, json_encode($participant));
 
         $roomData['participants'][] = $participant;
-        Redis::setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
+        $this->redis->setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
 
         $this->audit->record(
             'webrtc_participant_joined',
@@ -172,8 +181,8 @@ final readonly class RealEstateWebRTCService
             'status' => 'joined',
             'joined_at' => $participant['joined_at'],
             'expires_at' => $participant['expires_at'],
-            'turn_server_url' => config('services.webrtc.turn_server_url'),
-            'stun_server_url' => config('services.webrtc.stun_server_url'),
+            'turn_server_url' => $this->config->get('services.webrtc.turn_server_url'),
+            'stun_server_url' => $this->config->get('services.webrtc.stun_server_url'),
             'ice_servers' => $this->getIceServers(),
         ];
     }
@@ -193,32 +202,32 @@ final readonly class RealEstateWebRTCService
         );
 
         $participantKey = $this->getParticipantKey($roomId, $participantId);
-        $participantJson = Redis::get($participantKey);
+        $participantJson = $this->redis->get($participantKey);
 
         if ($participantJson === null) {
             return;
         }
 
         $participant = json_decode($participantJson, true);
-        Redis::del($participantKey);
+        $this->redis->del($participantKey);
 
         $roomKey = $this->getRoomKey($roomId);
-        $roomDataJson = Redis::get($roomKey);
+        $roomDataJson = $this->redis->get($roomKey);
 
         if ($roomDataJson !== null) {
             $roomData = json_decode($roomDataJson, true);
             $roomData['participants'] = array_filter(
                 $roomData['participants'],
-                fn($p) => $p['participant_id'] !== $participantId
+                fn ($p) => $p['participant_id'] !== $participantId
             );
             $roomData['participants'] = array_values($roomData['participants']);
 
             if (count($roomData['participants']) === 0) {
-                Redis::del($roomKey);
+                $this->redis->del($roomKey);
                 $roomData['status'] = 'ended';
-                $roomData['ended_at'] = now()->toIso8601String();
+                $roomData['ended_at'] = CarbonImmutable::now()->toIso8601String();
             } else {
-                Redis::setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
+                $this->redis->setex($roomKey, self::ROOM_TTL_SECONDS, json_encode($roomData));
             }
 
             $this->audit->record(
@@ -251,7 +260,7 @@ final readonly class RealEstateWebRTCService
         );
 
         $roomKey = $this->getRoomKey($roomId);
-        $roomDataJson = Redis::get($roomKey);
+        $roomDataJson = $this->redis->get($roomKey);
 
         if ($roomDataJson === null) {
             throw new \DomainException('Video call room not found');
@@ -264,15 +273,15 @@ final readonly class RealEstateWebRTCService
         }
 
         $roomData['status'] = 'ended';
-        $roomData['ended_at'] = now()->toIso8601String();
+        $roomData['ended_at'] = CarbonImmutable::now()->toIso8601String();
         $roomData['ended_by'] = $initiatorId;
-        $roomData['duration_seconds'] = Carbon::parse($roomData['created_at'])->diffInSeconds(now());
+        $roomData['duration_seconds'] = CarbonImmutable::parse($roomData['created_at'])->diffInSeconds(CarbonImmutable::now());
 
-        Redis::del($roomKey);
+        $this->redis->del($roomKey);
 
         foreach ($roomData['participants'] as $participant) {
             $participantKey = $this->getParticipantKey($roomId, $participant['participant_id']);
-            Redis::del($participantKey);
+            $this->redis->del($participantKey);
         }
 
         $this->audit->record(
@@ -302,7 +311,7 @@ final readonly class RealEstateWebRTCService
         string $correlationId
     ): array {
         $roomKey = $this->getRoomKey($roomId);
-        $roomDataJson = Redis::get($roomKey);
+        $roomDataJson = $this->redis->get($roomKey);
 
         if ($roomDataJson === null) {
             return [
@@ -332,7 +341,7 @@ final readonly class RealEstateWebRTCService
     ): array {
         $this->fraudControl->check([
             'viewing_id' => $viewing->id,
-            'action' => 'generate_viewing_webrtc'
+            'action' => 'generate_viewing_webrtc',
         ], $correlationId);
 
         if ($viewing->agent_id === null) {
@@ -372,7 +381,7 @@ final readonly class RealEstateWebRTCService
 
     private function generateRoomId(int $propertyId, int $userId, int $agentId): string
     {
-        return 're_call_' . $propertyId . '_' . $userId . '_' . $agentId . '_' . Str::random(8);
+        return 're_call_'.$propertyId.'_'.$userId.'_'.$agentId.'_'.Str::random(8);
     }
 
     private function getRoomKey(string $roomId): string
@@ -387,19 +396,19 @@ final readonly class RealEstateWebRTCService
 
     private function isRoomExpired(array $roomData): bool
     {
-        return now()->isAfter(Carbon::parse($roomData['expires_at']));
+        return CarbonImmutable::now()->isAfter(CarbonImmutable::parse($roomData['expires_at']));
     }
 
     private function getIceServers(): array
     {
         return [
             [
-                'urls' => config('services.webrtc.stun_server_url', 'stun:stun.l.google.com:19302'),
+                'urls' => $this->config->get('services.webrtc.stun_server_url', 'stun:stun.l.google.com:19302'),
             ],
             [
-                'urls' => config('services.webrtc.turn_server_url'),
-                'username' => config('services.webrtc.turn_username'),
-                'credential' => config('services.webrtc.turn_credential'),
+                'urls' => $this->config->get('services.webrtc.turn_server_url'),
+                'username' => $this->config->get('services.webrtc.turn_username'),
+                'credential' => $this->config->get('services.webrtc.turn_credential'),
             ],
         ];
     }

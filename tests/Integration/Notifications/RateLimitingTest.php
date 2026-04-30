@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Notifications;
 
@@ -10,28 +12,23 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Log;
 
 /**
  * RateLimitingNotificationTest
- * 
+ *
  * Тестирует rate limiting для SMS, Email, и API endpoints
  */
 final class RateLimitingTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Cache::flush();
-    }
-
     /** @test */
     public function it_limits_sms_per_user_per_day(): void
     {
         /** @var User $user */
         $user = User::factory()->create(['phone' => '+79991234567']);
-        
+
         $smsService = app(SmsService::class);
         $dailyLimit = 10; // SMS per user per day
 
@@ -40,7 +37,7 @@ final class RateLimitingTest extends TestCase
             $notification = Notification::factory()
                 ->for($user)
                 ->create(['channels' => ['sms']]);
-            
+
             $result = $smsService->send($user, $notification);
             $this->assertTrue($result);
         }
@@ -59,7 +56,7 @@ final class RateLimitingTest extends TestCase
     {
         /** @var User $user */
         $user = User::factory()->create(['email' => 'test@example.com']);
-        
+
         $emailService = app(EmailService::class);
         $hourlyLimit = 20; // Emails per user per hour
 
@@ -68,7 +65,7 @@ final class RateLimitingTest extends TestCase
             $notification = Notification::factory()
                 ->for($user)
                 ->create(['channels' => ['email']]);
-            
+
             $result = $emailService->send($user, $notification);
             $this->assertTrue($result);
         }
@@ -94,8 +91,8 @@ final class RateLimitingTest extends TestCase
                 "notification-api:{$ipAddress}",
                 $maxPerMinute
             );
-            
-            if (!$limited) {
+
+            if (! $limited) {
                 RateLimiter::hit("notification-api:{$ipAddress}", 60);
             }
         }
@@ -116,7 +113,7 @@ final class RateLimitingTest extends TestCase
         $user = User::factory()->create(['phone' => '+79991234567']);
 
         $key = "sms-daily:{$user->id}";
-        
+
         // Set cache for "today"
         Cache::put($key, 10, now()->addDay());
 
@@ -132,7 +129,7 @@ final class RateLimitingTest extends TestCase
     public function it_limits_bulk_notification_sending(): void
     {
         $users = User::factory()->count(100)->create();
-        
+
         $bulkLimit = 1000; // Per minute
         $sent = 0;
 
@@ -176,7 +173,7 @@ final class RateLimitingTest extends TestCase
                 $maxPerMinute
             );
 
-            if (!$limited) {
+            if (! $limited) {
                 RateLimiter::hit("api:{$ipAddress}", 60);
             }
         }
@@ -204,7 +201,7 @@ final class RateLimitingTest extends TestCase
 
         // Exceed limit
         for ($i = 0; $i < $maxPerMinute + 1; $i++) {
-            if (!RateLimiter::tooManyAttempts("api:{$ipAddress}", $maxPerMinute)) {
+            if (! RateLimiter::tooManyAttempts("api:{$ipAddress}", $maxPerMinute)) {
                 RateLimiter::hit("api:{$ipAddress}", 60);
             }
         }
@@ -221,7 +218,7 @@ final class RateLimitingTest extends TestCase
         $user = User::factory()->create(['phone' => '+79991234567']);
 
         $smsService = app(SmsService::class);
-        
+
         // Provider may have own rate limits (e.g., 100 per minute)
         $providerLimit = 100;
         $sent = 0;
@@ -251,7 +248,7 @@ final class RateLimitingTest extends TestCase
         $maxAttempts = 3;
 
         $attempts = [];
-        
+
         for ($i = 0; $i < 5; $i++) {
             if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
                 $backoff = RateLimiter::availableIn($key);
@@ -333,7 +330,7 @@ final class RateLimitingTest extends TestCase
 
         // Exceed limit
         for ($i = 0; $i < $limit + 1; $i++) {
-            if (!RateLimiter::tooManyAttempts("api:{$ipAddress}", $limit)) {
+            if (! RateLimiter::tooManyAttempts("api:{$ipAddress}", $limit)) {
                 RateLimiter::hit("api:{$ipAddress}", 60);
             }
         }
@@ -356,7 +353,7 @@ final class RateLimitingTest extends TestCase
 
         // Simulate 3 concurrent connections
         for ($i = 0; $i < $maxConcurrent; $i++) {
-            Cache::put($key . ":$i", time(), 300);
+            Cache::put($key.":$i", time(), 300);
         }
 
         // 4th concurrent connection should be blocked
@@ -372,11 +369,11 @@ final class RateLimitingTest extends TestCase
 
         // Exceed limit
         for ($i = 0; $i < $limit + 1; $i++) {
-            if (!RateLimiter::tooManyAttempts("api:{$ipAddress}", $limit)) {
+            if (! RateLimiter::tooManyAttempts("api:{$ipAddress}", $limit)) {
                 RateLimiter::hit("api:{$ipAddress}", 60);
             } else {
                 // Log violation
-                \Illuminate\Support\Facades\Log::warning(
+                Log::warning(
                     "Rate limit exceeded for IP: {$ipAddress}"
                 );
             }
@@ -424,5 +421,11 @@ final class RateLimitingTest extends TestCase
         $this->assertEquals('free', $freeUser->tier);
         $this->assertEquals('pro', $proUser->tier);
         $this->assertEquals('enterprise', $enterpriseUser->tier);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
     }
 }

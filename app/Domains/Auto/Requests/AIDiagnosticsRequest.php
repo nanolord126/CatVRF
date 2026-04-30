@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Requests;
 
 use App\Domains\Auto\DTOs\AIDiagnosticsDto;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 final class AIDiagnosticsRequest extends FormRequest
 {
@@ -43,7 +43,7 @@ final class AIDiagnosticsRequest extends FormRequest
     public function toDto(): AIDiagnosticsDto
     {
         $photo = $this->file('photo');
-        if ($photo === null || !$photo instanceof UploadedFile) {
+        if ($photo === null || ! $photo instanceof UploadedFile) {
             throw new \RuntimeException('Valid photo file is required');
         }
 

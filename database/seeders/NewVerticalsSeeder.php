@@ -36,19 +36,19 @@ final class NewVerticalsSeeder extends Seeder
             ]);
 
             // 3. Insurance Policy
-            InsurancePolicy::firstOrCreate(['number' => 'POL-2026-' . strtoupper($tenantId)], [
+            InsurancePolicy::firstOrCreate(['number' => 'POL-2026-'.strtoupper($tenantId)], [
                 'type' => 'osago',
                 'expires_at' => now()->addYear(),
                 'premium_amount' => 1500.00,
             ]);
 
             // 4. Update User Profile for AI Advisor
-            User::where('email', 'admin@' . $tenantId . '.com')->update([
+            User::where('email', 'admin@'.$tenantId.'.com')->update([
                 'profile_data' => [
                     'clothing_size' => 'L',
                     'shoe_size' => '44',
                     'interests' => ['tech', 'cyberpunk', 'minimalism'],
-                ]
+                ],
             ]);
 
             tenancy()->end();

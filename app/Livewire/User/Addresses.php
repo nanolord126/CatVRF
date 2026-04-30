@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\User;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Illuminate\Support\Collection;
 
 use Illuminate\Auth\AuthManager;
 use App\Models\User;
-use App\Models\UserAddress;
 use App\Services\UserAddressService;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -26,19 +28,26 @@ use Illuminate\Database\DatabaseManager;
  */
 final class Addresses extends Component
 {
+    public const MAX_ADDRESSES = 5;
     // ── публичные свойства ───────────────────────────────────────────────────
 
-    private array $addresses      = [];
-    private bool $showForm       = false;
-    private string $newAddress     = '';
-    private string $newType        = 'home';     // home | work | other
-    private string $newLat         = '';
-    private string $newLon         = '';
-    private ?int $defaultAddress = null;
-    private string $errorMessage   = '';
-    private string $correlationId  = '';
+    public array $addresses      = [];
 
-    public const MAX_ADDRESSES = 5;
+    public bool $showForm       = false;
+
+    public string $newAddress     = '';
+
+    public string $newType        = 'home';     // home | work | other
+
+    public string $newLat         = '';
+
+    public string $newLon         = '';
+
+    public ?int $defaultAddress = null;
+
+    private string $errorMessage   = '';
+
+    private string $correlationId  = '';
 
     private array $types = [
         'home'  => 'Дом',
@@ -48,11 +57,10 @@ final class Addresses extends Component
 
     // ── lifecycle ───────────────────────────────────────────────────────────
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
         private readonly AuthManager $authManager,
-        private UserAddressService $addressService,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly UserAddressService $addressService,
+        private readonly DatabaseManager $db,) {}
 
     public function mount(): void
     {
@@ -60,8 +68,9 @@ final class Addresses extends Component
 
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             $this->redirect(route('login'));
+
             return;
         }
 
@@ -72,7 +81,7 @@ final class Addresses extends Component
 
     public function toggleForm(): void
     {
-        $this->showForm     = !$this->showForm;
+        $this->showForm     = ! $this->showForm;
         $this->newAddress   = '';
         $this->newType      = 'home';
         $this->newLat       = '';
@@ -89,7 +98,7 @@ final class Addresses extends Component
 
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -128,7 +137,7 @@ final class Addresses extends Component
     {
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -145,7 +154,7 @@ final class Addresses extends Component
     {
         /** @var User $user */
         $user = $this->authManager->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -164,6 +173,14 @@ final class Addresses extends Component
         $this->loadAddresses($user);
     }
 
+    // ── рендер ──────────────────────────────────────────────────────────────
+
+    public function render(): View
+    {
+        return $this->viewFactory->make('livewire.user.addresses')
+            ->layout('layouts.user-cabinet');
+    }
+
     // ── приватные методы ─────────────────────────────────────────────────────
 
     private function loadAddresses(User $user): void
@@ -174,7 +191,7 @@ final class Addresses extends Component
             ->limit(self::MAX_ADDRESSES)
             ->get();
 
-        $this->addresses = $rows->map(fn(object $row): array => [
+        $this->addresses = $rows->map(fn (object $row): array => [
             'id'          => $row->id,
             'address'     => $row->address,
             'type'        => $row->type,
@@ -185,7 +202,7 @@ final class Addresses extends Component
             'lon'         => $row->lon ?? null,
         ])->toArray();
 
-        $default = collect($this->addresses)->firstWhere('is_default', true);
+        $default = (new Collection($this->addresses))->firstWhere('is_default', true);
         $this->defaultAddress = $default ? (int) $default['id'] : null;
     }
 
@@ -197,13 +214,5 @@ final class Addresses extends Component
             ->orderBy('usage_count')
             ->limit(1)
             ->delete();
-    }
-
-    // ── рендер ──────────────────────────────────────────────────────────────
-
-    public function render(): View
-    {
-        return view('livewire.user.addresses')
-            ->layout('layouts.user-cabinet');
     }
 }

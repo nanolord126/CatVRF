@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Конфигурация системы уведомлений CatVRF 2026
@@ -212,5 +214,57 @@ return [
         'warning'  => ['in_app', 'email'],
         'high'     => ['in_app', 'email', 'push', 'marketplace'],
         'critical' => ['in_app', 'email', 'push', 'sms', 'marketplace', 'slack'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Vertical-specific notification settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure which notification channels are available for each vertical
+    | and recipient type. Channels will be filtered based on configuration
+    | availability (e.g., Telegram requires bot_token to be set).
+    |
+    */
+    'verticals' => [
+        'supermarket' => [
+            'buyer' => ['database', 'mail', 'telegram'],
+            'seller' => ['database', 'mail', 'telegram'],
+            'courier' => ['database', 'telegram'],
+        ],
+        'restaurant' => [
+            'buyer' => ['database', 'mail', 'telegram'],
+            'seller' => ['database', 'mail', 'telegram'],
+        ],
+        'taxi' => [
+            'buyer' => ['database', 'sms', 'telegram'],
+            'driver' => ['database', 'telegram'],
+        ],
+        'hotels' => [
+            'guest' => ['database', 'mail', 'telegram'],
+            'hotel' => ['database', 'mail'],
+        ],
+        'beauty' => [
+            'client' => ['database', 'mail', 'telegram'],
+            'master' => ['database', 'telegram'],
+        ],
+        'medical' => [
+            'patient' => ['database', 'mail', 'telegram'],
+            'doctor' => ['database', 'mail'],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Telegram Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Telegram bot settings for notifications.
+    |
+    */
+    'telegram' => [
+        'enabled' => env('TELEGRAM_NOTIFICATIONS_ENABLED', false),
+        'webhook_url' => env('TELEGRAM_WEBHOOK_URL'),
+        'allowed_updates' => ['message', 'callback_query'],
     ],
 ];

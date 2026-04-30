@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Widgets;
 
+use DatabaseManager;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\DatabaseManager;
@@ -31,52 +35,52 @@ final class CrmStatsWidget extends StatsOverviewWidget
             ];
         }
 
-        $totalClients = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+        $totalClients = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->count();
 
-        $newClientsWeek = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+        $newClientsWeek = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
-            ->where('created_at', '>=', now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
-        $activeClients = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+        $activeClients = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->where('status', 'active')
             ->count();
 
-        $sleepingClients = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+        $sleepingClients = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->where(function ($query) {
-                $query->where('last_interaction_at', '<', now()->subDays(30))
+                $query->where('last_interaction_at', '<', CarbonImmutable::now()->subDays(30))
                     ->orWhereNull('last_interaction_at');
             })
             ->count();
 
-        $interactionsMonth = app(\Illuminate\Database\DatabaseManager::class)->table('crm_interactions')
+        $interactionsMonth = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_interactions')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(30))
             ->count();
 
-        $avgSpent = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+        $avgSpent = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->where('total_orders', '>', 0)
             ->avg('average_order_value');
 
         $avgSpentFormatted = $avgSpent !== null
-            ? number_format((float) $avgSpent, 0, ',', ' ') . ' ₽'
+            ? number_format((float) $avgSpent, 0, ',', ' ').' ₽'
             : '–';
 
         // Тренд новых клиентов за 7 дней
         $clientTrend = [];
         for ($i = 6; $i >= 0; $i--) {
-            $day = now()->subDays($i)->startOfDay();
-            $clientTrend[] = app(\Illuminate\Database\DatabaseManager::class)->table('crm_clients')
+            $day = CarbonImmutable::now()->subDays($i)->startOfDay();
+            $clientTrend[] = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_clients')
                 ->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
                 ->whereBetween('created_at', [$day, $day->copy()->endOfDay()])
@@ -86,8 +90,8 @@ final class CrmStatsWidget extends StatsOverviewWidget
         // Тренд взаимодействий за 7 дней
         $interactionTrend = [];
         for ($i = 6; $i >= 0; $i--) {
-            $day = now()->subDays($i)->startOfDay();
-            $interactionTrend[] = app(\Illuminate\Database\DatabaseManager::class)->table('crm_interactions')
+            $day = CarbonImmutable::now()->subDays($i)->startOfDay();
+            $interactionTrend[] = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */->table('crm_interactions')
                 ->where('tenant_id', $tenantId)
                 ->whereBetween('created_at', [$day, $day->copy()->endOfDay()])
                 ->count();

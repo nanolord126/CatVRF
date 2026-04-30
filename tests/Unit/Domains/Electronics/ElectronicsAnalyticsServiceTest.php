@@ -8,36 +8,22 @@ use App\Domains\Electronics\DTOs\AnalyticsDto;
 use App\Domains\Electronics\Models\ElectronicsProduct;
 use App\Domains\Electronics\Services\ElectronicsAnalyticsService;
 use App\Services\FraudControlService;
-use Database\Factories\Electronics\ElectronicsProductFactory;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\MockObject\MockObject;
 use Tests\BaseTestCase;
+use Illuminate\Database\DatabaseManager;
+use Psr\Log\LoggerInterface;
 
 final class ElectronicsAnalyticsServiceTest extends BaseTestCase
 {
     use RefreshDatabase;
 
     private ElectronicsAnalyticsService $service;
+
     private FraudControlService|MockObject $fraudService;
+
     private Cache|MockObject $cache;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraudService = $this->createMock(FraudControlService::class);
-        $this->cache = $this->createMock(Cache::class);
-        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
-        $db = $this->app->make(\Illuminate\Database\DatabaseManager::class);
-
-        $this->service = new ElectronicsAnalyticsService(
-            $this->fraudService,
-            $this->cache,
-            $db,
-            $logger,
-        );
-    }
 
     public function test_get_analytics_performs_fraud_check(): void
     {
@@ -260,7 +246,7 @@ final class ElectronicsAnalyticsServiceTest extends BaseTestCase
         $analytics = $this->service->getAnalytics('7d');
 
         $this->assertCount(2, $analytics->brandStats);
-        
+
         $appleStats = collect($analytics->brandStats)->firstWhere('brand', 'Apple');
         $this->assertNotNull($appleStats);
         $this->assertEquals(5, $appleStats['product_count']);
@@ -292,7 +278,7 @@ final class ElectronicsAnalyticsServiceTest extends BaseTestCase
         $analytics = $this->service->getAnalytics('7d');
 
         $this->assertCount(2, $analytics->categoryStats);
-        
+
         $laptopsStats = collect($analytics->categoryStats)->firstWhere('category', 'Laptops');
         $this->assertNotNull($laptopsStats);
         $this->assertEquals(3, $laptopsStats['product_count']);
@@ -574,5 +560,22 @@ final class ElectronicsAnalyticsServiceTest extends BaseTestCase
         $analytics = $this->service->getAnalytics('7d');
 
         $this->assertEquals(5, $analytics->salesData['total_orders']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraudService = $this->createMock(FraudControlService::class);
+        $this->cache = $this->createMock(Cache::class);
+        $logger = $this->createMock(LoggerInterface::class);
+        $db = $this->app->make(DatabaseManager::class);
+
+        $this->service = new ElectronicsAnalyticsService(
+            $this->fraudService,
+            $this->cache,
+            $db,
+            $logger,
+        );
     }
 }

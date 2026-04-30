@@ -1,21 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Delivery\Services;
-
-
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Domains\Delivery\Models\DeliveryOrder;
+use App\Domains\Shared\Realtime\RealtimeTrackingAdapter;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class DeliveryService
 {
-    public function __construct(private FraudControlService $fraud,
-        private AuditService        $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly RealtimeTrackingAdapter $trackingAdapter,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Создание записи с fraud-check, $this->db->transaction и correlation_id.
@@ -32,13 +40,22 @@ final readonly class DeliveryService
                 'tenant_id'      => tenant()->id ?? $data['tenant_id'] ?? null,
             ]));
 
-            $this->logger->info('Delivery record created', [
+            $this->logger->$this->logger->info('Delivery record created', [
                 'id'             => $record->id,
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $record->tenant_id,
             ]);
 
             $this->audit->log('created', DeliveryOrder::class, $record->id, [], $record->toArray(), $correlationId);
+
+            // Запуск реалтайм-трекинга доставки
+            $this->trackingAdapter->startTracking([
+                'order_id' => $record->id,
+                'vertical' => 'delivery',
+                'sub_vertical' => null,
+                'courier_id' => $data['courier_id'] ?? null,
+                'buyer_id' => $data['user_id'] ?? null,
+            ], $correlationId);
 
             return $record;
         });
@@ -57,7 +74,7 @@ final readonly class DeliveryService
             $old = $record->toArray();
             $record->update(array_merge($data, ['correlation_id' => $correlationId]));
 
-            $this->logger->info('Delivery record updated', [
+            $this->logger->$this->logger->info('Delivery record updated', [
                 'id'             => $record->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -81,7 +98,7 @@ final readonly class DeliveryService
             $old = $record->toArray();
             $record->delete();
 
-            $this->logger->info('Delivery record deleted', [
+            $this->logger->$this->logger->info('Delivery record deleted', [
                 'id'             => $old['id'] ?? null,
                 'correlation_id' => $correlationId,
             ]);
@@ -97,7 +114,7 @@ final readonly class DeliveryService
      */
     public function list(array $filters = []): Collection
     {
-        return DeliveryOrder::when(!empty($filters['status']), fn($q) => $q->where('status', $filters['status']))
+        return DeliveryOrder::when(! empty($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->latest()
             ->get();
     }

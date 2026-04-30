@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -8,6 +10,30 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class BalanceTransaction extends Model
 {
+    public const TYPE_DEPOSIT = 'deposit';
+
+    public const TYPE_WITHDRAWAL = 'withdrawal';
+
+    public const TYPE_COMMISSION = 'commission';
+
+    public const TYPE_BONUS = 'bonus';
+
+    public const TYPE_REFUND = 'refund';
+
+    public const TYPE_PAYOUT = 'payout';
+
+    public const TYPE_HOLD = 'hold';
+
+    public const TYPE_RELEASE = 'release';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $table = 'balance_transactions';
 
     protected $fillable = [
@@ -33,20 +59,6 @@ final class BalanceTransaction extends Model
         'balance_after' => 'integer',
         'tags' => 'json',
     ];
-
-    const TYPE_DEPOSIT = 'deposit';
-    const TYPE_WITHDRAWAL = 'withdrawal';
-    const TYPE_COMMISSION = 'commission';
-    const TYPE_BONUS = 'bonus';
-    const TYPE_REFUND = 'refund';
-    const TYPE_PAYOUT = 'payout';
-    const TYPE_HOLD = 'hold';
-    const TYPE_RELEASE = 'release';
-
-    const STATUS_PENDING = 'pending';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_FAILED = 'failed';
-    const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Связь с кошельком
@@ -75,7 +87,7 @@ final class BalanceTransaction extends Model
     protected static function booted(): void
     {
         parent::booted();
-        static::addGlobalScope('tenant_id', function (Builder $query) {
+        self::addGlobalScope('tenant_id', function (Builder $query) {
             if (function_exists('tenant') && tenant('id')) {
                 $query->where('tenant_id', tenant('id'));
             }

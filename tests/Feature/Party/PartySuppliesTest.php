@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Party;
 
@@ -22,28 +24,13 @@ final class PartySuppliesTest extends TestCase
     use RefreshDatabase;
 
     private string $correlationId;
+
     private PartySuppliesService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->correlationId = (string) Str::uuid();
-        
-        // Mocks for mandatory core services
-        $fraudMock = Mockery::mock(FraudControlService::class);
-        $fraudMock->shouldReceive('check')->andReturn(true);
-        
-        $walletMock = Mockery::mock(WalletService::class);
-        $walletMock->shouldReceive('credit')->andReturn(true);
-
-        $this->service = new PartySuppliesService($fraudMock, $walletMock, $this->correlationId);
-    }
 
     /**
      * Test: Creating festive order with full audit logging and correlation_id.
      */
-    public function testOrderCreation(): void
+    public function test_order_creation(): void
     {
         $user = User::factory()->create();
         $store = PartyStore::factory()->create();
@@ -59,8 +46,8 @@ final class PartySuppliesTest extends TestCase
             'total_cents' => 50000,
             'event_date' => now()->addDays(10),
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 2]
-            ]
+                ['product_id' => $product->id, 'quantity' => 2],
+            ],
         ];
 
         $order = $this->service->createOrder($data);
@@ -79,7 +66,7 @@ final class PartySuppliesTest extends TestCase
     /**
      * Test: Automatic prepayment calculation for large orders (>50000).
      */
-    public function testPrepaymentCalculation(): void
+    public function test_prepayment_calculation(): void
     {
         $user = User::factory()->create();
         $store = PartyStore::factory()->create();
@@ -90,24 +77,40 @@ final class PartySuppliesTest extends TestCase
             'party_store_id' => $store->id,
             'total_cents' => 100000, // 1000.00 RUB
             'event_date' => now()->addDays(5),
-            'items' => [['product_id' => $product->id, 'quantity' => 10]]
+            'items' => [['product_id' => $product->id, 'quantity' => 10]],
         ];
 
         $order = $this->service->createOrder($data);
-        
+
         $this->assertEquals(30000, $order->prepayment_cents); // 30% of 100000
     }
 
     /**
      * Test: Seasonal catalog filters.
      */
-    public function testCatalogFiltering(): void
+    public function test_catalog_filtering(): void
     {
         PartyProduct::factory()->count(3)->create(['is_active' => true]);
         PartyProduct::factory()->create(['is_active' => false]);
 
         $catalog = $this->service->getCatalog();
         $this->assertCount(3, $catalog);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->correlationId = (string) Str::uuid();
+
+        // Mocks for mandatory core services
+        $fraudMock = Mockery::mock(FraudControlService::class);
+        $fraudMock->shouldReceive('check')->andReturn(true);
+
+        $walletMock = Mockery::mock(WalletService::class);
+        $walletMock->shouldReceive('credit')->andReturn(true);
+
+        $this->service = new PartySuppliesService($fraudMock, $walletMock, $this->correlationId);
     }
 
     protected function tearDown(): void

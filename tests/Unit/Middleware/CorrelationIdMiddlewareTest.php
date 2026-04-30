@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Middleware;
 
@@ -8,6 +10,9 @@ use Illuminate\Http\Response;
 use Illuminate\Log\LogManager;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Illuminate\Support\Str;
+use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 
 /**
  * =================================================================
@@ -24,23 +29,9 @@ use PHPUnit\Framework\TestCase;
  */
 final class CorrelationIdMiddlewareTest extends TestCase
 {
-    private LogManager|\PHPUnit\Framework\MockObject\MockObject $logManager;
+    private LogManager|MockObject $logManager;
+
     private CorrelationIdMiddleware $middleware;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->logManager = $this->createMock(LogManager::class);
-
-        // channel('audit') returns logger that can debug()
-        $channelMock = $this->createMock(\Psr\Log\LoggerInterface::class);
-        $this->logManager
-            ->method('channel')
-            ->willReturn($channelMock);
-
-        $this->middleware = new CorrelationIdMiddleware($this->logManager);
-    }
 
     #[Test]
     public function generates_uuid_when_header_missing(): void
@@ -51,7 +42,7 @@ final class CorrelationIdMiddlewareTest extends TestCase
             $cid = $req->attributes->get('correlation_id');
             self::assertNotNull($cid, 'correlation_id must be set');
             self::assertTrue(
-                \Illuminate\Support\Str::isUuid($cid),
+                Str::isUuid($cid),
                 'correlation_id must be a valid UUID',
             );
 
@@ -102,7 +93,7 @@ final class CorrelationIdMiddlewareTest extends TestCase
                 'Invalid correlation_id must be replaced with a valid UUID',
             );
             self::assertTrue(
-                \Illuminate\Support\Str::isUuid($cid),
+                Str::isUuid($cid),
                 'Replaced correlation_id must be a valid UUID',
             );
 
@@ -139,7 +130,7 @@ final class CorrelationIdMiddlewareTest extends TestCase
         $request = Request::create('/api/test', 'GET');
         $request->headers->set('x-correlation-id', $expectedId);
 
-        $this->middleware->handle($request, function (Request $req) use ($expectedId) {
+        $this->middleware->handle($request, function (Request $req) {
             $cid = $req->attributes->get('correlation_id');
             self::assertNotNull($cid, 'correlation_id must be set from lowercase header');
 
@@ -179,5 +170,20 @@ final class CorrelationIdMiddlewareTest extends TestCase
             array_unique($ids),
             'Each request must get a unique correlation_id',
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->logManager = $this->createMock(LogManager::class);
+
+        // channel('audit') returns logger that can debug()
+        $channelMock = $this->createMock(LoggerInterface::class);
+        $this->logManager
+            ->method('channel')
+            ->willReturn($channelMock);
+
+        $this->middleware = new CorrelationIdMiddleware($this->logManager);
     }
 }

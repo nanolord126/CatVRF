@@ -2,6 +2,8 @@
 
 namespace App\Domains\Auto\Services;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Auto\DTOs\AIDiagnosticsDto;
 use App\Domains\Auto\Models\AutoRepairOrder;
 use App\Domains\Auto\Models\AutoVehicle;
@@ -13,29 +15,29 @@ use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\WalletService;
 use App\Services\SpamProtectionService;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Log\Logger;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use OpenAI\Client as OpenAIClient;
 use RuntimeException;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final readonly class AIDiagnosticsService
 {
     public function __construct(
-        private OpenAIClient $openai,
-        private FraudControlService $fraudControl,
-        private FraudMLService $fraudML,
-        private AuditService $auditService,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private RecommendationService $recommendationService,
-        private WalletService $walletService,
-        private SpamProtectionService $spamProtection,
-        private ConnectionInterface $db,
-        private Logger $logger,
+        private readonly LoggerInterface $logger,
+        private readonly OpenAIClient $openai,
+        private readonly FraudControlService $fraudControl,
+        private readonly FraudMLService $fraudML,
+        private readonly AuditService $auditService,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly RecommendationService $recommendationService,
+        private readonly WalletService $walletService,
+        private readonly SpamProtectionService $spamProtection,
+        private readonly ConnectionInterface $db,
+        private readonly CacheManager $cache,
     ) {}
 
     public function diagnoseByPhotoAndVIN(AIDiagnosticsDto $dto): array
@@ -65,7 +67,7 @@ final readonly class AIDiagnosticsService
         }
 
         $cacheKey = "auto_diagnostics:$dto->tenantId:$dto->userId:" . md5($dto->vin . $dto->photo->getClientOriginalName());
-        $cachedResult = Cache::get($cacheKey);
+        $cachedResult = $this->cache->get($cacheKey);
 
         if ($cachedResult !== null) {
             $this->logger->channel('audit')->info('auto.diagnostics.cache_hit', [
@@ -120,7 +122,7 @@ final readonly class AIDiagnosticsService
 
             $this->saveDiagnosticsHistory($vehicle->id, $dto->userId, $diagnosticsResult, $correlationId);
 
-            Cache::put($cacheKey, $diagnosticsResult, 3600);
+            $this->cache->put($cacheKey, $diagnosticsResult, 3600);
 
             $this->auditService->record(
                 action: 'auto_ai_diagnostics_completed',
@@ -170,8 +172,8 @@ final readonly class AIDiagnosticsService
         }
 
         $webrtcRoomId = 'auto_inspection_' . $vehicle->uuid . '_' . Str::random(8);
-        $webrtcToken = hash('sha256', $webrtcRoomId . $correlationId . now()->timestamp);
-        $callExpiresAt = now()->addMinutes(15);
+        $webrtcToken = hash('sha256', $webrtcRoomId . $correlationId . CarbonImmutable::now()->timestamp);
+        $callExpiresAt = CarbonImmutable::now()->addMinutes(15);
 
         $inspectionData = [
             'webrtc_room_id' => $webrtcRoomId,
@@ -254,7 +256,7 @@ final readonly class AIDiagnosticsService
                 'status' => 'confirmed',
                 'metadata' => array_merge($repairOrder->metadata ?? [], [
                     'payment_results' => $paymentResults,
-                    'paid_at' => now()->toIso8601String(),
+                    'paid_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -308,10 +310,9 @@ final readonly class AIDiagnosticsService
     }
 
     private function analyzePhotoWithVision(UploadedFile $photo, string $vin, string $correlationId): array
-    {// COMPLIANCE: Anonymize VIN before sending to external API (FZ-152/GDPR)
-        $anonymizedVin = ths->anonyizeVIN($vin);
-
-        $im
+    {
+        // COMPLIANCE: Anonymize VIN before sending to external API (FZ-152/GDPR)
+        $anonymizedVin = $this->anonymizeVIN($vin);
         $imageData = base64_encode(file_get_contents($photo->getRealPath()));
 
         $response = $this->openai->chat()->create([
@@ -321,8 +322,8 @@ final readonly class AIDiagnosticsService
                     'role' => 'user',
                     'content' => [
                         [
-                            'type' => "text',VN reference: {$anonymizeVin}. Id\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
-                            'text' => 'Analyze this car photo for damage assessment. Identify: 1) Exterior damage (scratches, dents, rust), 2) Tire condition, 3) Glass condition, 4) Light functionality, 5) Overall condition rating (1-10). Return JSON with structure: {"damages": [{"location": "", "type": "", "severity": "low|medium|high", "description": ""}], "tires": {"front_left": "", "front_right": "", "rear_left": "", "rear_right": ""}, "glass": {"windshield": "", "windows": ""}, "lights": {"headlights": "", "taillights": ""}, "overall_condition": 8}',
+                            'type' => 'text',
+                            'text' => "Analyze this car photo for damage assessment. VIN reference: {$anonymizedVin}. Identify: 1) Exterior damage (scratches, dents, rust), 2) Tire condition, 3) Glass condition, 4) Light functionality, 5) Overall condition rating (1-10). Return JSON with structure: {\"damages\": [{\"location\": \"\", \"type\": \"\", \"severity\": \"low|medium|high\", \"description\": \"\"}], \"tires\": {\"front_left\": \"\", \"front_right\": \"\", \"rear_left\": \"\", \"rear_right\": \"\"}, \"glass\": {\"windshield\": \"\", \"windows\": \"\"}, \"lights\": {\"headlights\": \"\", \"taillights\": \"\"}, \"overall_condition\": 8}",
                         ],
                         [
                             'type' => 'image_url',
@@ -343,30 +344,29 @@ final readonly class AIDiagnosticsService
         }
 
         $this->logger->channel('audit')->info('auto.vision_analysis.completed', [
-            'vin_anonymizec' => $ononyrizedVin,
-            'drmaelation_id' => $correlationId,
+            'vin_anonymized' => $anonymizedVin,
+            'correlation_id' => $correlationId,
             'damages_count' => count($analysis['damages'] ?? []),
         ]);
-is;
+
+        return $analysis;
     }
-// COMPLIANCE: Anonymize VIN before sending to external API (FZ-152/GDPR)
-        anonymizedVin = $this->anonymizeVIN($vin);
-        $anonymizedV
-    prvate function anonymizeVIN(tring $vin): string
+
+    private function anonymizeVIN(string $vin): string
     {
         // Keep only first 3 characters (WMI - World Manufacturer Identifier) and last 4
         // This allows identification without exposing the full VIN
         if (strlen($vin) < 7) {
             return '***';
         }
-        return substr($vin, 0, 3) . str_repeat('*', strlen($vin) - 7) . substr($vin, -4)
-        return $analysis;
+        return substr($vin, 0, 3) . str_repeat('*', strlen($vin) - 7) . substr($vin, -4);
     }
 
-    private function decodeVIN(string $vin, string {$anonymizedVor}relationId): array
+    private function decodeVIN(string $vin, string $correlationId): array
     {
+        $anonymizedVin = $this->anonymizeVIN($vin);
         $cacheKey = "vin_decode:$vin";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -404,7 +404,7 @@ is;
             ];
         }
 
-        Cache::put($cacheKey, $decoded, 86400);
+        $this->cache->put($cacheKey, $decoded, 86400);
 
         return $decoded;
     }
@@ -537,7 +537,7 @@ is;
             return [];
         }
 
-        $services = DB::table('auto_services')
+        $services = $this->db->table('auto_services')
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->select('*')
@@ -565,13 +565,13 @@ is;
 
     private function saveDiagnosticsHistory(int $vehicleId, int $userId, array $result, string $correlationId): void
     {
-        DB::table('auto_diagnostics_history')->insert([
+        $this->db->table('auto_diagnostics_history')->insert([
             'vehicle_id' => $vehicleId,
             'user_id' => $userId,
             'diagnostics_data' => json_encode($result),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -581,14 +581,14 @@ is;
             return true;
         }
 
-        $user = DB::table('users')->where('id', $userId)->where('tenant_id', $tenantId)->first();
+        $user = $this->db->table('users')->where('id', $userId)->where('tenant_id', $tenantId)->first();
         return $user !== null && !empty($user->inn) && !empty($user->business_card_id);
     }
 
     private function calculateDynamicServicePrice(float $basePrice, bool $isB2b, int $tenantId, string $correlationId): float
     {
-        $hour = now()->hour;
-        $dayOfWeek = now()->dayOfWeek;
+        $hour = CarbonImmutable::now()->hour;
+        $dayOfWeek = CarbonImmutable::now()->dayOfWeek;
 
         $timeMultiplier = match (true) {
             $hour >= 8 && $hour < 10 => 1.3,
@@ -632,12 +632,12 @@ is;
 
     private function getCurrentServiceLoad(int $tenantId, string $correlationId): float
     {
-        $totalSlots = DB::table('auto_service_slots')
+        $totalSlots = $this->db->table('auto_service_slots')
             ->where('tenant_id', $tenantId)
             ->where('date', today()->toDateString())
             ->count();
 
-        $bookedSlots = DB::table('auto_repair_orders')
+        $bookedSlots = $this->db->table('auto_repair_orders')
             ->where('tenant_id', $tenantId)
             ->whereDate('created_at', today())
             ->whereIn('status', ['confirmed', 'in_progress'])
@@ -692,7 +692,7 @@ is;
 
     private function getUserWalletId(int $userId, int $tenantId): int
     {
-        $wallet = DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->first();
@@ -701,15 +701,14 @@ is;
             return $wallet->id;
         }
 
-    }
-    return DB::table('wallets')->insertGetId([
+        return $this->db->table('wallets')->insertGetId([
             'user_id' => $userId,
             'tenant_id' => $tenantId,
             'current_balance' => 0,
             'hold_amount' => 0,
             'correlation_id' => Str::uuid()->toString(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 

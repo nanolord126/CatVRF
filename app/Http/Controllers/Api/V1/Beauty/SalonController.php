@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -18,15 +24,14 @@ use App\Services\FraudControlService;
  * Public: index, show, availability
  * Auth + manage-beauty-business: store, update, destroy
  */
-class SalonController extends Controller
+final class SalonController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * GET /salons — список салонов (публичный).
@@ -45,11 +50,11 @@ class SalonController extends Controller
             }
 
             if ($request->filled('city')) {
-                $query->where('address', 'like', '%' . $request->input('city') . '%');
+                $query->where('address', 'like', '%'.$request->input('city').'%');
             }
 
             if ($request->filled('search')) {
-                $query->where('name', 'like', '%' . $request->input('search') . '%');
+                $query->where('name', 'like', '%'.$request->input('search').'%');
             }
 
             $salons = $query->orderBy('rating', 'desc')
@@ -146,7 +151,7 @@ class SalonController extends Controller
                 ], 404);
             }
 
-            $date = $request->input('date', now()->toDateString());
+            $date = $request->input('date', CarbonImmutable::now()->toDateString());
 
             $masters = $this->db->table('beauty_masters')
                 ->where('salon_id', $id)
@@ -167,7 +172,7 @@ class SalonController extends Controller
                     $slot = sprintf('%02d:%s', $hour, $min);
                     $allSlots[] = [
                         'time' => $slot,
-                        'available' => !in_array($slot, $bookedSlots, true),
+                        'available' => ! in_array($slot, $bookedSlots, true),
                     ];
                 }
             }
@@ -230,11 +235,11 @@ class SalonController extends Controller
                     'status' => 'active',
                     'is_active' => true,
                     'tags' => json_encode($request->input('tags', []), JSON_THROW_ON_ERROR),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Salon created', [
+                $this->logger->channel('audit')->$this->logger->info('Salon created', [
                     'correlation_id' => $correlationId,
                     'salon_id' => $salonId,
                     'user_id' => auth()->id(),
@@ -286,12 +291,12 @@ class SalonController extends Controller
                     'lat' => $request->input('lat'),
                     'lon' => $request->input('lon'),
                     'correlation_id' => $correlationId,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
                 $this->db->table('beauty_salons')->where('id', $salon)->update($updateData);
 
-                $this->logger->channel('audit')->info('Salon updated', [
+                $this->logger->channel('audit')->$this->logger->info('Salon updated', [
                     'correlation_id' => $correlationId,
                     'salon_id' => $salon,
                     'user_id' => auth()->id(),
@@ -332,7 +337,7 @@ class SalonController extends Controller
                         'is_active' => false,
                         'status' => 'deactivated',
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]);
 
                 if ($updated === 0) {
@@ -343,7 +348,7 @@ class SalonController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Salon deactivated', [
+                $this->logger->channel('audit')->$this->logger->info('Salon deactivated', [
                     'correlation_id' => $correlationId,
                     'salon_id' => $salon,
                     'user_id' => auth()->id(),
@@ -369,5 +374,3 @@ class SalonController extends Controller
         }
     }
 }
-
-

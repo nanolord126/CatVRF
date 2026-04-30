@@ -1,10 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
 use App\Domains\Education\Models\Enrollment;
 use App\Domains\Education\Models\Course;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\User;
+use Illuminate\Support\Str;
 
 final class EnrollmentFactory extends Factory
 {
@@ -13,16 +17,16 @@ final class EnrollmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => function_exists('tenant') && tenant() ? tenant()->id : 1,
-            'user_id' => \App\Models\User::factory(),
+            'user_id' => User::factory(),
             'course_id' => Course::factory(),
             'corporate_contract_id' => null,
             'mode' => $this->faker->randomElement(['b2c', 'b2b']),
             'ai_path' => null,
             'completed_at' => null,
             'progress_percent' => 0,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'correlation_id' => Str::uuid(),
         ];
     }
 

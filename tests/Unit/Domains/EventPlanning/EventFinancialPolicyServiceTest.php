@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\EventPlanning;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService;
 
 /**
  * Unit tests for EventFinancialPolicyService.
@@ -14,7 +17,7 @@ final class EventFinancialPolicyServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class
+            EventFinancialPolicyService::class
         );
         $this->assertTrue($reflection->isFinal(), 'EventFinancialPolicyService must be final');
     }
@@ -22,7 +25,7 @@ final class EventFinancialPolicyServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class
+            EventFinancialPolicyService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'EventFinancialPolicyService must be readonly');
     }
@@ -30,35 +33,34 @@ final class EventFinancialPolicyServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class
+            EventFinancialPolicyService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'EventFinancialPolicyService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_calculateRequiredPrepayment_method_exists(): void
+    public function test_calculate_required_prepayment_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class, 'calculateRequiredPrepayment'),
+            method_exists(EventFinancialPolicyService::class, 'calculateRequiredPrepayment'),
             'EventFinancialPolicyService must implement calculateRequiredPrepayment()'
         );
     }
 
-    public function test_calculateCancellationFee_method_exists(): void
+    public function test_calculate_cancellation_fee_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class, 'calculateCancellationFee'),
+            method_exists(EventFinancialPolicyService::class, 'calculateCancellationFee'),
             'EventFinancialPolicyService must implement calculateCancellationFee()'
         );
     }
 
-    public function test_distributeBudget_method_exists(): void
+    public function test_distribute_budget_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\EventPlanning\Domain\Services\EventFinancialPolicyService::class, 'distributeBudget'),
+            method_exists(EventFinancialPolicyService::class, 'distributeBudget'),
             'EventFinancialPolicyService must implement distributeBudget()'
         );
     }
-
 }

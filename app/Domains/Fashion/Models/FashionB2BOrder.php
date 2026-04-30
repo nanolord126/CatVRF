@@ -1,56 +1,45 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Models;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 final class FashionB2BOrder extends Model
 {
-
+    use TenantScoped;
+
     protected $table = 'fashion_b2b_orders';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'fashion_store_id',
-            'buyer_inn',
-            'total_amount',
-            'status',
-            'items_json',
-            'correlation_id',
-            'metadata',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'fashion_store_id',
+        'buyer_inn',
+        'total_amount',
+        'status',
+        'items_json',
+        'correlation_id',
+        'metadata',
+    ];
 
-        protected $casts = [
-            'items_json' => 'json',
-            'metadata' => 'json',
-            'total_amount' => 'integer',
-            'tenant_id' => 'integer',
-        ];
+    protected $casts = [
+        'items_json' => 'json',
+        'metadata' => 'json',
+        'total_amount' => 'integer',
+        'tenant_id' => 'integer',
+    ];
 
-    protected static function booted(): void
+    public function store(): BelongsTo
     {
-        static::addGlobalScope('tenant', function ($query) {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
+        return $this->belongsTo(FashionStore::class, 'fashion_store_id');
     }
-
-
-        public function store(): BelongsTo
-        {
-            return $this->belongsTo(FashionStore::class, 'fashion_store_id');
-        }
 
     /**
      * Get the string representation of this instance.
@@ -59,7 +48,7 @@ final class FashionB2BOrder extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -70,8 +59,23 @@ final class FashionB2BOrder extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

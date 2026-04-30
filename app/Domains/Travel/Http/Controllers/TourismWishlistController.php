@@ -1,10 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Services\TourismWishlistService;
 use App\Domains\Travel\Http\Resources\TourismWishlistResource;
-use App\Domains\Travel\Http\Resources\TourismWishlistCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 /**
  * Tourism Wishlist Controller
- * 
+ *
  * API controller for tourism wishlist operations.
  * Handles adding/removing items from wishlist with AI-powered recommendations.
  */
@@ -58,7 +59,7 @@ final class TourismWishlistController
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Tour added to wishlist via API', [
+            $this->logger->$this->logger->info('Tour added to wishlist via API', [
                 'wishlist_id' => $wishlistItem->id,
                 'user_id' => auth()->id(),
                 'tour_id' => $validated['tour_id'],
@@ -79,7 +80,7 @@ final class TourismWishlistController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to add tour to wishlist',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -97,7 +98,7 @@ final class TourismWishlistController
         try {
             $wishlistData = $this->wishlistService->getUserWishlist((int) auth()->id(), $correlationId);
 
-            return response()->json([
+            return new JsonResponse([
                 'wishlist_items' => $wishlistData['wishlist_items'],
                 'recommendations' => $wishlistData['recommendations'],
                 'correlation_id' => $correlationId,
@@ -108,7 +109,7 @@ final class TourismWishlistController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to get wishlist',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -126,13 +127,13 @@ final class TourismWishlistController
         try {
             $this->wishlistService->removeFromWishlist($uuid, $correlationId);
 
-            $this->logger->info('Tour removed from wishlist via API', [
+            $this->logger->$this->logger->info('Tour removed from wishlist via API', [
                 'wishlist_uuid' => $uuid,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'message' => 'Tour removed from wishlist',
                 'correlation_id' => $correlationId,
             ]);
@@ -142,7 +143,7 @@ final class TourismWishlistController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to remove tour from wishlist',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -160,7 +161,7 @@ final class TourismWishlistController
         try {
             $recommendations = $this->wishlistService->getRecommendationsFromWishlist((int) auth()->id(), $correlationId);
 
-            return response()->json([
+            return new JsonResponse([
                 'recommendations' => $recommendations,
                 'correlation_id' => $correlationId,
             ]);
@@ -170,7 +171,7 @@ final class TourismWishlistController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to get recommendations',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -196,7 +197,7 @@ final class TourismWishlistController
                 correlationId: $correlationId,
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'discount_rate' => $discountRate,
                 'discount_percentage' => $discountRate * 100,
                 'correlation_id' => $correlationId,
@@ -207,7 +208,7 @@ final class TourismWishlistController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Failed to get discount',
                 'message' => $e->getMessage(),
                 'correlation_id' => $correlationId,

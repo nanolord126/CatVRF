@@ -1,13 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Geo;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Geolocation Telemetry Service
- * 
+ *
  * Tracks metrics for geolocation infrastructure:
  * - API call latency and success rates
  * - Provider performance
@@ -16,12 +22,17 @@ use Illuminate\Log\LogManager;
  */
 final readonly class GeoTelemetryService
 {
+    use WithAuditLogging;
+
     private const METRICS_PREFIX = 'geo_';
+
     private const METRICS_TTL = 86400; // 24 hours
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -31,17 +42,17 @@ final readonly class GeoTelemetryService
     {
         $pipe = $this->redis->connection()->pipeline();
 
-        $pipe->incr(self::METRICS_PREFIX . 'geocode_total');
-        $pipe->incr(self::METRICS_PREFIX . "geocode_provider_{$provider}");
-        
+        $pipe->incr(self::METRICS_PREFIX.'geocode_total');
+        $pipe->incr(self::METRICS_PREFIX."geocode_provider_{$provider}");
+
         if ($success) {
-            $pipe->incr(self::METRICS_PREFIX . 'geocode_success');
+            $pipe->incr(self::METRICS_PREFIX.'geocode_success');
         } else {
-            $pipe->incr(self::METRICS_PREFIX . 'geocode_failure');
+            $pipe->incr(self::METRICS_PREFIX.'geocode_failure');
         }
 
-        $pipe->incrby(self::METRICS_PREFIX . 'geocode_latency_ms_total', (int) $latencyMs);
-        $pipe->incr(self::METRICS_PREFIX . 'geocode_latency_count');
+        $pipe->incrby(self::METRICS_PREFIX.'geocode_latency_ms_total', (int) $latencyMs);
+        $pipe->incr(self::METRICS_PREFIX.'geocode_latency_count');
 
         $pipe->exec();
     }
@@ -53,18 +64,18 @@ final readonly class GeoTelemetryService
     {
         $pipe = $this->redis->connection()->pipeline();
 
-        $pipe->incr(self::METRICS_PREFIX . 'route_total');
-        $pipe->incr(self::METRICS_PREFIX . "route_provider_{$provider}");
-        
+        $pipe->incr(self::METRICS_PREFIX.'route_total');
+        $pipe->incr(self::METRICS_PREFIX."route_provider_{$provider}");
+
         if ($success) {
-            $pipe->incr(self::METRICS_PREFIX . 'route_success');
+            $pipe->incr(self::METRICS_PREFIX.'route_success');
         } else {
-            $pipe->incr(self::METRICS_PREFIX . 'route_failure');
+            $pipe->incr(self::METRICS_PREFIX.'route_failure');
         }
 
-        $pipe->incrby(self::METRICS_PREFIX . 'route_latency_ms_total', (int) $latencyMs);
-        $pipe->incr(self::METRICS_PREFIX . 'route_latency_count');
-        $pipe->incrby(self::METRICS_PREFIX . 'route_distance_km_total', (int) ($distanceKm * 1000));
+        $pipe->incrby(self::METRICS_PREFIX.'route_latency_ms_total', (int) $latencyMs);
+        $pipe->incr(self::METRICS_PREFIX.'route_latency_count');
+        $pipe->incrby(self::METRICS_PREFIX.'route_distance_km_total', (int) ($distanceKm * 1000));
 
         $pipe->exec();
     }
@@ -76,12 +87,12 @@ final readonly class GeoTelemetryService
     {
         $pipe = $this->redis->connection()->pipeline();
 
-        $pipe->incr(self::METRICS_PREFIX . "cache_{$cacheType}_total");
-        
+        $pipe->incr(self::METRICS_PREFIX."cache_{$cacheType}_total");
+
         if ($hit) {
-            $pipe->incr(self::METRICS_PREFIX . "cache_{$cacheType}_hit");
+            $pipe->incr(self::METRICS_PREFIX."cache_{$cacheType}_hit");
         } else {
-            $pipe->incr(self::METRICS_PREFIX . "cache_{$cacheType}_miss");
+            $pipe->incr(self::METRICS_PREFIX."cache_{$cacheType}_miss");
         }
 
         $pipe->exec();
@@ -92,7 +103,7 @@ final readonly class GeoTelemetryService
      */
     public function recordTrackingUpdate(string $entityType): void
     {
-        $this->redis->connection()->incr(self::METRICS_PREFIX . "tracking_{$entityType}_total");
+        $this->redis->connection()->incr(self::METRICS_PREFIX."tracking_{$entityType}_total");
     }
 
     /**
@@ -100,7 +111,7 @@ final readonly class GeoTelemetryService
      */
     public function recordCircuitBreaker(string $provider, string $event): void
     {
-        $this->redis->connection()->incr(self::METRICS_PREFIX . "circuit_breaker_{$provider}_{$event}");
+        $this->redis->connection()->incr(self::METRICS_PREFIX."circuit_breaker_{$provider}_{$event}");
     }
 
     /**
@@ -176,7 +187,7 @@ final readonly class GeoTelemetryService
             'Total doctor tracking updates'
         );
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 
     /**
@@ -217,6 +228,18 @@ final readonly class GeoTelemetryService
         ];
     }
 
+    public function resetMetrics(): void
+    {
+        $pattern = self::METRICS_PREFIX.'*';
+        $keys = $this->redis->connection()->keys($pattern);
+
+        if (! empty($keys)) {
+            $this->redis->connection()->del($keys);
+        }
+
+        $this->logger->channel('geo')->$this->logger->info('Geo telemetry metrics reset');
+    }
+
     private function formatCounter(string $name, float $value, string $help): string
     {
         return "# HELP {$name} {$help}\n# TYPE {$name} counter\n{$name} {$value}";
@@ -229,7 +252,7 @@ final readonly class GeoTelemetryService
 
     private function getCounter(string $suffix): float
     {
-        return (float) $this->redis->connection()->get(self::METRICS_PREFIX . $suffix) ?: 0;
+        return (float) $this->redis->connection()->get(self::METRICS_PREFIX.$suffix) ?: 0;
     }
 
     private function getSuccessRate(string $type): float
@@ -262,17 +285,5 @@ final readonly class GeoTelemetryService
         $hits = $this->getCounter("cache_{$type}_hit");
 
         return $total > 0 ? ($hits / $total) : 0;
-    }
-
-    public function resetMetrics(): void
-    {
-        $pattern = self::METRICS_PREFIX . '*';
-        $keys = $this->redis->connection()->keys($pattern);
-
-        if (!empty($keys)) {
-            $this->redis->connection()->del($keys);
-        }
-
-        $this->logger->channel('geo')->info('Geo telemetry metrics reset');
     }
 }

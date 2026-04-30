@@ -11,7 +11,9 @@ use App\Domains\RealEstate\Models\PropertyViewing;
 
 final class ViewingConfirmedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public readonly PropertyViewing $viewing,

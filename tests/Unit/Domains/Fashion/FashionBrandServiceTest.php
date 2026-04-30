@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Fashion\Domain\Services\FashionBrandService;
 
 /**
  * Unit tests for FashionBrandService.
@@ -14,7 +17,7 @@ final class FashionBrandServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionBrandService::class
+            FashionBrandService::class
         );
         $this->assertTrue($reflection->isFinal(), 'FashionBrandService must be final');
     }
@@ -22,7 +25,7 @@ final class FashionBrandServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionBrandService::class
+            FashionBrandService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'FashionBrandService must be readonly');
     }
@@ -30,19 +33,18 @@ final class FashionBrandServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Fashion\Domain\Services\FashionBrandService::class
+            FashionBrandService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'FashionBrandService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_createBrand_method_exists(): void
+    public function test_create_brand_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Fashion\Domain\Services\FashionBrandService::class, 'createBrand'),
+            method_exists(FashionBrandService::class, 'createBrand'),
             'FashionBrandService must implement createBrand()'
         );
     }
-
 }

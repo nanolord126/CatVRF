@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateSeatMap — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createseatmap
  * @see https://catvrf.ru/docs/createseatmap
  * @see https://catvrf.ru/docs/createseatmap
@@ -31,23 +34,15 @@
  * @see https://catvrf.ru/docs/createseatmap
  */
 
-
 namespace App\Filament\Tenant\Resources\Entertainment\SeatMapResource\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateSeatMap extends CreateRecord
 {
-
     protected static string $resource = SeatMapResource::class;
-
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['uuid'] = (string) Str::uuid();
-            $data['correlation_id'] = (string) Str::uuid();
-            return $data;
-        }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +51,7 @@ final class CreateSeatMap extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +62,17 @@ final class CreateSeatMap extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id'] = filament()->getTenant()->id;
+        $data['uuid'] = (string) Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
+
+        return $data;
     }
 }

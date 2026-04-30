@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Юридическая услуга (каталог услуг для AILegalAdvisorConstructor)
- *
- * @package App\Models
  */
 final class LegalService extends Model
 {
-
     protected $table = 'legal_services';
 
     protected $fillable = [

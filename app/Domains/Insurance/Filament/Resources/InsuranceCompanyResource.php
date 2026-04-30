@@ -1,16 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\Filament\Resources;
-
 
 use App\Domains\Insurance\Models\InsuranceCompany;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\CreateInsuranceCompany;
+use App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\EditInsuranceCompany;
+use App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\ListInsuranceCompanys;
+use Illuminate\Support\Str;
 
-final class InsuranceCompanyResource extends Resource
+final class InsuranceCompanyResource extends BaseOptimizedResource
 {
     protected static ?string $model = InsuranceCompany::class;
 
@@ -37,7 +42,7 @@ final class InsuranceCompanyResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,17 @@ final class InsuranceCompanyResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\ListInsuranceCompanys::route('/'),
-            'create' => \App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\CreateInsuranceCompany::route('/create'),
-            'edit' => \App\Domains\Insurance\Filament\Resources\InsuranceCompanyResource\Pages\EditInsuranceCompany::route('/{record}/edit'),
+            'index' => ListInsuranceCompanys::route('/'),
+            'create' => CreateInsuranceCompany::route('/create'),
+            'edit' => EditInsuranceCompany::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Insurance
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

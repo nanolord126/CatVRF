@@ -1,25 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Events\CarImportInitiatedEvent;
 use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class NotifyCustomsDepartmentListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly NotificationService $notificationService,
-    ) {}
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function handle(CarImportInitiatedEvent $event): void
     {
-        $import = DB::table('car_imports')
+        $import = $this->db->table('car_imports')
             ->where('id', $event->importId)
             ->first();
 
@@ -39,7 +44,7 @@ final class NotifyCustomsDepartmentListener implements ShouldQueue
             ],
         );
 
-        Log::channel('audit')->info('car.import.customs.notified', [
+        $this->log->channel('audit')->$this->logger->info('car.import.customs.notified', [
             'correlation_id' => $event->correlationId,
             'import_id' => $event->importId,
             'vin' => $event->vin,

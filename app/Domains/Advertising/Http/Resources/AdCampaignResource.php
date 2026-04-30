@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
  *
  * Formats model data for API output.
  * Always includes correlation_id in meta.
- *
- * @package App\Domains\Advertising\Http\Resources
  */
 final class AdCampaignResource extends JsonResource
 {

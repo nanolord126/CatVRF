@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Beauty\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class VideoCallDto
 {
@@ -31,7 +32,7 @@ final readonly class VideoCallDto
             masterId: (int) $request->input('master_id'),
             scheduledFor: $request->input('scheduled_for'),
             durationMinutes: $request->input('duration_minutes') ? (int) $request->input('duration_minutes') : null,
-            correlationId: $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid(),
+            correlationId: $request->header('X-Correlation-ID') ?? (string) Str::uuid(),
             idempotencyKey: $request->header('X-Idempotency-Key'),
             isB2B: $request->has('inn') && $request->has('business_card_id'),
         );

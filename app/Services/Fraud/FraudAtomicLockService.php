@@ -1,20 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Fraud;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * Fraud Atomic Lock Service with Redis Lua Scripts
- * 
+ *
  * Provides atomic operations for fraud check + slot hold/payment
  * Prevents race conditions in high-concurrency scenarios
  */
 final readonly class FraudAtomicLockService
 {
+    use WithAuditLogging;
+
     private const LOCK_TTL = 30; // 30 seconds
+
     private const SLOT_HOLD_TTL = 300; // 5 minutes
 
     // Lua script for atomic fraud check + slot hold
@@ -100,13 +110,15 @@ final readonly class FraudAtomicLockService
             return 1
         end
         
+        
         return 0
-    LUA;
+    LUA;,
+        private readonly AuditSvice $audit
+    
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Atomic fraud check + slot hold
@@ -121,7 +133,7 @@ final readonly class FraudAtomicLockService
     ): array {
         $correlationId ??= Str::uuid()->toString();
         $fraudKey = "fraud:check:{$userId}";
-        
+
         $result = $this->redis->connection()->eval(
             self::LUA_FRAUD_CHECK_HOLD,
             2,
@@ -132,14 +144,14 @@ final readonly class FraudAtomicLockService
             $threshold,
             self::SLOT_HOLD_TTL,
             self::LOCK_TTL,
-            now()->toIso8601String(),
+            CarbonImmutable::now()->toIso8601String(),
         );
 
         $success = (bool) $result[0];
         $reason = $result[1];
         $lockKey = $success ? $result[2] : null;
 
-        $this->logger->channel('fraud_alert')->info('Atomic fraud check + slot hold', [
+        $this->logger->channel('fraud_alert')->$this->logger->info('Atomic fraud check + slot hold', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'slot_key' => $slotKey,
@@ -169,7 +181,7 @@ final readonly class FraudAtomicLockService
     ): array {
         $correlationId ??= Str::uuid()->toString();
         $fraudKey = "fraud:check:{$userId}";
-        
+
         $result = $this->redis->connection()->eval(
             self::LUA_FRAUD_CHECK_PAYMENT,
             2,
@@ -179,14 +191,14 @@ final readonly class FraudAtomicLockService
             $fraudScore,
             $threshold,
             self::LOCK_TTL,
-            now()->toIso8601String(),
+            CarbonImmutable::now()->toIso8601String(),
         );
 
         $success = (bool) $result[0];
         $reason = $result[1];
         $lockKey = $success ? $result[2] : null;
 
-        $this->logger->channel('fraud_alert')->info('Atomic fraud check + payment', [
+        $this->logger->channel('fraud_alert')->$this->logger->info('Atomic fraud check + payment', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'payment_key' => $paymentKey,
@@ -224,18 +236,19 @@ final readonly class FraudAtomicLockService
     public function releaseSlotHold(string $slotKey, int $userId): bool
     {
         $currentHolder = $this->redis->connection()->hget($slotKey, 'holder_id');
-        
+
         if ($currentHolder != $userId) {
             $this->logger->channel('fraud_alert')->warning('Attempt to release slot held by another user', [
                 'slot_key' => $slotKey,
                 'user_id' => $userId,
                 'current_holder' => $currentHolder,
             ]);
+
             return false;
         }
 
         $this->redis->connection()->hdel($slotKey, 'holder_id', 'held_at', 'fraud_score');
-        
+
         // Release associated lock
         $lockKey = "fraud:lock:{$userId}:{$slotKey}";
         $this->releaseLock($lockKey);
@@ -257,7 +270,7 @@ final readonly class FraudAtomicLockService
     public function getSlotHolder(string $slotKey): ?array
     {
         $data = $this->redis->connection()->hgetall($slotKey);
-        
+
         if (empty($data)) {
             return null;
         }

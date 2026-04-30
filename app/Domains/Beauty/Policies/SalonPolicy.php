@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use App\Domains\Beauty\Models\Salon;
 use App\Models\User;
@@ -10,7 +14,11 @@ final class SalonPolicy
 {
     use HandlesAuthorization;
 
-    public function view(User $user, Salon $salon): bool
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
+    public function $this->viewFactory->make(User $user, Salon $salon): bool
     {
         return $salon->is_active
             || $user->hasRole('admin');
@@ -24,7 +32,7 @@ final class SalonPolicy
     public function create(User $user): bool
     {
         return $user->hasVerifiedEmail()
-            && !$user->is_blocked
+            && ! $user->is_blocked
             && $user->hasRole('business_owner');
     }
 

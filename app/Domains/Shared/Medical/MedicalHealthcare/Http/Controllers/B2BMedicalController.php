@@ -1,0 +1,177 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\MedicalHealthcare\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Database\DatabaseManager;
+
+final class B2BMedicalController extends Controller
+{
+    public function __construct(
+        private readonly DatabaseManager $db
+    ) {}
+
+
+    public function storefronts(): JsonResponse
+    {
+        return new \Illuminate\Http\JsonResponse([
+            'success' => true,
+            'data' => B2BMedicalStorefront::where('is_active', true)
+                ->where('is_verified', true)
+                ->paginate(20),
+            'correlation_id' => Str::uuid(),
+        ]);
+    }
+
+    public function createStorefront(Request $r): JsonResponse
+    {
+        try {
+            $this->authorize('createStorefront', B2BMedicalStorefront::class);
+
+            $v = $r->validate([
+                'company_name' => 'required',
+                'inn' => 'required|unique:b2b_medical_storefronts,inn',
+                'description' => 'nullable',
+                'service_categories' => 'nullable|json',
+                'wholesale_discount' => 'nullable|numeric|between:0,100',
+                'min_order_amount' => 'integer|min:1000',
+            ]);
+
+            $c = Str::uuid()->toString();
+
+            $this->db->transaction(fn () => B2BMedicalStorefront::create([
+                'uuid' => Str::uuid(),
+                'tenant_id' => $request->user()->tenant_id,
+            ] + $v + ['correlation_id' => $c]));
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Витрина создана',
+                'correlation_id' => $c,
+            ], 201);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function createOrder(Request $r): JsonResponse
+    {
+        try {
+            $v = $r->validate([
+                'b2b_medical_storefront_id' => 'required|exists:b2b_medical_storefronts,id',
+                'company_contact_person' => 'required',
+                'company_phone' => 'required',
+                'items_json' => 'required|json',
+                'total_amount' => 'required|numeric|min:1',
+            ]);
+
+            $c = Str::uuid()->toString();
+
+            $this->db->transaction(fn () => B2BMedicalOrder::create([
+                'uuid' => Str::uuid(),
+                'tenant_id' => $request->user()->tenant_id,
+                'order_number' => 'B2B-'.Str::random(8),
+                'commission_amount' => (int) ($v['total_amount'] * 0.14),
+                'status' => 'pending',
+            ] + $v + ['correlation_id' => $c]));
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Заказ создан',
+                'correlation_id' => $c,
+            ], 201);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function myB2BOrders(): JsonResponse
+    {
+        return new \Illuminate\Http\JsonResponse([
+            'success' => true,
+            'data' => B2BMedicalOrder::where('tenant_id', $request->user()->tenant_id)
+                ->latest()
+                ->paginate(20),
+            'correlation_id' => Str::uuid(),
+        ]);
+    }
+
+    public function approveOrder(int $id): JsonResponse
+    {
+        try {
+            $o = B2BMedicalOrder::findOrFail($id);
+            $this->authorize('approveOrder', $o);
+
+            $this->db->transaction(fn () => $o->update(['status' => 'approved']));
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Одобрено',
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function rejectOrder(int $id, Request $r): JsonResponse
+    {
+        try {
+            $o = B2BMedicalOrder::findOrFail($id);
+            $this->authorize('rejectOrder', $o);
+
+            $this->db->transaction(fn () => $o->update([
+                'status' => 'rejected',
+                'notes' => $r->get('reason', ''),
+            ]));
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Отклонено',
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function verifyInn(int $id): JsonResponse
+    {
+        try {
+            $this->authorize('verifyInn', B2BMedicalStorefront::class);
+
+            $this->db->transaction(fn () => B2BMedicalStorefront::findOrFail($id)
+                ->update(['is_verified' => true]));
+
+            return new \Illuminate\Http\JsonResponse([
+                'success' => true,
+                'message' => 'Верифицировано',
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse([
+                'success' => false,
+                'message' => 'Ошибка',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+}

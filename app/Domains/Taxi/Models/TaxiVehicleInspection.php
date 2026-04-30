@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +15,42 @@ use Illuminate\Support\Str;
 final class TaxiVehicleInspection extends Model
 {
     use HasFactory;
+    use TenantScoped;
+
+    /**
+     * Типы осмотров.
+     */
+    public const TYPE_ANNUAL = 'annual';
+
+    public const TYPE_QUARTERLY = 'quarterly';
+
+    public const TYPE_PRE_TRIP = 'pre_trip';
+
+    public const TYPE_POST_TRIP = 'post_trip';
+
+    public const TYPE_SPECIAL = 'special';
+
+    /**
+     * Статусы осмотра.
+     */
+    public const STATUS_SCHEDULED = 'scheduled';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_PASSED = 'passed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_CONDITIONAL = 'conditional';
+
+    /**
+     * Результаты осмотра.
+     */
+    public const RESULT_PASS = 'pass';
+
+    public const RESULT_FAIL = 'fail';
+
+    public const RESULT_CONDITIONAL = 'conditional';
 
     protected $table = 'taxi_vehicle_inspections';
 
@@ -31,7 +72,7 @@ final class TaxiVehicleInspection extends Model
         'next_inspection_date',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -46,49 +87,6 @@ final class TaxiVehicleInspection extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Типы осмотров.
-     */
-    public const TYPE_ANNUAL = 'annual';
-    public const TYPE_QUARTERLY = 'quarterly';
-    public const TYPE_PRE_TRIP = 'pre_trip';
-    public const TYPE_POST_TRIP = 'post_trip';
-    public const TYPE_SPECIAL = 'special';
-
-    /**
-     * Статусы осмотра.
-     */
-    public const STATUS_SCHEDULED = 'scheduled';
-    public const STATUS_IN_PROGRESS = 'in_progress';
-    public const STATUS_PASSED = 'passed';
-    public const STATUS_FAILED = 'failed';
-    public const STATUS_CONDITIONAL = 'conditional';
-
-    /**
-     * Результаты осмотра.
-     */
-    public const RESULT_PASS = 'pass';
-    public const RESULT_FAIL = 'fail';
-    public const RESULT_CONDITIONAL = 'conditional';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiVehicleInspection $inspection) {
-            $inspection->uuid = $inspection->uuid ?? (string) Str::uuid();
-            $inspection->tenant_id = $inspection->tenant_id ?? (tenant()->id ?? 1);
-            $inspection->status = $inspection->status ?? self::STATUS_SCHEDULED;
-            $inspection->defects_found = $inspection->defects_found ?? 0;
-            $inspection->defects_fixed = $inspection->defects_fixed ?? 0;
-            $inspection->correlation_id = $inspection->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -108,8 +106,8 @@ final class TaxiVehicleInspection extends Model
      */
     public function isValid(): bool
     {
-        return $this->status === self::STATUS_PASSED && 
-               $this->expiry_date && 
+        return $this->status === self::STATUS_PASSED &&
+               $this->expiry_date &&
                $this->expiry_date->isFuture();
     }
 
@@ -126,8 +124,8 @@ final class TaxiVehicleInspection extends Model
      */
     public function isExpiringSoon(): bool
     {
-        return $this->expiry_date && 
-               $this->expiry_date->between(now(), now()->addDays(30));
+        return $this->expiry_date &&
+               $this->expiry_date->between(CarbonImmutable::now(), CarbonImmutable::now()->addDays(30));
     }
 
     /**
@@ -135,11 +133,11 @@ final class TaxiVehicleInspection extends Model
      */
     public function getDaysUntilExpiry(): ?int
     {
-        if (!$this->expiry_date) {
+        if (! $this->expiry_date) {
             return null;
         }
 
-        return (int) now()->diffInDays($this->expiry_date, false);
+        return (int) CarbonImmutable::now()->diffInDays($this->expiry_date, false);
     }
 
     /**
@@ -166,5 +164,23 @@ final class TaxiVehicleInspection extends Model
             'defects_found' => $defectsFound,
             'metadata' => array_merge($this->metadata ?? [], ['failure_reason' => $reason]),
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiVehicleInspection $inspection) {
+            $inspection->uuid = $inspection->uuid ?? (string) Str::uuid();
+            $inspection->tenant_id = $inspection->tenant_id ?? (tenant()->id ?? 1);
+            $inspection->status = $inspection->status ?? self::STATUS_SCHEDULED;
+            $inspection->defects_found = $inspection->defects_found ?? 0;
+            $inspection->defects_fixed = $inspection->defects_fixed ?? 0;
+            $inspection->correlation_id = $inspection->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

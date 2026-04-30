@@ -21,28 +21,10 @@ final class SportsFakeBookingTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private FraudControlService $fraud;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->app->make(FraudControlService::class);
-        $this->audit = $this->app->make(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_bot_detected_booking_blocked(): void
     {
@@ -102,7 +84,7 @@ final class SportsFakeBookingTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
+
                 if ($i >= 5) {
                     $this->assertFalse($result['success'] ?? true, 'Suspicious pattern should be blocked');
                 }
@@ -302,7 +284,7 @@ final class SportsFakeBookingTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
+
                 if ($result['success']) {
                     $verifyResult = $this->service->verifyBiometricOnCheckIn(1, 1, $biometric, $dto->correlationId);
                     $this->assertFalse($verifyResult, 'Fake biometric should fail verification');
@@ -530,7 +512,7 @@ final class SportsFakeBookingTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
+
                 if ($result['success']) {
                     $confirmResult = $this->service->confirmBooking($dto, [
                         'amount' => 100,
@@ -635,8 +617,8 @@ final class SportsFakeBookingTest extends TestCase
 
             try {
                 $result = $this->service->holdSlot($dto);
-                
-                if (!$result['success']) {
+
+                if (! $result['success']) {
                     $blockedCount++;
                 }
             } catch (FraudBlockedException $e) {
@@ -683,5 +665,25 @@ final class SportsFakeBookingTest extends TestCase
                 $this->assertTrue(true, 'Suspicious user agent should trigger fraud detection');
             }
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->app->make(FraudControlService::class);
+        $this->audit = $this->app->make(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateFreelanceOrder — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createfreelanceorder
  * @see https://catvrf.ru/docs/createfreelanceorder
  * @see https://catvrf.ru/docs/createfreelanceorder
@@ -23,32 +26,16 @@
  * @see https://catvrf.ru/docs/createfreelanceorder
  */
 
-
 namespace App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource\Pages;
 
+use FreelanceService;
 
-use Illuminate\Contracts\Auth\Guard;
-use App\Domains\Freelance\Models\FreelanceOrder;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource;
 
 final class CreateFreelanceOrder extends CreateRecord
 {
-
-
-    protected static string $resource = \App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource::class;
-
-        /**
-         * КАНОН 2026 — Использование сервиса для создания заказа
-         */
-        protected function handleRecordCreation(array $data): Model
-        {
-            $data['correlation_id'] = (string) Str::uuid();
-            $data['tenant_id'] = $this->guard->user()->tenant_id;
-
-            return app(FreelanceService::class)->createOrder($data);
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -64,6 +51,19 @@ final class CreateFreelanceOrder extends CreateRecord
      */
     private const CACHE_TTL = 3600;
 
+    protected static string $resource = FreelanceOrderResource::class;
+
+    /**
+     * КАНОН 2026 — Использование сервиса для создания заказа
+     */
+    protected function handleRecordCreation(array $data): Model
+    {
+        $data['correlation_id'] = (string) Str::uuid();
+        $data['tenant_id'] = $this->guard->user()->tenant_id;
+
+        return $this->freelanceService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->createOrder($data);
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -71,7 +71,6 @@ final class CreateFreelanceOrder extends CreateRecord
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
-
 }

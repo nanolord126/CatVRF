@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListPetServices — CatVRF 2026 Component.
@@ -7,21 +9,23 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listpetservices
  * @see https://catvrf.ru/docs/listpetservices
  * @see https://catvrf.ru/docs/listpetservices
  */
 
-
 namespace App\Filament\Tenant\Resources\PetServices\Pages;
 
 use App\Filament\Tenant\Resources\PetServicesResource;
 use Filament\Resources\Pages\ListRecords;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class ListPetServices
@@ -33,34 +37,11 @@ use Filament\Resources\Pages\ListRecords;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\PetServices\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ListPetServices extends ListRecords
 {
-    protected static string $resource = PetServicesResource::class;
-
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
-    }
-
     /**
      * Version identifier for this component.
      */
@@ -71,4 +52,21 @@ final class ListPetServices extends ListRecords
      */
     private const MAX_RETRIES = 3;
 
+    protected static string $resource = PetServicesResource::class;
+
+    /**
+     * Get the string representation of this object.
+     */
+    public function __toString(): string
+    {
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

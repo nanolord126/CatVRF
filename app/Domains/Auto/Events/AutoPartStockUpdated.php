@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 /**
  * Class AutoPartStockUpdated
  *
@@ -24,20 +23,22 @@ use Illuminate\Queue\SerializesModels;
  * Events carry correlation_id for full traceability.
  * Listeners handle side effects asynchronously.
  *
- * @see \Illuminate\Foundation\Events\Dispatchable
- * @package App\Domains\Auto\Events
+ * @see Dispatchable
  */
 final class AutoPartStockUpdated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
         public readonly AutoPart $autoPart,
         public readonly int $oldStock,
         public readonly int $newStock,
-        public readonly string $correlationId, public readonly LoggerInterface $logger
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
     ) {
-        $this->logger->info('AutoPart stock updated event created', [
+        $this->logger->$this->logger->info('AutoPart stock updated event created', [
             'auto_part_id' => $this->autoPart->id,
             'old_stock' => $this->oldStock,
             'new_stock' => $this->newStock,
@@ -46,12 +47,12 @@ final class AutoPartStockUpdated implements ShouldBroadcast
     }
 
     /**
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->autoPart->tenant_id),
+            new PrivateChannel('tenant.'.$this->autoPart->tenant_id),
         ];
     }
 

@@ -1,13 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
-use Illuminate\Support\Collection;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * BigDataAggregatorService — запись обезличенных событий в ClickHouse
@@ -18,10 +20,13 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class BigDataAggregatorService
 {
+    use WithAuditLogging;
+
     public function __construct(
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     public function insertAnonymizedEvent(array $anonymizedEvent): void
@@ -104,7 +109,7 @@ final readonly class BigDataAggregatorService
 
         return (float) $this->db->table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->whereIn('status', ['completed', 'delivered'])
             ->sum('total_amount');
     }
@@ -115,7 +120,7 @@ final readonly class BigDataAggregatorService
 
         return (int) $this->db->table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->count();
     }
 

@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\Filament\Resources;
-
 
 use App\Domains\Recommendation\Models\Recommendation;
 use Filament\Forms;
@@ -9,6 +10,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\CreateRecommendation;
+use App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\EditRecommendation;
+use App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\ListRecommendations;
+use Illuminate\Support\Str;
 
 final class RecommendationResource extends Resource
 {
@@ -37,7 +42,7 @@ final class RecommendationResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,9 @@ final class RecommendationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\ListRecommendations::route('/'),
-            'create' => \App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\CreateRecommendation::route('/create'),
-            'edit' => \App\Domains\Recommendation\Filament\Resources\RecommendationResource\Pages\EditRecommendation::route('/{record}/edit'),
+            'index' => ListRecommendations::route('/'),
+            'create' => CreateRecommendation::route('/create'),
+            'edit' => EditRecommendation::route('/{record}/edit'),
         ];
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
@@ -24,6 +26,7 @@ final class ProcessTaxiPaymentJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries;
+
     public int $timeout;
 
     public function __construct(
@@ -39,7 +42,7 @@ final class ProcessTaxiPaymentJob implements ShouldQueue
     {
         $ride = TaxiRide::with(['passenger', 'driver'])->where('id', $this->rideId)->firstOrFail();
 
-        $this->logger->channel('audit')->info('Processing taxi payment', [
+        $this->logger->channel('audit')->$this->logger->info('Processing taxi payment', [
             'ride_id' => $this->rideId,
             'passenger_id' => $ride->passenger_id,
             'final_price_rubles' => $ride->final_price_kopeki / 100,

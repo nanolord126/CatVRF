@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
@@ -15,47 +17,25 @@ use App\Services\Security\IdempotencyService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\ML\AnonymizationService;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\DB;
 use Mockery;
+use App\Domains\Education\Models\Enrollment;
 
 final class EducationLearningPathAIConstructorServiceTest extends TestCase
 {
     private EducationLearningPathAIConstructorService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private IdempotencyService $idempotency;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private RecommendationService $recommendation;
+
     private AnonymizationService $anonymizer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = Mockery::mock(FraudControlService::class);
-        $this->audit = Mockery::mock(AuditService::class);
-        $this->idempotency = Mockery::mock(IdempotencyService::class);
-        $this->tasteAnalyzer = Mockery::mock(UserTasteAnalyzerService::class);
-        $this->recommendation = Mockery::mock(RecommendationService::class);
-        $this->anonymizer = Mockery::mock(AnonymizationService::class);
-
-        $this->service = new EducationLearningPathAIConstructorService(
-            $this->fraud,
-            $this->audit,
-            $this->idempotency,
-            $this->tasteAnalyzer,
-            $this->recommendation,
-            $this->anonymizer,
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_generate_personalized_learning_path_success(): void
     {
@@ -232,7 +212,7 @@ final class EducationLearningPathAIConstructorServiceTest extends TestCase
             'tenant_id' => tenant()->id,
         ]);
 
-        $enrollment = \App\Domains\Education\Models\Enrollment::factory()->create([
+        $enrollment = Enrollment::factory()->create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'tenant_id' => tenant()->id,
@@ -284,5 +264,32 @@ final class EducationLearningPathAIConstructorServiceTest extends TestCase
         );
 
         $this->assertNotNull($similarity);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = Mockery::mock(FraudControlService::class);
+        $this->audit = Mockery::mock(AuditService::class);
+        $this->idempotency = Mockery::mock(IdempotencyService::class);
+        $this->tasteAnalyzer = Mockery::mock(UserTasteAnalyzerService::class);
+        $this->recommendation = Mockery::mock(RecommendationService::class);
+        $this->anonymizer = Mockery::mock(AnonymizationService::class);
+
+        $this->service = new EducationLearningPathAIConstructorService(
+            $this->fraud,
+            $this->audit,
+            $this->idempotency,
+            $this->tasteAnalyzer,
+            $this->recommendation,
+            $this->anonymizer,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

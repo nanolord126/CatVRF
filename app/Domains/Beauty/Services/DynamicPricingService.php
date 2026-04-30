@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\DTOs\DynamicPricingDto;
 use App\Domains\Beauty\Events\PriceUpdatedEvent;
 use App\Domains\Beauty\Models\Master;
@@ -11,22 +15,27 @@ use App\Domains\Beauty\Models\BeautyService;
 use App\Services\AI\DemandForecastService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final readonly class DynamicPricingService
 {
     private const CACHE_TTL = 300;
+
     private const SURGE_THRESHOLD = 0.7;
+
     private const FLASH_DISCOUNT_THRESHOLD = 0.3;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private DemandForecastService $demandForecast,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DemandForecastService $demandForecast,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function calculate(DynamicPricingDto $dto): array
     {
@@ -40,10 +49,10 @@ final readonly class DynamicPricingService
         );
 
         $cacheKey = $this->getCacheKey($dto);
-        $cached = Redis::get($cacheKey);
+        $cached = $this->redis->get($cacheKey);
 
         if ($cached !== null) {
-            Log::channel('audit')->info('Dynamic pricing cache hit', [
+            $this->log->channel('audit')->$this->logger->info('Dynamic pricing cache hit', [
                 'correlation_id' => $dto->correlationId,
                 'master_id' => $dto->masterId,
             ]);
@@ -51,15 +60,15 @@ final readonly class DynamicPricingService
             return json_decode($cached, true);
         }
 
-        return DB::transaction(function () use ($dto, $cacheKey) {
+        return $this->db->transaction(function () use ($dto, $cacheKey) {
             $master = Master::findOrFail($dto->masterId);
             $service = BeautyService::findOrFail($dto->serviceId);
 
             $basePrice = $dto->basePrice ?? $service->price;
             $forecast = $this->demandForecast->forecastForItem(
                 itemId: $dto->serviceId,
-                dateFrom: now(),
-                dateTo: now()->addHours(2),
+                dateFrom: CarbonImmutable::now(),
+                dateTo: CarbonImmutable::now()->addHours(2),
                 context: ['vertical' => 'beauty'],
                 correlationId: $dto->correlationId,
             );
@@ -80,9 +89,9 @@ final readonly class DynamicPricingService
                 'correlation_id' => $dto->correlationId,
             ];
 
-            Redis::setex($cacheKey, self::CACHE_TTL, json_encode($result));
+            $this->redis->setex($cacheKey, self::CACHE_TTL, json_encode($result));
 
-            Log::channel('audit')->info('Dynamic pricing calculated', [
+            $this->log->channel('audit')->$this->logger->info('Dynamic pricing calculated', [
                 'correlation_id' => $dto->correlationId,
                 'master_id' => $dto->masterId,
                 'service_id' => $dto->serviceId,
@@ -91,7 +100,7 @@ final readonly class DynamicPricingService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new PriceUpdatedEvent(
+            $this->eventDispatcher->dispatch(new PriceUpdatedEvent(
                 masterId: $dto->masterId,
                 serviceId: $dto->serviceId,
                 oldPrice: $basePrice,
@@ -134,10 +143,10 @@ final readonly class DynamicPricingService
             return 0;
         }
 
-        $hour = now()->hour;
+        $hour = CarbonImmutable::now()->hour;
         $isOffPeak = $hour < 10 || $hour > 19;
 
-        if (!$isOffPeak) {
+        if (! $isOffPeak) {
             return 0;
         }
 

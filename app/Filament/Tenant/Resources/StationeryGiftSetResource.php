@@ -1,117 +1,119 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
-use Filament\Tables\Table;
 use Filament\Forms;
-use Filament\Tables;
 
 final class StationeryGiftSetResource extends Resource
 {
-
     protected static ?string $model = StationeryGiftSet::class;
-        protected static ?string $navigationIcon = 'heroicon-o-gift';
-        protected static ?string $navigationGroup = 'Stationery Hub';
-        protected static ?string $tenantOwnershipRelationshipName = 'store';
 
-        /**
-         * Gift Set Form with Theme and Items assembly.
-         */
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Split::make([
-                    Forms\Components\Section::make('Gift Set Fundamentals')->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255)
-                            ->autofocus()
-                            ->placeholder('Premium Calligraphy Set'),
+    protected static ?string $navigationIcon = 'heroicon-o-gift';
 
-                        Forms\Components\Select::make('store_id')
-                            ->relationship('store', 'name')
-                            ->required()
-                            ->searchable()
-                            ->label('Source Store'),
+    protected static ?string $navigationGroup = 'Stationery Hub';
 
-                        Forms\Components\Select::make('category_id')
-                            ->relationship('category', 'name')
-                            ->required()
-                            ->searchable()
-                            ->label('Category'),
+    protected static ?string $tenantOwnershipRelationshipName = 'store';
 
-                        Forms\Components\Select::make('theme')
-                            ->options([
-                                'school' => 'Back to School',
-                                'office' => 'Office Start',
-                                'premium' => 'Premium Art & Design',
-                                'minimal' => 'Minimalist Workspace',
-                                'calligraphy' => 'Calligraphy & Lettering',
-                            ])
-                            ->required()
-                            ->label('Theme'),
+    /**
+     * Gift Set Form with Theme and Items assembly.
+     */
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Split::make([
+                Forms\Components\Section::make('Gift Set Fundamentals')->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->required()
+                        ->maxLength(255)
+                        ->autofocus()
+                        ->placeholder('Premium Calligraphy Set'),
 
-                        Forms\Components\RichEditor::make('description')
-                            ->columnSpanFull()
-                            ->placeholder('Perfect for students or office workers...'),
-                    ])->columns(2),
+                    Forms\Components\Select::make('store_id')
+                        ->relationship('store', 'name')
+                        ->required()
+                        ->searchable()
+                        ->label('Source Store'),
 
-                    Forms\Components\Section::make('Kitting & Pricing')->schema([
-                        Forms\Components\TextInput::make('price_cents')
-                            ->numeric()
-                            ->prefix('RUB')
-                            ->required()
-                            ->label('Total Set Price (Cents)'),
+                    Forms\Components\Select::make('category_id')
+                        ->relationship('category', 'name')
+                        ->required()
+                        ->searchable()
+                        ->label('Category'),
 
-                        Forms\Components\Repeater::make('product_ids')
-                            ->label('Items included in Set')
-                            ->schema([
-                                Forms\Components\Select::make('product_id')
-                                    ->relationship('store.products', 'name')
-                                    ->required()
-                                    ->searchable(),
-                            ])
-                            ->default([])
-                            ->required()
-                            ->minItems(2),
+                    Forms\Components\Select::make('theme')
+                        ->options([
+                            'school' => 'Back to School',
+                            'office' => 'Office Start',
+                            'premium' => 'Premium Art & Design',
+                            'minimal' => 'Minimalist Workspace',
+                            'calligraphy' => 'Calligraphy & Lettering',
+                        ])
+                        ->required()
+                        ->label('Theme'),
 
-                        Forms\Components\Toggle::make('is_active')
-                            ->default(true)
-                            ->onColor('success')
-                            ->offColor('danger'),
-                    ])->columns(1),
-                ])->columnSpanFull(),
-
-                Forms\Components\Section::make('AI & Metadata')->schema([
-                    Forms\Components\TextInput::make('uuid')
-                        ->label('GiftSet UUID')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->placeholder('autogenerated'),
-
-                    Forms\Components\TextInput::make('correlation_id')
-                        ->label('Correlation ID (Last Change)')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->placeholder('audit trace...'),
-
-                    Forms\Components\Placeholder::make('ai_score_placeholder')
-                        ->label('AI Match Probability')
-                        ->content(fn ($record) => $record?->correlation_id ?? 'No AI matching performed.'),
+                    Forms\Components\RichEditor::make('description')
+                        ->columnSpanFull()
+                        ->placeholder('Perfect for students or office workers...'),
                 ])->columns(2),
-            ]);
 
-        }
+                Forms\Components\Section::make('Kitting & Pricing')->schema([
+                    Forms\Components\TextInput::make('price_cents')
+                        ->numeric()
+                        ->prefix('RUB')
+                        ->required()
+                        ->label('Total Set Price (Cents)'),
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListStationeryGiftSet::route('/'),
-                'create' => Pages\CreateStationeryGiftSet::route('/create'),
-                'edit' => Pages\EditStationeryGiftSet::route('/{record}/edit'),
-                'view' => Pages\ViewStationeryGiftSet::route('/{record}'),
-            ];
-        }
+                    Forms\Components\Repeater::make('product_ids')
+                        ->label('Items included in Set')
+                        ->schema([
+                            Forms\Components\Select::make('product_id')
+                                ->relationship('store.products', 'name')
+                                ->required()
+                                ->searchable(),
+                        ])
+                        ->default([])
+                        ->required()
+                        ->minItems(2),
+
+                    Forms\Components\Toggle::make('is_active')
+                        ->default(true)
+                        ->onColor('success')
+                        ->offColor('danger'),
+                ])->columns(1),
+            ])->columnSpanFull(),
+
+            Forms\Components\Section::make('AI & Metadata')->schema([
+                Forms\Components\TextInput::make('uuid')
+                    ->label('GiftSet UUID')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->placeholder('autogenerated'),
+
+                Forms\Components\TextInput::make('correlation_id')
+                    ->label('Correlation ID (Last Change)')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->placeholder('audit trace...'),
+
+                Forms\Components\Placeholder::make('ai_score_placeholder')
+                    ->label('AI Match Probability')
+                    ->content(fn ($record) => $record?->correlation_id ?? 'No AI matching performed.'),
+            ])->columns(2),
+        ]);
+
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListStationeryGiftSet::route('/'),
+            'create' => Pages\CreateStationeryGiftSet::route('/create'),
+            'edit' => Pages\EditStationeryGiftSet::route('/{record}/edit'),
+            'view' => Pages\ViewStationeryGiftSet::route('/{record}'),
+        ];
+    }
 }

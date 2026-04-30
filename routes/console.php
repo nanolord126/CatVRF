@@ -5,10 +5,8 @@ declare(strict_types=1);
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-
 // ─── Global Jobs ─────────────────────────────────────────────────────────────
 use App\Jobs\AggregateDailyAnalyticsJob;
-use App\Jobs\BonusAccrualJob;
 use App\Jobs\CleanupExpiredBonusesJob;
 use App\Jobs\CleanupExpiredIdempotencyRecordsJob;
 use App\Jobs\CleanupStaleCollaborationSessionsJob;
@@ -19,22 +17,10 @@ use App\Jobs\PayoutProcessingJob;
 use App\Jobs\RecalculateAnalyticsJob;
 use App\Jobs\RecommendationQualityJob;
 use App\Jobs\ReleaseHoldJob;
-
 // ─── Domain Jobs ─────────────────────────────────────────────────────────────
 use App\Domains\Beauty\Jobs\AppointmentReminderJob;
-use App\Domains\Content\Channels\Jobs\ArchiveInactiveChannelsJob;
-use App\Domains\Content\Channels\Jobs\PostSchedulerJob;
-use App\Domains\Content\Channels\Jobs\SubscriptionRenewalJob;
 use App\Domains\Education\Courses\Jobs\CertificateGenerationJob;
 use App\Domains\Education\Courses\Jobs\EnrollmentReminderJob;
-use App\Domains\EventPlanning\Entertainment\Jobs\CalculateEntertainerEarningsJob;
-use App\Domains\EventPlanning\Entertainment\Jobs\SendEventReminderJob;
-use App\Domains\Fashion\Jobs\CalculateStoreEarningsJob;
-use App\Domains\Fashion\Jobs\UpdateOrderStatusJob;
-use App\Domains\Sports\Fitness\Jobs\CalculateTrainerEarningsJob;
-use App\Domains\Sports\Fitness\Jobs\SendClassReminderJob;
-use App\Domains\Flowers\Jobs\CalculateFlowerShopEarningsJob;
-use App\Domains\Flowers\Jobs\ProcessFlowerOrderStatusJob;
 use App\Domains\Food\Jobs\AutoCloseOrderJob;
 use App\Domains\Food\Jobs\OrderReadyReminderJob;
 use App\Domains\Freelance\Jobs\CalculateFreelancerEarningsJob;
@@ -61,6 +47,9 @@ use App\Domains\Tickets\Jobs\EventReminderJob;
 use App\Domains\Tickets\Jobs\TicketGenerationJob;
 use App\Domains\Travel\Jobs\CalculateAgencyEarningsJob;
 use App\Domains\Travel\Jobs\UpdateBookingStatusJob;
+use App\Jobs\Bonus\BonusUnlockJob;
+use App\Models\Tenant;
+use Illuminate\Support\Str;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -78,14 +67,14 @@ Schedule::command('videocall:cleanup')->daily();
  * и запускает необходимые задачи, если сейчас 03:00.
  */
 Schedule::call(function () {
-    \App\Models\Tenant::query()
+    Tenant::query()
         ->where('is_active', true)
-        ->each(function (\App\Models\Tenant $tenant) {
+        ->each(function (Tenant $tenant) {
             $timezone = $tenant->timezone ?? 'UTC';
             $localHour = now($timezone)->hour;
 
             if ($localHour === 3) {
-                $correlationId = \Illuminate\Support\Str::uuid()->toString();
+                $correlationId = Str::uuid()->toString();
 
                 // 1. Агрегация аналитики
                 AggregateDailyAnalyticsJob::dispatch($tenant->id, $correlationId);
@@ -103,12 +92,12 @@ Schedule::call(function () {
                 PayoutProcessingJob::dispatch($tenant->id, $correlationId);
 
                 // 6. Разморозка бонусов (Cooling period)
-                \App\Jobs\Bonus\BonusUnlockJob::dispatch();
+                BonusUnlockJob::dispatch();
 
                 // 7. Очистка истёкших бонусов
                 CleanupExpiredBonusesJob::dispatch($tenant->id, $correlationId);
 
-                Log::channel('audit')->info('Daily schedule (03:00 local) triggered for tenant', [
+                logger()->channel('audit')->info('Daily schedule (03:00 local) triggered for tenant', [
                     'tenant_id' => $tenant->id,
                     'timezone' => $timezone,
                     'correlation_id' => $correlationId,
@@ -119,7 +108,7 @@ Schedule::call(function () {
 
 // Пересчёт аналитики — каждый час (dispatches per-tenant)
 Schedule::call(function () {
-    \App\Models\Tenant::query()->pluck('id')->each(function (int $tenantId) {
+    Tenant::query()->pluck('id')->each(function (int $tenantId) {
         RecalculateAnalyticsJob::dispatch($tenantId);
     });
 })->hourly()->name('platform.recalculate-analytics');
@@ -376,4 +365,3 @@ Schedule::job(new CheckInReminderJob())
 //     ->everyThirtyMinutes()
 //     ->name('travel.update-booking-status')
 //     ->withoutOverlapping(25);
-

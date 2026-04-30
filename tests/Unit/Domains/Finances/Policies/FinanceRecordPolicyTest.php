@@ -7,7 +7,6 @@ namespace Tests\Unit\Domains\Finances\Policies;
 use App\Domains\Finances\Models\FinanceRecord;
 use App\Domains\Finances\Policies\FinanceRecordPolicy;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -21,49 +20,18 @@ final class FinanceRecordPolicyTest extends TestCase
 {
     private FinanceRecordPolicy $policy;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->policy = new FinanceRecordPolicy();
-    }
-
-    private function makeUser(
-        ?int $tenantId = 1,
-        ?int $activeBusinessGroupId = null,
-    ): User {
-        $user = new User();
-        $user->tenant_id = $tenantId;
-        $user->active_business_group_id = $activeBusinessGroupId;
-
-        return $user;
-    }
-
-    private function makeRecord(
-        int $tenantId = 1,
-        ?int $businessGroupId = null,
-        string $status = 'draft',
-    ): FinanceRecord {
-        $record = new FinanceRecord();
-        $record->id = 100;
-        $record->tenant_id = $tenantId;
-        $record->business_group_id = $businessGroupId;
-        $record->status = $status;
-
-        return $record;
-    }
-
     // ──────────────────────────────────────
     //  viewAny
     // ──────────────────────────────────────
 
     #[Test]
-    public function viewAny_allowed_when_user_has_tenant(): void
+    public function view_any_allowed_when_user_has_tenant(): void
     {
         self::assertTrue($this->policy->viewAny($this->makeUser(tenantId: 1)));
     }
 
     #[Test]
-    public function viewAny_denied_when_no_tenant(): void
+    public function view_any_denied_when_no_tenant(): void
     {
         self::assertFalse($this->policy->viewAny($this->makeUser(tenantId: null)));
     }
@@ -206,7 +174,7 @@ final class FinanceRecordPolicyTest extends TestCase
     // ──────────────────────────────────────
 
     #[Test]
-    public function forceDelete_always_denied(): void
+    public function force_delete_always_denied(): void
     {
         self::assertFalse(
             $this->policy->forceDelete(
@@ -217,7 +185,7 @@ final class FinanceRecordPolicyTest extends TestCase
     }
 
     #[Test]
-    public function forceDelete_denied_even_for_same_tenant(): void
+    public function force_delete_denied_even_for_same_tenant(): void
     {
         self::assertFalse(
             $this->policy->forceDelete(
@@ -296,5 +264,36 @@ final class FinanceRecordPolicyTest extends TestCase
         );
 
         self::assertFalse($response->allowed());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->policy = new FinanceRecordPolicy();
+    }
+
+    private function makeUser(
+        ?int $tenantId = 1,
+        ?int $activeBusinessGroupId = null,
+    ): User {
+        $user = new User();
+        $user->tenant_id = $tenantId;
+        $user->active_business_group_id = $activeBusinessGroupId;
+
+        return $user;
+    }
+
+    private function makeRecord(
+        int $tenantId = 1,
+        ?int $businessGroupId = null,
+        string $status = 'draft',
+    ): FinanceRecord {
+        $record = new FinanceRecord();
+        $record->id = 100;
+        $record->tenant_id = $tenantId;
+        $record->business_group_id = $businessGroupId;
+        $record->status = $status;
+
+        return $record;
     }
 }

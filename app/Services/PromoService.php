@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use App\Services\FraudControlService;
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
-
-
+use Carbon\CarbonImmutable;
 
 /**
  * Promo Campaign Management Service
@@ -19,24 +24,30 @@ use Illuminate\Database\DatabaseManager;
  * - Commission calculations
  *
  * @author CatVRF Team
+ *
  * @version 2026.03.24
  */
 final class PromoService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private readonly LogManager $logger,
+        private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Apply promo code to order
      *
-     * @param string $code Promo code
-     * @param int $orderAmount Order amount in kopeks
-     * @param string $vertical Vertical (beauty, food, hotels, auto)
-     * @param int $userId User ID
-     * @param string $correlationId Tracing ID
+     * @param  string  $code  Promo code
+     * @param  int  $orderAmount  Order amount in kopeks
+     * @param  string  $vertical  Vertical (beauty, food, hotels, auto)
+     * @param  int  $userId  User ID
+     * @param  string  $correlationId  Tracing ID
      * @return array {discount_amount, new_amount, code, applied_at}
+     *
      * @throws \Exception
      */
     public function applyPromo(string $code, int $orderAmount, string $vertical, int $userId, string $correlationId): array
@@ -49,7 +60,7 @@ final class PromoService
         ]);
 
 
-        $this->logger->channel('audit')->info('Method applyPromo() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method applyPromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -62,7 +73,7 @@ final class PromoService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$campaign) {
+            if (! $campaign) {
                 throw new \DomainException('Promo code not found');
             }
 
@@ -72,12 +83,12 @@ final class PromoService
             }
 
             // Check if expired
-            if ($campaign->end_at && $campaign->end_at < now()) {
+            if ($campaign->end_at && $campaign->end_at < CarbonImmutable::now()) {
                 throw new \DomainException('Promo code has expired');
             }
 
             // Check start date
-            if ($campaign->start_at > now()) {
+            if ($campaign->start_at > CarbonImmutable::now()) {
                 throw new \DomainException('Promo code is not yet active');
             }
 
@@ -88,7 +99,7 @@ final class PromoService
 
             // Check applicable verticals
             $applicableVerticals = json_decode($campaign->applicable_verticals, true) ?? [];
-            if (!empty($applicableVerticals) && !in_array($vertical, $applicableVerticals)) {
+            if (! empty($applicableVerticals) && ! in_array($vertical, $applicableVerticals, true)) {
                 throw new \DomainException('This promo is not applicable to this vertical');
             }
 
@@ -127,7 +138,7 @@ final class PromoService
                 'user_id' => $userId,
                 'discount_amount' => $discountAmount,
                 'correlation_id' => $correlationId,
-                'used_at' => now(),
+                'used_at' => CarbonImmutable::now(),
             ]);
 
             // Update campaign budget
@@ -139,7 +150,7 @@ final class PromoService
                     'status' => $campaign->spent_budget + $discountAmount >= $campaign->budget ? 'exhausted' : 'active',
                 ]);
 
-            $this->logger->channel('promo')->info('Promo applied', [
+            $this->logger->channel('promo')->$this->logger->info('Promo applied', [
                 'correlation_id' => $correlationId,
                 'code' => $code,
                 'user_id' => $userId,
@@ -152,7 +163,7 @@ final class PromoService
                 'discount_amount' => $discountAmount,
                 'new_amount' => max(0, $orderAmount - $discountAmount),
                 'code' => $code,
-                'applied_at' => now(),
+                'applied_at' => CarbonImmutable::now(),
             ];
         });
     }
@@ -160,14 +171,14 @@ final class PromoService
     /**
      * Validate promo (preview discount without applying)
      *
-     * @param string $code Promo code
-     * @param int $orderAmount Order amount in kopeks
-     * @param string $vertical Vertical
+     * @param  string  $code  Promo code
+     * @param  int  $orderAmount  Order amount in kopeks
+     * @param  string  $vertical  Vertical
      * @return array {code, discount_amount, new_amount, valid}
      */
     public function validatePromo(string $code, int $orderAmount, string $vertical): array
     {
-        $this->logger->channel('audit')->info('Method validatePromo() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method validatePromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -177,7 +188,7 @@ final class PromoService
             ->where('tenant_id', tenant()->id)
             ->first();
 
-        if (!$campaign) {
+        if (! $campaign) {
             return [
                 'code' => $code,
                 'valid' => false,
@@ -195,7 +206,7 @@ final class PromoService
         }
 
         // Check if expired
-        if ($campaign->end_at && $campaign->end_at < now()) {
+        if ($campaign->end_at && $campaign->end_at < CarbonImmutable::now()) {
             return [
                 'code' => $code,
                 'valid' => false,
@@ -216,33 +227,14 @@ final class PromoService
     }
 
     /**
-     * Calculate discount amount based on promo type
-     *
-     * @param object $campaign Campaign object
-     * @param int $orderAmount Order amount in kopeks
-     * @return int Discount amount in kopeks
-     */
-    private function calculateDiscount(object $campaign, int $orderAmount): int
-    {
-        return match ($campaign->type) {
-            'fixed_amount' => (int) min($campaign->value, $orderAmount),
-            'buy_x_get_y' => 0,
-            'referral_bonus' => (int) $campaign->value,
-            'turnover_bonus' => (int) $campaign->value,
-            default => 0,
-        };
-    }
-
-    /**
      * Cancel promo use (refund discount to budget)
      *
-     * @param int $useId Promo use ID
-     * @param string $correlationId Tracing ID
-     * @return bool
+     * @param  int  $useId  Promo use ID
+     * @param  string  $correlationId  Tracing ID
      */
     public function cancelPromoUse(int $useId, string $correlationId): bool
     {
-        $this->logger->channel('audit')->info('Method cancelPromoUse() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method cancelPromoUse() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -264,10 +256,10 @@ final class PromoService
             $this->db->table('promo_uses')
                 ->where('id', $useId)
                 ->update([
-                    'cancelled_at' => now(),
+                    'cancelled_at' => CarbonImmutable::now(),
                 ]);
 
-            $this->logger->channel('promo')->info('Promo use cancelled', [
+            $this->logger->channel('promo')->$this->logger->info('Promo use cancelled', [
                 'correlation_id' => $correlationId,
                 'promo_use_id' => $useId,
                 'discount_refunded' => $use->discount_amount,
@@ -275,5 +267,23 @@ final class PromoService
 
             return true;
         });
+    }
+
+    /**
+     * Calculate discount amount based on promo type
+     *
+     * @param  object  $campaign  Campaign object
+     * @param  int  $orderAmount  Order amount in kopeks
+     * @return int Discount amount in kopeks
+     */
+    private function calculateDiscount(object $campaign, int $orderAmount): int
+    {
+        return match ($campaign->type) {
+            'fixed_amount' => (int) min($campaign->value, $orderAmount),
+            'buy_x_get_y' => 0,
+            'referral_bonus' => (int) $campaign->value,
+            'turnover_bonus' => (int) $campaign->value,
+            default => 0,
+        };
     }
 }

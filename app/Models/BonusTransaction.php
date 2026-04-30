@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
@@ -10,7 +12,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class BonusTransaction extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_CREDITED = 'credited';
+
+    public const STATUS_EXPIRED = 'expired';
 
     protected $table = 'bonus_transactions';
 
@@ -42,19 +51,15 @@ final class BonusTransaction extends Model
         'hold_until' => 'datetime',
     ];
 
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_CREDITED = 'credited';
-    public const STATUS_EXPIRED = 'expired';
-
     protected static function booted(): void
     {
-        static::creating(function ($model) {
+        self::creating(function ($model) {
             $model->uuid = $model->uuid ?? (string) Str::uuid();
         });
 
         // Global scope tenant_id (Canon 2026)
         if (function_exists('tenant') && tenant('id')) {
-            static::addGlobalScope('tenant_id', function (Builder $builder) {
+            self::addGlobalScope('tenant_id', function (Builder $builder) {
                 $builder->where('tenant_id', tenant('id'));
             });
         }

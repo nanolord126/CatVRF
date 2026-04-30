@@ -16,13 +16,16 @@ use App\Services\FraudControlService;
 
 final class UpdateBookingStatusJob implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
 
-        public int $tries = 3;
+        public array $backoff = [60, 300, 900];
+    public int $timeout = 120;
+    public int $tries = 3;
         public int $maxExceptions = 3;
 
         public function __construct(public ?int $bookingId = null,
-            private ?string $newStatus = null,
+            private readonly ?string $newStatus = null,
             private readonly ?string $correlationId = null,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
 
@@ -36,12 +39,12 @@ final class UpdateBookingStatusJob implements ShouldQueue
                         'status' => $this->newStatus,
                     ]);
 
-                    $this->logger->info('Travel booking status updated', [
+                    $this->logger->$this->logger->info('Travel booking status updated', [
                         'booking_id' => $this->bookingId,
                         'booking_number' => $booking->booking_number,
                         'new_status' => $this->newStatus,
                         'correlation_id' => $this->correlationId,
-                        'timestamp' => now(),
+                        'timestamp' => CarbonImmutable::now(),
                     ]);
                 });
             } catch (Throwable $e) {
@@ -62,9 +65,15 @@ final class UpdateBookingStatusJob implements ShouldQueue
             return ['travel', 'booking', 'status-update'];
         }
 
-        public function retryUntil(): \DateTime
-        {
-            return now()->addHours(24);
-        }
-}
+    public function retryUntil(): \DateTime
+    {
+        return CarbonImmutable::now()->addHours(24);
+    }
 
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('travel job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

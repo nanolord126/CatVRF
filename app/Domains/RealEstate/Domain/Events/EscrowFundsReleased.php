@@ -10,7 +10,8 @@ use Illuminate\Queue\SerializesModels;
 
 final class EscrowFundsReleased
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
+    use SerializesModels;
 
     public function __construct(
         public readonly PropertyTransaction $transaction,

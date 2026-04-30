@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 /**
  * Class PharmacyOrder
@@ -24,12 +27,12 @@ use Illuminate\Database\Eloquent\Builder;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Pharmacy\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PharmacyOrder extends Model
 {
+    use TenantScoped;
 
     protected $table = 'pharmacy_orders';
 
@@ -42,20 +45,13 @@ final class PharmacyOrder extends Model
         'status',
         'idempotency_key',
         'tags',
-        'correlation_id'
+        'correlation_id',
     ];
 
     protected $casts = [
         'total_amount' => 'integer',
-        'tags' => 'json'
+        'tags' => 'json',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_id', function (Builder $builder) {
-            $builder->where('tenant_id', tenant()->id ?? 0);
-        });
-    }
 
     public function user(): BelongsTo
     {
@@ -70,5 +66,12 @@ final class PharmacyOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PharmacyOrderItem::class, 'order_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            $builder->where('tenant_id', tenant()->id ?? 0);
+        });
     }
 }

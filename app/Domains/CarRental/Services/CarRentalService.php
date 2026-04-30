@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Domains\CarRental\Services;
 
 use App\Domains\CarRental\Models\RentalBooking;
-use App\Domains\Wallet\Enums\BalanceTransactionType;
-use App\Services\FraudControlService;
+use App\Domains\Shared\Realtime\RealtimeTrackingAdapter;
 use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Сервис аренды автомобилей.
@@ -23,17 +24,21 @@ use Psr\Log\LoggerInterface;
 final readonly class CarRentalService
 {
     private const VERSION = '1.0.0';
+
     private const MAX_RETRIES = 3;
+
     private const CACHE_TTL = 3600;
+
     private const COMMISSION_RATE = 0.14;
 
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private RateLimiter $rateLimiter,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RealtimeTrackingAdapter $trackingAdapter,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly RateLimiter $rateLimiter,
     ) {}
 
     /**
@@ -54,7 +59,7 @@ final readonly class CarRentalService
         }
         $this->rateLimiter->hit($key, 3600);
 
-        return $this->db->transaction(function () use ($carId, $pickupDate, $returnDate, $correlationId, $userId) {
+        return $this->db->transaction(function () use ($carId, $pickupDate, $returnDate, $pickupAddress, $returnAddress, $correlationId, $userId) {
             $this->fraud->check(
                 userId: $userId,
                 operationType: 'car_rental',
@@ -62,13 +67,29 @@ final readonly class CarRentalService
                 correlationId: $correlationId,
             );
 
-            $pickup = \Carbon\Carbon::parse($pickupDate);
-            $return = \Carbon\Carbon::parse($returnDate);
+            $pickup = Carbon::parse($pickupDate);
+            $return = Carbon::parse($returnDate);
             $days = max(1, (int) $pickup->diffInDays($return));
             $total = $days * 500000;
             $payout = $total - (int) ($total * self::COMMISSION_RATE);
 
+            // Calculate delivery cost if addresses provided
+            $deliveryCost = 0;
+            if ($pickupAddress) {
+                $deliveryCalculation = $this->geoAdapter->calculateDeliveryForOrder([
+                    'vertical' => 'car_rental',
+                    'seller_address' => 'depot_location',
+                    'buyer_address' => $pickupAddress,
+                    'items' => [],
+                ]);
+                $deliveryCost = $deliveryCalculation['cost'];
+                $total += $deliveryCost;
+            }
+
             $booking = RentalBooking::create([
+                'pickup_address' => $pickupAddress,
+                'return_address' => $returnAddress,
+                'delivery_cost'  => $deliveryCost,
                 'uuid'           => Str::uuid()->toString(),
                 'tenant_id'      => tenant()->id,
                 'car_id'         => $carId,
@@ -84,12 +105,21 @@ final readonly class CarRentalService
                 'tags'           => ['rental' => true],
             ]);
 
-            $this->logger->info('Car rental booking created', [
+            $this->logger->$this->logger->info('Car rental booking created', [
                 'booking_id'     => $booking->id,
                 'days'           => $days,
                 'total_kopecks'  => $total,
                 'correlation_id' => $correlationId,
             ]);
+
+            // Запуск реалтайм-трекинга доставки авто
+            $this->trackingAdapter->startTracking([
+                'order_id' => $booking->id,
+                'vertical' => 'car_rental',
+                'sub_vertical' => null,
+                'courier_id' => null, // будет назначен позже
+                'buyer_id' => $userId,
+            ], $correlationId);
 
             return $booking;
         });
@@ -169,7 +199,7 @@ final readonly class CarRentalService
     /**
      * Получить бронирования пользователя (10 последних).
      */
-    public function getUserBookings(int $renterId): \Illuminate\Support\Collection
+    public function getUserBookings(int $renterId): Collection
     {
         return RentalBooking::where('renter_id', $renterId)
             ->orderBy('created_at', 'desc')
@@ -182,7 +212,7 @@ final readonly class CarRentalService
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
+use App\Services\HR\EmployeeService;
 
 /**
  * Unit tests for EmployeeService.
@@ -13,14 +16,14 @@ final class EmployeeServiceTest extends TestCase
 {
     public function test_class_is_final_readonly(): void
     {
-        $reflection = new \ReflectionClass(\App\Services\HR\EmployeeService::class);
+        $reflection = new \ReflectionClass(EmployeeService::class);
         $this->assertTrue($reflection->isFinal(), 'EmployeeService must be final');
         $this->assertTrue($reflection->isReadOnly(), 'EmployeeService must be readonly');
     }
 
     public function test_has_constructor_injection(): void
     {
-        $reflection = new \ReflectionClass(\App\Services\HR\EmployeeService::class);
+        $reflection = new \ReflectionClass(EmployeeService::class);
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
@@ -29,7 +32,7 @@ final class EmployeeServiceTest extends TestCase
     public function test_hire_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\HR\EmployeeService::class, 'hire'),
+            method_exists(EmployeeService::class, 'hire'),
             'EmployeeService must implement hire()'
         );
     }
@@ -37,25 +40,24 @@ final class EmployeeServiceTest extends TestCase
     public function test_terminate_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\HR\EmployeeService::class, 'terminate'),
+            method_exists(EmployeeService::class, 'terminate'),
             'EmployeeService must implement terminate()'
         );
     }
 
-    public function test_updateSalary_method_exists(): void
+    public function test_update_salary_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\HR\EmployeeService::class, 'updateSalary'),
+            method_exists(EmployeeService::class, 'updateSalary'),
             'EmployeeService must implement updateSalary()'
         );
     }
 
-    public function test_calculateKpiBonus_method_exists(): void
+    public function test_calculate_kpi_bonus_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\HR\EmployeeService::class, 'calculateKpiBonus'),
+            method_exists(EmployeeService::class, 'calculateKpiBonus'),
             'EmployeeService must implement calculateKpiBonus()'
         );
     }
-
 }
